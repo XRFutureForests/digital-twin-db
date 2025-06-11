@@ -1,11 +1,13 @@
-### 1. Punktwolken-Datenbank (Point Cloud DB)
+Below is a **comprehensive, English-language database design document** for your system, merging the latest scenario-aware Tree DB with the previously described Point Cloud DB and Environment DB. Each section includes purpose, table descriptions, data flows, and a Mermaid ER diagram.
 
-Diese Datenbank dient der Speicherung von Metadaten und Ergebnissen, die aus der Verarbeitung von Punktwolkendaten stammen. Dies umfasst Verweise auf die Rohdaten, Segmentierungs- und Klassifikationsergebnisse.
+---
 
-**Zweck:** Speicherung von Roh- und verarbeiteten Punktwolkendaten sowie deren Metadaten und Analyseergebnissen, insbesondere Segmentierungs- und Klassifikationsergebnisse [379, Konversationsverlauf].
+## 1. Point Cloud Database (Point Cloud DB)
 
-**Mermaid ER-Diagramm:**
+**Purpose:**  
+Stores metadata and results from the processing of point cloud data, including references to raw files, segmentation, and classification outputs. This is the primary storage for all spatial scan data and their derived products.
 
+**Mermaid ER Diagram:**
 ```mermaid
 %%{
   init: {
@@ -15,78 +17,97 @@ Diese Datenbank dient der Speicherung von Metadaten und Ergebnissen, die aus der
       'fontFamily': 'verdana',
       'lineColor': '#ad5643',
       'primaryColor': '#5cb89c',
-      'primaryTextColor': '#313d4f',
+      'primaryTextColor': '#1d242f',
       'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#ad5643',
-      'secondaryTextColor': '#F0F0F0',
+      'secondaryColor': '#d6aaa1',
+      'secondaryTextColor': '#1d242f',
       'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#F0F0F0',
-      'tertiaryTextColor': '#000000',
+      'tertiaryColor': '#d5d8db',
+      'tertiaryTextColor': '#1d242f',
       'tertiaryBorderColor': '#313d4f'
     }
   }
 }%%
 erDiagram
     Locations {
-        INT LocationID PK "Eindeutige ID für Waldparzelle/Ort"
-        VARCHAR LocationName "Name des Ortes"
-        TEXT Coordinates "Geografische Koordinaten"
-        TEXT Description "Beschreibung des Ortes"
+        INT LocationID PK "Unique site/plot ID"
+        VARCHAR LocationName "Site name"
+        TEXT Coordinates "Geographic coordinates"
+        TEXT Description "Description of the site"
     }
 
     PointClouds {
-        INT PointCloudID PK "Eindeutige ID für Punktwolken-Scan"
-        VARCHAR FilePath "Pfad/URI zur Roh-Punktwolkendatei (z.B. .las, .laz)"
-        DATETIME ScanDate "Datum und Uhrzeit des Scans"
-        INT LocationID FK "Referenziert Locations.LocationID"
-        VARCHAR SensorType "Z.B. 'TLS', 'UAV_LiDAR'"
-        VARCHAR ProcessingStatus "Aktueller Verarbeitungsstatus: 'Raw', 'Segmented', 'Classified'"
-        TEXT QualityMetrics "JSON: Dichte, Genauigkeit der Punktwolke"
-        DATETIME LastProcessedDate "Datum der letzten Verarbeitung"
+        INT PointCloudID PK "Unique scan ID"
+        VARCHAR FilePath "Path/URI to raw point cloud file (.las, .laz)"
+        DATETIME ScanDate "Date and time of scan"
+        INT LocationID FK "References Locations.LocationID"
+        VARCHAR SensorType "Sensor type (e.g., TLS, UAV_LiDAR)"
+        VARCHAR ProcessingStatus "Current status: 'Raw', 'Segmented', 'Classified'"
+        TEXT QualityMetrics "JSON: density, accuracy"
+        DATETIME LastProcessedDate "Last processing date"
     }
 
     PointCloudSegmentationResults {
-        INT SegmentationResultID PK "Eindeutige ID für Segmentierungslauf"
-        INT PointCloudID FK "Referenziert PointClouds.PointCloudID"
-        DATETIME ProcessDate "Datum der Segmentierung"
-        VARCHAR SegmentationAlgorithm "Genutzter Algorithmus (z.B. 'TreeLearn', '3D Forest')"
-        TEXT SegmentDataRef "JSON: Referenzen zu individuellen Baumsegmenten (z.B. Sub-Cloud-Dateien oder IDs)"
-        TEXT Metrics "JSON: Metriken zur Segmentierungsqualität"
+        INT SegmentationResultID PK "Unique segmentation run ID"
+        INT PointCloudID FK "References PointClouds.PointCloudID"
+        DATETIME ProcessDate "Segmentation date"
+        VARCHAR SegmentationAlgorithm "Algorithm used (e.g., TreeLearn, 3D Forest)"
+        TEXT SegmentDataRef "JSON: references to tree segments"
+        TEXT Metrics "JSON: segmentation quality"
     }
 
     TreeClassificationResults {
-        INT ClassificationResultID PK "Eindeutige ID für Klassifikationslauf"
-        INT SegmentationResultID FK "Referenziert PointCloudSegmentationResults.SegmentationResultID"
-        DATETIME ProcessDate "Datum der Klassifikation"
-        VARCHAR ClassificationAlgorithm "Genutzter Algorithmus (z.B. ML-Modell)"
-        TEXT ClassifiedTreesData "JSON: Baum-IDs, Spezies-IDs, Wahrscheinlichkeiten, genutzte Features"
-        TEXT Metrics "JSON: Klassifikationsgenauigkeit"
+        INT ClassificationResultID PK "Unique classification run ID"
+        INT SegmentationResultID FK "References PointCloudSegmentationResults.SegmentationResultID"
+        DATETIME ProcessDate "Classification date"
+        VARCHAR ClassificationAlgorithm "Algorithm used (e.g., ML model)"
+        TEXT ClassifiedTreesData "JSON: tree IDs, species IDs, probabilities"
+        TEXT Metrics "JSON: classification accuracy"
     }
 
-    Locations ||--o{ PointClouds : wird_erfasst_in
-    PointClouds ||--o{ PointCloudSegmentationResults : erzeugt_segm_ergebnisse
-    PointCloudSegmentationResults ||--o{ TreeClassificationResults : erzeugt_klass_ergebnisse
+    Species {
+        INT SpeciesID PK "Unique species ID"
+        VARCHAR CommonName "Common name"
+        VARCHAR ScientificName "Scientific name"
+        TEXT GrowthCharacteristics "JSON: typical growth"
+    }
+
+    Locations ||--o{ PointClouds : has_scans
+    PointClouds ||--o{ PointCloudSegmentationResults : has_segmentations
+    PointCloudSegmentationResults ||--o{ TreeClassificationResults : has_classifications
+    Species ||--o{ TreeClassificationResults : classifies_species
 ```
 
-**Inputs und Outputs der Punktwolken-Datenbank:**
+**Inputs:**  
+- Raw point cloud files (uploaded via Data Ingestion API)
+- Segmentation/classification outputs (via Processing Pipeline API)
 
-- **Inputs:**
-  - **Rohdaten:** Punktwolken, erfasst durch TLS (Terrestrial Laserscanning) oder Drohnen-LiDAR. Die Datenbank speichert typischerweise Dateipfade zu diesen großen Datensätzen.
-  - **Verarbeitungsergebnisse:** Output von Algorithmen zur Segmentierung (z.B. **TreeLearn**, das individuelle Bäume aus Punktwolken segmentiert, oder **3D Forest** für Lidar-Datensegmentierung) und Klassifizierung (z.B. Speziesklassifikation mittels maschinellem Lernen). Diese Ergebnisse werden in `PointCloudSegmentationResults` und `TreeClassificationResults` gespeichert.
-- **Outputs:**
-  - **Baumattributsextraktion:** Segmentierte und klassifizierte Daten dienen als Input für die Ableitung quantitativer Baummetriken (Höhe, Kronenbreite, Volumen), die in die `Baumdatenbank` fließen.
-  - **Strukturmodelle:** Punktwolken können als Input für die Erstellung von **Quantitative Strukturmodellen (QSMs)** mittels Tools wie **TreeQSM** dienen, deren Ergebnisse dann in die `Baumdatenbank` gelangen.
-  - **Visualisierung in VR/Web:** Roh- oder verarbeitete Punktwolken können direkt für die Darstellung in XR-Anwendungen oder webbasierten Visualisierungstools genutzt werden.
+**Outputs:**  
+- Segmented/classified tree data (to Tree DB via Processing Pipeline API)
+- 3D data for visualization (to Presentation Tier via REST/GraphQL API)
 
 ---
 
-### 2. Baumdatenbank (Tree DB)
+## 2. Tree Database (Tree DB) – Scenario & Variant-Aware
+Certainly! Here is the **updated Tree DB design and description** with a single unified structure table, and extended branch, twig, and leaf tables including features such as direction, height of starting point on parent, and angle. This design is ready for copy-paste into your documentation.
 
-Diese Datenbank ist das Herzstück für die Verwaltung der abgeleiteten Baumdaten und der für die VR-Darstellung sowie Wachstumsmodelle benötigten Informationen.
+---
+Here is the **updated Tree Database (Tree DB) design and description** reflecting your requirements for scenario/variant management, unified structure storage, and detailed growth simulation tracking. This version:
 
-**Zweck:** Speicherung detaillierter Informationen über individuelle Bäume, einschließlich abgeleiteter Attribute, Strukturmodelle (QSMs, L-Systeme, DeepTree Latents) und Ergebnisse von Wachstumssimulationen [379, Konversationsverlauf].
+- Uses a single `TreeStructures` table for all structure types (QSM, L-System, DeepTree, etc.)
+- Links all growth simulations to `TreeVariantID` (including base/original variants)
+- Includes a `TimeDelta_yrs` field in `TreeGrowthSimulations` for time interval tracking
+- Extends `StructureBranches`, `StructureTwigs`, and `StructureLeaves` with direction, height of starting point, and angle fields
 
-**Mermaid ER-Diagramm:**
+---
+
+## Tree Database (Tree DB)
+
+**Purpose:**  
+Central repository for all tree-related data, supporting scenario-based modeling, variant management, growth simulation, and detailed structural representation. This design enables both data-driven (QSM) and generative (L-system, DeepTree, etc.) models in a unified structure, and supports fine-grained modeling of branches, twigs, and leaves.
+
+
+### Mermaid ER Diagram
 
 ```mermaid
 %%{
@@ -97,13 +118,13 @@ Diese Datenbank ist das Herzstück für die Verwaltung der abgeleiteten Baumdate
       'fontFamily': 'verdana',
       'lineColor': '#ad5643',
       'primaryColor': '#5cb89c',
-      'primaryTextColor': '#313d4f',
+      'primaryTextColor': '#1d242f',
       'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#ad5643',
-      'secondaryTextColor': '#F0F0F0',
+      'secondaryColor': '#d6aaa1',
+      'secondaryTextColor': '#1d242f',
       'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#F0F0F0',
-      'tertiaryTextColor': '#000000',
+      'tertiaryColor': '#d5d8db',
+      'tertiaryTextColor': '#1d242f',
       'tertiaryBorderColor': '#313d4f'
     }
   }
@@ -115,88 +136,193 @@ erDiagram
     }
 
     Species {
-        INT SpeciesID PK "Eindeutige ID für Baumart"
-        VARCHAR CommonName "Gebräuchlicher Name"
-        VARCHAR ScientificName "Wissenschaftlicher Name"
-        TEXT GrowthCharacteristics "JSON: Allgemeine Wuchsformen, typische Verzweigungen"
+        INT SpeciesID PK
+        VARCHAR CommonName
+        VARCHAR ScientificName
+        TEXT GrowthCharacteristics
+    }
+
+    HealthStatus {
+        INT HealthStatusID PK
+        VARCHAR Status
+        TEXT Description
+    }
+
+    PhenologyStatus {
+        INT PhenologyStatusID PK
+        VARCHAR Status
+        TEXT Description
+    }
+
+    Scenarios {
+        INT ScenarioID PK
+        VARCHAR ScenarioName
+        INT CreatedByUserID
+        DATETIME CreatedAt
+        TEXT ScenarioParameters
     }
 
     Trees {
-        INT TreeID PK "Eindeutige ID für einzelnen Baum"
-        INT LocationID FK "Referenziert Locations.LocationID"
-        INT SpeciesID FK "Referenziert Species.SpeciesID"
-        DATETIME InitialCaptureDate "Datum der ersten Erfassung/Identifizierung des Baumes"
-        FLOAT CurrentHeight_m "Aktuelle Höhe in Metern"
-        FLOAT CurrentDBH_cm "Aktueller Durchmesser in Brusthöhe in cm"
-        FLOAT CurrentCrownWidth_m "Aktuelle Kronenbreite in Metern"
-        FLOAT CurrentVolume_m3 "Aktuelles Volumen in Kubikmetern"
-        VARCHAR HealthStatus "Aktueller Gesundheitszustand"
-        INT PointCloudID FK "Optional: Referenziert PointClouds.PointCloudID (für die Quell-Punktwolke)"
+        INT TreeID PK
+        INT LocationID FK
+        INT SpeciesID FK
+        DATETIME InitialCaptureDate
+        FLOAT InitialHeight_m
+        FLOAT InitialDBH_cm
+        FLOAT InitialCrownWidth_m
+        FLOAT InitialVolume_m3
+        INT HealthStatusID FK
+        INT PointCloudID FK
     }
 
-    QuantitativeStructureModels {
-        INT QSM_ID PK "Eindeutige ID für QSM"
-        INT TreeID FK "Referenziert Trees.TreeID"
-        VARCHAR FilePath "Pfad/URI zur QSM-Datei (.obj, .gltf, .mat, etc.)"
-        DATETIME GenerationDate "Datum der QSM-Generierung"
-        VARCHAR QSM_Software "Software zur QSM-Generierung (z.B. 'TreeQSM', 'rTwig')"
-        TEXT QSM_Metadata "JSON: Rekonstruktionsparameter, Qualität"
+    TreeVariants {
+        INT TreeVariantID PK
+        INT TreeID FK "Nullable: NULL if new tree in scenario"
+        INT ScenarioID FK
+        INT ParentVariantID FK "Nullable: NULL if original or first variant"
+        INT SpeciesID FK
+        DATETIME VariantTimestamp
+        FLOAT Height_m
+        FLOAT DBH_cm
+        FLOAT CrownWidth_m
+        FLOAT Volume_m3
+        INT HealthStatusID FK
+        VARCHAR VariantType "Original, Simulated, Replaced, New"
+        TEXT Notes
     }
 
-    TreeStructuralRepresentations {
-        INT StructuralRepID PK "Eindeutige ID für Strukturdarstellung"
-        INT TreeID FK "Referenziert Trees.TreeID"
-        VARCHAR RepresentationType "Typ der Darstellung (z.B. 'LSystemString', 'DeepTreeLatent')"
-        TEXT RepresentationData "Die eigentliche Daten (z.B. L-System String, DeepTree Latent Vector)"
-        DATETIME DataGenerationDate "Datum der Generierung dieser Darstellung"
-        TEXT GrowthModelContext "JSON: Alter, Gravitropismus-Parameter, falls generiert"
+    TreeStructures {
+        INT StructureID PK
+        INT TreeVariantID FK
+        VARCHAR StructureType "QSM, LSystem, DeepTree, etc."
+        VARCHAR FilePath "Path to model file (if any)"
+        TEXT StructureData "JSON or string (e.g. L-system, latent vector, QSM params)"
+        DATETIME GenerationDate
+        VARCHAR Software "Tool or method used"
+        TEXT Metadata "Additional parameters"
+    }
+
+    StructureBranches {
+        INT BranchID PK
+        INT StructureID FK
+        FLOAT Length_m
+        FLOAT Diameter_cm
+        FLOAT Direction_deg "Azimuth (horizontal direction in degrees)"
+        FLOAT Inclination_deg "Inclination angle from vertical (degrees)"
+        FLOAT StartHeight_m "Height of branch start on parent (m)"
+        FLOAT StartRadius_cm "Radius at branch base (cm)"
+        TEXT Geometry "JSON/OBJ"
+    }
+
+    StructureTwigs {
+        INT TwigID PK
+        INT BranchID FK
+        FLOAT Length_m
+        FLOAT Diameter_cm
+        FLOAT Direction_deg
+        FLOAT Inclination_deg
+        FLOAT StartHeight_m
+        TEXT Geometry "JSON/OBJ"
+    }
+
+    StructureLeaves {
+        INT LeafID PK
+        INT TwigID FK
+        TEXT Geometry "JSON/OBJ"
+        INT PhenologyStatusID FK
+        FLOAT Direction_deg
+        FLOAT Inclination_deg
+        FLOAT StartHeight_m
+        VARCHAR Color "Optional: leaf color for phenology/health"
     }
 
     TreeGrowthSimulations {
-        INT SimulationID PK "Eindeutige ID für Wachstumssimulation"
-        INT TreeID FK "Referenziert Trees.TreeID"
-        VARCHAR ModelType "Genutztes Wachstumsmodell (z.B. 'SILVA', 'BALANCE', 'DeepTree')"
-        DATETIME SimulationTimestamp "Zeitpunkt der Simulation"
-        FLOAT PredictedHeight_m "Prognostizierte Höhe"
-        FLOAT PredictedDBH_cm "Prognostizierter DBH"
-        FLOAT PredictedVolume_m3 "Prognostiziertes Volumen"
-        FLOAT MortalityRisk_prob "Prognostiziertes Sterberisiko"
-        TEXT PredictedLSystemString "Optional: Prognostizierter L-System String, falls Modell-Output"
-        TEXT PredictedDeepTreeLatent "Optional: Prognostizierter DeepTree Latent, falls Modell-Output"
-        INT EnvironmentalSnapshotID FK "Referenziert EnvironmentalSnapshots.SnapshotID (aus Environment DB)"
+        INT SimulationID PK
+        INT TreeVariantID FK
+        INT ScenarioID FK
+        VARCHAR ModelType
+        DATETIME SimulationTimestamp
+        FLOAT TimeDelta_yrs "Time passed since parent state (years)"
+        INT ParentSimulationID FK "Nullable: previous simulation, if any"
+        FLOAT PredictedHeight_m
+        FLOAT PredictedDBH_cm
+        FLOAT PredictedVolume_m3
+        FLOAT MortalityRisk_prob
+        TEXT PredictedStructureData "Optional: predicted structure (e.g. L-system, QSM params)"
+        INT EnvironmentalSnapshotID FK
     }
 
-    Locations ||--o{ Trees : beinhaltet
-    Species ||--o{ Trees : hat_art
-    Trees ||--o{ QuantitativeStructureModels : hat_QSM
-    Trees ||--o{ TreeStructuralRepresentations : hat_struktur_rep
-    Trees ||--o{ TreeGrowthSimulations : hat_wachstums_sim
+    Locations ||--o{ Trees : has_trees
+    Species ||--o{ Trees : is_species
+    HealthStatus ||--o{ Trees : has_health
+    Trees ||--o{ TreeVariants : has_variants
+    Scenarios ||--o{ TreeVariants : scenario_variants
+    TreeVariants ||--o{ TreeStructures : has_structures
+    TreeStructures ||--o{ StructureBranches : has_branches
+    StructureBranches ||--o{ StructureTwigs : has_twigs
+    StructureTwigs ||--o{ StructureLeaves : has_leaves
+    PhenologyStatus ||--o{ StructureLeaves : has_phenology
+    TreeVariants ||--o{ TreeGrowthSimulations : has_growth_sim
+    Scenarios ||--o{ TreeGrowthSimulations : scenario_sims
+    TreeVariants ||--o{ TreeVariants : parent_variant
+    TreeGrowthSimulations ||--o| TreeGrowthSimulations : parent_sim
 ```
 
-**Inputs und Outputs der Baumdatenbank:**
 
-- **Inputs:**
-  - **Baumattributsextraktion:** Quantitative Metriken (Höhe, Kronenbreite, Volumen) extrahiert aus Punktwolken werden in `Trees` aktualisiert.
-  - **Forstinventur:** Traditionelle Messdaten (DBH, Höhe) dienen als Initialwerte oder zur Validierung in `Trees`.
-  - **Quantitative Strukturmodelle (QSMs):** Modelle, die aus Punktwolken mittels **TreeQSM** oder **rTwig** erstellt wurden, werden in `QuantitativeStructureModels` gespeichert oder referenziert. `rTwig` verbessert die visuelle Realität und Volumenakkuratheit von QSMs.
-  - **Baumwachstumsmodelle:** Ergebnisse von Modellen wie **SILVA** und **BALANCE** werden in `TreeGrowthSimulations` erfasst. Diese Modelle benötigen Baumdimensionen, Spezies, Standort- und Klimadaten als Input.
-  - **Generative Modelle (L-Systeme/DeepTree):** `L-Systeme` als string-rewriting Systeme oder `DeepTree` als Deep-Learning-Modell, das Wachstumsregeln lernt, können Strukturdaten generieren, die in `TreeStructuralRepresentations` gespeichert werden. `Latent L-systems` ersetzen die manuelle Regelerstellung durch ein Transformer-Modell. `DeepTree` lernt aus dem "situated latent space" und kann Umwelteinflüsse kodieren.
-  - **Nutzerinteraktion:** Werkzeuge zur Interaktion können Daten in `Trees` und `TreeGrowthSimulations` anpassen oder Szenarien simulieren.
-- **Outputs:**
-  - **VR-Darstellung:** Die `Trees`-Tabelle sowie `QuantitativeStructureModels` und `TreeStructuralRepresentations` liefern die notwendigen geometrischen und topologischen Informationen für die realitätsnahe Darstellung von Bäumen in VR als "Virtual Tree Model".
-  - **Input für Wachstumsmodelle:** Die aktuellen Baumdaten aus `Trees` und `TreeStructuralRepresentations` dienen als Input für wiederkehrende Simulationen mit **SILVA**, **BALANCE** oder **DeepTree**.
-  - **Szenarienanalyse:** Die kombinierten Daten können für Hypothesentests und die Simulation von Management-Szenarien genutzt werden.
+### Table Descriptions
+
+- **Locations, Species, HealthStatus, PhenologyStatus:**  
+  Lookup/reference tables for spatial, biological, and status data.
+
+- **Scenarios:**  
+  User-defined scenario context (e.g., species replacement, climate change).
+
+- **Trees:**  
+  Immutable records of observed trees from scans or inventory.
+
+- **TreeVariants:**  
+  All versions (original, simulated, replaced, or new) of a tree, each linked to a scenario and (optionally) a parent variant.  
+  - `TreeID` is NULL for new trees created only for a scenario.
+
+- **TreeStructures:**  
+  Unified table for all structural representations (QSM, L-system, DeepTree, etc.) for each tree variant.  
+  - `StructureType` distinguishes the method/model used.
+  - `StructureData` can store JSON, strings, or parameters as needed.
+
+- **StructureBranches:**  
+  Detailed branch data for each structure, including length, diameter, direction (azimuth), inclination (angle from vertical), starting height on parent, and geometry.
+
+- **StructureTwigs:**  
+  Fine-scale twig data, with similar geometric and positional attributes as branches.
+
+- **StructureLeaves:**  
+  Leaf data, including geometry, phenology status, direction, inclination, starting height, and optional color for health/phenology visualization.
+
+- **TreeGrowthSimulations:**  
+  Stores simulation results for each tree variant and scenario, including predicted dimensions, mortality risk, (optionally) predicted structure data, and a `TimeDelta_yrs` field for the time interval since the parent state. `ParentSimulationID` enables chaining for time series.
+
+
+### API/Data Flow Mapping
+
+- **Data Ingestion API:**  
+  Adds observed trees and initial structures.
+- **Processing Pipeline API:**  
+  Generates and updates QSMs and other structure types.
+- **Model/Simulation Control API:**  
+  Creates variants, runs growth simulations, and generates procedural/generative structures.
+- **Scenario/Model Control API:**  
+  Manages scenario creation, variant management, and scenario-based edits.
+- **Presentation Tier (REST/GraphQL):**  
+  Queries structures, branches, twigs, and leaves for visualization.
 
 ---
 
-### 3. Umgebungsdatenbank (Environment DB)
+## 3. Environment Database (Environment DB)
 
-Diese Datenbank konzentriert sich auf die Erfassung und Verwaltung von Umweltdaten, die für die Baumwachstumsmodelle und die VR-Umgebungssimulation unerlässlich sind.
+**Purpose:**  
+Stores sensor readings, aggregated environmental snapshots, and metadata for all environmental data streams and sources. Essential for growth models, simulation, and real-time visualization.
 
-**Zweck:** Integration von Sensordaten und Umweltdaten (Klima, Wetter, Boden, Grundwasser) zur Unterstützung von Wachstumsmodellen und zur Simulation der Umgebung in VR [379, Konversationsverlauf].
-
-**Mermaid ER-Diagramm:**
-
+**Mermaid ER Diagram:**
 ```mermaid
 %%{
   init: {
@@ -206,13 +332,13 @@ Diese Datenbank konzentriert sich auf die Erfassung und Verwaltung von Umweltdat
       'fontFamily': 'verdana',
       'lineColor': '#ad5643',
       'primaryColor': '#5cb89c',
-      'primaryTextColor': '#313d4f',
+      'primaryTextColor': '#1d242f',
       'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#ad5643',
-      'secondaryTextColor': '#F0F0F0',
+      'secondaryColor': '#d6aaa1',
+      'secondaryTextColor': '#1d242f',
       'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#F0F0F0',
-      'tertiaryTextColor': '#000000',
+      'tertiaryColor': '#d5d8db',
+      'tertiaryTextColor': '#1d242f',
       'tertiaryBorderColor': '#313d4f'
     }
   }
@@ -224,64 +350,60 @@ erDiagram
     }
 
     Sensors {
-        INT SensorID PK "Eindeutige ID für Sensor"
-        INT LocationID FK "Referenziert Locations.LocationID"
-        VARCHAR SensorType "Typ des Sensors (z.B. 'EcoSense', 'WeatherStation')"
-        DATETIME InstallationDate "Installationsdatum"
-        VARCHAR Status "Status des Sensors"
-        TEXT SensorConfig "JSON: Konfiguration und Kalibrierungsdaten"
+        INT SensorID PK "Unique sensor ID"
+        INT LocationID FK "References Locations"
+        VARCHAR SensorType "Sensor type"
+        DATETIME InstallationDate "Installation date"
+        VARCHAR Status "Status"
+        TEXT SensorConfig "JSON: config/calibration"
     }
 
     SensorReadings {
-        INT ReadingID PK "Eindeutige ID für Messwert"
-        INT SensorID FK "Referenziert Sensors.SensorID"
-        DATETIME Timestamp "Zeitstempel der Messung"
-        VARCHAR ReadingType "Art der Messung (z.B. 'Temperature', 'LightIntensity', 'SapFlow')"
-        FLOAT Value "Messwert"
-        VARCHAR Unit "Einheit des Messwerts"
+        INT ReadingID PK "Unique reading ID"
+        INT SensorID FK "References Sensors"
+        DATETIME Timestamp "Measurement time"
+        VARCHAR ReadingType "Type (e.g. Temperature)"
+        FLOAT Value "Value"
+        VARCHAR Unit "Unit"
     }
 
     EnvironmentalSnapshots {
-        INT SnapshotID PK "Eindeutige ID für Umweltschnappschuss"
-        INT LocationID FK "Referenziert Locations.LocationID"
-        DATETIME Timestamp "Zeitstempel des Schnappschusses (aggregiert)"
-        FLOAT AvgTemperature_C "Durchschnittstemperatur"
-        FLOAT AvgHumidity_percent "Durchschnittliche Luftfeuchtigkeit"
-        FLOAT TotalPrecipitation_mm "Gesamtniederschlag"
-        FLOAT AvgGlobalRadiation "Durchschnittliche Globalstrahlung"
-        FLOAT AvgCO2_ppm "Durchschnittlicher CO2-Gehalt"
-        FLOAT AvgWindSpeed_ms "Durchschnittliche Windgeschwindigkeit"
-        FLOAT DominantWindDirection_deg "Dominante Windrichtung"
-        TEXT ObstacleVoxelGridRef "Pfad/URI zu externen Hindernis-Voxel-Grids (z.B. für DeepTree)"
-        TEXT OtherEnvironmentalFactors "JSON: Bodenfeuchte, Bodennährstoffe, Grundwasserspiegel, Schadstoffe"
+        INT SnapshotID PK "Unique snapshot ID"
+        INT LocationID FK "References Locations"
+        DATETIME Timestamp "Snapshot time"
+        FLOAT AvgTemperature_C "Avg. temperature"
+        FLOAT AvgHumidity_percent "Avg. humidity"
+        FLOAT TotalPrecipitation_mm "Total precipitation"
+        FLOAT AvgGlobalRadiation "Avg. radiation"
+        FLOAT AvgCO2_ppm "Avg. CO2"
+        FLOAT AvgWindSpeed_ms "Avg. wind speed"
+        FLOAT DominantWindDirection_deg "Wind direction"
+        TEXT ObstacleVoxelGridRef "Path to voxel grid"
+        TEXT OtherEnvironmentalFactors "JSON: soil, groundwater, pollutants"
     }
 
-    Locations ||--o{ Sensors : hat_sensoren
-    Sensors ||--o{ SensorReadings : sammelt_daten
-    Locations ||--o{ EnvironmentalSnapshots : hat_umwelt_snapshots
-    EnvironmentalSnapshots }o--|| SensorReadings : aggregiert_aus
+    Locations ||--o{ Sensors : has_sensors
+    Sensors ||--o{ SensorReadings : has_readings
+    Locations ||--o{ EnvironmentalSnapshots : has_snapshots
+    EnvironmentalSnapshots }o--|| SensorReadings : aggregates
 ```
 
-**Inputs und Outputs der Umgebungsdatenbank:**
+**Inputs:**  
+- Sensor data (EcoSense, weather, soil) via Data Ingestion API (batch or streaming)
+- Aggregated/derived environmental snapshots (via Model/Simulation Control API)
+- User modifications for scenario testing (via DB Update API)
 
-- **Inputs:**
-  - **Sensordaten:** Daten von **EcoSense-Sensoren** und anderen Quellen (Klima-, Wetter-, Boden-, Grundwasserdaten) werden in `SensorReadings` erfasst und in `EnvironmentalSnapshots` aggregiert.
-  - **Umweltmodelle:** Ergebnisse von Umweltmodellen oder externe Datensätze (z.B. präzise Schadstoffdaten, die in `OtherEnvironmentalFactors` abgelegt werden können).
-  - **Nutzerinteraktion:** Nutzer können Umweltdaten manuell anpassen, um Szenarien zu testen (z.B. Klimaszenarien für Wachstumsmodelle).
-- **Outputs:**
-  - **Wachstumsmodelle:** Die aggregierten Umweltschnappschüsse (`EnvironmentalSnapshots`) dienen als essentielle Input-Parameter für baum- und waldwachstumsmodelle wie **SILVA** und **BALANCE**, da diese Modelle die Reaktion der Bäume auf ihre Umgebung berücksichtigen.
-  - **VR-Umgebungssimulation:** Die Umgebungsdaten sind entscheidend für die realitätsnahe Simulation der Waldumgebung in VR ("Environment Simulation") und die Visualisierung von Sensordaten in Echtzeit ("Sensor Data Visualization").
+**Outputs:**  
+- Environmental context for growth models (to Logic Tier)
+- Real-time or historical data for presentation (to XR/Web)
+- Data for scenario analysis and simulation
 
 ---
 
-### Zusätzliche Überlegungen zur VR-Darstellung und Schnittstellen
+## **How the Design Supports Your Use Cases**
 
-Ihre Hauptaufgabe, die Informationen aus der Baumdatenbank für eine möglichst realitätsnahe VR-Darstellung aufzubereiten, wird durch dieses Design stark unterstützt:
-
-- **Strukturmodelle (QSMs, L-Systeme, DeepTree):** Die explizite Speicherung dieser Modelle in `QuantitativeStructureModels` und `TreeStructuralRepresentations` ist entscheidend.
-  - **QSMs** bieten eine hervorragende Grundlage, da sie die Holzstruktur realer Bäume als hierarchische Zylindersammlungen repräsentieren und detaillierte Geometrie liefern. Tools wie **TreeQSM** und **rTwig** ermöglichen die Rekonstruktion direkt aus Scandaten. Der `FilePath` in `QuantitativeStructureModels` würde direkt auf die exportierten 3D-Modellformate wie OBJ oder GLTF verweisen, die direkt in VR-Engines geladen werden können.
-  - **L-Systeme** und **DeepTree** können als komplementäre Methoden eingesetzt werden, um die Bäume prozedural zu generieren oder zu vervollständigen, insbesondere wenn Scandaten unvollständig sind oder für die Erzeugung neuer Bäume, die gelernten Wachstumsformen folgen. Die `RepresentationData` (z.B. der L-String oder der Latent-Vektor) in `TreeStructuralRepresentations` dient als "Saat" für die Generierung des 3D-Modells in der VR-Anwendung.
-- **Dynamische Anpassung in VR:** Durch die Verknüpfung von `TreeGrowthSimulations` mit `EnvironmentalSnapshots` können VR-Anwendungen nicht nur statische Bäume darstellen, sondern auch deren simuliertes Wachstum und ihre Reaktion auf Umwelteinflüsse über die Zeit visualisieren ("Temporal Dynamics").
-- **Validierung:** Die in den Quellen genannten Validierungsmethoden (geometrische Vergleiche, perzeptuelle Metriken wie **ICTree**) sind essenziell, um die Realitätsnähe der generierten und dargestellten Bäume zu gewährleisten. Die `TreeDB` mit ihren Attributen und den `QuantitativeStructureModels` bietet die Datenbasis für solche Validierungen.
-
-Diese Datenbankstruktur schafft eine robuste Grundlage für Ihr Projekt und ermöglicht eine effiziente Verwaltung und Integration der komplexen Baum- und Umweltdaten für Ihre VR-Anwendungen und Wachstumsmodelle.
+- **Original trees are never overwritten.** All simulated or replaced trees are stored as new TreeVariants, each linked to a scenario and (optionally) their parent variant.
+- **Scenario-based replacement and creation:** New trees for scenarios are supported by TreeVariants with `TreeID = NULL`.
+- **Growth results:** Growth simulations are always linked to the TreeVariant and Scenario, allowing side-by-side comparison of multiple scenarios.
+- **Consistent lookup tables:** Species and HealthStatus ensure data integrity and interoperability.
+- **Comprehensive data flow:** All data flows and API endpoints are mapped to the architecture, supporting ingestion, processing, simulation, scenario analysis, and visualization.
