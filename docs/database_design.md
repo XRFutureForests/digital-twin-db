@@ -1,6 +1,4 @@
-Below is a **comprehensive, English-language database design document** for your system, merging the latest scenario-aware Tree DB with the previously described Point Cloud DB and Environment DB. Each section includes purpose, table descriptions, data flows, and a Mermaid ER diagram.
-
----
+# Database Design
 
 ## 1. Point Cloud Database (Point Cloud DB)
 
@@ -8,6 +6,7 @@ Below is a **comprehensive, English-language database design document** for your
 Stores metadata and results from the processing of point cloud data, including references to raw files, segmentation, and classification outputs. This is the primary storage for all spatial scan data and their derived products.
 
 **Mermaid ER Diagram:**
+
 ```mermaid
 %%{
   init: {
@@ -79,16 +78,19 @@ erDiagram
 ```
 
 **Inputs:**  
+
 - Raw point cloud files (uploaded via Data Ingestion API)
 - Segmentation/classification outputs (via Processing Pipeline API)
 
 **Outputs:**  
+
 - Segmented/classified tree data (to Tree DB via Processing Pipeline API)
 - 3D data for visualization (to Presentation Tier via REST/GraphQL API)
 
 ---
 
 ## 2. Tree Database (Tree DB) – Scenario & Variant-Aware
+
 Certainly! Here is the **updated Tree DB design and description** with a single unified structure table, and extended branch, twig, and leaf tables including features such as direction, height of starting point on parent, and angle. This design is ready for copy-paste into your documentation.
 
 ---
@@ -105,7 +107,6 @@ Here is the **updated Tree Database (Tree DB) design and description** reflectin
 
 **Purpose:**  
 Central repository for all tree-related data, supporting scenario-based modeling, variant management, growth simulation, and detailed structural representation. This design enables both data-driven (QSM) and generative (L-system, DeepTree, etc.) models in a unified structure, and supports fine-grained modeling of branches, twigs, and leaves.
-
 
 ### Mermaid ER Diagram
 
@@ -268,7 +269,6 @@ erDiagram
     TreeGrowthSimulations ||--o| TreeGrowthSimulations : parent_sim
 ```
 
-
 ### Table Descriptions
 
 - **Locations, Species, HealthStatus, PhenologyStatus:**  
@@ -301,7 +301,6 @@ erDiagram
 - **TreeGrowthSimulations:**  
   Stores simulation results for each tree variant and scenario, including predicted dimensions, mortality risk, (optionally) predicted structure data, and a `TimeDelta_yrs` field for the time interval since the parent state. `ParentSimulationID` enables chaining for time series.
 
-
 ### API/Data Flow Mapping
 
 - **Data Ingestion API:**  
@@ -323,6 +322,7 @@ erDiagram
 Stores sensor readings, aggregated environmental snapshots, and metadata for all environmental data streams and sources. Essential for growth models, simulation, and real-time visualization.
 
 **Mermaid ER Diagram:**
+
 ```mermaid
 %%{
   init: {
@@ -388,12 +388,14 @@ erDiagram
     EnvironmentalSnapshots }o--|| SensorReadings : aggregates
 ```
 
-**Inputs:**  
+**Inputs:**
+
 - Sensor data (EcoSense, weather, soil) via Data Ingestion API (batch or streaming)
 - Aggregated/derived environmental snapshots (via Model/Simulation Control API)
 - User modifications for scenario testing (via DB Update API)
 
-**Outputs:**  
+**Outputs:**
+
 - Environmental context for growth models (to Logic Tier)
 - Real-time or historical data for presentation (to XR/Web)
 - Data for scenario analysis and simulation

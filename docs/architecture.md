@@ -14,7 +14,7 @@
       'secondaryColor': '#d6aaa1',
       'secondaryTextColor': '#1d242f',
       'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#d5d8db',
+      'tertiaryColor': '#EAEBED',
       'tertiaryTextColor': '#1d242f',
       'tertiaryBorderColor': '#313d4f'
     }
@@ -108,8 +108,9 @@ flowchart LR
 ## **Data Tier**
 
 ### **3DTrees Platform**
+
 **Description:**  
-Primary provider of high-resolution terrestrial or airborne LiDAR point cloud data, capturing the 3D structure of forest plots for further analysis and modeling[1][4][5].
+Primary provider of high-resolution terrestrial or airborne LiDAR point cloud data, capturing the 3D structure of forest plots for further analysis and modeling.
 
 - **Data In:**  
   Raw point cloud files (e.g., LAS/LAZ) uploaded or streamed.
@@ -120,8 +121,8 @@ Primary provider of high-resolution terrestrial or airborne LiDAR point cloud da
 - **Data Out:**  
   Data is stored in the **Point Cloud DB** for downstream processing and analysis.
 
-
 ### **EcoSense Sensors**
+
 **Description:**  
 Network of environmental sensors (e.g., temperature, humidity, soil moisture) providing real-time or periodic measurements for environmental monitoring.
 
@@ -135,8 +136,8 @@ Network of environmental sensors (e.g., temperature, humidity, soil moisture) pr
 - **Data Out:**  
   Data is stored in the **Environment DB** and can trigger events or alerts via the **Event Bus**.
 
-
 ### **Climate/Weather Data**
+
 **Description:**  
 External or internal sources providing climate variables (e.g., rainfall, temperature, wind) relevant for forest growth modeling.
 
@@ -149,8 +150,8 @@ External or internal sources providing climate variables (e.g., rainfall, temper
 - **Data Out:**  
   Data stored in **Environment DB** for use in growth models and scenario analysis.
 
-
 ### **Soil/Groundwater Data**
+
 **Description:**  
 Datasets or live feeds describing soil composition, moisture, and groundwater levels, essential for simulating tree and ecosystem health.
 
@@ -164,6 +165,7 @@ Datasets or live feeds describing soil composition, moisture, and groundwater le
   Stored in **Environment DB** for modeling and visualization.
 
 ### **Forest Inventory**
+
 **Description:**  
 Traditional field survey data (e.g., DBH, tree height, species) used for ground-truthing, validation, and model calibration[1].
 
@@ -176,10 +178,10 @@ Traditional field survey data (e.g., DBH, tree height, species) used for ground-
 - **Data Out:**  
   Structured records in **Tree DB** for validation and as model input.
 
-
 ### **Point Cloud DB**
+
 **Description:**  
-Spatial database optimized for storage, indexing, and retrieval of massive 3D point cloud datasets, supporting efficient spatial queries and downstream processing[4][5].
+Spatial database optimized for storage, indexing, and retrieval of massive 3D point cloud datasets, supporting efficient spatial queries and downstream processing.
 
 - **Data In:**  
   Raw and processed point cloud data from ingestion and processing pipelines.
@@ -192,6 +194,7 @@ Spatial database optimized for storage, indexing, and retrieval of massive 3D po
   Provides point cloud data to processing pipeline, tree modeling, and visualization clients.
 
 ### **Tree DB**
+
 **Description:**  
 Database for storing individual tree records, including species, biometric data, health status, and relationships, supporting both attribute queries and spatial analysis.
 
@@ -204,8 +207,8 @@ Database for storing individual tree records, including species, biometric data,
 - **Data Out:**  
   Supplies tree data to models, simulations, and client applications.
 
-
 ### **Environment DB**
+
 **Description:**  
 Time-series or spatial database for storing environmental sensor data, weather records, and other variables relevant to forest growth and simulation.
 
@@ -223,8 +226,9 @@ Time-series or spatial database for storing environmental sensor data, weather r
 ## **Logic Tier**
 
 ### **Point Cloud Processing**
+
 **Description:**  
-Automated pipeline for tree segmentation, species classification, and attribute extraction from point clouds using advanced algorithms and ML models[2][3][5][7].
+Automated pipeline for tree segmentation, species classification, and attribute extraction from point clouds using advanced algorithms and ML models.
 
 - **Data In:**  
   Point cloud data from **Point Cloud DB**.
@@ -235,8 +239,8 @@ Automated pipeline for tree segmentation, species classification, and attribute 
 - **Data Out:**  
   Segmented/classified tree data to **Tree DB**; processed point clouds to **Point Cloud DB**.
 
-
 ### **Model Registry/Orchestrator**
+
 **Description:**  
 Service for registering, managing, and orchestrating simulation and growth models, allowing dynamic selection and execution of models.
 
@@ -250,8 +254,8 @@ Service for registering, managing, and orchestrating simulation and growth model
 - **Data Out:**  
   Simulation results to **Tree DB**, **Environment DB**, and client applications via **API Gateway**.
 
-
 ### **SILVA/BALANCE Models**
+
 **Description:**  
 Domain-specific simulation engines for predicting tree and stand growth under various management and environmental scenarios.
 
@@ -264,8 +268,8 @@ Domain-specific simulation engines for predicting tree and stand growth under va
 - **Data Out:**  
   Growth projections and scenario results to **Tree DB**, **Environment DB**, and visualization clients.
 
-
 ### **Tree Model**
+
 **Description:**  
 Service for generating, updating, and simulating the 3D structure and growth of individual trees, supporting both static and dynamic representations.
 
@@ -283,6 +287,7 @@ Service for generating, updating, and simulating the 3D structure and growth of 
 ## **Presentation Tier**
 
 ### **API Gateway**
+
 **Description:**  
 Central entry point that routes all client requests to backend services, handles authentication, rate limiting, and aggregates responses for the presentation layer.
 
@@ -296,8 +301,8 @@ Central entry point that routes all client requests to backend services, handles
 - **Data Out:**  
   Returns requested data, simulation results, or acknowledgments to clients; pushes real-time updates via **Event Bus**.
 
-
 ### **XR/Web/Interaction Clients**
+
 **Description:**  
 User-facing applications for immersive visualization, scenario testing, and direct manipulation of the digital forest twin.
 
@@ -313,8 +318,8 @@ User-facing applications for immersive visualization, scenario testing, and dire
   *Example:*  
   `POST /api/tree/xyz/action` with `{ "action": "remove", "reason": "disease" }`
 
-
 ### **Interaction Tools**
+
 **Description:**  
 Specialized interfaces (in XR or web) for scenario management, editing tree/environment attributes, and controlling simulations.
 
@@ -332,19 +337,21 @@ Specialized interfaces (in XR or web) for scenario management, editing tree/envi
 ## **API and Interface Types Explained**
 
 ### **What is an API?**
+
 An **API** (Application Programming Interface) is a set of rules and protocols that allows different software components to communicate and exchange data or functions. It acts as a contract between systems, specifying how requests and responses should be structured and what operations are available.
 
 **Key Elements of an API:**
+
 - **Endpoints:** URLs or paths for accessing specific functions or data.
 - **Methods:** Operations like GET (retrieve), POST (create), PUT (update), DELETE (remove).
 - **Request/Response Formats:** Data structures (often JSON or XML) for communication.
 - **Parameters/Headers:** Additional data for filtering, authentication, etc.
 - **Status Codes:** Indicate the result of a request (e.g., 200 OK, 404 Not Found).
 
-
 ### **Types of APIs in Your Architecture**
 
 #### **1. Data Ingestion API**
+
 - **Purpose:**  
   Handles the intake of new data from external sources (e.g., sensors, field uploads, external datasets).
 - **How it works:**  
@@ -353,6 +360,7 @@ An **API** (Application Programming Interface) is a set of rules and protocols t
   `/api/data-ingest/upload` for batch; `/api/data-ingest/stream` for real-time sensor data.
 
 #### **2. Processing Pipeline API**
+
 - **Purpose:**  
   Manages the submission, monitoring, and results of data processing tasks (e.g., tree segmentation, classification).
 - **How it works:**  
@@ -361,6 +369,7 @@ An **API** (Application Programming Interface) is a set of rules and protocols t
   `/api/process/submit` (POST a new job); `/api/process/status/{job_id}` (GET job status).
 
 #### **3. DB Update API**
+
 - **Purpose:**  
   Allows authorized components or clients to create, update, or delete records in the databases (e.g., Tree DB, Environment DB).
 - **How it works:**  
@@ -369,6 +378,7 @@ An **API** (Application Programming Interface) is a set of rules and protocols t
   `/api/tree/{id}` (PUT to update tree attributes); `/api/environment/{id}` (DELETE to remove a record).
 
 #### **4. Model/Simulation Control API**
+
 - **Purpose:**  
   Allows clients (e.g., interaction tools) to trigger, pause, or modify model runs and simulations.
 - **How it works:**  
@@ -377,6 +387,7 @@ An **API** (Application Programming Interface) is a set of rules and protocols t
   `/api/model/run` (POST to start simulation); `/api/model/{id}/pause` (POST to pause).
 
 #### **5. Event Bus**
+
 - **Purpose:**  
   Enables real-time, asynchronous communication between components (e.g., sensor updates, simulation events, feedback to clients).
 - **How it works:**  
@@ -385,6 +396,7 @@ An **API** (Application Programming Interface) is a set of rules and protocols t
   Topic `sensor-updates` broadcasts new sensor readings to all interested clients.
 
 #### **6. REST/GraphQL API**
+
 - **Purpose:**  
   Provides standardized web-based access to backend services and data for clients (XR, web, tools).
 - **How it works:**  
@@ -393,7 +405,6 @@ An **API** (Application Programming Interface) is a set of rules and protocols t
 - **Example:**  
   REST: `/api/tree/123` (GET tree with ID 123).  
   GraphQL: `query { tree(id: 123) { species, height, health } }`
-
 
 ### **API Type Comparison Table**
 
@@ -405,4 +416,3 @@ An **API** (Application Programming Interface) is a set of rules and protocols t
 | Model/Simulation Control API | Control models/simulations            | HTTP (REST), gRPC, WebSocket | `POST /api/model/run` to start growth simulation; `POST /api/tree-model/update` for structure change  |
 | Event Bus                    | Real-time, async notifications        | WebSocket, MQTT, Kafka     | WebSocket/MQTT topic `tree-updates`; client receives `{ "event": "tree_removed", ... }`               |
 | REST/GraphQL API             | General data access and manipulation  | HTTP (REST), GraphQL       | `GET /api/tree/123` (REST); `query { tree(id: 123) { species } }` (GraphQL)                          |
----

@@ -14,7 +14,6 @@ The XR Future Forest Lab aims to create **digital twins of forests** that can be
 - Provide innovative tools for research, education, and forest management
 - Bridge the gap between forest science and cutting-edge technology
 
-
 ## Team
 
 ### Lead
@@ -76,6 +75,7 @@ The foundation of the digital forest twin, transforming raw LiDAR and photogramm
 #### Tree Database
 
 #### Quantitative Structure Model (QSM)
+
 Digital representations of individual trees and forest ecosystems for growth simulation.
 
 #### Tree/Forest Growth Models
