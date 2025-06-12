@@ -1,11 +1,14 @@
 # Database Design
 
+> **Related Documentation**: [Architecture](./architecture.md) | [Data Contracts & APIs](./data_contracts_and_apis.md)
+
+This document defines the database schema for the XR Future Forests Lab system. The database architecture consists of three specialized databases, each optimized for different types of forest-related data and their specific access patterns.
+
+---
+
 ## 1. Point Cloud Database (Point Cloud DB)
 
-**Purpose:**  
-Stores metadata and results from the processing of point cloud data, including references to raw files, segmentation, and classification outputs. This is the primary storage for all spatial scan data and their derived products.
-
-**Mermaid ER Diagram:**
+Stores metadata and processing results from LiDAR point cloud data, including references to raw files, segmentation outputs, and classification results. This database serves as the primary repository for all spatial scan data and their derived products, enabling efficient storage and retrieval of massive 3D datasets while maintaining processing lineage and quality metrics.
 
 ```mermaid
 %%{
@@ -77,38 +80,36 @@ erDiagram
     Species ||--o{ TreeClassificationResults : classifies_species
 ```
 
-**Inputs:**  
+### Table Descriptions
 
-- Raw point cloud files (uploaded via Data Ingestion API)
-- Segmentation/classification outputs (via Processing Pipeline API)
+**Locations**  
+Master table storing geographic site information for all forest plots and monitoring locations across the system.
 
-**Outputs:**  
+**PointClouds**  
+Core table containing metadata for each LiDAR scan, including file references, sensor information, and processing status tracking.
 
-- Segmented/classified tree data (to Tree DB via Processing Pipeline API)
-- 3D data for visualization (to Presentation Tier via REST/GraphQL API)
+**PointCloudSegmentationResults**  
+Stores results from tree segmentation algorithms, maintaining references to the algorithms used and quality metrics for each segmentation run.
+
+**TreeClassificationResults**  
+Contains species classification outputs with confidence scores and accuracy metrics for each classified tree segment.
+
+**Species**  
+Reference table defining tree species information and their growth characteristics for classification and modeling purposes.
+
+### Table Relationships
+
+- **Locations** serve as the spatial foundation, with each location hosting multiple point cloud scans
+- **PointClouds** represent individual scanning sessions, each producing segmentation results
+- **PointCloudSegmentationResults** feed into classification processes, maintaining the processing pipeline lineage
+- **TreeClassificationResults** link to **Species** for taxonomic validation and growth modeling
+- The design ensures full traceability from raw scans through segmentation to final species classification
 
 ---
 
-## 2. Tree Database (Tree DB) – Scenario & Variant-Aware
+## 2. Tree Database (Tree DB)
 
-Certainly! Here is the **updated Tree DB design and description** with a single unified structure table, and extended branch, twig, and leaf tables including features such as direction, height of starting point on parent, and angle. This design is ready for copy-paste into your documentation.
-
----
-Here is the **updated Tree Database (Tree DB) design and description** reflecting your requirements for scenario/variant management, unified structure storage, and detailed growth simulation tracking. This version:
-
-- Uses a single `TreeStructures` table for all structure types (QSM, L-System, DeepTree, etc.)
-- Links all growth simulations to `TreeVariantID` (including base/original variants)
-- Includes a `TimeDelta_yrs` field in `TreeGrowthSimulations` for time interval tracking
-- Extends `StructureBranches`, `StructureTwigs`, and `StructureLeaves` with direction, height of starting point, and angle fields
-
----
-
-## Tree Database (Tree DB)
-
-**Purpose:**  
-Central repository for all tree-related data, supporting scenario-based modeling, variant management, growth simulation, and detailed structural representation. This design enables both data-driven (QSM) and generative (L-system, DeepTree, etc.) models in a unified structure, and supports fine-grained modeling of branches, twigs, and leaves.
-
-### Mermaid ER Diagram
+Central repository for all tree-related data, supporting scenario-based modeling, variant management, growth simulation, and detailed structural representation. This database enables both data-driven (QSM) and generative (L-system, DeepTree, etc.) models in a unified structure, supports fine-grained modeling of branches, twigs, and leaves, and maintains complete history and lineage of all tree variants across different scenarios and time periods.
 
 ```mermaid
 %%{
@@ -176,6 +177,12 @@ erDiagram
         INT PointCloudID FK
     }
 
+    DataQualityTypes {
+        INT QualityTypeID PK
+        VARCHAR QualityType "Direct_Measurement, Point_Cloud_Derived, Model_Estimated"
+        TEXT Description
+    }
+
     TreeVariants {
         INT TreeVariantID PK
         INT TreeID FK "Nullable: NULL if new tree in scenario"
@@ -184,11 +191,20 @@ erDiagram
         INT SpeciesID FK
         DATETIME VariantTimestamp
         FLOAT Height_m
+        INT HeightQualityID FK "References DataQualityTypes"
         FLOAT DBH_cm
+        INT DBHQualityID FK "References DataQualityTypes"
         FLOAT CrownWidth_m
+        INT CrownWidthQualityID FK "References DataQualityTypes"
         FLOAT Volume_m3
+        INT VolumeQualityID FK "References DataQualityTypes"
         INT HealthStatusID FK
-        VARCHAR VariantType "Original, Simulated, Replaced, New"
+        VARCHAR VariantType "Original, Growth_Simulation, Species_Replacement, Manual_Edit, New"
+        FLOAT TimeDelta_yrs "Time passed since parent state (years) - for growth simulations"
+        VARCHAR ModelType "For growth simulations: model used"
+        FLOAT MortalityRisk_prob "For growth simulations: predicted mortality risk"
+        TEXT PredictedStructureData "For growth simulations: predicted structure data"
+        INT EnvironmentalSnapshotID FK "For growth simulations: environmental context"
         TEXT Notes
     }
 
@@ -237,21 +253,7 @@ erDiagram
         VARCHAR Color "Optional: leaf color for phenology/health"
     }
 
-    TreeGrowthSimulations {
-        INT SimulationID PK
-        INT TreeVariantID FK
-        INT ScenarioID FK
-        VARCHAR ModelType
-        DATETIME SimulationTimestamp
-        FLOAT TimeDelta_yrs "Time passed since parent state (years)"
-        INT ParentSimulationID FK "Nullable: previous simulation, if any"
-        FLOAT PredictedHeight_m
-        FLOAT PredictedDBH_cm
-        FLOAT PredictedVolume_m3
-        FLOAT MortalityRisk_prob
-        TEXT PredictedStructureData "Optional: predicted structure (e.g. L-system, QSM params)"
-        INT EnvironmentalSnapshotID FK
-    }
+
 
     Locations ||--o{ Trees : has_trees
     Species ||--o{ Trees : is_species
@@ -263,65 +265,50 @@ erDiagram
     StructureBranches ||--o{ StructureTwigs : has_twigs
     StructureTwigs ||--o{ StructureLeaves : has_leaves
     PhenologyStatus ||--o{ StructureLeaves : has_phenology
-    TreeVariants ||--o{ TreeGrowthSimulations : has_growth_sim
-    Scenarios ||--o{ TreeGrowthSimulations : scenario_sims
     TreeVariants ||--o{ TreeVariants : parent_variant
-    TreeGrowthSimulations ||--o| TreeGrowthSimulations : parent_sim
+    DataQualityTypes ||--o{ TreeVariants : height_quality
+    DataQualityTypes ||--o{ TreeVariants : dbh_quality
+    DataQualityTypes ||--o{ TreeVariants : crown_width_quality
+    DataQualityTypes ||--o{ TreeVariants : volume_quality
 ```
 
-### Table Descriptions
+### Tree Database Table Descriptions
 
-- **Locations, Species, HealthStatus, PhenologyStatus:**  
-  Lookup/reference tables for spatial, biological, and status data.
+#### Reference Tables
 
-- **Scenarios:**  
-  User-defined scenario context (e.g., species replacement, climate change).
+- **Locations**: Shared spatial reference for all tree locations
+- **Species**: Tree species definitions with growth characteristics for modeling
+- **HealthStatus**: Standardized health condition classifications
+- **PhenologyStatus**: Seasonal and developmental stage classifications
+- **DataQualityTypes**: Measurement quality indicators (Direct_Measurement, Point_Cloud_Derived, Model_Estimated)
 
-- **Trees:**  
-  Immutable records of observed trees from scans or inventory.
+#### Core Tables
 
-- **TreeVariants:**  
-  All versions (original, simulated, replaced, or new) of a tree, each linked to a scenario and (optionally) a parent variant.  
-  - `TreeID` is NULL for new trees created only for a scenario.
+- **Scenarios**: User-defined scenario definitions for modeling and analysis
+- **Trees**: Immutable base records of observed trees from scans or field inventory
+- **TreeVariants**: All tree versions including original observations, growth simulations, species replacements, and manual edits; supports scenario-based modeling with parent-child relationships
 
-- **TreeStructures:**  
-  Unified table for all structural representations (QSM, L-system, DeepTree, etc.) for each tree variant.  
-  - `StructureType` distinguishes the method/model used.
-  - `StructureData` can store JSON, strings, or parameters as needed.
+#### Structural Detail Tables
 
-- **StructureBranches:**  
-  Detailed branch data for each structure, including length, diameter, direction (azimuth), inclination (angle from vertical), starting height on parent, and geometry.
+- **TreeStructures**: Unified storage for all structural representations (QSM, L-system, DeepTree, etc.)
+- **StructureBranches**: Detailed branch geometry, dimensions, and spatial positioning
+- **StructureTwigs**: Fine-scale twig data with morphological attributes
+- **StructureLeaves**: Individual leaf data including phenology status and spatial positioning
 
-- **StructureTwigs:**  
-  Fine-scale twig data, with similar geometric and positional attributes as branches.
+### Tree Database Table Relationships
 
-- **StructureLeaves:**  
-  Leaf data, including geometry, phenology status, direction, inclination, starting height, and optional color for health/phenology visualization.
-
-- **TreeGrowthSimulations:**  
-  Stores simulation results for each tree variant and scenario, including predicted dimensions, mortality risk, (optionally) predicted structure data, and a `TimeDelta_yrs` field for the time interval since the parent state. `ParentSimulationID` enables chaining for time series.
-
-### API/Data Flow Mapping
-
-- **Data Ingestion API:**  
-  Adds observed trees and initial structures.
-- **Processing Pipeline API:**  
-  Generates and updates QSMs and other structure types.
-- **Model/Simulation Control API:**  
-  Creates variants, runs growth simulations, and generates procedural/generative structures.
-- **Scenario/Model Control API:**  
-  Manages scenario creation, variant management, and scenario-based edits.
-- **Presentation Tier (REST/GraphQL):**  
-  Queries structures, branches, twigs, and leaves for visualization.
+- **Trees** maintain immutable baseline records while **TreeVariants** enable temporal and scenario-based variations
+- **Scenarios** group related variants and enable comparative analysis across different modeling conditions
+- **TreeStructures** provide multiple structural representations per variant, supporting both data-driven and generative modeling approaches
+- **Parent-child relationships** in TreeVariants enable growth sequence tracking and variant lineage
+- **Quality metadata** ensures scientific traceability from measurement source through modeling to visualization
+- **Hierarchical structure detail** (branches → twigs → leaves) enables fine-grained 3D modeling and realistic visualization
 
 ---
 
 ## 3. Environment Database (Environment DB)
 
-**Purpose:**  
-Stores sensor readings, aggregated environmental snapshots, and metadata for all environmental data streams and sources. Essential for growth models, simulation, and real-time visualization.
-
-**Mermaid ER Diagram:**
+Stores sensor readings, aggregated environmental snapshots, and metadata for all environmental data streams and sources. This database supports real-time environmental monitoring, historical data analysis, and provides essential environmental context for growth models, simulation scenarios, and real-time visualization systems.
 
 ```mermaid
 %%{
@@ -388,24 +375,44 @@ erDiagram
     EnvironmentalSnapshots }o--|| SensorReadings : aggregates
 ```
 
-**Inputs:**
+### Environment Database Table Descriptions
 
-- Sensor data (EcoSense, weather, soil) via Data Ingestion API (batch or streaming)
-- Aggregated/derived environmental snapshots (via Model/Simulation Control API)
-- User modifications for scenario testing (via DB Update API)
+**Locations**  
+Shared spatial reference table linking environmental data to specific forest plots and monitoring sites.
 
-**Outputs:**
+**Sensors**  
+Inventory of all environmental monitoring equipment with configuration, status, and installation metadata.
 
-- Environmental context for growth models (to Logic Tier)
-- Real-time or historical data for presentation (to XR/Web)
-- Data for scenario analysis and simulation
+**SensorReadings**  
+Time-series data from individual sensors capturing real-time environmental measurements with full temporal resolution.
+
+**EnvironmentalSnapshots**  
+Aggregated environmental summaries providing consolidated environmental state for specific locations and time periods, essential for modeling and scenario analysis.
+
+### Environment Database Table Relationships
+
+- **Locations** serve as the spatial foundation linking environmental data to specific forest sites
+- **Sensors** are deployed at locations and generate continuous streams of **SensorReadings**
+- **SensorReadings** provide high-resolution temporal data that feeds into aggregated **EnvironmentalSnapshots**
+- **EnvironmentalSnapshots** provide model-ready environmental context by aggregating multiple sensor readings and external data sources
+- The design supports both real-time monitoring and historical analysis while maintaining data lineage from individual sensors to aggregated environmental context
 
 ---
 
-## **How the Design Supports Your Use Cases**
+## Design Principles and System Integration
 
-- **Original trees are never overwritten.** All simulated or replaced trees are stored as new TreeVariants, each linked to a scenario and (optionally) their parent variant.
-- **Scenario-based replacement and creation:** New trees for scenarios are supported by TreeVariants with `TreeID = NULL`.
-- **Growth results:** Growth simulations are always linked to the TreeVariant and Scenario, allowing side-by-side comparison of multiple scenarios.
-- **Consistent lookup tables:** Species and HealthStatus ensure data integrity and interoperability.
-- **Comprehensive data flow:** All data flows and API endpoints are mapped to the architecture, supporting ingestion, processing, simulation, scenario analysis, and visualization.
+### Data Quality and Traceability
+
+The database design ensures scientific rigor through comprehensive data quality tracking and measurement lineage. Each measurement includes metadata indicating its source (direct field measurement, point cloud analysis, or model estimation), enabling researchers to assess data reliability and maintain reproducible scientific workflows.
+
+### Scenario-Based Modeling Support
+
+The unified TreeVariants approach enables sophisticated scenario analysis by maintaining all tree states and modifications within a single, coherent structure. This design supports comparative analysis across different management strategies, climate scenarios, and species composition changes while preserving the original observed data.
+
+### Multi-Scale Integration
+
+The three-database architecture supports analysis from individual leaf geometry to landscape-scale forest dynamics. Point cloud data provides detailed 3D structure, tree data enables individual-based modeling, and environmental data supplies the context for realistic growth simulation and ecosystem analysis.
+
+### Temporal Analysis Capabilities
+
+Parent-child relationships in TreeVariants combined with time-series environmental data enable comprehensive temporal analysis. Researchers can track individual tree growth, analyze environmental trends, and validate growth model predictions against observed changes over time.

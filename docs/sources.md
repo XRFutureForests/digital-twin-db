@@ -19,6 +19,8 @@
 | [SILVA Model](https://www.optforests.eu/toolkit/models/silva) | Individual tree growth simulator widely used in European forestry. |
 | [BALANCE Model](https://webarchiv.it.ls.tum.de/waldwachstum.wzw.tum.de/forschung/modelle/balance/index.html) | Stand-level forest growth and yield model. |
 | [OpenForestSchema](https://github.com/openforis/collect) | Data schema for forest inventory and monitoring, including growth data. |
+| [FORSENSE](https://webarchiv.it.ls.tum.de/waldwachstum.wzw.tum.de/en/research/completed-projects/forsense/index.html) | Combination of modern sensor technologies for optimized resource assessment in forests. |
+| [iLand](https://iland-model.org/startpage) | iLand is a model of forest landscape dynamics, simulating individual tree competition, growth, mortality, and regeneration.|
 
 ## Digital Forest Twin
 

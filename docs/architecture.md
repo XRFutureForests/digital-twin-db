@@ -1,418 +1,499 @@
 # Architecture
 
+> **Related Documentation**: [Database Design](./database_design.md) | [Data Contracts & APIs](./data_contracts_and_apis.md)
+
+This document describes the system architecture of the XR Future Forests Lab, focusing on component design, responsibilities, and interconnections. For detailed API specifications and data contracts, see the [Data Contracts & APIs](./data_contracts_and_apis.md) document. For database schema details, see the [Database Design](./database_design.md) document.
+
+## System Overview
+
 ```mermaid
 %%{
-  init: {
-    'theme': 'base',
-    'themeVariables': {
-      'background': '#FFFFFF',
-      'fontFamily': 'verdana',
-      'lineColor': '#ad5643',
-      'primaryColor': '#5cb89c',
-      'primaryTextColor': '#1d242f',
-      'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#d6aaa1',
-      'secondaryTextColor': '#1d242f',
-      'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#EAEBED',
-      'tertiaryTextColor': '#1d242f',
-      'tertiaryBorderColor': '#313d4f'
-    }
-  }
+init: {
+'theme': 'base',
+'themeVariables': {
+'fontSize': '14px',
+'secondaryColor': '#848484'
+}
+}
 }%%
-flowchart LR
-  %% Data Tier
-  subgraph tier1["Data Tier"]
-    S1[3DTrees Platform] 
-    S2[EcoSense Sensors]
-    S3[Climate/Weather Data]
-    S4[Soil/Groundwater Data]
-    S5[Forest Inventory]
-    subgraph "Data Storage & Mgmt"
-      DB1[Point Cloud DB]
-      DB2[Tree DB]
-      DB3[Environment DB]
-    end
-    S1 -- Data Ingestion API --> DB1
-    S2 -- Data Ingestion API / Event Bus --> DB3
-    S3 -- Data Ingestion API --> DB3
-    S4 -- Data Ingestion API --> DB3
-    S5 -- Data Ingestion API --> DB2
-  end
+flowchart TB
+subgraph DATA["🗄️ Data Tier"]
+D1[Data Sources]
+D2[Storage Systems]
+end
 
-  %% Logic Tier
-  subgraph tier2["Logic Tier"]
-    subgraph "Point Cloud Processing"
-      PC1[Tree Segmentation]
-      PC2[Species Classification]
-      PC3[Tree Attribute Extraction]
-    end
-    subgraph "Models"
-      MR[Model Registry/Orchestrator]
-      X1[SILVA Model]
-      X2[BALANCE Model]
-    end
-    subgraph "Tree Model"
-      DT1[Structure Description]
-      DT2[Growth Simulation]
-    end
-    DB1 -- Processing Pipeline API --> PC1
-    PC1 -- Processing Pipeline API --> PC2
-    PC2 -- Processing Pipeline API --> PC3
-    PC1 -- DB Update API --> DB1
-    PC2 -- DB Update API --> DB1
-    PC3 -- DB Update API --> DB2
-    DB1 -- Tree Model Service API --> DT1
-    DT1 -- DB Update API --> DB2
-    DB3 -- Tree Model Service API --> DT2
-    DT2 -- DB Update API --> DB2
-    MR -- Model API --> X1
-    MR -- Model API --> X2
-    X1 -- Model API --> DT2
-    X2 -- Model API --> DT2
-  end
+subgraph LOGIC["⚙️ Logic Tier"]
+L1[Processing Pipeline]
+L2[Models & Simulation]
+end
 
-  %% Presentation Tier
-  subgraph tier3["Presentation Tier"]
-    subgraph "API Gateway"
-      APIGW[API Gateway]
-    end
-    subgraph "XR/Web/Interaction"
-      XR1[Virtual Tree Model]
-      XR2[Environment]
-      XR3[Sensors]
-      XR4[Point Clouds]
-      W1[Web Point Clouds]
-      I1[Interaction Tools]
-    end
-    DB2 -- API Gateway --> APIGW
-    DB3 -- API Gateway --> APIGW
-    DB1 -- API Gateway --> APIGW
-    DT2 -- API Gateway --> APIGW
-    APIGW -- REST/GraphQL --> XR1
-    APIGW -- REST/GraphQL --> XR2
-    APIGW -- REST/GraphQL --> XR3
-    APIGW -- REST/GraphQL --> XR4
-    APIGW -- REST/GraphQL --> W1
-    %% Updated: Bidirectional arrows for interaction and backend control
-    I1 <--> APIGW
-    APIGW <--> DT2
-    APIGW <--> DT1
-    APIGW <--> DB2
-    APIGW <--> DB3
-    APIGW <--> MR
-  end
+subgraph PRESENTATION["🖥️ Presentation Tier"]
+P1[API Gateway]
+P2[Client Applications]
+end
 
+DATA --> LOGIC
+LOGIC --> PRESENTATION
+PRESENTATION -.-> LOGIC
+
+classDef dataTier fill:#838a95,stroke:#838a95,stroke-width:2px,color:#ffffff
+classDef logicTier fill:#cd998e,stroke:#cd998e,stroke-width:2px,color:#ffffff
+classDef presentationTier fill:#5cb89c,stroke:#5cb89c,stroke-width:2px,color:#ffffff
+classDef dataNode fill:#313D4F,stroke:#313D4F,stroke-width:2px,color:#ffffff
+classDef logicNode fill:#ad5643,stroke:#ad5643,stroke-width:2px,color:#ffffff
+classDef presentationNode fill:#458875,stroke:#458875,stroke-width:2px,color:#ffffff
+
+class DATA dataTier
+class D1,D2 dataNode
+class LOGIC logicTier
+class L1,L2 logicNode
+class PRESENTATION presentationTier
+class P1,P2 presentationNode
+
+linkStyle 0,1,2 stroke:#615e57,stroke-width:2px,color:#ffffff
 ```
 
-## **Data Tier**
+The XR Future Forests Lab architecture follows a three-tier approach that separates concerns across data storage, business logic, and presentation layers. This design enables scalable processing of forest data, sophisticated modeling capabilities, and immersive user experiences through XR interfaces.
 
-### **3DTrees Platform**
-
-**Description:**  
-Primary provider of high-resolution terrestrial or airborne LiDAR point cloud data, capturing the 3D structure of forest plots for further analysis and modeling.
-
-- **Data In:**  
-  Raw point cloud files (e.g., LAS/LAZ) uploaded or streamed.
-- **API:**  
-  **Data Ingestion API**  
-  *Example:*  
-  `POST /api/data-ingest/pointcloud` with file upload.
-- **Data Out:**  
-  Data is stored in the **Point Cloud DB** for downstream processing and analysis.
-
-### **EcoSense Sensors**
-
-**Description:**  
-Network of environmental sensors (e.g., temperature, humidity, soil moisture) providing real-time or periodic measurements for environmental monitoring.
-
-- **Data In:**  
-  Sensor readings sent in real-time or batches.
-- **API:**  
-  **Data Ingestion API** (supports streaming, e.g., MQTT/WebSocket)  
-  *Example:*  
-  MQTT topic: `ecosense/sensor/reading`  
-  Payload: `{ "sensor_id": "123", "timestamp": "...", "type": "soil_moisture", "value": 0.23 }`
-- **Data Out:**  
-  Data is stored in the **Environment DB** and can trigger events or alerts via the **Event Bus**.
-
-### **Climate/Weather Data**
-
-**Description:**  
-External or internal sources providing climate variables (e.g., rainfall, temperature, wind) relevant for forest growth modeling.
-
-- **Data In:**  
-  Periodic batch import or API pull from weather services.
-- **API:**  
-  **Data Ingestion API**  
-  *Example:*  
-  `POST /api/data-ingest/weather` with JSON payload.
-- **Data Out:**  
-  Data stored in **Environment DB** for use in growth models and scenario analysis.
-
-### **Soil/Groundwater Data**
-
-**Description:**  
-Datasets or live feeds describing soil composition, moisture, and groundwater levels, essential for simulating tree and ecosystem health.
-
-- **Data In:**  
-  Uploaded datasets or sensor streams.
-- **API:**  
-  **Data Ingestion API**  
-  *Example:*  
-  `POST /api/data-ingest/soil` with CSV or JSON.
-- **Data Out:**  
-  Stored in **Environment DB** for modeling and visualization.
-
-### **Forest Inventory**
-
-**Description:**  
-Traditional field survey data (e.g., DBH, tree height, species) used for ground-truthing, validation, and model calibration[1].
-
-- **Data In:**  
-  Field survey uploads (CSV, Excel, app-based).
-- **API:**  
-  **Data Ingestion API**  
-  *Example:*  
-  `POST /api/data-ingest/inventory` with CSV file.
-- **Data Out:**  
-  Structured records in **Tree DB** for validation and as model input.
-
-### **Point Cloud DB**
-
-**Description:**  
-Spatial database optimized for storage, indexing, and retrieval of massive 3D point cloud datasets, supporting efficient spatial queries and downstream processing.
-
-- **Data In:**  
-  Raw and processed point cloud data from ingestion and processing pipelines.
-- **API:**  
-  **DB Update API**, **Processing Pipeline API**  
-  *Example:*  
-  `PUT /api/pointcloud/{id}` (metadata/status update)  
-  `GET /api/process/result/{job_id}` (retrieve processed data)
-- **Data Out:**  
-  Provides point cloud data to processing pipeline, tree modeling, and visualization clients.
-
-### **Tree DB**
-
-**Description:**  
-Database for storing individual tree records, including species, biometric data, health status, and relationships, supporting both attribute queries and spatial analysis.
-
-- **Data In:**  
-  Tree attribute data from processing pipeline, field inventory, or user edits.
-- **API:**  
-  **DB Update API**  
-  *Example:*  
-  `PUT /api/tree/{tree_id}` with `{ "species": "Fagus sylvatica", "height": 23.4 }`
-- **Data Out:**  
-  Supplies tree data to models, simulations, and client applications.
-
-### **Environment DB**
-
-**Description:**  
-Time-series or spatial database for storing environmental sensor data, weather records, and other variables relevant to forest growth and simulation.
-
-- **Data In:**  
-  Sensor, weather, and soil data from various sources.
-- **API:**  
-  **DB Update API**  
-  *Example:*  
-  `PUT /api/environment/{env_id}` with `{ "temperature": 19.2, "humidity": 0.65 }`
-- **Data Out:**  
-  Supplies environmental context to growth models and visualization clients.
+The **Data Tier** handles ingestion and storage of diverse forest-related datasets including LiDAR point clouds, environmental sensor data, and traditional forest inventory. The **Logic Tier** processes this data through automated pipelines and executes sophisticated forest growth models. The **Presentation Tier** provides user interfaces ranging from immersive XR experiences to web-based dashboards, all coordinated through a central API gateway.
 
 ---
 
-## **Logic Tier**
+## Data Tier Architecture
+
+```mermaid
+%%{
+init: {
+'theme': 'base',
+'themeVariables': {
+'fontSize': '14px',
+'secondaryColor': '#848484'
+}
+}
+}%%
+flowchart LR
+subgraph DATA_TIER["Data Tier"]
+subgraph SOURCES["🗄️ Data Sources"]
+S1[3DTrees Platform]
+S2[EcoSense Sensors]
+S3[Climate/Weather Data]
+S4[Soil/Groundwater Data]
+S5[Forest Inventory]
+end
+
+subgraph STORAGE["🗄️ Data Storage"]
+DB1[Point Cloud DB]
+DB2[Tree DB]
+DB3[Environment DB]
+end
+end
+
+subgraph LOGIC_REF["⚙️ Logic Tier"]
+L_REF[Processing & Models]
+end
+
+subgraph PRESENTATION_REF["🖥️ Presentation Tier"]
+P_REF[API Gateway & Clients]
+end
+
+S1 -->|Data Ingestion API| DB1
+S2 -->|Data Ingestion API<br/>Event Bus| DB3
+S3 -->|Data Ingestion API| DB3
+S4 -->|Data Ingestion API| DB3
+S5 -->|Data Ingestion API| DB2
+
+STORAGE -.->|Provides Data| LOGIC_REF
+STORAGE -.->|Data Access APIs| PRESENTATION_REF
+
+classDef dataBack fill:#eaebed,stroke:#eaebed,stroke-width:2px,color:#313D4F
+classDef dataTier fill:#838a95,stroke:#838a95,stroke-width:2px,color:#ffffff
+classDef logicTier fill:#cd998e,stroke:#cd998e,stroke-width:2px,color:#ffffff
+classDef presentationTier fill:#5cb89c,stroke:#5cb89c,stroke-width:2px,color:#ffffff
+classDef dataNode fill:#313D4F,stroke:#313D4F,stroke-width:2px,color:#ffffff
+classDef logicNode fill:#ad5643,stroke:#ad5643,stroke-width:2px,color:#ffffff
+classDef presentationNode fill:#458875,stroke:#458875,stroke-width:2px,color:#ffffff
+
+class DATA_TIER dataBack
+class SOURCES,STORAGE dataTier
+class S1,S2,S3,S4,S5,DB1,DB2,DB3 dataNode
+class LOGIC_REF logicTier
+class L_REF logicNode
+class PRESENTATION_REF presentationTier
+class P_REF presentationNode
+
+linkStyle 0,1,2,3,4,5,6 stroke:#323233,stroke-width:2px,color:#ffffff
+```
+
+The Data Tier serves as the foundation for all forest data management, handling both the ingestion of diverse data sources and the storage of processed information. This tier consists of multiple specialized data sources feeding into dedicated storage systems optimized for different data types.
+
+### Data Sources
+
+The system integrates five primary data sources, each providing specialized forest-related information:
+
+#### 3DTrees Platform
+
+Primary provider of high-resolution terrestrial or airborne LiDAR point cloud data, capturing detailed 3D structure of forest plots. This component handles raw point cloud file uploads and streams, supporting formats like LAS and LAZ for comprehensive spatial analysis and modeling.
+
+#### EcoSense Sensors
+
+Network of environmental sensors providing real-time measurements including temperature, humidity, soil moisture, and other environmental parameters. This distributed sensor network enables continuous environmental monitoring with both real-time streaming and batch data collection capabilities.
+
+#### Climate/Weather Data
+
+External and internal sources providing climate variables such as rainfall, temperature, and wind patterns essential for forest growth modeling. This component manages periodic batch imports and API integrations with weather services to maintain comprehensive climate datasets.
+
+#### Soil/Groundwater Data
+
+Datasets and live feeds describing soil composition, moisture levels, and groundwater conditions essential for simulating tree and ecosystem health. This component processes both uploaded historical datasets and continuous sensor streams from soil monitoring equipment.
+
+#### Forest Inventory
+
+Traditional field survey data including tree measurements like DBH, height, and species identification used for ground-truthing, validation, and model calibration. This component supports multiple input formats including CSV uploads, Excel files, and mobile application-based data collection.
+
+### Data Storage Systems
+
+Three specialized databases provide optimized storage for different data types and access patterns:
+
+#### Point Cloud DB
+
+Spatial database optimized for storage, indexing, and retrieval of massive 3D point cloud datasets. This system provides efficient spatial queries, supports point cloud processing workflows, and maintains metadata for all scanning sessions and their derived products.
+
+#### Tree DB
+
+Comprehensive database for individual tree records, supporting scenario-based modeling, variant management, and detailed structural representations. This system enables both traditional attribute queries and advanced spatial analysis while maintaining complete lineage of all tree variants and modifications.
+
+#### Environment DB
+
+Time-series database for environmental sensor data, weather records, and aggregated environmental snapshots. This system supports both high-frequency sensor data storage and model-ready environmental summaries essential for growth simulation and scenario analysis.
+
+---
+
+## Logic Tier Architecture
+
+```mermaid
+%%{
+init: {
+'theme': 'base',
+'themeVariables': {
+'fontSize': '14px',
+'secondaryColor': '#848484'
+}
+}
+}%%
+flowchart TB
+subgraph DATA_REF["🗄️ Data Tier"]
+DB1[Point Cloud DB]
+DB2[Tree DB]
+DB3[Environment DB]
+end
+
+subgraph LOGIC_TIER["Logic Tier"]
+subgraph PROCESSING["⚙️ Point Cloud Processing"]
+PC1[Tree Segmentation]
+PC2[Species Classification]
+PC3[Tree Attribute Extraction]
+end
+
+subgraph MODELS["⚙️ Simulation Models"]
+MR[Model Registry/<br/>Orchestrator]
+X1[SILVA Model]
+X2[BALANCE Model]
+X3[iLand Model]
+end
+
+subgraph TREE_MODEL["⚙️ Tree Model Service"]
+DT1[Structure Description]
+DT2[Growth Simulation]
+end
+end
+
+subgraph PRESENTATION_REF["🖥️ Presentation Tier"]
+P_REF[API Gateway & Clients]
+end
+
+DB1 -->|Processing Pipeline API| PC1
+PC1 --> PC2
+PC2 --> PC3
+PC1 -->|DB Update API| DB1
+PC2 -->|DB Update API| DB1
+PC3 -->|DB Update API| DB2
+
+DB1 -->|Tree Model Service API| DT1
+DT1 -->|DB Update API| DB2
+DB3 -->|Tree Model Service API| DT2
+DT2 -->|DB Update API| DB2
+
+MR -->|Model API| X1
+MR -->|Model API| X2
+MR -->|Model API| X3
+X1 -->|Model API| DT2
+X2 -->|Model API| DT2
+X3 -->|Model API| DT2
+
+TREE_MODEL -.->|Results| PRESENTATION_REF
+MODELS -.->|Simulation Results| PRESENTATION_REF
+
+classDef logicBack fill:#f6eeec,stroke:#f6eeec,stroke-width:2px,color:#ad5643
+classDef dataTier fill:#838a95,stroke:#838a95,stroke-width:2px,color:#ffffff
+classDef logicTier fill:#cd998e,stroke:#cd998e,stroke-width:2px,color:#ffffff
+classDef presentationTier fill:#5cb89c,stroke:#5cb89c,stroke-width:2px,color:#ffffff
+classDef dataNode fill:#313D4F,stroke:#313D4F,stroke-width:2px,color:#ffffff
+classDef logicNode fill:#ad5643,stroke:#ad5643,stroke-width:2px,color:#ffffff
+classDef presentationNode fill:#458875,stroke:#458875,stroke-width:2px,color:#ffffff
+
+class LOGIC_TIER logicBack
+class DATA_REF dataTier
+class DB1,DB2,DB3 dataNode
+class PROCESSING,MODELS,TREE_MODEL logicTier
+class PC1,PC2,PC3,MR,X1,X2,X3,DT1,DT2 logicNode
+class PRESENTATION_REF presentationTier
+class P_REF presentationNode
+
+linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 stroke:#323233,stroke-width:2px,color:#ffffff
+```
+
+The Logic Tier transforms raw data into actionable insights through sophisticated processing pipelines and simulation models. This tier bridges the gap between data storage and user presentation, implementing the core business logic of forest analysis and modeling.
 
 ### **Point Cloud Processing**
 
+The Point Cloud Processing subsystem implements a sophisticated pipeline that transforms raw LiDAR data into structured forest information through three sequential stages:
+
+#### **Tree Segmentation**
+
 **Description:**  
-Automated pipeline for tree segmentation, species classification, and attribute extraction from point clouds using advanced algorithms and ML models.
+First stage of the processing pipeline that identifies and isolates individual trees from the point cloud data using advanced clustering and geometric algorithms.
 
 - **Data In:**  
-  Point cloud data from **Point Cloud DB**.
+  Raw point cloud data from **Point Cloud DB**.
 - **API:**  
   **Processing Pipeline API**  
-  *Example:*  
-  `POST /api/process/segment` with `{ "pointcloud_id": "abc123" }`
-- **Data Out:**  
-  Segmented/classified tree data to **Tree DB**; processed point clouds to **Point Cloud DB**.
+  `POST /api/process/segment` (start segmentation job)  
+  `GET /api/process/segment/{job_id}/status` (check job status)
 
-### **Model Registry/Orchestrator**
+**Data Contract:** See [Point Cloud Processing APIs](./data_contracts.md#point-cloud-processing-apis) in Data Contracts documentation.
+
+- **Data Out:**  
+  Segmented tree point clouds back to **Point Cloud DB**; flows to **Species Classification**.
+
+#### **Species Classification**
 
 **Description:**  
-Service for registering, managing, and orchestrating simulation and growth models, allowing dynamic selection and execution of models.
+Second stage that analyzes segmented tree point clouds to identify species using machine learning models trained on morphological features.
 
 - **Data In:**  
-  Model definitions, configurations, user-triggered simulation requests.
+  Segmented tree point clouds from **Tree Segmentation**.
 - **API:**  
-  **Model/Simulation Control API**  
-  *Example:*  
-  `POST /api/model/register` (register new model)  
-  `POST /api/model/run` (start simulation)
-- **Data Out:**  
-  Simulation results to **Tree DB**, **Environment DB**, and client applications via **API Gateway**.
+  **Processing Pipeline API**  
+  `POST /api/process/classify` (start classification job)
 
-### **SILVA/BALANCE Models**
+**Data Contract:** See [Point Cloud Processing APIs](./data_contracts.md#point-cloud-processing-apis) in Data Contracts documentation.
+
+- **Data Out:**  
+  Species identification data to **Point Cloud DB**; flows to **Tree Attribute Extraction**.
+
+#### **Tree Attribute Extraction**
 
 **Description:**  
-Domain-specific simulation engines for predicting tree and stand growth under various management and environmental scenarios.
+Final stage that derives biometric measurements (height, DBH, crown dimensions) and health indicators from classified tree point clouds.
 
 - **Data In:**  
-  Tree and environmental data, simulation parameters.
-- **API:**  
-  **Model/Simulation Control API**  
-  *Example:*  
-  `POST /api/model/run` with `{ "model": "SILVA", "tree_ids": [...], "climate_scenario": "A2" }`
-- **Data Out:**  
-  Growth projections and scenario results to **Tree DB**, **Environment DB**, and visualization clients.
+The Logic Tier transforms raw data into actionable insights through sophisticated processing pipelines and simulation models. This tier bridges the gap between data storage and user presentation, implementing the core business logic of forest analysis and modeling.
 
-### **Tree Model**
+### Point Cloud Processing
 
-**Description:**  
-Service for generating, updating, and simulating the 3D structure and growth of individual trees, supporting both static and dynamic representations.
+The Point Cloud Processing subsystem implements a sophisticated pipeline that transforms raw LiDAR data into structured forest information through three sequential stages:
 
-- **Data In:**  
-  Tree structure and environmental data.
-- **API:**  
-  **Model/Simulation Control API**  
-  *Example:*  
-  `POST /api/tree-model/update` with `{ "tree_id": "xyz", "action": "remove_branch" }`
-- **Data Out:**  
-  Updated 3D tree models (e.g., glTF) to **API Gateway** for XR/Web clients.
+#### Tree Segmentation
+
+First stage of the processing pipeline that identifies and isolates individual trees from point cloud data using advanced clustering and geometric algorithms. This component processes raw point cloud data and produces segmented tree point clouds, enabling downstream species classification and attribute extraction.
+
+#### Species Classification
+
+Second stage that analyzes segmented tree point clouds to identify species using machine learning models trained on morphological features. This component leverages the segmented output from tree segmentation and applies trained classification models to determine species with confidence scores.
+
+#### Tree Attribute Extraction
+
+Final stage that derives biometric measurements (height, DBH, crown dimensions) and health indicators from classified tree point clouds. This component processes classified tree segments and extracts quantitative measurements that feed into the Tree Database for modeling and analysis.
+
+### Simulation Models
+
+The simulation model subsystem provides sophisticated forest growth and ecosystem modeling capabilities through multiple specialized engines:
+
+#### Model Registry/Orchestrator
+
+Central service that manages and coordinates the execution of different forest simulation models, providing a unified interface for model selection and orchestration. This component handles model lifecycle management, simulation job scheduling, and result aggregation across multiple modeling engines.
+
+#### SILVA Model
+
+Specialized forest growth simulation engine focused on individual tree growth dynamics and stand development under various management scenarios. This model provides detailed tree-level growth predictions and supports management scenario analysis for forest planning and optimization.
+
+#### BALANCE Model
+
+Ecosystem-level simulation engine that models nutrient cycles, carbon dynamics, and ecological interactions within forest systems. This model provides landscape-scale ecosystem analysis and environmental impact assessment capabilities essential for comprehensive forest management.
+
+#### iLand Model
+
+Landscape-scale forest dynamics model that simulates individual tree competition, growth, mortality, and regeneration across large spatial extents. This model integrates climate effects and disturbance processes to provide long-term forest development scenarios under changing environmental conditions.
+
+### Tree Model Service
+
+The Tree Model Service provides comprehensive tree modeling capabilities, supporting both structural representation and growth simulation:
+
+#### Structure Description
+
+Component that generates and maintains detailed 3D structural representations of individual trees based on point cloud analysis. This service processes point cloud data to create accurate 3D tree models, supporting both data-driven approaches (QSM) and generative modeling techniques (L-systems, DeepTree).
+
+#### Growth Simulation
+
+Service component that simulates individual tree growth over time, incorporating environmental factors, management scenarios, and input from multiple simulation models. This component integrates outputs from SILVA, BALANCE, and iLand models to provide comprehensive growth predictions and scenario analysis.
 
 ---
 
-## **Presentation Tier**
+## Presentation Tier Architecture
 
-### **API Gateway**
+```mermaid
+%%{
+init: {
+'theme': 'base',
+'themeVariables': {
+'fontSize': '14px',
+'secondaryColor': '#848484'
+}
+}
+}%%
+flowchart TB
+subgraph DATA_REF["🗄️ Data Tier"]
+DB1[Point Cloud DB]
+DB2[Tree DB]
+DB3[Environment DB]
+end
 
-**Description:**  
-Central entry point that routes all client requests to backend services, handles authentication, rate limiting, and aggregates responses for the presentation layer.
+subgraph LOGIC_REF["⚙️ Logic Tier"]
+DT1[Structure Description]
+DT2[Growth Simulation]
+MR[Model Registry]
+end
 
-- **Data In:**  
-  Requests from XR/Web/Interaction clients (e.g., queries, edits, simulation controls).
-- **API:**  
-  **REST/GraphQL API**
-  *Example:*  
-  `GET /api/tree/123` (REST),  
-  `query { tree(id: 123) { species, height } }` (GraphQL)
-- **Data Out:**  
-  Returns requested data, simulation results, or acknowledgments to clients; pushes real-time updates via **Event Bus**.
+subgraph PRESENTATION_TIER["Presentation Tier"]
+subgraph GATEWAY["🖥️ API Layer"]
+APIGW[API Gateway]
+end
 
-### **XR/Web/Interaction Clients**
+subgraph CLIENTS["🖥️ Client Applications"]
+XR1[Virtual Tree Model]
+XR2[Environment Viewer]
+XR3[Sensor Dashboard]
+XR4[Point Cloud Viewer]
+W1[Web Interface]
+I1[Interaction Tools]
+end
+end
 
-**Description:**  
-User-facing applications for immersive visualization, scenario testing, and direct manipulation of the digital forest twin.
+DATA_REF -.->|Data Access| APIGW
+LOGIC_REF -.->|Service APIs| APIGW
+APIGW -->|REST/GraphQL| XR1
+APIGW -->|REST/GraphQL| XR2
+APIGW -->|REST/GraphQL| XR3
+APIGW -->|REST/GraphQL| XR4
+APIGW -->|REST/GraphQL| W1
+I1 <-->|Bidirectional<br/>Control| APIGW
 
-- **Data In:**  
-  Receives tree, environment, and point cloud data from **API Gateway**.
-- **API:**  
-  **REST/GraphQL API**, **Event Bus**
-  *Example:*  
-  `GET /api/pointcloud/abc123` (REST),  
-  WebSocket: `{ "event": "tree_updated", "tree_id": "xyz" }`
-- **Data Out:**  
-  Sends user actions (e.g., edit tree, run scenario) to **API Gateway**.
-  *Example:*  
-  `POST /api/tree/xyz/action` with `{ "action": "remove", "reason": "disease" }`
+classDef presentationBack fill:#eef7f5,stroke:#eef7f5,stroke-width:2px,color:#458875
+classDef dataTier fill:#838a95,stroke:#838a95,stroke-width:2px,color:#ffffff
+classDef logicTier fill:#cd998e,stroke:#cd998e,stroke-width:2px,color:#ffffff
+classDef presentationTier fill:#5cb89c,stroke:#5cb89c,stroke-width:2px,color:#ffffff
+classDef dataNode fill:#313D4F,stroke:#313D4F,stroke-width:2px,color:#ffffff
+classDef logicNode fill:#ad5643,stroke:#ad5643,stroke-width:2px,color:#ffffff
+classDef presentationNode fill:#458875,stroke:#458875,stroke-width:2px,color:#ffffff
 
-### **Interaction Tools**
+class PRESENTATION_TIER presentationBack
+class DATA_REF dataTier
+class DB1,DB2,DB3 dataNode
+class LOGIC_REF logicTier
+class DT1,DT2,MR logicNode
+class GATEWAY,CLIENTS presentationTier
+class APIGW,XR1,XR2,XR3,XR4,W1,I1 presentationNode
 
-**Description:**  
-Specialized interfaces (in XR or web) for scenario management, editing tree/environment attributes, and controlling simulations.
+linkStyle 0,1,2,3,4,5,6,7 stroke:#323233,stroke-width:2px,color:#ffffff
+```
 
-- **Data In:**  
-  Receives feedback and updated system state via **API Gateway** and **Event Bus**.
-- **API:**  
-  **Scenario/Model Control API**, **REST/GraphQL API**
-  *Example:*  
-  `POST /api/scenario/run` with `{ "scenario": "drought", "duration": 12 }`
-- **Data Out:**  
-  Sends scenario or model control commands; triggers updates in backend.
+The Presentation Tier provides user-facing interfaces and coordinates all client interactions with the system. It serves as the bridge between users and the underlying data and logic tiers, supporting both immersive XR experiences and traditional web interfaces through a centralized API gateway that coordinates access to all backend services.
+
+### API Layer
+
+#### API Gateway
+
+Central entry point that routes all client requests to backend services, handles authentication, rate limiting, and aggregates responses for the presentation layer. This component provides a unified interface for all client applications, manages cross-cutting concerns like security and monitoring, and abstracts the complexity of the underlying microservices architecture.
+
+### Client Applications
+
+The system supports multiple specialized client applications, each optimized for different user needs and interaction patterns:
+
+#### Virtual Tree Model
+
+Immersive XR application providing 3D visualization and interaction with individual tree models. This application supports both VR and AR experiences, enabling users to explore detailed tree structure, observe growth simulations, and interact with forest data in an intuitive 3D environment.
+
+#### Environment Viewer
+
+Specialized visualization client for environmental data and sensor networks. This application provides real-time environmental monitoring, historical trend analysis, and spatial visualization of environmental conditions across forest sites.
+
+#### Sensor Dashboard
+
+Real-time monitoring interface for sensor network status and data streams. This application provides system administrators and researchers with comprehensive oversight of sensor health, data quality, and network performance.
+
+#### Point Cloud Viewer
+
+High-performance visualization client for large-scale 3D point cloud data. This application supports interactive exploration of LiDAR datasets, segmentation visualization, and processing result analysis with optimized rendering for massive point datasets.
+
+#### Web Interface
+
+Traditional web-based interface providing comprehensive system access through standard browsers. This application serves as the primary administrative interface and provides access to all system functions for users who prefer traditional web interfaces.
+
+#### Interaction Tools
+
+Advanced control interface enabling sophisticated system manipulation and scenario analysis. This application provides researchers and forest managers with tools for model control, scenario creation, parameter adjustment, and comparative analysis across different modeling scenarios.
+
+### Communication Patterns
+
+The Presentation Tier employs multiple communication patterns to support different user experience requirements:
+
+- **Request-Response**: Standard HTTP-based communication for typical data retrieval and manipulation operations
+- **Real-time Streaming**: WebSocket-based communication for live sensor data, processing updates, and collaborative interactions
+- **Event-driven Updates**: Asynchronous notification system for system state changes, completion of long-running processes, and multi-user coordination
 
 ---
 
-## **API and Interface Types Explained**
+## System Integration and Data Flow
 
-### **What is an API?**
+### Cross-Tier Communication
 
-An **API** (Application Programming Interface) is a set of rules and protocols that allows different software components to communicate and exchange data or functions. It acts as a contract between systems, specifying how requests and responses should be structured and what operations are available.
+The three-tier architecture enables clear separation of concerns while maintaining efficient data flow and system integration:
 
-**Key Elements of an API:**
+**Data Flow Patterns**:
 
-- **Endpoints:** URLs or paths for accessing specific functions or data.
-- **Methods:** Operations like GET (retrieve), POST (create), PUT (update), DELETE (remove).
-- **Request/Response Formats:** Data structures (often JSON or XML) for communication.
-- **Parameters/Headers:** Additional data for filtering, authentication, etc.
-- **Status Codes:** Indicate the result of a request (e.g., 200 OK, 404 Not Found).
+- Raw data flows from external sources through the Data Tier to the Logic Tier for processing
+- Processed results flow back to the Data Tier for storage and then to the Presentation Tier for visualization
+- User interactions flow from the Presentation Tier through the Logic Tier to update data in the Data Tier
+- Real-time sensor data creates continuous streams from the Data Tier through the Logic Tier to the Presentation Tier
 
-### **Types of APIs in Your Architecture**
+**Processing Workflows**:
 
-#### **1. Data Ingestion API**
+- Point cloud processing follows a sequential pipeline from ingestion through segmentation, classification, and attribute extraction
+- Growth simulation integrates data from multiple sources and models to produce comprehensive growth predictions
+- Scenario analysis combines user-defined parameters with historical data to generate comparative assessments
 
-- **Purpose:**  
-  Handles the intake of new data from external sources (e.g., sensors, field uploads, external datasets).
-- **How it works:**  
-  Provides endpoints for batch uploads (e.g., CSV, LAS/LAZ files) and streaming data (e.g., sensor feeds via WebSocket or MQTT).
-- **Example:**  
-  `/api/data-ingest/upload` for batch; `/api/data-ingest/stream` for real-time sensor data.
+### Scalability and Performance
 
-#### **2. Processing Pipeline API**
+The architecture supports horizontal scaling at each tier:
 
-- **Purpose:**  
-  Manages the submission, monitoring, and results of data processing tasks (e.g., tree segmentation, classification).
-- **How it works:**  
-  Exposes endpoints to submit jobs, check status, and retrieve results. May use asynchronous processing and notify clients upon completion.
-- **Example:**  
-  `/api/process/submit` (POST a new job); `/api/process/status/{job_id}` (GET job status).
+**Data Tier**: Database sharding and read replicas support growing data volumes and query loads
+**Logic Tier**: Microservices architecture enables independent scaling of processing and modeling components
+**Presentation Tier**: Stateless API gateway and client-side rendering support increasing user loads
 
-#### **3. DB Update API**
+### Quality Assurance and Monitoring
 
-- **Purpose:**  
-  Allows authorized components or clients to create, update, or delete records in the databases (e.g., Tree DB, Environment DB).
-- **How it works:**  
-  Provides endpoints for CRUD operations on database records, ensuring data integrity and access control.
-- **Example:**  
-  `/api/tree/{id}` (PUT to update tree attributes); `/api/environment/{id}` (DELETE to remove a record).
+The system incorporates comprehensive monitoring and quality assurance capabilities:
 
-#### **4. Model/Simulation Control API**
-
-- **Purpose:**  
-  Allows clients (e.g., interaction tools) to trigger, pause, or modify model runs and simulations.
-- **How it works:**  
-  Endpoints for starting/stopping simulations, updating parameters, and retrieving results.
-- **Example:**  
-  `/api/model/run` (POST to start simulation); `/api/model/{id}/pause` (POST to pause).
-
-#### **5. Event Bus**
-
-- **Purpose:**  
-  Enables real-time, asynchronous communication between components (e.g., sensor updates, simulation events, feedback to clients).
-- **How it works:**  
-  Uses publish/subscribe protocols (e.g., MQTT, Kafka, WebSockets). Components subscribe to topics and receive messages as events occur.
-- **Example:**  
-  Topic `sensor-updates` broadcasts new sensor readings to all interested clients.
-
-#### **6. REST/GraphQL API**
-
-- **Purpose:**  
-  Provides standardized web-based access to backend services and data for clients (XR, web, tools).
-- **How it works:**  
-  - **REST:** Uses HTTP methods (GET, POST, etc.) and endpoints for each resource. Each call is stateless and independent[7].
-  - **GraphQL:** Allows clients to specify exactly what data they need in a single query, reducing over-fetching or under-fetching.
-- **Example:**  
-  REST: `/api/tree/123` (GET tree with ID 123).  
-  GraphQL: `query { tree(id: 123) { species, height, health } }`
-
-### **API Type Comparison Table**
-
-| API Type                     | Purpose/Flow                          | Typical Protocols          | Example Use Case/Call                                                                                  |
-|------------------------------|---------------------------------------|----------------------------|-------------------------------------------------------------------------------------------------------|
-| Data Ingestion API           | Import new data into system           | HTTP (REST), MQTT, WebSocket | `POST /api/data-ingest/pointcloud` with LAS file (batch); MQTT/WebSocket for real-time sensor         |
-| Processing Pipeline API      | Manage processing jobs (async/sync)   | HTTP (REST), WebSocket     | `POST /api/process/segment` to start segmentation; `GET /api/process/status/{job_id}` for status      |
-| DB Update API                | CRUD operations on data stores        | HTTP (REST), GraphQL       | `PUT /api/tree/xyz` to update tree attributes; `DELETE /api/environment/abc` to remove record         |
-| Model/Simulation Control API | Control models/simulations            | HTTP (REST), gRPC, WebSocket | `POST /api/model/run` to start growth simulation; `POST /api/tree-model/update` for structure change  |
-| Event Bus                    | Real-time, async notifications        | WebSocket, MQTT, Kafka     | WebSocket/MQTT topic `tree-updates`; client receives `{ "event": "tree_removed", ... }`               |
-| REST/GraphQL API             | General data access and manipulation  | HTTP (REST), GraphQL       | `GET /api/tree/123` (REST); `query { tree(id: 123) { species } }` (GraphQL)                          |
+**Data Quality**: Automated validation, quality scoring, and anomaly detection throughout the data pipeline
+**Processing Monitoring**: Real-time tracking of processing jobs, resource utilization, and error detection
+**User Experience**: Performance monitoring, error tracking, and usage analytics across all client applications
