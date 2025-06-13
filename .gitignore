@@ -64,3 +64,6 @@ node_modules/
 htmlcov/
 .coverage
 .pytest_cache/
+
+# Type checking
+.mypy_cache/

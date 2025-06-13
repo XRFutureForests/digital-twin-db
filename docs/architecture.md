@@ -8,7 +8,7 @@ This document describes the system architecture of the XR Future Forests Lab, fo
 
 ```mermaid
 %%{
-init: {
+init: {c
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
