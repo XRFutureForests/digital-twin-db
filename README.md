@@ -1,6 +1,95 @@
-# XR Future Forests Lab
+# XR Future Forests Lab - Docker Implementation
 
-A comprehensive research initiative developing cutting-edge extended reality (XR) applications for forest and environmental sciences at the University of Freiburg.
+A comprehensive research initiative developing cutting-edge extended reality (XR) applications for forest and environmental sciences at the University of Freiburg, with a minimal Docker Compose implementation for development and testing.
+
+## Quick Start
+
+1. **Start the services**:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Check service health**:
+
+   ```bash
+   curl http://localhost:8000/health
+   ```
+
+3. **View API documentation**:
+   Open <http://localhost:8000/docs> in your browser
+
+4. **Connect to database**:
+
+   ```bash
+   docker exec -it xr_forests_db psql -U forests_user -d xr_forests_lab
+   ```
+
+## Architecture Overview
+
+The implementation follows the three-tier architecture documented in `/docs/architecture.md`:
+
+- **Data Tier**: PostgreSQL with PostGIS for spatial data storage
+- **Logic Tier**: Python FastAPI application for processing and business logic  
+- **Presentation Tier**: REST API with WebSocket support for real-time updates
+
+## Services
+
+### 1. PostgreSQL with PostGIS (`postgres`)
+
+- **Image**: `postgis/postgis:15-3.3`
+- **Port**: `5432`
+- **Database**: `xr_forests_lab`
+- **Features**:
+  - Spatial data support via PostGIS
+  - Three specialized database schemas (Point Cloud, Tree, Environment)
+  - Sample data included
+
+### 2. Redis (`redis`)
+
+- **Image**: `redis:7-alpine`
+- **Port**: `6379`
+- **Features**:
+  - Event bus for real-time communication
+  - Persistent storage enabled
+  - Health checks configured
+
+### 3. Python API (`api`)
+
+- **Framework**: FastAPI with async support
+- **Port**: `8000`
+- **Features**:
+  - RESTful API endpoints
+  - WebSocket support for real-time updates
+  - Redis event publishing
+  - PostGIS spatial queries
+
+## API Endpoints
+
+### Core Resources
+
+- `GET /api/locations` - List all forest locations
+- `GET /api/trees` - List trees with optional filtering
+- `GET /api/trees/{tree_id}` - Get detailed tree information
+- `POST /api/trees` - Create new tree record
+- `POST /api/trees/{tree_id}/measurements` - Add tree measurements
+
+### Environmental Data
+
+- `GET /api/sensors` - List environmental sensors
+- `GET /api/sensors/{sensor_id}/readings` - Get sensor readings
+
+### Point Cloud Data
+
+- `GET /api/point-clouds` - List point cloud scans
+
+### Reference Data
+
+- `GET /api/species` - List tree species
+
+### Real-time Updates
+
+- `WebSocket /ws` - Real-time event stream
 
 ## Project Overview
 
@@ -105,3 +194,131 @@ Digital representations of individual trees and forest ecosystems for growth sim
 - **Stakeholder Engagement**: Communicate forest research to policymakers and the public
 - **Interdisciplinary Outreach**: Bridge forest science with other disciplines
 - **Public Education**: Make forest science accessible to broader audiences
+
+## Database Schema
+
+The implementation includes three specialized databases with minimal schemas:
+
+### Point Cloud Database
+
+- `point_clouds`: LiDAR scan metadata and file references
+- `processing_jobs`: Background processing job tracking
+- `processing_status_types`: Processing workflow states
+
+### Tree Database  
+
+- `trees`: Individual tree records with spatial positioning
+- `tree_measurements`: Biometric measurements over time
+- `species`: Tree species reference data
+
+### Environment Database
+
+- `environment_sensors`: Sensor device inventory
+- `sensor_readings`: Time-series environmental data
+- `environmental_snapshots`: Aggregated environmental summaries
+
+## Sample Data
+
+The database is initialized with sample data including:
+
+- Test forest plot location with PostGIS geometry
+- 3 sample trees (European Beech, Sessile Oak, Norway Spruce)
+- Tree measurements with quality indicators
+- Environmental sensor and readings
+- Complete species reference data
+
+## Configuration
+
+Environment variables can be set in `docker-compose.yml`:
+
+- `DATABASE_URL`: PostgreSQL connection string
+- `REDIS_URL`: Redis connection string  
+- `API_HOST` / `API_PORT`: API server configuration
+- `ENVIRONMENT`: Set to `development` for verbose logging
+
+Copy `.env.example` to `.env` to customize configuration.
+
+## Event System
+
+The system uses Redis for real-time event communication:
+
+- **Channels**: `tree_events`, `location_events`, `sensor_events`
+- **WebSocket**: Events are forwarded to connected clients via `/ws`
+- **Event Types**: `tree_created`, `tree_measurement_added`, `location_created`
+
+## Spatial Queries
+
+The implementation supports PostGIS spatial operations:
+
+- Point-in-polygon queries for trees within locations
+- Distance calculations between sensors and trees
+- Spatial indexing for performance
+- GeoJSON output for web mapping applications
+
+## Testing
+
+Run the included test script to verify API functionality:
+
+```bash
+python test_api.py
+```
+
+Or use the convenient setup script:
+
+```bash
+./setup.sh
+```
+
+## Troubleshooting
+
+### Database Connection Issues
+
+```bash
+# Check if PostgreSQL is ready
+docker exec -it xr_forests_db pg_isready -U forests_user
+
+# View database logs
+docker logs xr_forests_db
+
+# Connect to database
+docker exec -it xr_forests_db psql -U forests_user -d xr_forests_lab
+```
+
+### API Issues
+
+```bash
+# Check API logs
+docker logs xr_forests_api
+
+# Test database connectivity from API
+curl http://localhost:8000/health
+```
+
+### Redis Connection Issues
+
+```bash
+# Test Redis connectivity
+docker exec -it xr_forests_redis redis-cli ping
+
+# View Redis logs
+docker logs xr_forests_redis
+```
+
+## Next Steps
+
+This minimal implementation provides the foundation for:
+
+1. **Point Cloud Processing**: Add LiDAR file upload and processing workflows
+2. **Simulation Models**: Integrate SILVA, BALANCE, and iLand models
+3. **XR Client**: Build Unity/Unreal applications consuming the API
+4. **Advanced Analytics**: Add machine learning for species classification
+5. **Real-time Monitoring**: Expand sensor data ingestion capabilities
+
+## Documentation
+
+For detailed system architecture and design decisions, see:
+
+- [Architecture Overview](docs/architecture.md)
+- [Database Design](docs/database_design.md)
+- [Data Contracts & APIs](docs/data_contracts_and_apis.md)
+- [System Introduction](docs/system_introduction.md)
