@@ -463,7 +463,49 @@ The Presentation Tier employs multiple communication patterns to support differe
 
 ---
 
-## System Integration and Data Flow
+## System Integration and Event Management
+
+### Event Bus Architecture
+
+The system implements a sophisticated event-driven architecture using an Event Bus that coordinates asynchronous communication between components:
+
+#### Event Bus Components
+
+**Message Broker**: Apache Kafka or RabbitMQ providing reliable message delivery with persistence and guaranteed ordering
+
+**Event Topics**:
+
+- `sensor-readings`: Real-time environmental sensor data streams
+- `processing-jobs`: Point cloud processing job status updates  
+- `tree-updates`: Tree data modifications and variant changes
+- `simulation-progress`: Growth model execution progress and results
+- `system-alerts`: Error conditions, maintenance notifications, and system health
+- `user-interactions`: XR interface interactions and collaborative editing
+
+**Event Schemas**: Standardized message formats ensuring consistent data contracts across all event types
+
+#### Event-Driven Workflows
+
+**Point Cloud Processing Pipeline**:
+
+1. Point cloud upload triggers `processing-job-submitted` event
+2. Segmentation completion publishes `segmentation-completed` event  
+3. Classification service subscribes to segmentation events
+4. Results publish `classification-completed` events for downstream consumers
+
+**Real-time Sensor Integration**:
+
+1. EcoSense sensors publish readings to `sensor-readings` topic
+2. Data validation service consumes and validates readings
+3. Environmental snapshot service aggregates readings
+4. XR clients subscribe to processed environmental updates
+
+**Simulation Coordination**:
+
+1. Simulation requests trigger `simulation-started` events
+2. Multiple model services (SILVA, BALANCE, iLand) process independently
+3. Results aggregation service combines outputs from all models
+4. Completed simulations publish `simulation-completed` events
 
 ### Cross-Tier Communication
 

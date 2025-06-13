@@ -22,7 +22,6 @@ This document defines the data contracts and API specifications for the XR Futur
    - [Presentation Tier APIs](#presentation-tier-apis)
 3. [Common API Data Types](#common-api-data-types)
 4. [Error Handling](#error-handling)
-5. [API Types and Interface Patterns](#api-types-and-interface-patterns)
 
 ---
 
@@ -127,25 +126,32 @@ interface Species {
 
 ```typescript
 interface TreeMeasurements {
-  height_m: number;
+  height_m: number;                    // Range: [0.1, 130.0] - realistic tree height range
   height_quality: QualityMetrics;
   
-  dbh_cm: number; // Diameter at Breast Height
+  dbh_cm: number;                      // Range: [1.0, 400.0] - diameter at breast height
   dbh_quality: QualityMetrics;
   
-  crown_width_m: number;
+  crown_width_m: number;               // Range: [0.5, 50.0] - crown diameter range
   crown_width_quality: QualityMetrics;
   
-  crown_height_m?: number;
-  crown_base_height_m?: number;
+  crown_height_m?: number;             // Range: [0.1, height_m] - cannot exceed tree height
+  crown_base_height_m?: number;        // Range: [0.0, height_m - crown_height_m]
   
-  volume_m3?: number;
+  volume_m3?: number;                  // Range: [0.001, 200.0] - tree volume range
   volume_quality?: QualityMetrics;
   
-  biomass_kg?: number;
+  biomass_kg?: number;                 // Range: [0.1, 50000.0] - tree biomass range
   biomass_quality?: QualityMetrics;
   
   measurement_date: Timestamp;
+  
+  // Validation constraints
+  _constraints?: {
+    crown_base_height_check: "crown_base_height_m + crown_height_m <= height_m";
+    dbh_height_ratio: "height_m / dbh_cm should be between 20-200 for most species";
+    measurement_temporal_consistency: "measurement_date should not be in the future";
+  };
 }
 
 interface TreeHealth {
@@ -1946,107 +1952,3 @@ All APIs use semantic versioning in the URL path:
   "sunset_dates": {},
   "changelog_url": "https://docs.xr-forests.uni-freiburg.de/api/changelog"
 }
-```
-
----
-
-## API Types and Interface Patterns
-
-### What is an API?
-
-An **API** (Application Programming Interface) is a set of rules and protocols that allows different software components to communicate and exchange data or functions. It acts as a contract between systems, specifying how requests and responses should be structured and what operations are available.
-
-**Key Elements of an API:**
-
-- **Endpoints:** URLs or paths for accessing specific functions or data
-- **Methods:** Operations like GET (retrieve), POST (create), PUT (update), DELETE (remove)
-- **Request/Response Formats:** Data structures (often JSON or XML) for communication
-- **Parameters/Headers:** Additional data for filtering, authentication, etc.
-- **Status Codes:** Indicate the result of a request (e.g., 200 OK, 404 Not Found)
-
-### Types of APIs in the XR Future Forests Lab Architecture
-
-#### Data Ingestion API
-
-**Purpose:** Handles the intake of new data from external sources (sensors, field uploads, external datasets)
-
-**How it works:** Provides endpoints for batch uploads (CSV, LAS/LAZ files) and streaming data (sensor feeds via WebSocket or MQTT)
-
-**Example Endpoints:**
-
-- `POST /api/data-ingest/pointcloud` for batch uploads
-- `POST /api/data-ingest/sensor-data` for real-time sensor data
-- MQTT Topic: `ecosense/sensor/reading` for streaming
-
-#### Processing Pipeline API
-
-**Purpose:** Manages the submission, monitoring, and results of data processing tasks (tree segmentation, classification)
-
-**How it works:** Exposes endpoints to submit jobs, check status, and retrieve results with asynchronous processing and completion notifications
-
-**Example Endpoints:**
-
-- `POST /api/process/segment` (submit new segmentation job)
-- `GET /api/process/status/{job_id}` (check job status)
-- `GET /api/process/result/{job_id}` (retrieve results)
-
-#### DB Update API
-
-**Purpose:** Allows authorized components to create, update, or delete records in the databases
-
-**How it works:** Provides endpoints for CRUD operations on database records, ensuring data integrity and access control
-
-**Example Endpoints:**
-
-- `PUT /api/tree/{id}` (update tree attributes)
-- `POST /api/tree` (create new tree record)
-- `DELETE /api/environment/{id}` (remove environmental record)
-
-#### Model/Simulation Control API
-
-**Purpose:** Allows clients to trigger, pause, or modify model runs and simulations
-
-**How it works:** Endpoints for starting/stopping simulations, updating parameters, and retrieving results
-
-**Example Endpoints:**
-
-- `POST /api/model/run` (start simulation)
-- `GET /api/model/status/{job_id}` (check simulation status)
-- `POST /api/model/control` (pause/resume simulation)
-
-#### Event Bus
-
-**Purpose:** Enables real-time, asynchronous communication between components
-
-**How it works:** Uses publish/subscribe protocols (MQTT, Kafka, WebSockets) where components subscribe to topics and receive messages as events occur
-
-**Example Topics:**
-
-- `sensor-updates` for broadcasting new sensor readings
-- `tree-updates` for tree state changes
-- `simulation-progress` for model execution updates
-
-#### REST/GraphQL API
-
-**Purpose:** Provides standardized web-based access to backend services and data for clients
-
-**How it works:**
-
-- **REST:** Uses HTTP methods and endpoints for each resource with stateless operations
-- **GraphQL:** Allows clients to specify exactly what data they need in a single query
-
-**Examples:**
-
-- REST: `GET /api/tree/123` (get tree with ID 123)
-- GraphQL: `query { tree(id: 123) { species, height, health } }`
-
-### API Type Comparison
-
-| API Type | Purpose/Flow | Typical Protocols | Example Use Case |
-|----------|--------------|------------------|------------------|
-| Data Ingestion | Import new data into system | HTTP (REST), MQTT, WebSocket | Upload LAS files, stream sensor data |
-| Processing Pipeline | Manage processing jobs | HTTP (REST), WebSocket | Submit segmentation jobs, check status |
-| DB Update | CRUD operations on data stores | HTTP (REST), GraphQL | Update tree attributes, create records |
-| Model/Simulation Control | Control models/simulations | HTTP (REST), gRPC, WebSocket | Start growth simulation, update parameters |
-| Event Bus | Real-time notifications | WebSocket, MQTT, Kafka | Broadcast sensor updates, system events |
-| REST/GraphQL | General data access | HTTP (REST), GraphQL | Query tree data, retrieve environmental info |
