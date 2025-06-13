@@ -1,73 +1,74 @@
 services:
-    # PostgreSQL with PostGIS for spatial data
-    postgres:
-        image: postgis/postgis:15-3.3
-        container_name: xr_forests_db
-        environment:
-            POSTGRES_DB: xr_forests_lab
-            POSTGRES_USER: forests_user
-            POSTGRES_PASSWORD: forests_password
-            POSTGRES_MULTIPLE_EXTENSIONS: postgis,uuid-ossp
-        ports:
-            - "5432:5432"
-        volumes:
-            - postgres_data:/var/lib/postgresql/data
-            - ./db/init:/docker-entrypoint-initdb.d
-        networks:
-            - xr_forests_network
-        healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U forests_user -d xr_forests_lab"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
+  # PostgreSQL with PostGIS for spatial data
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: xr_forests_db
+    environment:
+      POSTGRES_DB: xr_forests_lab
+      POSTGRES_USER: forests_user
+      POSTGRES_PASSWORD: forests_password
+      POSTGRES_MULTIPLE_EXTENSIONS: postgis,uuid-ossp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    networks:
+      - xr_forests_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forests_user -d xr_forests_lab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-    # Redis for event bus and caching
-    redis:
-        image: redis:7-alpine
-        container_name: xr_forests_redis
-        ports:
-            - "6379:6379"
-        volumes:
-            - redis_data:/data
-        networks:
-            - xr_forests_network
-        command: redis-server --appendonly yes
-        healthcheck:
-            test: ["CMD", "redis-cli", "ping"]
-            interval: 10s
-            timeout: 3s
-            retries: 5
+  # Redis for event bus and caching
+  redis:
+    image: redis:7-alpine
+    container_name: xr_forests_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - xr_forests_network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
-    # Python API service
-    api:
-        build:
-            context: ./api
-            dockerfile: Dockerfile
-        container_name: xr_forests_api
-        environment:
-            DATABASE_URL: postgresql+asyncpg://forests_user:forests_password@postgres:5432/xr_forests_lab
-            REDIS_URL: redis://redis:6379/0
-            API_HOST: 0.0.0.0
-            API_PORT: 8000
-            ENVIRONMENT: development
-        ports:
-            - "8000:8000"
-        volumes:
-            - ./api:/app
-            - ./data:/app/data
-        networks:
-            - xr_forests_network
-        depends_on:
-            postgres:
-                condition: service_healthy
-            redis:
-                condition: service_healthy
-        restart: unless-stopped
+  # Python API service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xr_forests_api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://forests_user:forests_password@postgres:5432/xr_forests_lab
+      REDIS_URL: redis://redis:6379/0
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+      - ./data:/app/data
+    networks:
+      - xr_forests_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
-    postgres_data:
-    redis_data:
+  postgres_data:
+  redis_data:
 
 networks:
-    xr_forests_network:
-        driver: bridge
+  xr_forests_network:
+    driver: bridge

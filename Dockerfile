@@ -8,12 +8,13 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy pyproject.toml and install dependencies
+COPY pyproject.toml .
+RUN pip install --no-cache-dir -e .
 
-# Copy application code
-COPY . .
+# Copy source code and configuration
+COPY src/ src/
+COPY config/ config/
 
 # Create data directory
 RUN mkdir -p /app/data
@@ -22,4 +23,4 @@ RUN mkdir -p /app/data
 EXPOSE 8000
 
 # Command to run the application
-CMD ["python", "main.py"]
+CMD ["python", "-m", "xr_forests.api.main"]
