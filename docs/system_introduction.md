@@ -12,23 +12,24 @@ This document provides a beginner-friendly introduction to the key technologies 
 Your XR Future Forests Lab is a system that:
 
 1. **Collects** forest data from multiple sources:
-   - **3DTrees Platform**: LiDAR point cloud data
-   - **EcoSense Sensors**: Real-time environmental monitoring
-   - **Climate/Weather Data**: External climate datasets
-   - **Soil/Groundwater Data**: Soil composition and moisture monitoring
+   - **Point Cloud Data**: LiDAR scan metadata and processing status
+   - **Tree Records**: Individual tree measurements and spatial positioning
+   - **Environmental Data**: Sensor readings and environmental monitoring
    - **Forest Inventory**: Traditional field survey measurements
 
-2. **Processes** this data through sophisticated pipelines:
-   - Tree segmentation and species classification from point clouds
-   - Growth simulation using models like SILVA, BALANCE, and iLand
-   - Environmental data aggregation and analysis
+2. **Processes** this data through API-driven pipelines:
+   - Tree data management with spatial queries using PostGIS
+   - Environmental data aggregation and time-series storage
+   - Background job processing for data workflows
 
-3. **Presents** results through immersive interfaces:
-   - XR (Virtual/Augmented Reality) forest exploration
-   - Web-based dashboards and analysis tools
-   - Real-time monitoring and visualization
+3. **Presents** results through REST API interfaces:
+   - RESTful API endpoints for data access and manipulation
+   - Real-time event communication via Redis
+   - Database-driven spatial queries and analytics
 
-Think of it like a digital twin of a forest that researchers can explore and analyze in immersive 3D environments.
+Think of it like a digital foundation for forest data management that can support future XR applications and advanced analytics.
+
+**Current MVP Implementation**: The system currently includes a working FastAPI application with PostgreSQL/PostGIS database, Redis for events, and basic CRUD operations for locations and trees. You can explore the actual code to understand these concepts hands-on.
 
 ---
 
@@ -39,6 +40,42 @@ The XR Future Forests Lab follows a **three-tier architecture** that separates c
 - **🗄️ Data Tier**: Handles data storage and ingestion
 - **⚙️ Logic Tier**: Processes data and runs simulations  
 - **🖥️ Presentation Tier**: Provides user interfaces and visualization
+
+```mermaid
+flowchart TB
+    subgraph PT ["🖥️ Presentation Tier"]
+        direction TB
+        API[FastAPI Application<br/>Routes & Endpoints]
+        DOCS[Interactive API Docs<br/>http://localhost:8000/docs]
+        CLI[Command Line Tools]
+    end
+    
+    subgraph LT ["⚙️ Logic Tier"]
+        direction TB
+        SERVICES[Business Logic<br/>Services & Validation]
+        REPO[Repository Pattern<br/>Data Access Layer]
+        REDIS[Redis Event Bus<br/>Real-time Communication]
+    end
+    
+    subgraph DT ["🗄️ Data Tier"]
+        direction TB
+        POSTGRES[(PostgreSQL + PostGIS<br/>Spatial Database)]
+        SCHEMA[Database Schema<br/>Tables & Relationships]
+    end
+    
+    PT --> LT
+    LT --> DT
+    
+    classDef tierBox fill:#f9f9f9,stroke:#333,stroke-width:2px
+    classDef dataNode fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+    classDef logicNode fill:#fff3e0,stroke:#ef6c00,stroke-width:2px  
+    classDef presentationNode fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    
+    class PT,LT,DT tierBox
+    class POSTGRES,SCHEMA dataNode
+    class SERVICES,REPO,REDIS logicNode
+    class API,DOCS,CLI presentationNode
+```
 
 Let's explore the key technologies in each tier:
 
@@ -63,179 +100,346 @@ Think of it like this:
 🗂️ Multiple Excel files = Multiple Database Tables
 ```
 
-#### **Your Three Specialized Databases**
+#### **Your Current MVP Database Structure**
 
-1. **Point Cloud Database**: Stores LiDAR scan metadata, processing job status, and results
-   - Metadata about 3D forest scans (file references, processing status)
-   - Tree segmentation and species classification results
-   - Processing job tracking and quality metrics
+The system currently implements a unified database with tables representing the three logical database concepts:
 
-2. **Tree Database**: Stores individual tree records, measurements, and modeling data
-   - Tree identity, measurements (height, DBH, crown dimensions)
-   - **Tree variants for scenario-based modeling**: Multiple versions of trees for different scenarios (growth simulations, species replacements, management interventions)
-   - Detailed 3D structural data (branches, twigs, leaves)
-   - Quality assessments and microhabitat features
+```mermaid
+erDiagram
+    %% Location and Reference Tables
+    locations {
+        uuid id PK
+        string location_name
+        text description
+        geometry center_point
+        decimal elevation_m
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    species {
+        uuid id PK
+        string scientific_name
+        string common_name
+        string species_code
+        decimal max_height_m
+        int longevity_years
+    }
+    
+    %% Point Cloud Tables
+    point_clouds {
+        uuid id PK
+        uuid location_id FK
+        string file_path
+        string file_name
+        timestamp scan_date
+        int sensor_type_id FK
+        int processing_status_id FK
+        bigint point_count
+        decimal file_size_mb
+    }
+    
+    processing_jobs {
+        uuid id PK
+        uuid point_cloud_id FK
+        string job_type
+        string status
+        timestamp started_at
+        timestamp completed_at
+        int progress_percent
+        text error_message
+    }
+    
+    %% Tree Tables
+    trees {
+        uuid id PK
+        uuid location_id FK
+        string tree_tag
+        uuid species_id FK
+        geometry position
+        date discovery_date
+        string discovery_method
+    }
+    
+    tree_measurements {
+        uuid id PK
+        uuid tree_id FK
+        timestamp measurement_date
+        decimal height_m
+        decimal dbh_cm
+        decimal crown_width_m
+        decimal crown_height_m
+        string measurement_method
+        string measurement_quality
+    }
+    
+    %% Environment Tables
+    environment_sensors {
+        uuid id PK
+        uuid location_id FK
+        int sensor_type_id FK
+        string sensor_name
+        geometry position
+        date installation_date
+        string status
+    }
+    
+    sensor_readings {
+        uuid id PK
+        uuid sensor_id FK
+        timestamp reading_time
+        decimal temperature_c
+        decimal humidity_percent
+        decimal soil_moisture_percent
+        jsonb additional_data
+    }
+    
+    %% Relationships
+    locations ||--o{ point_clouds : "has scans"
+    locations ||--o{ trees : "contains"
+    locations ||--o{ environment_sensors : "monitors"
+    
+    species ||--o{ trees : "classifies"
+    
+    point_clouds ||--o{ processing_jobs : "processes"
+    
+    trees ||--o{ tree_measurements : "measures"
+    
+    environment_sensors ||--o{ sensor_readings : "records"
+```
 
-3. **Environment Database**: Stores sensor readings and environmental data
-   - Real-time sensor data (temperature, humidity, soil conditions)
-   - Environmental snapshots for modeling
-   - Site characteristics and spatial datasets
+**Key Database Concepts Demonstrated**:
+
+1. **Point Cloud Tables**: Stores LiDAR scan metadata and processing job tracking
+   - `point_clouds`: File references, scan metadata, processing status
+   - `processing_jobs`: Background job tracking for data processing workflows
+
+2. **Tree Tables**: Stores individual tree records and measurements
+   - `trees`: Individual tree records with spatial positioning using PostGIS
+   - `tree_measurements`: Biometric measurements over time with quality indicators
+   - `species`: Tree species reference data with growth characteristics
+
+3. **Environment Tables**: Stores sensor readings and environmental data
+   - `environment_sensors`: Sensor device inventory and positioning
+   - `sensor_readings`: Time-series environmental measurements
+   - `locations`: Shared spatial reference table with PostGIS geometry support
+
+**Hands-on Learning**: You can explore the complete database schema in `db/init/01-init-schema.sql` and see how PostGIS handles spatial data types.
 
 ### **APIs: How Different Parts Talk to Each Other (Logic + Presentation Tier)**
 
 An **API** (Application Programming Interface) is like a waiter in a restaurant - it takes your order, goes to the kitchen, and brings back your food. It's how different software components communicate.
 
-The Logic Tier handles sophisticated processing through specialized components:
+The current MVP implements a **FastAPI application** that demonstrates core concepts:
 
-- **Point Cloud Processing Pipeline**: Tree segmentation, species classification, attribute extraction
-- **Simulation Models**: SILVA, BALANCE, and iLand forest growth models  
-- **Model Registry/Orchestrator**: Manages and coordinates different simulation models
-- **Tree Model Service**: Generates 3D tree structures and handles growth simulation
+- **REST API endpoints**: Standardized HTTP-based data access
+- **Database connection management**: Async PostgreSQL connections with connection pooling
+- **Data validation**: Pydantic schemas for request/response validation
+- **Dependency injection**: Clean separation of concerns with FastAPI's dependency system
 
 #### **REST APIs** - Your Main Communication Method
 
 - **What they are**: A standardized way for software to request and receive data
 - **How they work**: Using HTTP requests (the same technology that loads web pages)
 
-**Example API calls in your system:**
+**Current MVP API endpoints** (you can try these now!):
 
 ```http
-GET /api/tree/{tree_id}           → "Get information about a specific tree"
-POST /api/data-ingest/pointcloud  → "Upload LiDAR scan files"
-POST /api/process/segment         → "Start tree segmentation job"
-GET /api/process/status/{job_id}  → "Check processing job status"
-PUT /api/tree/{tree_id}          → "Update tree measurements"
+GET /health                    → "Check if the API is running" 
+GET /api/locations            → "Get all forest locations"
+GET /api/locations/{id}       → "Get a specific location" 
+POST /api/locations           → "Create a new forest location"
 ```
+
+**Hands-on Learning**:
+
+- Explore the API code in `src/xr_forests/api/main.py`
+- See router implementations in `src/xr_forests/api/routers/`
+- Try the interactive API docs at `http://localhost:8000/docs` when running
 
 #### **Data Contracts** - The Rules for Communication
 
 Think of these as "conversation rules" that ensure everyone speaks the same language.
 
-**Example - When uploading a new tree measurement:**
+**Example - Creating a new forest location (actual MVP implementation):**
 
 ```json
 {
-  "tree_id": "T_001_2025",
-  "species_id": "FASY-15",
-  "measurements": {
-    "height_m": 25.05,
-    "dbh_cm": 12.3,
-    "crown_width_m": 8.2,
-    "height_quality": {
-      "overall_grade": "A",
-      "confidence_score": 0.95,
-      "measurement_source": "Point_Cloud_Derived"
-    }
-  },
-  "location": {
-    "latitude": 47.1234,
-    "longitude": 8.5678,
-    "coordinate_system": "EPSG:4326"
-  },
-  "measurement_date": "2025-06-13T14:30:00Z"
+  "location_name": "Hartheim Research Plot",
+  "description": "University of Freiburg forest research site",
+  "latitude": 47.1234,
+  "longitude": 8.5678,
+  "elevation_m": 305.2
 }
 ```
 
-This contract says: "When you send tree data, it must include these exact fields with these data types."
+**What you get back:**
 
-### **API Types and Interface Patterns in Your System**
-
-Now that you understand the basics of APIs, let's look at the different types of APIs your XR Future Forests Lab system uses:
-
-#### **Key Elements of an API**
-
-- **Endpoints**: URLs or paths for accessing specific functions or data
-- **Methods**: Operations like GET (retrieve), POST (create), PUT (update), DELETE (remove)
-- **Request/Response Formats**: Data structures (often JSON) for communication
-- **Parameters/Headers**: Additional data for filtering, authentication, etc.
-- **Status Codes**: Indicate the result of a request (e.g., 200 OK, 404 Not Found)
-
-#### **1. Data Ingestion API** - Getting Data Into Your System
-
-**Purpose**: Handles the intake of new data from external sources (sensors, field uploads, external datasets)
-
-**How it works**: Provides endpoints for batch uploads (CSV, LAS/LAZ files) and streaming data (sensor feeds)
-
-**Example Endpoints**:
-
-```
-POST /api/data-ingest/pointcloud    → Upload LiDAR scan files
-POST /api/data-ingest/sensor-data   → Real-time sensor readings
-POST /api/data-ingest/field-data    → Manual field measurements
+```json
+{
+  "id": "d4f89e7c-123a-4567-8901-234567890abc",
+  "location_name": "Hartheim Research Plot", 
+  "description": "University of Freiburg forest research site",
+  "elevation_m": 305.2,
+  "center_point": null,
+  "created_at": "2025-06-13T14:30:00Z",
+  "updated_at": "2025-06-13T14:30:00Z"
+}
 ```
 
-#### **2. Processing Pipeline API** - Managing Background Tasks
+**Hands-on Learning**: Check out the Pydantic schemas in `src/xr_forests/core/schemas/location.py` to see how data validation works.
 
-**Purpose**: Manages the submission, monitoring, and results of data processing tasks (tree segmentation, classification)
+### **Current MVP API Architecture**
 
-**How it works**: Submit jobs, check status, and retrieve results with asynchronous processing
+The current implementation demonstrates key API concepts through a focused set of endpoints:
 
-**Example Endpoints**:
+#### **Key Elements You Can Explore Now**
 
-```
-POST /api/process/segment           → Submit new tree segmentation job
-GET /api/process/status/{job_id}    → Check job progress
-GET /api/process/result/{job_id}    → Download processing results
-```
+- **Endpoints**: URLs in `src/xr_forests/api/routers/` (locations.py, health.py)
+- **Methods**: GET, POST operations implemented with FastAPI decorators
+- **Request/Response Formats**: JSON schemas defined with Pydantic models
+- **Dependency Injection**: Database sessions and services injected via FastAPI's Depends()
+- **Status Codes**: Automatic HTTP status handling by FastAPI
 
-#### **3. Database Update API** - Modifying Your Data
+#### **Current Implemented API Patterns**
 
-**Purpose**: Allows authorized components to create, update, or delete records in the databases
+#### **1. Health Check API** - System Status
 
-**How it works**: CRUD operations (Create, Read, Update, Delete) on database records
+**File**: `src/xr_forests/api/routers/health.py`
 
-**Example Endpoints**:
+**Purpose**: Simple endpoint to verify the API is running
 
-```
-PUT /api/tree/{id}                  → Update tree measurements
-POST /api/tree                     → Add new tree to database
-DELETE /api/environment/{id}       → Remove environmental record
-```
-
-#### **4. Model/Simulation Control API** - Running Forest Simulations
-
-**Purpose**: Allows clients to trigger, pause, or modify model runs and simulations
-
-**How it works**: Control forest growth simulations and climate modeling
-
-**Example Endpoints**:
-
-```
-POST /api/model/run                 → Start forest growth simulation
-GET /api/model/status/{job_id}      → Check simulation progress
-POST /api/model/control             → Pause/resume simulation
+```python
+@router.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "XR Future Forests Lab API", "version": "1.0.0"}
 ```
 
-#### **5. Event Bus** - Real-Time Notifications
+#### **2. CRUD API Pattern** - Location Management
 
-**Purpose**: Enables real-time, asynchronous communication between components
+**File**: `src/xr_forests/api/routers/locations.py`
 
-**How it works**: Components subscribe to topics and receive messages as events occur
+**Purpose**: Demonstrates Create, Read operations for forest locations
 
-**Example Topics**:
+**Current Endpoints**:
 
+```http
+GET /api/locations/           → List all locations
+GET /api/locations/{id}       → Get specific location  
+POST /api/locations/          → Create new location
 ```
-sensor-updates          → New temperature/humidity readings
-tree-updates           → Tree growth or health changes
-simulation-progress    → Model execution updates
-system-alerts          → Important system notifications
+
+**What you can learn**:
+
+- Async database operations with SQLAlchemy
+- Request/response validation with Pydantic
+- Dependency injection for database sessions
+- Service layer pattern for business logic
+
+#### **Understanding FastAPI Routers**
+
+**What is a Router?**
+
+A **router** in FastAPI is like a mini-application that groups related endpoints together. Think of it as organizing your API into logical sections - like having different departments in a company.
+
+```mermaid
+flowchart LR
+    subgraph MAIN["FastAPI Main Application"]
+        APP[main.py<br/>App Configuration]
+    end
+    
+    subgraph ROUTERS["Router Modules"]
+        HEALTH[health_router<br/>/health]
+        LOCATIONS[locations_router<br/>/api/locations/*]
+        FUTURE[future_router<br/>/api/trees/*<br/>/api/sensors/*]
+    end
+    
+    subgraph ENDPOINTS["Generated Endpoints"]
+        E1[GET /health]
+        E2[GET /api/locations/]
+        E3[GET /api/locations/{id}]
+        E4[POST /api/locations/]
+        E5[GET /api/trees/]
+        E6[GET /api/sensors/]
+    end
+    
+    APP --> HEALTH
+    APP --> LOCATIONS
+    APP --> FUTURE
+    
+    HEALTH --> E1
+    LOCATIONS --> E2
+    LOCATIONS --> E3
+    LOCATIONS --> E4
+    FUTURE -.-> E5
+    FUTURE -.-> E6
+    
+    classDef mainApp fill:#e8f5e8,stroke:#2e7d2e,stroke-width:2px
+    classDef router fill:#fff3cd,stroke:#856404,stroke-width:2px
+    classDef endpoint fill:#f8d7da,stroke:#721c24,stroke-width:2px
+    classDef future fill:#d1ecf1,stroke:#0c5460,stroke-width:2px,stroke-dasharray: 5 5
+    
+    class APP mainApp
+    class HEALTH,LOCATIONS router
+    class FUTURE future
+    class E1,E2,E3,E4,E5,E6 endpoint
 ```
 
-#### **6. REST/GraphQL API** - General Data Access
+**Why Use Routers?**
 
-**Purpose**: Provides standardized web-based access to backend services and data for clients
+1. **Organization**: Keep related endpoints together (all location operations in one file)
+2. **Modularity**: Easy to add/remove feature sets without affecting other parts
+3. **Reusability**: Routers can be included in multiple applications
+4. **Maintainability**: Smaller, focused files are easier to understand and modify
 
-**How it works**:
+**How Routers Work in the Current MVP**:
 
-- **REST**: Uses HTTP methods and endpoints for each resource
-- **GraphQL**: Allows clients to specify exactly what data they need
+```python
+# File: src/xr_forests/api/routers/locations.py
+from fastapi import APIRouter
 
-**Examples**:
+# Create a router with common settings for all location endpoints
+router = APIRouter(
+    prefix="/api/locations",  # All endpoints start with /api/locations
+    tags=["locations"]        # Groups endpoints in API documentation
+)
 
+@router.get("/")              # Becomes GET /api/locations/
+async def get_locations():
+    # Handle getting all locations
+    pass
+
+@router.get("/{location_id}") # Becomes GET /api/locations/{location_id}
+async def get_location(location_id: str):
+    # Handle getting specific location
+    pass
 ```
-REST:     GET /api/tree/123 → Get all data for tree #123
-GraphQL:  query { tree(id: 123) { species, height, health } } → Get only specific fields
+
+**Router Registration in Main App**:
+
+```python
+# File: src/xr_forests/api/main.py
+from .routers import health_router, locations_router
+
+app = FastAPI(title="XR Future Forests Lab API")
+
+# Include routers - like plugging in modules
+app.include_router(health_router)        # Adds /health endpoint
+app.include_router(locations_router)     # Adds /api/locations/* endpoints
 ```
+
+**Benefits You Can See**:
+
+- **Clean URLs**: Automatic prefix handling (`/api/locations/` + `{id}` = `/api/locations/{id}`)
+- **Automatic Documentation**: Each router's endpoints appear grouped in `/docs`
+- **Dependency Sharing**: Common dependencies (like database sessions) can be shared across router endpoints
+- **Easy Testing**: You can test individual routers independently
+
+**Hands-on Learning**:
+
+- Explore `src/xr_forests/api/routers/locations.py` to see a complete router implementation
+- Check `src/xr_forests/api/main.py` to see how routers are registered
+- Visit `http://localhost:8000/docs` to see how routers organize the API documentation
 
 #### **API Type Comparison**
 
@@ -252,26 +456,176 @@ GraphQL:  query { tree(id: 123) { species, height, health } } → Get only speci
 
 An **event bus** is like a notification system that tells different parts of your system when something important happens.
 
-#### **Redis** - Your Recommended Event Bus
+#### **Redis** - Your Event Bus (MVP Implementation)
 
-- **What it is**: A fast, in-memory data store that can also handle messaging
-- **What it does**: Sends instant notifications between different parts of your system
-- **Communication protocols**: Supports Redis Streams, MQTT topics for sensor data, and WebSocket connections for real-time XR updates
+**What is Redis?**
 
-**Example events in your system:**
+Redis (**RE**mote **DI**ctionary **S**erver) is an in-memory data structure store that can be used as:
+
+- **Database**: Store key-value pairs
+- **Cache**: Fast temporary storage
+- **Message Broker**: Send messages between different parts of your system
+
+**Why Do You Need Redis (or Similar Event Systems)?**
+
+In modern applications, different components need to communicate **asynchronously**:
+
+1. **Decoupling**: Services don't need to know about each other directly
+2. **Scalability**: Multiple services can process events simultaneously
+3. **Reliability**: Messages can be queued if a service is temporarily down
+4. **Real-time Updates**: Instant notifications to users without constant polling
+
+**Real-World Example**:
 
 ```text
-"Processing job completed" → Notify XR client to update display
-"New sensor reading" → Trigger analysis algorithms  
-"Tree model updated" → Refresh simulation display
-"System alert" → Notify administrators of issues
+Without Event Bus (Polling):
+XR Client → "Are there new trees?" → API → Database → "No" (every 5 seconds)
+
+With Event Bus:
+Database Update → Redis Event → WebSocket → XR Client → "New tree found!"
 ```
 
-**Real-time communication channels:**
+#### **How Redis Integrates with FastAPI and PostgreSQL**
 
-- **MQTT Topics**: `ecosense/sensor/reading` for EcoSense sensor data
-- **WebSocket**: `/ws/sensor-stream` for live sensor feeds to XR clients
-- **Redis Streams**: Internal event coordination between services
+```mermaid
+flowchart TB
+    subgraph CLIENT["Client Applications"]
+        WEB[Web Browser]
+        XR[XR Headset]
+        MOBILE[Mobile App]
+    end
+    
+    subgraph FASTAPI["FastAPI Application Layer"]
+        ROUTER[API Routers<br/>Endpoints]
+        SERVICE[Service Layer<br/>Business Logic]
+        REPO[Repository Layer<br/>Data Access]
+    end
+    
+    subgraph SYSTEMS["Backend Systems"]
+        POSTGRES[(PostgreSQL<br/>Persistent Storage)]
+        REDIS[(Redis<br/>Events & Cache)]
+    end
+    
+    subgraph EVENTS["Event Flow"]
+        PUB[Publish Events]
+        SUB[Subscribe to Events]
+        NOTIFY[Real-time Notifications]
+    end
+    
+    CLIENT -->|HTTP Requests| ROUTER
+    ROUTER -->|Business Logic| SERVICE
+    SERVICE -->|Data Operations| REPO
+    
+    REPO -->|SQL Queries| POSTGRES
+    REPO -->|Event Publishing| PUB
+    PUB --> REDIS
+    
+    REDIS --> SUB
+    SUB --> NOTIFY
+    NOTIFY -.->|WebSocket/SSE| CLIENT
+    
+    SERVICE -->|Cache Read/Write| REDIS
+    
+    classDef clientNode fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef fastapiNode fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef systemNode fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef eventNode fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    
+    class WEB,XR,MOBILE clientNode
+    class ROUTER,SERVICE,REPO fastapiNode
+    class POSTGRES,REDIS systemNode
+    class PUB,SUB,NOTIFY eventNode
+```
+
+**1. The Three-Component Architecture**:
+
+```text
+PostgreSQL    ←→    FastAPI    ←→    Redis
+(Persistent)      (Logic Layer)    (Real-time Events)
+```
+
+**2. Current MVP Integration**:
+
+**FastAPI ↔ Redis Connection** (`src/xr_forests/api/main.py`):
+
+```python
+import redis.asyncio as redis
+
+# Global Redis connection
+redis_client = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global redis_client
+    # Startup: Connect to Redis
+    redis_client = redis.from_url(settings.redis_url)
+    yield
+    # Shutdown: Close Redis connection
+    if redis_client:
+        await redis_client.close()
+```
+
+**3. When and How Each System is Used**:
+
+| **System** | **When Used** | **Example in Forest System** |
+|------------|---------------|-------------------------------|
+| **PostgreSQL** | Permanent data storage | Store tree measurements, locations |
+| **Redis** | Real-time events, temporary data | "New tree detected", cache search results |
+| **FastAPI** | Business logic, API endpoints | Validate data, coordinate between systems |
+
+**4. Event Flow in Practice**:
+
+```python
+# Example: Location created event
+async def create_location(location_data):
+    # 1. Save to PostgreSQL (permanent storage)
+    location = await save_to_database(location_data)
+    
+    # 2. Publish event to Redis (real-time notification)
+    await redis_client.publish("location_events", {
+        "event": "location_created",
+        "location_id": location.id,
+        "timestamp": datetime.now()
+    })
+    
+    # 3. Return to API client
+    return location
+```
+
+**5. Why This Architecture Works**:
+
+- **PostgreSQL**: Ensures data is never lost, handles complex queries, spatial operations
+- **Redis**: Provides instant notifications, handles temporary data (sessions, cache)
+- **FastAPI**: Coordinates between both systems, handles business logic
+
+**Current MVP Status**:
+
+✅ **Configured**: Redis is running and connected  
+✅ **Ready**: Connection management in place  
+🔄 **Next Step**: Add event publishing when data changes  
+
+**In the current implementation**:
+
+- Redis connection is set up in `src/xr_forests/api/main.py`
+- Configuration managed via `config/settings.py`
+- Docker service running and health-checked
+
+**Future event examples**:
+
+```text
+"New location created" → Notify monitoring systems
+"Database updated" → Trigger cache refresh
+"Processing job completed" → Update user interface
+"System alert" → Notify administrators
+```
+
+**Hands-on Learning**:
+
+- Redis is running at `localhost:6379`
+- Connect with: `docker exec -it xr_forests_redis redis-cli`
+- Try Redis commands: `SET mykey "Hello"` then `GET mykey`
+- Explore Redis configuration in `docker-compose.yml`
+- Monitor Redis activity: `docker exec -it xr_forests_redis redis-cli MONITOR`
 
 ### **Docker: Packaging Your Software**
 
@@ -279,210 +633,240 @@ An **event bus** is like a notification system that tells different parts of you
 
 #### **Docker Compose** - Running Multiple Containers
 
-- **What it is**: A tool that starts and connects multiple Docker containers
+```mermaid
+flowchart TB
+    subgraph DOCKER["🐳 Docker Environment"]
+        subgraph NETWORK["xr_forests_network"]
+            
+            subgraph DB_CONTAINER["📦 postgres Container"]
+                POSTGRES[PostgreSQL 15<br/>with PostGIS 3.3<br/>Port: 5432]
+                DB_VOL[(postgres_data<br/>Volume)]
+                POSTGRES --- DB_VOL
+            end
+            
+            subgraph REDIS_CONTAINER["📦 redis Container"]
+                REDIS_SERVER[Redis 7 Alpine<br/>Event Bus & Cache<br/>Port: 6379]
+                REDIS_VOL[(redis_data<br/>Volume)]
+                REDIS_SERVER --- REDIS_VOL
+            end
+            
+            subgraph API_CONTAINER["📦 api Container"]
+                FASTAPI[FastAPI Application<br/>Python Backend<br/>Port: 8000]
+                API_CODE[Source Code<br/>Volume Mount]
+                FASTAPI --- API_CODE
+            end
+        end
+        
+        subgraph HOST["💻 Host System"]
+            BROWSER[Web Browser<br/>localhost:8000]
+            CLI[Database Client<br/>localhost:5432]
+            REDIS_CLI[Redis CLI<br/>localhost:6379]
+        end
+    end
+    
+    BROWSER -->|HTTP| FASTAPI
+    CLI -->|SQL| POSTGRES
+    REDIS_CLI -->|Commands| REDIS_SERVER
+    
+    FASTAPI <-->|Database Queries| POSTGRES
+    FASTAPI <-->|Event Publishing| REDIS_SERVER
+    
+    classDef containerBox fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef serviceNode fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef volumeNode fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef hostNode fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    
+    class DB_CONTAINER,REDIS_CONTAINER,API_CONTAINER containerBox
+    class POSTGRES,REDIS_SERVER,FASTAPI serviceNode
+    class DB_VOL,REDIS_VOL,API_CODE volumeNode
+    class BROWSER,CLI,REDIS_CLI hostNode
+```
+
+**What Docker Compose Does**:
+
 - **In your system**: Runs PostgreSQL, Redis, your API server, and other services together
-
-```yaml
-# docker-compose.yml - Like a recipe for your entire system
-services:
-  database:          # PostgreSQL container
-  redis:             # Redis container  
-  api-server:        # Your FastAPI application
-  web-client:        # Your web interface
-```
+- **Networking**: All containers can communicate using service names
+- **Data Persistence**: Volumes ensure data survives container restarts
+- **Development**: Code changes are reflected immediately via volume mounts
 
 ---
 
-## 🌊 **Data Flow Through Your System**
+## 🌊 **Data Flow Through Your Current MVP**
 
-Let's trace how data moves through your XR Future Forests Lab system with a real example:
+Let's trace how data moves through the current implementation with a real example:
 
-### **Scenario: Processing a New LiDAR Forest Scan**
+### **Scenario: Creating and Retrieving a Forest Location**
 
-#### **Step 1: Data Collection**
-
+```mermaid
+sequenceDiagram
+    participant Client as 🌐 Client<br/>(curl/browser)
+    participant Router as 📍 Router<br/>locations.py
+    participant Service as ⚙️ Service<br/>LocationService
+    participant Repo as 🗃️ Repository<br/>LocationRepository
+    participant DB as 🗄️ Database<br/>PostgreSQL
+    participant Redis as 📨 Redis<br/>Event Bus
+    
+    Note over Client,Redis: POST /api/locations/ - Create New Location
+    
+    Client->>Router: HTTP POST with JSON data
+    Note right of Client: {"location_name": "Hartheim",<br/>"latitude": 47.1234,<br/>"longitude": 8.5678}
+    
+    Router->>Router: Validate with Pydantic Schema
+    Note right of Router: LocationCreate model<br/>validates data types & ranges
+    
+    Router->>Service: create_location(validated_data)
+    Note right of Service: Business logic layer<br/>coordinates operations
+    
+    Service->>Repo: create(db_session, location_dict)
+    Note right of Repo: Data access layer<br/>handles database operations
+    
+    Repo->>DB: INSERT INTO locations...
+    Note right of DB: PostgreSQL stores with<br/>PostGIS spatial data
+    
+    DB-->>Repo: Return created location
+    Repo-->>Service: Return location object
+    Service-->>Router: Return LocationResponse
+    Router-->>Client: HTTP 201 + JSON response
+    
+    Note over Service,Redis: Future: Event Publishing
+    Service-.->Redis: publish("location_created")
+    Note right of Redis: Real-time notifications<br/>(not yet implemented)
 ```
-🌲 Forest → 📡 LiDAR Scanner → 💾 Point Cloud File (.las)
+
+#### **Step 1: API Request**
+
+```bash
+curl -X POST http://localhost:8000/api/locations/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "location_name": "Hartheim Research Plot",
+    "description": "University research forest site",
+    "latitude": 47.1234,
+    "longitude": 8.5678,
+    "elevation_m": 305.2
+  }'
 ```
 
-- Researcher scans forest section with LiDAR
-- Creates a 3D point cloud file (millions of 3D points)
+#### **Step 2: Data Validation (Pydantic)**
 
-#### **Step 2: Data Upload**
+**File**: `src/xr_forests/core/schemas/location.py`
 
-```
-📱 Researcher's App → 🌐 REST API → 🗄️ PostgreSQL Database
-```
-
-**API Call:**
-
-```http
-POST /api/point-clouds
-Content-Type: application/json
-
-{
-  "file_path": "/data/scans/forest_section_A_2025_06_13.las",
-  "scan_date": "2025-06-13T14:30:00Z",
-  "location_id": 5,
-  "sensor_type": "UAV_LiDAR",
-  "quality_metrics": {
-    "point_density": 150.5,
-    "coverage_area": 2500.0
-  }
-}
+```python
+class LocationCreate(BaseModel):
+    location_name: str = Field(..., max_length=200)
+    description: Optional[str] = None
+    latitude: Optional[float] = Field(None, ge=-90, le=90)
+    longitude: Optional[float] = Field(None, ge=-180, le=180)
+    elevation_m: Optional[float] = None
 ```
 
-**Database Storage:**
+#### **Step 3: Business Logic (Service Layer)**
+
+**File**: `src/xr_forests/core/services/location_service.py`
+
+```python
+async def create_location(self, db: AsyncSession, location_data: LocationCreate) -> LocationResponse:
+    location_dict = location_data.dict(exclude_unset=True)
+    # Convert coordinates to PostGIS geometry
+    location = await self.repository.create(db, location_dict)
+    return self._to_response(location)
+```
+
+#### **Step 4: Database Storage (SQLAlchemy + PostGIS)**
+
+**File**: `src/xr_forests/core/models/location.py`
+
+```python
+class Location(Base, TimestampMixin):
+    __tablename__ = "locations"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_name = Column(String(200), nullable=False)
+    center_point = Column(Geometry("POINT", srid=4326))  # PostGIS spatial data
+```
+
+#### **Step 5: Database Query Execution**
 
 ```sql
--- New record created in PointClouds table
-INSERT INTO PointClouds (FilePath, ScanDate, LocationID, SensorTypeID, ProcessingStatusTypeID)
-VALUES ('/data/scans/forest_section_A_2025_06_13.las', '2025-06-13 14:30:00', 5, 2, 1);
+INSERT INTO locations (id, location_name, description, center_point, elevation_m, created_at, updated_at)
+VALUES (
+    'a1b2c3d4-e5f6-7890-1234-567890abcdef',
+    'Hartheim Research Plot',
+    'University research forest site',
+    ST_SetSRID(ST_MakePoint(8.5678, 47.1234), 4326),
+    305.2,
+    NOW(),
+    NOW()
+);
 ```
 
-#### **Step 3: Processing Job Creation**
-
-```
-🗄️ Database → 📨 Event Bus → ⚙️ Processing Pipeline
-```
-
-**Event Published to Redis:**
+#### **Step 6: Response Formation**
 
 ```json
 {
-  "event_type": "new_scan_uploaded",
-  "point_cloud_id": 1523,
-  "priority": "normal",
-  "timestamp": "2025-06-13T14:31:00Z"
-}
-```
-
-**Processing Job Created:**
-
-```sql
--- New job record in ProcessingJobs table
-INSERT INTO processing_jobs (job_type, status, input_data, created_at)
-VALUES ('tree_segmentation', 'queued', 
-        '{"point_cloud_id": 1523}', NOW());
-```
-
-#### **Step 4: Background Processing**
-
-```
-⚙️ Processing Service → 🧠 AI Algorithms → 🌳 Tree Identification
-```
-
-**Processing steps:**
-
-1. **Tree Segmentation**: AI algorithms identify and isolate individual trees from the point cloud
-2. **Species Classification**: Machine learning models analyze tree morphology to identify species
-3. **Tree Attribute Extraction**: Extract biometric measurements (height, DBH, crown dimensions) and health indicators
-4. **Data Quality Assessment**: Evaluate measurement confidence and assign quality grades
-5. **Database Updates**: Store results in Tree Database with full lineage tracking
-
-#### **Step 5: Results Storage**
-
-```
-🌳 Processing Results → 🗄️ Database → 📨 Event Notifications
-```
-
-**New tree records created:**
-
-```sql
--- TreeVariants created from point cloud processing
-INSERT INTO TreeVariants (TreeVariantID, TreeID, SpeciesID, ScenarioID, Height_m, DBH_cm, VariantTimestamp)
-VALUES 
-  ('TV_A_001_2025', 'T_A_001_2025', 15, 1, 24.55, 18.2, NOW()),
-  ('TV_A_002_2025', 'T_A_002_2025', 23, 1, 19.83, 14.7, NOW()),
-  ('TV_A_003_2025', 'T_A_003_2025', 15, 1, 31.21, 22.9, NOW());
-
--- Update processing job status
-UPDATE ProcessingJobs 
-SET ProcessingStatusTypeID = 3, CompletedAt = NOW()
-WHERE ProcessingJobID = 1089;
-```
-
-**Event published:**
-
-```json
-{
-  "event_type": "processing_completed",
-  "job_id": 1089,
-  "trees_found": 23,
-  "processing_time_seconds": 145
-}
-```
-
-#### **Step 6: Real-Time Updates**
-
-```
-📨 Redis Event → 🌐 WebSocket → 🥽 XR Client → 👤 Researcher
-```
-
-**WebSocket message to XR client:**
-
-```json
-{
-  "type": "scan_processed",
-  "location_id": 5,
-  "new_trees": 23,
-  "scan_id": 1523,
-  "message": "Forest section A scan completed - 23 trees identified"
-}
-```
-
-#### **Step 7: XR Visualization**
-
-```
-🥽 XR Headset → 🌐 API Request → 🗄️ Database → 🌲 3D Forest Visualization
-```
-
-**API request for XR display:**
-
-```http
-GET /api/locations/5/trees?include_3d_models=true
-```
-
-**Response with tree data:**
-
-```json
-{
-  "location": {
-    "id": 5,
-    "name": "Forest Section A",
-    "center_point": {"lat": 47.1234, "lng": 8.5678}
-  },
-  "trees": [
-    {
-      "id": "T_A_001_2025",
-      "species": "Norway Spruce",
-      "height_cm": 245.5,
-      "position": {"x": 123.4, "y": 0.0, "z": 567.8},
-      "model_url": "/3d-models/norway_spruce_adult.gltf"
-    }
-  ]
+  "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+  "location_name": "Hartheim Research Plot",
+  "description": "University research forest site", 
+  "elevation_m": 305.2,
+  "center_point": null,
+  "created_at": "2025-06-13T14:30:00Z",
+  "updated_at": "2025-06-13T14:30:00Z"
 }
 ```
 
 ---
 
-## 🔄 **System Communication Patterns**
+## 🔄 **System Communication Patterns in the MVP**
 
-### **Synchronous Communication (API Calls)**
+### **Current Implementation Patterns**
 
-- **When**: Getting data, updating records, user interactions
-- **How**: Direct HTTP requests and responses
-- **Example**: User clicks "Show tree details" → API call → Database query → Response
+#### **FastAPI Request Cycle**
 
-### **Asynchronous Communication (Events)**
+1. **HTTP Request** → Router (`src/xr_forests/api/routers/locations.py`)
+2. **Dependency Injection** → Database session + Service layer
+3. **Pydantic Validation** → Request/response schemas  
+4. **Service Layer** → Business logic (`src/xr_forests/core/services/`)
+5. **Repository Pattern** → Database operations (`src/xr_forests/database/repositories/`)
+6. **SQLAlchemy ORM** → Database queries via async sessions
+7. **HTTP Response** → JSON with validated schemas
 
-- **When**: Background processing, real-time updates, notifications
-- **How**: Messages sent through Redis event bus
-- **Example**: File upload completes → Event published → Processing starts automatically
+#### **Key Learning Components**
 
-### **Data Persistence Layers**
+**1. Async Database Connections**
+**File**: `src/xr_forests/database/connection.py`
 
-#### **Hot Data** (Frequently Accessed)
+```python
+# Async engine with connection pooling
+engine = create_async_engine(
+    settings.database_url,
+    echo=settings.database_echo,
+    pool_pre_ping=True,
+    pool_recycle=300
+)
+```
+
+**2. Dependency Injection**
+**File**: `src/xr_forests/api/routers/locations.py`
+
+```python
+@router.get("/", response_model=List[LocationResponse])
+async def get_locations(
+    db: AsyncSession = Depends(get_db),  # Database session injection
+    location_service: LocationService = Depends(LocationService)  # Service injection
+):
+```
+
+**3. Configuration Management**
+**File**: `config/settings.py`
+
+```python
+class Settings(BaseSettings):
+    database_url: str = "postgresql+asyncpg://..."
+    redis_url: str = "redis://localhost:6379/0"
+    api_host: str = "0.0.0.0"
+    
+    class Config:
+        env_file = ".env"  # Loads from environment variables
+```
 
 - **Storage**: PostgreSQL database
 - **Examples**: Current tree measurements, active processing jobs
@@ -533,16 +917,46 @@ Now that you understand the basics:
 3. **Monitor events**: Use Redis CLI or Redis Commander to see events flowing
 4. **Test APIs**: Use tools like Postman or curl to make API calls
 
-The beauty of this architecture is that each component has a clear, single responsibility, making the system easier to understand, develop, and maintain!
-
 ---
 
-## 💡 **Key Takeaways**
+## 💡 **Key Takeaways from the Current MVP**
 
-- **Databases** store your data permanently
-- **APIs** let different parts of your system talk to each other
-- **Event buses** handle real-time notifications and background processing
-- **Docker** packages everything together consistently
-- **Your system** follows a clear data flow from collection → processing → storage → visualization
+### **What You Can Learn Hands-On**
 
-Each technology solves a specific problem, and together they create a robust system for forest research and XR visualization!
+| **Concept** | **File to Explore** | **What You'll Learn** |
+|-------------|--------------------|-----------------------|
+| **FastAPI Application** | `src/xr_forests/api/main.py` | Modern Python web framework with async support |
+| **Database Models** | `src/xr_forests/core/models/` | SQLAlchemy ORM with PostGIS spatial data |
+| **API Endpoints** | `src/xr_forests/api/routers/` | RESTful API design patterns |
+| **Data Validation** | `src/xr_forests/core/schemas/` | Pydantic for request/response validation |
+| **Configuration** | `config/settings.py` | Environment-based configuration with Pydantic |
+| **Database Schema** | `db/init/01-init-schema.sql` | PostgreSQL with PostGIS spatial extensions |
+| **Docker Orchestration** | `docker-compose.yml` | Multi-service containerized applications |
+| **Redis Integration** | `src/xr_forests/api/main.py` | Event bus setup and connection management |
+
+### **Core Technology Stack Demonstrated**
+
+- **FastAPI**: Modern, async Python web framework with automatic API documentation
+- **PostgreSQL + PostGIS**: Spatial database for forest location data
+- **SQLAlchemy**: Python ORM with async support for database operations
+- **Pydantic**: Data validation and settings management with type hints
+- **Redis**: In-memory data store configured for future event messaging
+- **Docker Compose**: Multi-container orchestration for development
+
+### **Architecture Patterns You Can Study**
+
+1. **Three-Tier Architecture**: Clear separation of data, logic, and presentation layers
+2. **Repository Pattern**: Database access abstraction in `src/xr_forests/database/repositories/`
+3. **Service Layer Pattern**: Business logic separation in `src/xr_forests/core/services/`
+4. **Dependency Injection**: Clean component isolation using FastAPI's dependency system
+5. **Configuration Management**: Environment-based settings with validation
+
+### **Next Steps for Learning**
+
+1. **Run the system**: `docker-compose up -d` and explore the API at `http://localhost:8000/docs`
+2. **Study the code**: Start with `src/xr_forests/api/main.py` and follow the request flow
+3. **Database exploration**: Connect to PostgreSQL and examine the spatial data schema
+4. **Add features**: Implement new endpoints following the existing patterns
+5. **Event integration**: Add Redis publishing when locations are created/updated
+
+The current MVP provides a solid foundation demonstrating production-ready patterns for modern web APIs with spatial data support!
