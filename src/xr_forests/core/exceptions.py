@@ -43,7 +43,7 @@ class DatabaseError(XRForestsException):
         self.operation = operation
 
 
-class ImportError(XRForestsException):
+class DataImportError(XRForestsException):
     """Exception raised when import operations fail."""
 
     def __init__(

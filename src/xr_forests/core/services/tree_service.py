@@ -7,6 +7,7 @@ from datetime import datetime
 import io
 import csv
 
+from ..exceptions import DataImportError
 from ..schemas.tree import (
     TreeCreate,
     TreeResponse,
@@ -122,7 +123,7 @@ class TreeService:
                 import_timestamp=datetime.now(),
             )
         except Exception as e:
-            raise Exception(f"Bulk import failed: {str(e)}")
+            raise DataImportError("tree_bulk", str(e))
 
     async def import_trees_from_csv(
         self, db: AsyncSession, csv_content: bytes, location_id: str
@@ -165,7 +166,7 @@ class TreeService:
             return await self.bulk_import_trees(db, import_request)
 
         except Exception as e:
-            raise Exception(f"CSV import failed: {str(e)}")
+            raise DataImportError("csv", str(e))
 
     def _to_response(self, tree) -> TreeResponse:
         """Convert model to response schema."""
