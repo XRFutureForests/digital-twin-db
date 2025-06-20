@@ -318,7 +318,27 @@ This minimal implementation provides the foundation for:
 
 For detailed system architecture and design decisions, see:
 
-- [Architecture Overview](docs/architecture.md)
-- [Database Design](docs/database_design.md)
-- [Data Contracts & APIs](docs/data_contracts_and_apis.md)
-- [System Introduction](docs/system_introduction.md)
+### 🎯 New to the Project?
+
+**Start Here**: [Documentation Overview](docs/documentation_overview.md) - Choose your learning path
+
+### 📚 Core Documentation
+
+- [Architecture Overview](docs/architecture.md) - System design and technology decisions
+- [Database Design](docs/database_design.md) - Data models and schema design
+- [Data Contracts & APIs](docs/data_contracts_and_apis.md) - API specifications
+- [System Introduction](docs/system_introduction.md) - Technology stack explanation
+
+### 🚀 Developer Resources
+
+- [Developer Guide](docs/developer_guide.md) - Complete development workflow and tutorials
+- [Project Structure Guide](docs/project_structure_guide.md) - Visual project overview and development workflow
+- [API Reference (Visual)](docs/api_reference_visual.md) - Quick visual API endpoint reference
+- [Interactive API Docs](http://localhost:8000/docs) - Live API documentation (when running)
+
+### 📋 Quick References
+
+- **New to the project?** Start with [Documentation Overview](docs/documentation_overview.md)
+- **Need API details?** Check [API Reference (Visual)](docs/api_reference_visual.md)
+- **Want to develop features?** Follow [Developer Guide](docs/developer_guide.md)
+- **Curious about technology?** Read [System Introduction](docs/system_introduction.md)
