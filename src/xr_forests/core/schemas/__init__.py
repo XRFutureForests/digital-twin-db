@@ -9,7 +9,13 @@ from .tree import (
     TreeMeasurementResponse,
     TreeDetailResponse,
 )
-from .sensor import SensorResponse, SensorReadingResponse
+from .environment import (
+    SensorResponse,
+    SensorReadingResponse,
+    EnvironmentalSnapshotResponse,
+    SiteCharacteristicsResponse,
+    EnvironmentalQueryResponse,
+)
 from .point_cloud import PointCloudResponse
 
 __all__ = [
@@ -23,5 +29,8 @@ __all__ = [
     "TreeDetailResponse",
     "SensorResponse",
     "SensorReadingResponse",
+    "EnvironmentalSnapshotResponse",
+    "SiteCharacteristicsResponse",
+    "EnvironmentalQueryResponse",
     "PointCloudResponse",
 ]

@@ -8,13 +8,13 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy pyproject.toml and install dependencies
+# Copy pyproject.toml and source code first
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e .
-
-# Copy source code and configuration
 COPY src/ src/
 COPY config/ config/
+
+# Install the package in editable mode
+RUN pip install --no-cache-dir -e .
 
 # Create data directory
 RUN mkdir -p /app/data

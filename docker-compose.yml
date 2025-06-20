@@ -45,9 +45,9 @@ services:
       dockerfile: Dockerfile
     container_name: xr_forests_api
     environment:
-      DATABASE_URL: postgresql+asyncpg://forests_user:forests_password@postgres:5432/xr_forests_lab
-      REDIS_URL: redis://redis:6379/0
-      API_HOST: 0.0.0.0
+      XR_FORESTS_DATABASE_URL: postgresql+asyncpg://forests_user:forests_password@postgres:5432/xr_forests_lab
+      XR_FORESTS_REDIS_URL: redis://redis:6379/0
+      XR_FORESTS_API_HOST: 0.0.0.0
       API_PORT: 8000
       ENVIRONMENT: development
     ports:

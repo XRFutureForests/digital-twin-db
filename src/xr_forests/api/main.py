@@ -8,7 +8,14 @@ from fastapi.middleware.cors import CORSMiddleware
 import redis.asyncio as redis
 
 from config.settings import settings
-from .routers import health_router, locations_router
+from .exception_handlers import EXCEPTION_HANDLERS
+from .routers import (
+    health_router,
+    locations_router,
+    tree_router,
+    point_cloud_router,
+    environment_router,
+)
 
 # Redis connection
 redis_client = None
@@ -47,6 +54,13 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health_router)
     app.include_router(locations_router)
+    app.include_router(tree_router)
+    app.include_router(point_cloud_router)
+    app.include_router(environment_router)
+
+    # Register exception handlers
+    for exception_type, handler in EXCEPTION_HANDLERS.items():
+        app.add_exception_handler(exception_type, handler)
 
     return app
 

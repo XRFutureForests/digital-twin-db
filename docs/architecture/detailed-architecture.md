@@ -12,7 +12,7 @@ init: {c
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#848484'
+'secondaryColor': '#8e8e8e'
 }
 }
 }%%
@@ -36,10 +36,10 @@ DATA --> LOGIC
 LOGIC --> PRESENTATION
 PRESENTATION -.-> LOGIC
 
-classDef dataTier fill:#838a95,stroke:#838a95,stroke-width:2px,color:#ffffff
-classDef logicTier fill:#cd998e,stroke:#cd998e,stroke-width:2px,color:#ffffff
-classDef presentationTier fill:#5cb89c,stroke:#5cb89c,stroke-width:2px,color:#ffffff
-classDef dataNode fill:#313D4F,stroke:#313D4F,stroke-width:2px,color:#ffffff
+classDef dataTier fill:#d2d2d2,stroke:#d2d2d2,stroke-width:2px,color:#313d4f
+classDef logicTier fill:#e59778,stroke:#e59778,stroke-width:2px,color:#612515
+classDef presentationTier fill:#8cdbc0,stroke:#8cdbc0,stroke-width:2px,color:#265e4d
+classDef dataNode fill:#505050,stroke:#505050,stroke-width:2px,color:#ffffff
 classDef logicNode fill:#ad5643,stroke:#ad5643,stroke-width:2px,color:#ffffff
 classDef presentationNode fill:#458875,stroke:#458875,stroke-width:2px,color:#ffffff
 
@@ -50,7 +50,7 @@ class L1,L2 logicNode
 class PRESENTATION presentationTier
 class P1,P2 presentationNode
 
-linkStyle 0,1,2 stroke:#615e57,stroke-width:2px,color:#ffffff
+linkStyle 0,1,2 stroke:#612515,stroke-width:2px,color:#ffffff
 ```
 
 The XR Future Forests Lab architecture follows a three-tier approach that separates concerns across data storage, business logic, and presentation layers. This design enables scalable processing of forest data, sophisticated modeling capabilities, and immersive user experiences through XR interfaces.
@@ -67,7 +67,7 @@ init: {
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#848484'
+'secondaryColor': '#8e8e8e'
 }
 }
 }%%
@@ -105,13 +105,13 @@ S5 -->|Data Ingestion API| DB2
 STORAGE -.->|Provides Data| LOGIC_REF
 STORAGE -.->|Data Access APIs| PRESENTATION_REF
 
-classDef dataBack fill:#eaebed,stroke:#eaebed,stroke-width:2px,color:#313D4F
-classDef dataTier fill:#838a95,stroke:#838a95,stroke-width:2px,color:#ffffff
-classDef logicTier fill:#cd998e,stroke:#cd998e,stroke-width:2px,color:#ffffff
-classDef presentationTier fill:#5cb89c,stroke:#5cb89c,stroke-width:2px,color:#ffffff
-classDef dataNode fill:#313D4F,stroke:#313D4F,stroke-width:2px,color:#ffffff
+classDef dataBack fill:#d2d2d2,stroke:#d2d2d2,stroke-width:2px,color:#313d4f
+classDef dataTier fill:#8e8e8e,stroke:#8e8e8e,stroke-width:2px,color:#ffffff
+classDef logicTier fill:#e59778,stroke:#e59778,stroke-width:2px,color:#612515
+classDef presentationTier fill:#8cdbc0,stroke:#8cdbc0,stroke-width:2px,color:#265e4d
+classDef dataNode fill:#505050,stroke:#505050,stroke-width:2px,color:#ffffff
 classDef logicNode fill:#ad5643,stroke:#ad5643,stroke-width:2px,color:#ffffff
-classDef presentationNode fill:#458875,stroke:#458875,stroke-width:2px,color:#ffffff
+classDef presentationNode fill:#5cb89c,stroke:#5cb89c,stroke-width:2px,color:#ffffff
 
 class DATA_TIER dataBack
 class SOURCES,STORAGE dataTier
@@ -121,7 +121,7 @@ class L_REF logicNode
 class PRESENTATION_REF presentationTier
 class P_REF presentationNode
 
-linkStyle 0,1,2,3,4,5,6 stroke:#323233,stroke-width:2px,color:#ffffff
+linkStyle 0,1,2,3,4,5,6 stroke:#333333,stroke-width:2px,color:#ffffff
 ```
 
 The Data Tier serves as the foundation for all forest data management, handling both the ingestion of diverse data sources and the storage of processed information. This tier consists of multiple specialized data sources feeding into dedicated storage systems optimized for different data types.
@@ -176,7 +176,7 @@ init: {
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#848484'
+'secondaryColor': '#8e8e8e'
 }
 }
 }%%
@@ -233,13 +233,13 @@ X3 -->|Model API| DT2
 TREE_MODEL -.->|Results| PRESENTATION_REF
 MODELS -.->|Simulation Results| PRESENTATION_REF
 
-classDef logicBack fill:#f6eeec,stroke:#f6eeec,stroke-width:2px,color:#ad5643
-classDef dataTier fill:#838a95,stroke:#838a95,stroke-width:2px,color:#ffffff
-classDef logicTier fill:#cd998e,stroke:#cd998e,stroke-width:2px,color:#ffffff
-classDef presentationTier fill:#5cb89c,stroke:#5cb89c,stroke-width:2px,color:#ffffff
-classDef dataNode fill:#313D4F,stroke:#313D4F,stroke-width:2px,color:#ffffff
-classDef logicNode fill:#ad5643,stroke:#ad5643,stroke-width:2px,color:#ffffff
-classDef presentationNode fill:#458875,stroke:#458875,stroke-width:2px,color:#ffffff
+classDef logicBack fill:#e59778,stroke:#e59778,stroke-width:2px,color:#612515
+classDef dataTier fill:#d2d2d2,stroke:#d2d2d2,stroke-width:2px,color:#313d4f
+classDef logicTier fill:#e59778,stroke:#e59778,stroke-width:2px,color:#612515
+classDef presentationTier fill:#8cdbc0,stroke:#8cdbc0,stroke-width:2px,color:#265e4d
+classDef dataNode fill:#505050,stroke:#505050,stroke-width:2px,color:#ffffff
+classDef logicNode fill:#612515,stroke:#612515,stroke-width:2px,color:#ffffff
+classDef presentationNode fill:#5cb89c,stroke:#5cb89c,stroke-width:2px,color:#ffffff
 
 class LOGIC_TIER logicBack
 class DATA_REF dataTier
@@ -249,7 +249,7 @@ class PC1,PC2,PC3,MR,X1,X2,X3,DT1,DT2 logicNode
 class PRESENTATION_REF presentationTier
 class P_REF presentationNode
 
-linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 stroke:#323233,stroke-width:2px,color:#ffffff
+linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 stroke:#333333,stroke-width:2px,color:#ffffff
 ```
 
 The Logic Tier transforms raw data into actionable insights through sophisticated processing pipelines and simulation models. This tier bridges the gap between data storage and user presentation, implementing the core business logic of forest analysis and modeling.
@@ -357,7 +357,7 @@ init: {
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#848484'
+'secondaryColor': '#8e8e8e'
 }
 }
 }%%
@@ -398,13 +398,13 @@ APIGW -->|REST/GraphQL| XR4
 APIGW -->|REST/GraphQL| W1
 I1 <-->|Bidirectional<br/>Control| APIGW
 
-classDef presentationBack fill:#eef7f5,stroke:#eef7f5,stroke-width:2px,color:#458875
-classDef dataTier fill:#838a95,stroke:#838a95,stroke-width:2px,color:#ffffff
-classDef logicTier fill:#cd998e,stroke:#cd998e,stroke-width:2px,color:#ffffff
-classDef presentationTier fill:#5cb89c,stroke:#5cb89c,stroke-width:2px,color:#ffffff
-classDef dataNode fill:#313D4F,stroke:#313D4F,stroke-width:2px,color:#ffffff
-classDef logicNode fill:#ad5643,stroke:#ad5643,stroke-width:2px,color:#ffffff
-classDef presentationNode fill:#458875,stroke:#458875,stroke-width:2px,color:#ffffff
+classDef presentationBack fill:#8cdbc0,stroke:#8cdbc0,stroke-width:2px,color:#265e4d
+classDef dataTier fill:#d2d2d2,stroke:#d2d2d2,stroke-width:2px,color:#313d4f
+classDef logicTier fill:#e59778,stroke:#e59778,stroke-width:2px,color:#612515
+classDef presentationTier fill:#8cdbc0,stroke:#8cdbc0,stroke-width:2px,color:#265e4d
+classDef dataNode fill:#505050,stroke:#505050,stroke-width:2px,color:#ffffff
+classDef logicNode fill:#612515,stroke:#612515,stroke-width:2px,color:#ffffff
+classDef presentationNode fill:#265e4d,stroke:#265e4d,stroke-width:2px,color:#ffffff
 
 class PRESENTATION_TIER presentationBack
 class DATA_REF dataTier
@@ -414,7 +414,7 @@ class DT1,DT2,MR logicNode
 class GATEWAY,CLIENTS presentationTier
 class APIGW,XR1,XR2,XR3,XR4,W1,I1 presentationNode
 
-linkStyle 0,1,2,3,4,5,6,7 stroke:#323233,stroke-width:2px,color:#ffffff
+linkStyle 0,1,2,3,4,5,6,7 stroke:#333333,stroke-width:2px,color:#ffffff
 ```
 
 The Presentation Tier provides user-facing interfaces and coordinates all client interactions with the system. It serves as the bridge between users and the underlying data and logic tiers, supporting both immersive XR experiences and traditional web interfaces through a centralized API gateway that coordinates access to all backend services.
