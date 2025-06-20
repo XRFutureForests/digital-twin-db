@@ -1,4 +1,4 @@
-"""Location model."""
+"""Location models."""
 
 from sqlalchemy import Column, String, Text, Numeric
 from sqlalchemy.dialects.postgresql import UUID
@@ -9,7 +9,7 @@ from .base import Base, TimestampMixin
 
 
 class Location(Base, TimestampMixin):
-    """Location model for forest areas."""
+    """Location model for spatial reference across all databases."""
 
     __tablename__ = "locations"
 

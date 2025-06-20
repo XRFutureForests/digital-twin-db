@@ -3,18 +3,56 @@
 from .base import Base
 from .location import Location
 from .species import Species
-from .tree import Tree, TreeMeasurement
-from .sensor import EnvironmentSensor, EnvironmentalSnapshot, SensorReading
-from .point_cloud import PointCloudScan
+from .tree import Tree, TreeVariants, Scenarios
+from .point_cloud import PointClouds, ProcessingJobs
+from .environment import (
+    Sensors,
+    SensorReadings,
+    EnvironmentalSnapshots,
+    SiteCharacteristics,
+    SpatialDatasets,
+    SpatialTraitMappings,
+    EnvironmentSensorTypes,
+    SensorStatusTypes,
+    AspectTypes,
+    SpatialDatasetTypes,
+    SpatialTypes,
+    DataFormatTypes,
+    DataSourceTypes,
+    QualityLevelTypes,
+    ExtractionMethodTypes,
+    TraitTypes,
+    SoilTypes,
+    ClimateZoneTypes,
+    VegetationTypes,
+)
 
 __all__ = [
     "Base",
     "Location",
     "Species",
     "Tree",
-    "TreeMeasurement",
-    "EnvironmentSensor",
-    "EnvironmentalSnapshot",
-    "SensorReading",
-    "PointCloudScan",
+    "TreeVariants",
+    "Scenarios",
+    "PointClouds",
+    "ProcessingJobs",
+    "Sensors",
+    "SensorReadings",
+    "EnvironmentalSnapshots",
+    "SiteCharacteristics",
+    "SpatialDatasets",
+    "SpatialTraitMappings",
+    "EnvironmentSensorTypes",
+    "SensorStatusTypes",
+    "AspectTypes",
+    "SpatialDatasetTypes",
+    "SpatialTypes",
+    "DataFormatTypes",
+    "DataSourceTypes",
+    "QualityLevelTypes",
+    "ExtractionMethodTypes",
+    "TraitTypes",
+    "SoilTypes",
+    "ClimateZoneTypes",
+    "VegetationTypes",
 ]

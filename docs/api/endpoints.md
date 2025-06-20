@@ -22,27 +22,41 @@ flowchart TB
     
     subgraph LOCATIONS["📍 Forest Locations"]
         L1[GET /api/locations/<br/>📋 List all locations]
-        L2[GET /api/locations/{id}<br/>🔍 Get specific location]
+        L2[GET /api/locations/id/<br/>🔍 Get specific location]
         L3[POST /api/locations/<br/>➕ Create new location]
     end
     
+    subgraph TREES["🌳 Tree Management"]
+        T1[GET /api/trees/<br/>📋 List trees with filtering]
+        T2[GET /api/trees/id/<br/>🔍 Get specific tree]
+        T3[POST /api/trees/<br/>➕ Create new tree]
+        T4[PUT /api/trees/id/<br/>✏️ Update tree]
+        T5[DELETE /api/trees/id/<br/>🗑️ Delete tree]
+        T6[GET /api/trees/id/measurements<br/>📏 Get tree measurements]
+        T7[POST /api/trees/id/measurements<br/>➕ Add measurement]
+        T8[GET /api/trees/id/health<br/>🩺 Get health assessments]
+        T9[POST /api/trees/id/health<br/>➕ Add health assessment]
+        T10[POST /api/trees/bulk-import<br/>📦 Bulk import trees]
+        T11[POST /api/trees/upload-csv<br/>📄 Upload CSV]
+    end
+    
     subgraph FUTURE["🔄 Coming Soon"]
-        F1[GET /api/trees/<br/>🌳 Tree management]
-        F2[GET /api/sensors/<br/>📊 Sensor data]
-        F3[GET /api/point-clouds/<br/>☁️ Point cloud data]
-        F4[WebSocket /ws<br/>📡 Real-time events]
+        F1[GET /api/sensors/<br/>📊 Sensor data]
+        F2[GET /api/point-clouds/<br/>☁️ Point cloud data]
+        F3[WebSocket /ws<br/>📡 Real-time events]
     end
     
     BASE --> HEALTH
     BASE --> LOCATIONS
+    BASE --> TREES
     BASE -.-> FUTURE
     
-    classDef api fill:#e8f5e8,stroke:#2e7d2e,stroke-width:3px
-    classDef implemented fill:#d4edda,stroke:#155724,stroke-width:2px
-    classDef future fill:#fff3cd,stroke:#856404,stroke-width:2px,stroke-dasharray: 5 5
+    classDef api fill:#8cdbc0,stroke:#265e4d,stroke-width:3px
+    classDef implemented fill:#71a897,stroke:#183029,stroke-width:2px
+    classDef future fill:#e59778,stroke:#612515,stroke-width:2px,stroke-dasharray: 5 5
     
     class API api
-    class HEALTH,LOCATIONS implemented
+    class HEALTH,LOCATIONS,TREES implemented
     class FUTURE future
 ```
 
@@ -107,6 +121,69 @@ curl http://localhost:8000/health
 }
 ```
 
+### **Tree Management Endpoints**
+
+| Method | Endpoint | Description | Request Body | Response |
+|--------|----------|-------------|--------------|----------|
+| GET | `/api/trees/` | List trees with optional filtering | None | Array of tree objects |
+| GET | `/api/trees/{id}` | Get specific tree by ID | None | Single tree object |
+| POST | `/api/trees/` | Create new tree record | Tree data (JSON) | Created tree object |
+| PUT | `/api/trees/{id}` | Update existing tree | Tree update data (JSON) | Updated tree object |
+| DELETE | `/api/trees/{id}` | Delete tree record | None | Success message |
+| GET | `/api/trees/{id}/measurements` | Get all measurements for a tree | None | Array of measurement objects |
+| POST | `/api/trees/{id}/measurements` | Add new measurement | Measurement data (JSON) | Created measurement object |
+| GET | `/api/trees/{id}/health` | Get health assessments for a tree | None | Array of health assessment objects |
+| POST | `/api/trees/{id}/health` | Add new health assessment | Health assessment data (JSON) | Created assessment object |
+| POST | `/api/trees/bulk-import` | Import multiple trees | Bulk import data (JSON) | Import result summary |
+| POST | `/api/trees/upload-csv` | Upload trees from CSV file | CSV file + location_id | Import result summary |
+
+#### **Tree Data Structure**
+
+**Request Schema (POST /api/trees/)**:
+
+```json
+{
+  "location_id": "integer",
+  "species_id": "integer", 
+  "tree_tag": "string (optional)",
+  "latitude": "number (optional)",
+  "longitude": "number (optional)",
+  "elevation_m": "number (optional)",
+  "initial_height_m": "number (optional)",
+  "initial_dbh_cm": "number (optional)",
+  "initial_crown_width_m": "number (optional)",
+  "initial_volume_m3": "number (optional)",
+  "initial_capture_date": "datetime (optional)"
+}
+```
+
+**Tree Query Parameters (GET /api/trees/)**:
+
+- `location_id`: Filter by location ID
+- `species_name`: Filter by species name
+- `min_dbh`, `max_dbh`: DBH range filtering
+- `min_height`, `max_height`: Height range filtering
+- `health_status`: Filter by health status
+- `limit`: Maximum results (default: 100)
+- `offset`: Results to skip (default: 0)
+
+**Tree Measurement Schema (POST /api/trees/{id}/measurements)**:
+
+```json
+{
+  "measurement_date": "datetime (optional, defaults to now)",
+  "height_m": "number (optional)",
+  "dbh_cm": "number (optional)",
+  "crown_width_m": "number (optional)",
+  "crown_height_m": "number (optional)",
+  "health_status": "string (optional)",
+  "measurement_method": "string (optional)",
+  "measurement_quality": "string (optional)",
+  "notes": "string (optional)",
+  "measured_by": "string (optional)"
+}
+```
+
 ## 🧪 **Quick Testing Examples**
 
 ### **Test Health Endpoint**
@@ -157,6 +234,41 @@ curl -X POST "http://localhost:8000/api/locations/" \
 curl -X GET http://localhost:8000/api/locations/{location_id}
 ```
 
+### **Test Tree Endpoints**
+
+#### **List All Trees**
+
+```bash
+curl -X GET http://localhost:8000/api/trees/
+```
+
+#### **Create a New Tree**
+
+```bash
+curl -X POST "http://localhost:8000/api/trees/" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "location_id": 1,
+    "species_id": 2,
+    "tree_tag": "TFP-001",
+    "latitude": 48.0090,
+    "longitude": 7.8518,
+    "elevation_m": 150.5,
+    "initial_height_m": 1.2,
+    "initial_dbh_cm": 2.5,
+    "initial_crown_width_m": 0.8,
+    "initial_volume_m3": 0.3,
+    "initial_capture_date": "2023-10-01T10:00:00Z"
+  }'
+```
+
+#### **Get Specific Tree**
+
+```bash
+# Replace {tree_id} with actual ID from creation response
+curl -X GET http://localhost:8000/api/trees/{tree_id}
+```
+
 ## 🔄 **Response Status Codes**
 
 | Status Code | Meaning | When It Occurs |
@@ -164,7 +276,7 @@ curl -X GET http://localhost:8000/api/locations/{location_id}
 | **200** | OK | Successful GET request |
 | **201** | Created | Successful POST request (resource created) |
 | **400** | Bad Request | Invalid request data or malformed JSON |
-| **404** | Not Found | Requested resource (location) doesn't exist |
+| **404** | Not Found | Requested resource (location/tree) doesn't exist |
 | **422** | Validation Error | Request data doesn't match expected schema |
 | **500** | Internal Server Error | Server-side error (database connection, etc.) |
 
@@ -212,6 +324,29 @@ location_data = {
 response = requests.post(
     f"{BASE_URL}/api/locations/",
     json=location_data,
+    headers={"Content-Type": "application/json"}
+)
+print(response.status_code)
+print(response.json())
+
+# Test tree creation
+tree_data = {
+    "location_id": 1,
+    "species_id": 2,
+    "tree_tag": "TP-001",
+    "latitude": 48.0090,
+    "longitude": 7.8518,
+    "elevation_m": 150.5,
+    "initial_height_m": 1.2,
+    "initial_dbh_cm": 2.5,
+    "initial_crown_width_m": 0.8,
+    "initial_volume_m3": 0.3,
+    "initial_capture_date": "2023-10-01T10:00:00Z"
+}
+
+response = requests.post(
+    f"{BASE_URL}/api/trees/",
+    json=tree_data,
     headers={"Content-Type": "application/json"}
 )
 print(response.status_code)

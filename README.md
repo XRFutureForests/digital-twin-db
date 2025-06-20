@@ -1,37 +1,85 @@
-# XR Future Forests Lab - Docker Implementation
+# XR Future Forests Lab
 
-A comprehensive research initiative developing cutting-edge extended reality (XR) applications for forest and environmental sciences at the University of Freiburg, with a minimal Docker Compose implementation for development and testing.
+> **Status**: Full-featured MVP with comprehensive API implementation  
+> **Live API**: <http://localhost:8000/docs> (when running)  
+> **University**: University of Freiburg, Department of Forest Sciences
 
-## Quick Start
+A comprehensive digital twin ecosystem for forest research and management, combining extended reality (XR), spatial data processing, and real-time environmental monitoring.
 
-1. **Start the services**:
+## 🚀 **Quick Start**
 
-   ```bash
-   docker-compose up -d
-   ```
+### 5-Minute Setup
 
-2. **Check service health**:
+```bash
+# Clone and setup
+git clone <repository-url>
+cd xr-future-forests-lab
+./setup.sh
 
-   ```bash
-   curl http://localhost:8000/health
-   ```
+# Start all services
+docker-compose up -d
 
-3. **View API documentation**:
-   Open <http://localhost:8000/docs> in your browser
+# Verify everything works
+curl http://localhost:8000/health
+```
 
-4. **Connect to database**:
+**✅ Done!** Access the interactive API at <http://localhost:8000/docs>
 
-   ```bash
-   docker exec -it xr_forests_db psql -U forests_user -d xr_forests_lab
-   ```
+### What You Get
 
-## Architecture Overview
+- **Complete REST API** with 40+ endpoints for forest data management
+- **Interactive Documentation** for testing and exploration
+- **Spatial Database** with PostGIS for geographic data
+- **Real-time Events** via Redis for live updates
+- **Point Cloud Processing** for 3D forest data analysis
 
-The implementation follows the three-tier architecture documented in `/docs/architecture.md`:
+## 🌟 **Current Capabilities**
 
-- **Data Tier**: PostgreSQL with PostGIS for spatial data storage
-- **Logic Tier**: Python FastAPI application for processing and business logic  
-- **Presentation Tier**: REST API with WebSocket support for real-time updates
+### ✅ **Fully Implemented**
+
+- **Forest Location Management** - CRUD operations for forest sites with spatial data
+- **Tree Lifecycle Tracking** - Individual tree monitoring, measurements, and health assessments  
+- **Point Cloud Processing** - Upload, segmentation, classification, and quality assessment
+- **Environmental Monitoring** - Sensor data collection and site characterization
+- **Species Database** - Tree species classification and management
+- **Bulk Operations** - CSV imports and batch processing
+- **Real-time Events** - WebSocket support and event-driven updates
+
+### 🔄 **In Development**
+
+- XR client applications for immersive forest exploration
+- Advanced machine learning for automated species classification
+- Integration with external sensor networks and IoT devices
+
+## 📚 **Documentation**
+
+### 🎯 **Get Started**
+
+- **[Setup Guide](./docs/guides/setup.md)** - Complete installation and first run
+- **[Project Overview](./docs/guides/project-overview.md)** - Understanding our vision and goals
+- **[API Overview](./docs/api/overview.md)** - Using the REST API with examples
+
+### 👨‍💻 **For Developers**
+
+- **[Development Guide](./docs/guides/development.md)** - Complete development workflow
+- **[Contributing Guide](./docs/guides/contributing.md)** - How to contribute to the project
+- **[System Architecture](./docs/architecture/system-architecture.md)** - Technical design details
+
+### 🔧 **Technical Reference**
+
+- **[API Documentation](./docs/api/endpoints.md)** - Complete endpoint reference
+- **[Database Design](./docs/architecture/database-design.md)** - Schema and data models
+- **[Technology Stack](./docs/architecture/technology-stack.md)** - Technology explanations
+
+## 🏗️ **Architecture Summary**
+
+**Three-Tier Design** optimized for spatial data and real-time processing:
+
+- **🖥️ Presentation Tier**: FastAPI REST API with interactive documentation
+- **⚙️ Logic Tier**: Business services, data processing, and event handling  
+- **🗄️ Data Tier**: PostgreSQL + PostGIS + Redis for comprehensive data management
+
+**Technology Stack**: Python, FastAPI, PostgreSQL, PostGIS, Redis, Docker
 
 ## Services
 
@@ -72,7 +120,14 @@ The implementation follows the three-tier architecture documented in `/docs/arch
 - `GET /api/trees` - List trees with optional filtering
 - `GET /api/trees/{tree_id}` - Get detailed tree information
 - `POST /api/trees` - Create new tree record
+- `PUT /api/trees/{tree_id}` - Update tree record
+- `DELETE /api/trees/{tree_id}` - Delete tree record
+- `GET /api/trees/{tree_id}/measurements` - Get tree measurements
 - `POST /api/trees/{tree_id}/measurements` - Add tree measurements
+- `GET /api/trees/{tree_id}/health` - Get health assessments
+- `POST /api/trees/{tree_id}/health` - Add health assessment
+- `POST /api/trees/bulk-import` - Bulk import trees
+- `POST /api/trees/upload-csv` - Upload trees from CSV
 
 ### Environmental Data
 
