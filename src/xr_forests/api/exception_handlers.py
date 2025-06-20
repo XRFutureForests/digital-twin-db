@@ -7,7 +7,7 @@ from ..core.exceptions import (
     NotFoundError,
     DatabaseError,
     ValidationError,
-    ImportError,
+    DataImportError,
     ProcessingError,
     ConfigurationError,
 )
@@ -51,8 +51,8 @@ async def validation_exception_handler(request: Request, exc: ValidationError) -
     )
 
 
-async def import_exception_handler(request: Request, exc: ImportError) -> JSONResponse:
-    """Handle ImportError exceptions."""
+async def import_exception_handler(request: Request, exc: DataImportError) -> JSONResponse:
+    """Handle DataImportError exceptions."""
     return JSONResponse(
         status_code=400,
         content={
@@ -95,7 +95,7 @@ EXCEPTION_HANDLERS = {
     NotFoundError: not_found_exception_handler,
     DatabaseError: database_exception_handler,
     ValidationError: validation_exception_handler,
-    ImportError: import_exception_handler,
+    DataImportError: import_exception_handler,
     ProcessingError: processing_exception_handler,
     ConfigurationError: configuration_exception_handler,
 }
