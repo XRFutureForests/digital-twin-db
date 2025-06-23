@@ -20,11 +20,13 @@ class MeasurementSource(str, Enum):
     MODEL_ESTIMATED = "Model_Estimated"
 
 
-class TreeVitality(str, Enum):
+class TreeStatus(str, Enum):
     HEALTHY = "healthy"
     STRESSED = "stressed"
     DECLINING = "declining"
     DEAD = "dead"
+    DECAYING = "decaying"
+    SNAG = "snag"
 
 
 class VariantType(str, Enum):
@@ -37,8 +39,7 @@ class VariantType(str, Enum):
 
 class StructureType(str, Enum):
     QSM = "QSM"
-    L_SYSTEM = "L_System"
-    DEEPTREE = "DeepTree"
+    L_SYSTEM = "L-System"
     MANUAL = "Manual"
     PROCEDURAL = "Procedural"
 
@@ -119,7 +120,7 @@ class TreeMeasurements(BaseModel):
 class TreeHealth(BaseModel):
     """Tree health assessment."""
 
-    vitality: TreeVitality
+    vitality: TreeStatus
     health_score: float = Field(..., ge=0, le=100)
     disease_indicators: List[str] = []
     pest_indicators: List[str] = []
@@ -361,7 +362,7 @@ class TreeHealthAssessmentCreate(BaseModel):
     assessment_date: datetime = Field(
         default_factory=datetime.now, description="Date of assessment"
     )
-    health_status: TreeVitality
+    health_status: TreeStatus
     health_score: float = Field(..., ge=0, le=100)
     disease_indicators: List[str] = []
     pest_indicators: List[str] = []
@@ -376,7 +377,7 @@ class TreeHealthAssessmentResponse(BaseModel):
 
     id: str
     assessment_date: datetime
-    health_status: TreeVitality
+    health_status: TreeStatus
     health_score: float
     disease_indicators: List[str]
     pest_indicators: List[str]
@@ -393,7 +394,7 @@ class TreeHealthAssessmentResponse(BaseModel):
 class TreeBulkImportCreate(BaseModel):
     """Schema for bulk import of trees."""
 
-    trees: List[TreeCreate] = Field(..., min_items=1, max_items=1000)
+    trees: List[TreeCreate] = Field(..., min_length=1, max_length=1000)
     location_id: str
     default_species_id: Optional[int] = None
     import_source: str = "manual"

@@ -106,7 +106,7 @@ class TreeHealthAssessment(Base, TimestampMixin):
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
     tree_id = Column(UUID, ForeignKey("trees.id"), nullable=False)
     assessment_date = Column(Date, nullable=False)
-    health_status = Column(Enum(HealthStatus), nullable=False)
+    health_status = Column(Enum(TreeStatus), nullable=False)
     notes = Column(Text)
 ```
 
@@ -116,14 +116,14 @@ class TreeHealthAssessment(Base, TimestampMixin):
 class TreeHealthAssessmentCreate(BaseModel):
     tree_id: UUID
     assessment_date: date
-    health_status: HealthStatus
+    health_status: TreeStatus
     notes: Optional[str] = None
 
 class TreeHealthAssessmentResponse(BaseModel):
     id: UUID
     tree_id: UUID
     assessment_date: date
-    health_status: HealthStatus
+    health_status: TreeStatus
     notes: Optional[str]
     created_at: datetime
 ```
@@ -162,10 +162,10 @@ async def test_create_health_assessment():
     assessment_data = TreeHealthAssessmentCreate(
         tree_id=uuid.uuid4(),
         assessment_date=date.today(),
-        health_status=HealthStatus.HEALTHY
+        health_status=TreeStatus.HEALTHY
     )
     result = await service.create_health_assessment(assessment_data)
-    assert result.health_status == HealthStatus.HEALTHY
+    assert result.health_status == TreeStatus.HEALTHY
 ```
 
 ### Database Migrations

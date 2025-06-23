@@ -138,63 +138,16 @@ CREATE TABLE health_status (
     description TEXT
 );
 
-CREATE TABLE phenology_status (
+-- Tree Reference Tables
+CREATE TABLE tree_status (
     id SERIAL PRIMARY KEY,
-    status VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT
-);
-
-CREATE TABLE data_quality_types (
-    id SERIAL PRIMARY KEY,
-    quality_type VARCHAR(50) NOT NULL UNIQUE, -- Direct_Measurement, Point_Cloud_Derived, Model_Estimated
-    description TEXT
-);
-
-CREATE TABLE live_status_types (
-    id SERIAL PRIMARY KEY,
-    status_name VARCHAR(50) NOT NULL UNIQUE, -- alive, dead, decaying, snag
+    status_name VARCHAR(50) NOT NULL UNIQUE, -- healthy, stressed, declining, dead, decaying, snag
     description TEXT
 );
 
 CREATE TABLE variant_types (
     id SERIAL PRIMARY KEY,
     type_name VARCHAR(100) NOT NULL UNIQUE, -- Original, Growth_Simulation, Species_Replacement, Manual_Edit, New
-    description TEXT
-);
-
-CREATE TABLE structure_types (
-    id SERIAL PRIMARY KEY,
-    type_name VARCHAR(100) NOT NULL UNIQUE, -- QSM, LSystem, DeepTree, Manual, Procedural
-    description TEXT
-);
-
-CREATE TABLE microhabitat_types (
-    id SERIAL PRIMARY KEY,
-    type_name VARCHAR(100) NOT NULL UNIQUE, -- cavity, dead_branch, epiphyte, bark_feature, root_buttress
-    description TEXT
-);
-
-CREATE TABLE microhabitat_sizes (
-    id SERIAL PRIMARY KEY,
-    size_name VARCHAR(50) NOT NULL UNIQUE, -- small, medium, large
-    description TEXT
-);
-
-CREATE TABLE microhabitat_conditions (
-    id SERIAL PRIMARY KEY,
-    condition_name VARCHAR(50) NOT NULL UNIQUE, -- active, inactive, developing
-    description TEXT
-);
-
-CREATE TABLE stem_quality_types (
-    id SERIAL PRIMARY KEY,
-    quality_name VARCHAR(50) NOT NULL UNIQUE, -- excellent, good, fair, poor
-    description TEXT
-);
-
-CREATE TABLE stem_defect_types (
-    id SERIAL PRIMARY KEY,
-    defect_name VARCHAR(100) NOT NULL UNIQUE, -- sweep, crook, fork, rot, damage
     description TEXT
 );
 
@@ -282,19 +235,13 @@ CREATE TABLE tree_variants (
     crown_volume_m3 DECIMAL(8,3), -- 3D crown volume
     crown_density_percent DECIMAL(5,2), -- Foliage density within crown
     volume_m3 DECIMAL(8,3),
-    live_status_type_id INTEGER REFERENCES live_status_types(id),
-    estimated_age_years DECIMAL(5,1), -- Tree age estimation
-    health_status_id INTEGER REFERENCES health_status(id),
+    tree_status_id INTEGER REFERENCES tree_status(id), -- Combined health and live status
     position GEOMETRY(POINT, 4326), -- PostGIS point geometry (plot coordinates)
     absolute_position GEOMETRY(POINT, 4326), -- PostGIS point geometry (GPS coordinates)
-    local_density_trees_per_ha DECIMAL(8,2), -- Tree density in immediate vicinity
-    nearest_neighbor_distance_m DECIMAL(6,2), -- Distance to nearest tree
     variant_type_id INTEGER REFERENCES variant_types(id),
     time_delta_yrs DECIMAL(5,2), -- Time passed since parent state (years) - for growth simulations
     model_type VARCHAR(200), -- For growth simulations: model used
     model_parameters JSONB, -- JSON: model-specific parameters used
-    mortality_risk_prob DECIMAL(3,2), -- For growth simulations: predicted mortality risk
-    predicted_structure_data JSONB, -- For growth simulations: predicted structure data
     environmental_snapshot_id INTEGER REFERENCES environmental_snapshots(id), -- For growth simulations: environmental context
     created_by VARCHAR(200), -- User or system that created this variant
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -305,7 +252,7 @@ CREATE TABLE tree_variants (
 CREATE TABLE tree_structures (
     id SERIAL PRIMARY KEY,
     tree_variant_id INTEGER REFERENCES tree_variants(id),
-    structure_type_id INTEGER REFERENCES structure_types(id),
+    structure_type VARCHAR(100), -- Direct field: QSM, L-System, Manual, Procedural
     file_path VARCHAR(500), -- Path to model file (if any)
     structure_data JSONB, -- JSON or string (e.g. L-system, latent vector, QSM params)
     generation_date TIMESTAMP,
@@ -317,121 +264,20 @@ CREATE TABLE tree_structures (
 CREATE TABLE structure_branches (
     id SERIAL PRIMARY KEY,
     structure_id INTEGER REFERENCES tree_structures(id),
-    parent_branch_id INTEGER REFERENCES structure_branches(id), -- Hierarchical structure
-    branch_order INTEGER, -- 0=trunk, 1=primary, 2=secondary, etc.
+    parent_branch_id INTEGER REFERENCES structure_branches(id), -- Self-reference for tree hierarchy
+    branch_path VARCHAR(500), -- Materialized path (/1/3/7/) for efficient queries
+    branch_order INTEGER, -- 1=primary, 2=secondary, etc.
+    branch_depth INTEGER, -- Distance from trunk
     length_m DECIMAL(6,3),
-    diameter_cm DECIMAL(5,2),
-    start_diameter_cm DECIMAL(5,2), -- Diameter at branch base
-    end_diameter_cm DECIMAL(5,2), -- Diameter at branch tip
-    direction_deg DECIMAL(5,2), -- Azimuth (horizontal direction in degrees)
-    inclination_deg DECIMAL(5,2), -- Inclination angle from vertical (degrees)
-    start_height_m DECIMAL(6,3), -- Height of branch start on parent (m)
-    start_radius_cm DECIMAL(5,2), -- Radius at branch base (cm)
-    taper_type_id INTEGER REFERENCES taper_types(id),
-    branching_symmetry_type_id INTEGER REFERENCES branching_symmetry_types(id),
-    branch_arrangement_type_id INTEGER REFERENCES branch_arrangement_types(id),
-    straightness_index DECIMAL(3,2), -- 0-1, curvature measure
-    biomass_kg DECIMAL(8,3), -- Branch biomass
-    volume_m3 DECIMAL(8,4), -- Branch volume
-    surface_area_m2 DECIMAL(8,3), -- Branch surface area
-    leaf_area_m2 DECIMAL(8,3), -- Leaf area supported by branch
-    age_years INTEGER, -- Estimated branch age
-    health_status VARCHAR(50), -- healthy, damaged, dead
-    path VARCHAR(500), -- Materialized path for hierarchy (e.g., "1.2.5")
-    geometry JSONB -- JSON/OBJ
+    base_diameter_cm DECIMAL(5,2),
+    tip_diameter_cm DECIMAL(5,2),
+    direction_deg DECIMAL(5,2), -- Azimuth direction (0-360°)
+    inclination_deg DECIMAL(5,2), -- Angle from vertical (-90 to 90°)
+    branch_angle_deg DECIMAL(5,2), -- Angle from parent (0-180°)
+    start_height_m DECIMAL(6,3), -- Height on parent where branch starts
+    geometry JSONB -- JSON: 3D geometry data
 );
 
-CREATE TABLE structure_twigs (
-    id SERIAL PRIMARY KEY,
-    branch_id INTEGER REFERENCES structure_branches(id),
-    parent_twig_id INTEGER REFERENCES structure_twigs(id), -- Hierarchical twig structure
-    twig_order INTEGER, -- Order within twig hierarchy
-    length_m DECIMAL(6,3),
-    diameter_cm DECIMAL(5,2),
-    start_diameter_cm DECIMAL(5,2),
-    end_diameter_cm DECIMAL(5,2),
-    direction_deg DECIMAL(5,2),
-    inclination_deg DECIMAL(5,2),
-    start_height_m DECIMAL(6,3),
-    taper_type_id INTEGER REFERENCES taper_types(id),
-    leaf_density_count INTEGER, -- Number of leaves on twig
-    internodal_length_cm DECIMAL(5,2), -- Average distance between nodes
-    age_years INTEGER, -- Estimated twig age
-    health_status VARCHAR(50), -- healthy, damaged, dead
-    geometry JSONB -- JSON/OBJ
-);
-
-CREATE TABLE structure_leaves (
-    id SERIAL PRIMARY KEY,
-    twig_id INTEGER REFERENCES structure_twigs(id),
-    leaf_position_on_twig INTEGER, -- Position number on twig
-    length_cm DECIMAL(5,2), -- Leaf length
-    width_cm DECIMAL(5,2), -- Leaf width
-    area_cm2 DECIMAL(7,2), -- Individual leaf area
-    thickness_mm DECIMAL(4,2), -- Leaf thickness
-    petiole_length_cm DECIMAL(4,2), -- Petiole (stem) length
-    geometry JSONB, -- JSON/OBJ for 3D leaf geometry
-    phenology_status_id INTEGER REFERENCES phenology_status(id),
-    direction_deg DECIMAL(5,2), -- Leaf orientation direction
-    inclination_deg DECIMAL(5,2), -- Leaf angle from horizontal
-    start_height_m DECIMAL(6,3), -- Height of leaf attachment
-    color VARCHAR(50), -- Optional: leaf color for phenology/health
-    health_status VARCHAR(50), -- healthy, damaged, diseased, senescing
-    age_days INTEGER, -- Age of individual leaf
-    chlorophyll_content DECIMAL(5,2) -- Relative chlorophyll content
-);
-
-CREATE TABLE tree_microhabitats (
-    id SERIAL PRIMARY KEY,
-    tree_variant_id INTEGER REFERENCES tree_variants(id),
-    microhabitat_type_id INTEGER REFERENCES microhabitat_types(id),
-    height_m DECIMAL(6,3), -- Height of microhabitat feature
-    size_id INTEGER REFERENCES microhabitat_sizes(id),
-    condition_id INTEGER REFERENCES microhabitat_conditions(id),
-    description TEXT, -- Detailed description of microhabitat
-    first_observed TIMESTAMP, -- When microhabitat was first noted
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE tree_quality_assessment (
-    id SERIAL PRIMARY KEY,
-    tree_variant_id INTEGER REFERENCES tree_variants(id),
-    height_quality_id INTEGER REFERENCES data_quality_types(id),
-    dbh_quality_id INTEGER REFERENCES data_quality_types(id),
-    crown_width_quality_id INTEGER REFERENCES data_quality_types(id),
-    volume_quality_id INTEGER REFERENCES data_quality_types(id),
-    stem_straightness_index DECIMAL(3,2), -- 0-1: trunk straightness quality
-    stem_quality_type_id INTEGER REFERENCES stem_quality_types(id),
-    knot_frequency_per_m DECIMAL(5,2), -- Number of knots per meter
-    stem_defect_type_id INTEGER REFERENCES stem_defect_types(id),
-    crown_morphology_type_id INTEGER REFERENCES crown_morphology_types(id),
-    crown_height_ratio DECIMAL(3,2), -- Crown height / total height
-    root_condition_type_id INTEGER REFERENCES root_condition_types(id),
-    timber_value_index DECIMAL(3,2), -- 0-1: estimated timber quality
-    quality_notes TEXT, -- Additional quality observations
-    assessment_date TIMESTAMP, -- When quality assessment was performed
-    assessed_by VARCHAR(200), -- Personnel or method that performed assessment
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- VR-specific procedural generation parameters
-CREATE TABLE procedural_parameters (
-    id SERIAL PRIMARY KEY,
-    tree_variant_id INTEGER REFERENCES tree_variants(id),
-    species_id INTEGER REFERENCES species(id),
-    growth_rule_set JSONB, -- JSON: L-system rules, growth algorithms
-    branching_parameters JSONB, -- JSON: branching angles, probabilities
-    environmental_responses JSONB, -- JSON: responses to environmental factors
-    seasonal_variations JSONB, -- JSON: seasonal growth patterns
-    species_constraints JSONB, -- JSON: species-specific growth limits
-    procedural_seed INTEGER, -- Random seed for reproducible generation
-    complexity_level INTEGER, -- Detail level for VR rendering (1-5)
-    optimization_target VARCHAR(50), -- performance, quality, balanced
-    last_generated TIMESTAMP, -- When structure was last generated
-    generation_time_ms INTEGER, -- Time taken for last generation
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 -- =====================================================
 -- ENVIRONMENT DATABASE SCHEMA
 -- =====================================================
@@ -660,12 +506,6 @@ CREATE INDEX idx_tree_variants_scenario_species ON tree_variants (scenario_id, s
 -- Tree structure relationship indexes
 CREATE INDEX idx_tree_structures_variant ON tree_structures (tree_variant_id);
 CREATE INDEX idx_structure_branches_structure ON structure_branches (structure_id);
-CREATE INDEX idx_structure_twigs_branch ON structure_twigs (branch_id);
-CREATE INDEX idx_structure_leaves_twig ON structure_leaves (twig_id);
-
--- Tree assessment indexes
-CREATE INDEX idx_tree_microhabitats_variant ON tree_microhabitats (tree_variant_id);
-CREATE INDEX idx_tree_quality_assessment_variant ON tree_quality_assessment (tree_variant_id);
 
 -- Temporal indexes for sensor data
 CREATE INDEX idx_sensor_readings_timestamp ON sensor_readings (timestamp);
@@ -684,11 +524,6 @@ CREATE INDEX idx_sensor_readings_type_timestamp ON sensor_readings (reading_type
 CREATE INDEX idx_structure_branches_parent ON structure_branches (parent_branch_id);
 CREATE INDEX idx_structure_branches_order ON structure_branches (branch_order);
 CREATE INDEX idx_structure_branches_path ON structure_branches (path);
-CREATE INDEX idx_structure_twigs_parent ON structure_twigs (parent_twig_id);
-
--- Procedural generation indexes
-CREATE INDEX idx_procedural_parameters_variant ON procedural_parameters (tree_variant_id);
-CREATE INDEX idx_procedural_parameters_species ON procedural_parameters (species_id);
 
 -- =====================================================
 -- UNIQUE CONSTRAINTS
@@ -744,15 +579,11 @@ INSERT INTO phenology_status (status, description) VALUES
     ('senescence', 'Autumn senescence'),
     ('abscission', 'Leaf drop');
 
--- Data Quality Types
-INSERT INTO data_quality_types (quality_type, description) VALUES 
-    ('Direct_Measurement', 'Directly measured in field'),
-    ('Point_Cloud_Derived', 'Derived from point cloud analysis'),
-    ('Model_Estimated', 'Estimated using predictive models');
-
--- Live Status Types
-INSERT INTO live_status_types (status_name, description) VALUES 
-    ('alive', 'Tree is alive and healthy'),
+-- Tree Status Types (merged from health and live status)
+INSERT INTO tree_status (status_name, description) VALUES 
+    ('healthy', 'Tree is alive and healthy'),
+    ('stressed', 'Tree is alive but under stress'),
+    ('declining', 'Tree is declining in health'),
     ('dead', 'Tree is dead'),
     ('decaying', 'Tree is in decay process'),
     ('snag', 'Standing dead tree');
@@ -764,34 +595,6 @@ INSERT INTO variant_types (type_name, description) VALUES
     ('Species_Replacement', 'Alternative species scenario'),
     ('Manual_Edit', 'Manually edited tree variant'),
     ('New', 'New tree in scenario');
-
--- Structure Types
-INSERT INTO structure_types (type_name, description) VALUES 
-    ('QSM', 'Quantitative Structure Model'),
-    ('LSystem', 'L-System generated structure'),
-    ('DeepTree', 'Deep learning generated structure'),
-    ('Manual', 'Manually created structure'),
-    ('Procedural', 'Procedurally generated structure');
-
--- Microhabitat Types
-INSERT INTO microhabitat_types (type_name, description) VALUES 
-    ('cavity', 'Tree cavity for wildlife'),
-    ('dead_branch', 'Dead branch providing habitat'),
-    ('epiphyte', 'Epiphytic plant growth'),
-    ('bark_feature', 'Distinctive bark features'),
-    ('root_buttress', 'Root buttress formations');
-
--- Microhabitat Sizes
-INSERT INTO microhabitat_sizes (size_name, description) VALUES 
-    ('small', 'Small microhabitat feature'),
-    ('medium', 'Medium-sized microhabitat feature'),
-    ('large', 'Large microhabitat feature');
-
--- Microhabitat Conditions
-INSERT INTO microhabitat_conditions (condition_name, description) VALUES 
-    ('active', 'Currently active habitat'),
-    ('inactive', 'Inactive habitat'),
-    ('developing', 'Developing habitat feature');
 
 -- Stem Quality Types
 INSERT INTO stem_quality_types (quality_name, description) VALUES 
