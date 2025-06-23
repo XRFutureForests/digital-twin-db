@@ -1,36 +1,91 @@
 """Core schemas package."""
 
-from .location import LocationCreate, LocationResponse
-from .species import SpeciesResponse
+from .location import LocationCreate, LocationResponse, LocationUpdate, LocationQuery
+from .species import SpeciesResponse, SpeciesQuery
 from .tree import (
     TreeCreate,
     TreeResponse,
+    TreeUpdate,
+    TreeQuery,
     TreeMeasurementCreate,
     TreeMeasurementResponse,
+    TreeHealthAssessmentCreate,
+    TreeHealthAssessmentResponse,
+    TreeBulkImportCreate,
+    TreeBulkImportResponse,
     TreeDetailResponse,
 )
 from .environment import (
-    SensorResponse,
+    SensorReadingCreate,
     SensorReadingResponse,
+    EnvironmentalSnapshotCreate,
     EnvironmentalSnapshotResponse,
+    SiteCharacteristicsCreate,
     SiteCharacteristicsResponse,
+    EnvironmentalQuery,
     EnvironmentalQueryResponse,
+    SensorReadingBulkCreate,
+    SensorReadingBulkResponse,
 )
-from .point_cloud import PointCloudResponse
+from .sensor import (
+    SensorResponse,
+    SensorQuery,
+    SensorReadingResponse as SensorApiReadingResponse,
+)
+from .point_cloud import (
+    PointCloudCreate,
+    PointCloudResponse,
+    PointCloudUpdate,
+    PointCloudQuery,
+    ProcessingJobCreate,
+    ProcessingJobResponse,
+    SegmentationJobCreate,
+    SegmentationJobResponse,
+    ClassificationJobCreate,
+    ClassificationJobResponse,
+    QualityAssessmentResponse,
+)
 
 __all__ = [
     "LocationCreate",
     "LocationResponse",
+    "LocationUpdate",
+    "LocationQuery",
     "SpeciesResponse",
+    "SpeciesQuery",
     "TreeCreate",
     "TreeResponse",
+    "TreeUpdate",
+    "TreeQuery",
     "TreeMeasurementCreate",
     "TreeMeasurementResponse",
+    "TreeHealthAssessmentCreate",
+    "TreeHealthAssessmentResponse",
+    "TreeBulkImportCreate",
+    "TreeBulkImportResponse",
     "TreeDetailResponse",
-    "SensorResponse",
+    "SensorReadingCreate",
     "SensorReadingResponse",
+    "EnvironmentalSnapshotCreate",
     "EnvironmentalSnapshotResponse",
+    "SiteCharacteristicsCreate",
     "SiteCharacteristicsResponse",
+    "EnvironmentalQuery",
     "EnvironmentalQueryResponse",
+    "SensorReadingBulkCreate",
+    "SensorReadingBulkResponse",
+    "SensorResponse",
+    "SensorQuery",
+    "SensorApiReadingResponse",
+    "PointCloudCreate",
     "PointCloudResponse",
+    "PointCloudUpdate",
+    "PointCloudQuery",
+    "ProcessingJobCreate",
+    "ProcessingJobResponse",
+    "SegmentationJobCreate",
+    "SegmentationJobResponse",
+    "ClassificationJobCreate",
+    "ClassificationJobResponse",
+    "QualityAssessmentResponse",
 ]

@@ -41,10 +41,26 @@ flowchart TB
     PRESENTATION --> LOGIC
     LOGIC --> DATA
     
-    classDef clientTier fill:#8cdbc0,stroke:#265e4d,stroke-width:2px
-    classDef presentationTier fill:#e59778,stroke:#612515,stroke-width:2px
-    classDef logicTier fill:#59657e,stroke:#11151c,stroke-width:2px
-    classDef dataTier fill:#d2d2d2,stroke:#313d4f,stroke-width:2px
+    %% Subgraph styling - lightest colors
+    classDef clientTier fill:#8cdbc0,stroke:#265e4d,stroke-width:2px,color:#183029
+    classDef presentationTier fill:#e59778,stroke:#612515,stroke-width:2px,color:#612515
+    classDef logicTier fill:#59657e,stroke:#11151c,stroke-width:2px,color:#07090c
+    classDef dataTier fill:#d2d2d2,stroke:#505050,stroke-width:2px,color:#0f0f0f
+    
+    %% Node styling - darkest colors
+    classDef clientNodes fill:#265e4d,stroke:#183029,stroke-width:2px,color:#ffffff
+    classDef presentationNodes fill:#612515,stroke:#ad5643,stroke-width:2px,color:#ffffff
+    classDef logicNodes fill:#11151c,stroke:#313d4f,stroke-width:2px,color:#ffffff
+    classDef dataNodes fill:#505050,stroke:#8e8e8e,stroke-width:2px,color:#ffffff
+    
+    class CLIENTS clientTier
+    class WEB,XR,MOBILE,API_CLIENTS clientNodes
+    class PRESENTATION presentationTier
+    class FASTAPI,WEBSOCKET,DOCS presentationNodes
+    class LOGIC logicTier
+    class SERVICES,PROCESSING,EVENTS logicNodes
+    class DATA dataTier
+    class POSTGRES,REDIS,FILES dataNodes
 ```
 
 ## 🌐 **Presentation Tier**

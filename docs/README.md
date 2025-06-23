@@ -2,7 +2,7 @@
 
 > **Current Status**: Full-featured MVP with comprehensive API implementations  
 > **Live API**: <http://localhost:8000/docs> (when running)  
-> **Updated**: December 2024
+> **Updated**: June 2025
 
 Welcome to the XR Future Forests Lab documentation. This guide helps you navigate our comprehensive digital forest ecosystem platform.
 
@@ -47,12 +47,13 @@ docs/
 
 ### ✅ **Implemented Features**
 
-- **Complete REST API** with 40+ endpoints
+- **Complete REST API** with 50+ endpoints
 - **Forest Location Management** - CRUD operations for forest sites
 - **Tree Management** - Individual tree tracking, measurements, health assessments
 - **Point Cloud Processing** - Upload, processing, segmentation, and classification
 - **Environmental Data** - Sensor readings, site characteristics, environmental snapshots
 - **Species Management** - Tree species database and classification
+- **Sensor Management** - Sensor monitoring and data collection
 - **Bulk Operations** - CSV import, bulk tree creation
 - **Quality Assessment** - Automated quality checks for point clouds
 - **Real-time Events** - Redis-based event system
@@ -132,4 +133,4 @@ The system follows a three-tier architecture:
 
 ---
 
-*This documentation reflects the current state of the XR Future Forests Lab as of December 2024. The system is actively maintained and regularly updated.*
+*This documentation reflects the current state of the XR Future Forests Lab as of June 2025. The system is actively maintained and regularly updated.*

@@ -1,0 +1,32 @@
+{
+  "name": "Custom Palette (Contextual Light, Normal, Dark)",
+  "colors": [
+    { "name": "Rust Light",      "hex": "#e59778" },
+    { "name": "Rust",            "hex": "#ad5643" },
+    { "name": "Rust Dark",       "hex": "#612515" },
+
+    { "name": "Ash Light",       "hex": "#d2d2d2" },
+    { "name": "Ash",             "hex": "#8e8e8e" },
+    { "name": "Ash Dark",        "hex": "#505050" },
+
+    { "name": "Midnight Light",  "hex": "#434b5c" },
+    { "name": "Midnight",        "hex": "#191f28" },
+    { "name": "Midnight Dark",   "hex": "#07090c" },
+
+    { "name": "Mint Light",      "hex": "#8cdbc0" },
+    { "name": "Mint",            "hex": "#5cb89c" },
+    { "name": "Mint Dark",       "hex": "#265e4d" },
+
+    { "name": "Pine Light",      "hex": "#71a897" },
+    { "name": "Pine",            "hex": "#458875" },
+    { "name": "Pine Dark",       "hex": "#183029" },
+
+    { "name": "Slate Light",     "hex": "#59657e" },
+    { "name": "Slate",           "hex": "#313d4f" },
+    { "name": "Slate Dark",      "hex": "#11151c" },
+
+    { "name": "Charcoal Light",  "hex": "#666666" },
+    { "name": "Charcoal",        "hex": "#333333" },
+    { "name": "Charcoal Dark",   "hex": "#0f0f0f" }
+  ]
+}
