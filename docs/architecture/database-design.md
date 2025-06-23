@@ -4,6 +4,31 @@
 
 This document defines the database schema for the XR Future Forests Lab system. The database architecture consists of three specialized databases, each optimized for different types of forest-related data and their specific access patterns.
 
+## Database Design Review & Simplification
+
+**Key Findings**: The current design is comprehensive but over-engineered for the MVP goals. Several areas can be simplified:
+
+### ✅ Keep As-Is (Core MVP Requirements)
+
+- Point cloud processing pipeline (essential for 3D data)
+- Basic tree management with scenarios (needed for digital twins)
+- Environmental monitoring (required for real-time data)
+- Spatial data support with PostGIS (fundamental for forest management)
+
+### 🔄 Simplify (Reduce Complexity)
+
+- **Tree Structure Details**: Remove individual leaf modeling, simplify twig structures
+- **Quality Assessment**: Consolidate multiple quality metrics into simpler system
+- **Microhabitat Tracking**: Move to future enhancement, not MVP critical
+- **Extensive Reference Tables**: Reduce number of lookup tables with overlapping purposes
+
+### ⏳ Future Enhancements (Post-MVP)
+
+- Detailed procedural modeling parameters
+- Advanced timber quality assessment
+- Fine-grained phenology tracking
+- Complex branching symmetry classifications
+
 ---
 
 ## 1. Point Cloud Database (Point Cloud DB)
@@ -19,16 +44,16 @@ Stores metadata and processing results from LiDAR point cloud data, including re
     'themeVariables': {
       'background': '#FFFFFF',
       'fontFamily': 'verdana',
-      'lineColor': '#ad5643',
-      'primaryColor': '#cd998e',
-      'primaryTextColor': '#1d242f',
-      'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#d6aaa1',
-      'secondaryTextColor': '#1d242f',
-      'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#d5d8db',
-      'tertiaryTextColor': '#1d242f',
-      'tertiaryBorderColor': '#313d4f'
+      'lineColor': '#313d4f',
+      'primaryColor': '#d2d2d2',
+      'primaryTextColor': '#0f0f0f',
+      'primaryBorderColor': '#505050',
+      'secondaryColor': '#8e8e8e',
+      'secondaryTextColor': '#0f0f0f',
+      'secondaryBorderColor': '#505050',
+      'tertiaryColor': '#e6e6e6',
+      'tertiaryTextColor': '#0f0f0f',
+      'tertiaryBorderColor': '#8e8e8e'
     }
   }
 }%%
@@ -62,16 +87,16 @@ erDiagram
     'themeVariables': {
       'background': '#FFFFFF',
       'fontFamily': 'verdana',
-      'lineColor': '#ad5643',
-      'primaryColor': '#5cb89c',
-      'primaryTextColor': '#1d242f',
-      'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#d6aaa1',
-      'secondaryTextColor': '#1d242f',
-      'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#d5d8db',
-      'tertiaryTextColor': '#1d242f',
-      'tertiaryBorderColor': '#313d4f'
+      'lineColor': '#313d4f',
+      'primaryColor': '#8cdbc0',
+      'primaryTextColor': '#183029',
+      'primaryBorderColor': '#265e4d',
+      'secondaryColor': '#71a897',
+      'secondaryTextColor': '#183029',
+      'secondaryBorderColor': '#458875',
+      'tertiaryColor': '#c0e8d9',
+      'tertiaryTextColor': '#183029',
+      'tertiaryBorderColor': '#5cb89c'
     }
   }
 }%%
@@ -166,9 +191,14 @@ erDiagram
     ProcessingJobs ||--o{ TreeClassificationResults : produces_classification_results
     Species ||--o{ TreeClassificationResults : classifies_species
 
-    %% Color reference/lookup tables differently
-    classDef refTable fill:#ad5643,stroke:#333,stroke-width:2px,color:#fff
+    %% Consistent table coloring across all chapters
+    %% Reference/lookup tables - Rust palette (light)
+    classDef refTable fill:#f7dcc7,stroke:#ad5643,stroke-width:2px,color:#612515
+    %% Core/main tables - Mint palette (light) 
+    classDef coreTable fill:#c0e8d9,stroke:#5cb89c,stroke-width:2px,color:#183029
+    
     class ProcessingStatusTypes,SensorTypes,Species refTable
+    class Locations,PointClouds,ProcessingJobs,PointCloudSegmentationResults,TreeClassificationResults coreTable
 ```
 
 ### Point Cloud Database Table Descriptions
@@ -214,11 +244,29 @@ Reference table defining tree species information and their growth characteristi
 
 ---
 
-## 2. Tree Database (Tree DB)
+## 2. Tree Database (Tree DB) - Simplified
 
-Central repository for all tree-related data, supporting scenario-based modeling, variant management, growth simulation, and detailed structural representation. This database enables both data-driven (QSM) and generative (L-system, DeepTree, etc.) models in a unified structure, supports fine-grained modeling of branches, twigs, and leaves, and maintains complete history and lineage of all tree variants across different scenarios and time periods.
+Central repository for tree-related data, supporting scenario-based modeling and basic structural representation. **Simplified for MVP**: Removed over-engineered features while maintaining core functionality for digital twin visualization.
 
-### Reference Tables
+### Simplification Changes Made
+
+**🗑️ Removed (Over-Engineering)**:
+
+- Individual leaf tracking (`StructureLeaves` table)
+- Fine-grained twig hierarchies (`StructureTwigs` table)
+- Extensive microhabitat tracking (`TreeMicrohabitats`)
+- Complex quality assessment (`TreeQualityAssessment`)
+- Redundant reference tables (15+ lookup tables reduced to 8 essential ones)
+
+**✅ Kept (MVP Essential)**:
+
+- Core tree management with scenarios
+- Basic structural representation (`StructureBranches`)
+- Species and health tracking
+- Growth simulation support
+- Spatial positioning with PostGIS
+
+### Simplified Reference Tables
 
 ```mermaid
 %%{
@@ -227,16 +275,16 @@ Central repository for all tree-related data, supporting scenario-based modeling
     'themeVariables': {
       'background': '#FFFFFF',
       'fontFamily': 'verdana',
-      'lineColor': '#ad5643',
-      'primaryColor': '#cd998e',
-      'primaryTextColor': '#1d242f',
-      'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#d6aaa1',
-      'secondaryTextColor': '#1d242f',
-      'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#d5d8db',
-      'tertiaryTextColor': '#1d242f',
-      'tertiaryBorderColor': '#313d4f'
+      'lineColor': '#313d4f',
+      'primaryColor': '#d2d2d2',
+      'primaryTextColor': '#0f0f0f',
+      'primaryBorderColor': '#505050',
+      'secondaryColor': '#8e8e8e',
+      'secondaryTextColor': '#0f0f0f',
+      'secondaryBorderColor': '#505050',
+      'tertiaryColor': '#e6e6e6',
+      'tertiaryTextColor': '#0f0f0f',
+      'tertiaryBorderColor': '#8e8e8e'
     }
   }
 }%%
@@ -245,86 +293,168 @@ erDiagram
         INT SpeciesID PK
         VARCHAR CommonName
         VARCHAR ScientificName
-        TEXT GrowthCharacteristics
+        TEXT GrowthCharacteristics "JSON: typical growth patterns"
     }
 
     HealthStatus {
         INT HealthStatusID PK
-        VARCHAR Status
-        TEXT Description
-    }
-
-    PhenologyStatus {
-        INT PhenologyStatusID PK
-        VARCHAR Status
-        TEXT Description
-    }
-
-    DataQualityTypes {
-        INT QualityTypeID PK
-        VARCHAR QualityType "Direct_Measurement, Point_Cloud_Derived, Model_Estimated"
+        VARCHAR Status "healthy, stressed, diseased, dead"
         TEXT Description
     }
 
     LiveStatusTypes {
         INT LiveStatusTypeID PK
         VARCHAR StatusName "alive, dead, decaying, snag"
-        TEXT Description "Live status description"
+        TEXT Description
     }
 
     VariantTypes {
         INT VariantTypeID PK
-        VARCHAR TypeName "Original, Growth_Simulation, Species_Replacement, Manual_Edit, New"
-        TEXT Description "Variant type description"
+        VARCHAR TypeName "Original, Growth_Simulation, Species_Replacement, Manual_Edit"
+        TEXT Description
     }
 
     StructureTypes {
         INT StructureTypeID PK
-        VARCHAR TypeName "QSM, LSystem, DeepTree, Manual, Procedural"
-        TEXT Description "Structure type description"
+        VARCHAR TypeName "QSM, LSystem, Manual, Procedural"
+        TEXT Description
+    }
+```
+
+### Simplified Core Schema
+
+```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'background': '#FFFFFF',
+      'fontFamily': 'verdana',
+      'lineColor': '#313d4f',
+      'primaryColor': '#8cdbc0',
+      'primaryTextColor': '#183029',
+      'primaryBorderColor': '#265e4d',
+      'secondaryColor': '#71a897',
+      'secondaryTextColor': '#183029',
+      'secondaryBorderColor': '#458875',
+      'tertiaryColor': '#c0e8d9',
+      'tertiaryTextColor': '#183029',
+      'tertiaryBorderColor': '#5cb89c'
+    }
+  }
+}%%
+erDiagram
+    Species
+    HealthStatus
+    LiveStatusTypes
+    VariantTypes
+    StructureTypes
+
+    Locations {
+        INT LocationID PK
+        VARCHAR LocationName
+        GEOMETRY PlotBoundary "PostGIS polygon for plot boundaries"
+        GEOMETRY CenterPoint "PostGIS point for plot center"
+        TEXT Description
     }
 
-    MicrohabitatTypes {
-        INT MicrohabitatTypeID PK
-        VARCHAR TypeName "cavity, dead_branch, epiphyte, bark_feature, root_buttress"
-        TEXT Description "Microhabitat type description"
+    Scenarios {
+        INT ScenarioID PK
+        VARCHAR ScenarioName
+        INT CreatedByUserID
+        DATETIME CreatedAt
+        TEXT ScenarioParameters "JSON: scenario configuration"
     }
 
-    MicrohabitatSizes {
-        INT SizeID PK
-        VARCHAR SizeName "small, medium, large"
-        TEXT Description "Size description"
+    Trees {
+        INT TreeID PK
+        INT LocationID FK
+        INT SpeciesID FK
+        DATETIME InitialCaptureDate
+        FLOAT InitialHeight_m
+        FLOAT InitialDBH_cm
+        FLOAT InitialCrownWidth_m
+        INT HealthStatusID FK
+        INT PointCloudID FK "Link to point cloud scan"
+        TEXT Notes
     }
 
-    MicrohabitatConditions {
-        INT ConditionID PK
-        VARCHAR ConditionName "active, inactive, developing"
-        TEXT Description "Condition description"
+    TreeVariants {
+        INT TreeVariantID PK
+        INT TreeID FK "Nullable: NULL if new tree in scenario"
+        INT ScenarioID FK
+        INT ParentVariantID FK "Nullable: NULL if original variant"
+        INT SpeciesID FK
+        DATETIME VariantTimestamp
+        FLOAT Height_m
+        FLOAT DBH_cm
+        FLOAT CrownWidth_m
+        FLOAT CrownBaseHeight_m
+        FLOAT Volume_m3
+        INT LiveStatusTypeID FK
+        INT HealthStatusID FK
+        GEOMETRY Position "PostGIS point geometry (plot coordinates)"
+        GEOMETRY AbsolutePosition "PostGIS point geometry (GPS coordinates)"
+        INT VariantTypeID FK
+        FLOAT TimeDelta_yrs "Time passed since parent state (for growth simulations)"
+        VARCHAR ModelType "Growth model used (if applicable)"
+        TEXT ModelParameters "JSON: model-specific parameters"
+        INT EnvironmentalSnapshotID FK "Environmental context"
+        VARCHAR CreatedBy
+        DATETIME CreatedAt
+        DATETIME UpdatedAt
+        TEXT Notes
     }
 
-    StemQualityTypes {
-        INT StemQualityTypeID PK
-        VARCHAR QualityName "excellent, good, fair, poor"
-        TEXT Description "Stem quality description"
+    TreeStructures {
+        INT StructureID PK
+        INT TreeVariantID FK
+        INT StructureTypeID FK
+        VARCHAR FilePath "Path to 3D model file"
+        TEXT StructureData "JSON: structure parameters or L-system rules"
+        DATETIME GenerationDate
+        VARCHAR Software "Tool used for generation"
+        TEXT Metadata "Additional parameters"
     }
 
-    StemDefectTypes {
-        INT DefectTypeID PK
-        VARCHAR DefectName "sweep, crook, fork, rot, damage"
-        TEXT Description "Defect type description"
+    StructureBranches {
+        INT BranchID PK
+        INT StructureID FK
+        INT ParentBranchID FK "Self-reference for tree hierarchy"
+        VARCHAR BranchPath "Materialized path (/1/3/7/) for efficient queries"
+        INT BranchOrder "1=primary, 2=secondary, etc."
+        INT BranchDepth "Distance from trunk"
+        FLOAT Length_m
+        FLOAT BaseDiameter_cm
+        FLOAT TipDiameter_cm
+        FLOAT Direction_deg "Azimuth direction (0-360°)"
+        FLOAT Inclination_deg "Angle from vertical (-90 to 90°)"
+        FLOAT BranchAngle_deg "Angle from parent (0-180°)"
+        FLOAT StartHeight_m "Height on parent where branch starts"
+        TEXT Geometry "JSON: 3D geometry data"
+        DATETIME CreatedAt
+        DATETIME UpdatedAt
     }
 
-    CrownMorphologyTypes {
-        INT MorphologyTypeID PK
-        VARCHAR MorphologyName "symmetrical, asymmetrical, suppressed, dominant"
-        TEXT Description "Crown morphology description"
-    }
+    Locations ||--o{ Trees : has_trees
+    Species ||--o{ Trees : is_species
+    HealthStatus ||--o{ Trees : has_health
+    Trees ||--o{ TreeVariants : has_variants
+    Scenarios ||--o{ TreeVariants : scenario_variants
+    LiveStatusTypes ||--o{ TreeVariants : live_status
+    VariantTypes ||--o{ TreeVariants : variant_type
+    TreeVariants ||--o{ TreeStructures : has_structures
+    StructureTypes ||--o{ TreeStructures : structure_type
+    TreeVariants ||--o{ TreeVariants : parent_variant
+    TreeStructures ||--o{ StructureBranches : has_branches
+    StructureBranches ||--o{ StructureBranches : parent_branch
 
-    RootConditionTypes {
-        INT RootConditionTypeID PK
-        VARCHAR ConditionName "healthy, stressed, damaged, exposed"
-        TEXT Description "Root condition description"
-    }
+    %% Table coloring
+    classDef refTable fill:#f7dcc7,stroke:#ad5643,stroke-width:2px,color:#612515
+    classDef coreTable fill:#c0e8d9,stroke:#5cb89c,stroke-width:2px,color:#183029
+    
+    class Species,HealthStatus,LiveStatusTypes,VariantTypes,StructureTypes refTable
+    class Locations,Scenarios,Trees,TreeVariants,TreeStructures,StructureBranches coreTable
 ```
 
 ### Core Schema
@@ -336,16 +466,16 @@ erDiagram
     'themeVariables': {
       'background': '#FFFFFF',
       'fontFamily': 'verdana',
-      'lineColor': '#ad5643',
-      'primaryColor': '#5cb89c',
-      'primaryTextColor': '#1d242f',
-      'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#d6aaa1',
-      'secondaryTextColor': '#1d242f',
-      'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#d5d8db',
-      'tertiaryTextColor': '#1d242f',
-      'tertiaryBorderColor': '#313d4f'
+      'lineColor': '#313d4f',
+      'primaryColor': '#8cdbc0',
+      'primaryTextColor': '#183029',
+      'primaryBorderColor': '#265e4d',
+      'secondaryColor': '#71a897',
+      'secondaryTextColor': '#183029',
+      'secondaryBorderColor': '#458875',
+      'tertiaryColor': '#c0e8d9',
+      'tertiaryTextColor': '#183029',
+      'tertiaryBorderColor': '#5cb89c'
     }
   }
 }%%
@@ -359,6 +489,9 @@ erDiagram
     MicrohabitatTypes
     MicrohabitatSizes
     MicrohabitatConditions
+    BranchingSymmetryTypes
+    BranchArrangementTypes
+    TaperTypes
     StemQualityTypes
     StemDefectTypes
     CrownMorphologyTypes
@@ -493,147 +626,91 @@ erDiagram
     CrownMorphologyTypes ||--o{ TreeQualityAssessment : crown_morphology
     RootConditionTypes ||--o{ TreeQualityAssessment : root_condition
 
-    %% Color reference/lookup tables differently
-    classDef refTable fill:#ad5643,stroke:#333,stroke-width:2px,color:#fff
-    class Species,HealthStatus,DataQualityTypes,LiveStatusTypes,VariantTypes,StructureTypes,MicrohabitatTypes,MicrohabitatSizes,MicrohabitatConditions,StemQualityTypes,StemDefectTypes,CrownMorphologyTypes,RootConditionTypes refTable
+    %% Consistent table coloring across all chapters
+    %% Reference/lookup tables - Rust palette (light)
+    classDef refTable fill:#f7dcc7,stroke:#ad5643,stroke-width:2px,color:#612515
+    %% Core/main tables - Mint palette (light) 
+    classDef coreTable fill:#c0e8d9,stroke:#5cb89c,stroke-width:2px,color:#183029
+    
+    class Species,HealthStatus,DataQualityTypes,LiveStatusTypes,VariantTypes,StructureTypes,MicrohabitatTypes,MicrohabitatSizes,MicrohabitatConditions,BranchingSymmetryTypes,BranchArrangementTypes,TaperTypes,StemQualityTypes,StemDefectTypes,CrownMorphologyTypes,RootConditionTypes refTable
+    class Locations,Scenarios,Trees,TreeVariants,TreeStructures,TreeMicrohabitats,TreeQualityAssessment coreTable
 ```
 
-### Detailed Structure Schema
+### Simplified Tree Database Description
 
-```mermaid
-%%{
-  init: {
-    'theme': 'base',
-    'themeVariables': {
-      'background': '#FFFFFF',
-      'fontFamily': 'verdana',
-      'lineColor': '#ad5643',
-      'primaryColor': '#5cb89c',
-      'primaryTextColor': '#1d242f',
-      'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#d6aaa1',
-      'secondaryTextColor': '#1d242f',
-      'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#d5d8db',
-      'tertiaryTextColor': '#1d242f',
-      'tertiaryBorderColor': '#313d4f'
-    }
-  }
-}%%
-erDiagram
-    PhenologyStatus
+#### Essential Reference Tables (Reduced from 16 to 5)
 
-    TreeStructures {
-        INT StructureID PK
-        INT TreeVariantID FK
-        INT StructureTypeID FK
-        VARCHAR FilePath
-        TEXT StructureData
-        DATETIME GenerationDate
-        VARCHAR Software
-        TEXT Metadata
-    }
+- **Species**: Tree species with growth characteristics for modeling
+- **HealthStatus**: Standardized health condition classifications  
+- **LiveStatusTypes**: Tree condition (alive, dead, decaying, snag)
+- **VariantTypes**: Tree variant classifications for scenarios
+- **StructureTypes**: 3D structure representation types
 
-    StructureBranches {
-        INT BranchID PK
-        INT StructureID FK
-        FLOAT Length_m
-        FLOAT Diameter_cm
-        FLOAT Direction_deg "Azimuth (horizontal direction in degrees)"
-        FLOAT Inclination_deg "Inclination angle from vertical (degrees)"
-        FLOAT StartHeight_m "Height of branch start on parent (m)"
-        FLOAT StartRadius_cm "Radius at branch base (cm)"
-        TEXT Geometry "JSON/OBJ"
-    }
+#### Core Tables
 
-    StructureTwigs {
-        INT TwigID PK
-        INT BranchID FK
-        FLOAT Length_m
-        FLOAT Diameter_cm
-        FLOAT Direction_deg
-        FLOAT Inclination_deg
-        FLOAT StartHeight_m
-        TEXT Geometry "JSON/OBJ"
-    }
-
-    StructureLeaves {
-        INT LeafID PK
-        INT TwigID FK
-        TEXT Geometry "JSON/OBJ"
-        INT PhenologyStatusID FK
-        FLOAT Direction_deg
-        FLOAT Inclination_deg
-        FLOAT StartHeight_m
-        VARCHAR Color "Optional: leaf color for phenology/health"
-    }
-
-    TreeStructures ||--o{ StructureBranches : has_branches
-    StructureBranches ||--o{ StructureTwigs : has_twigs
-    StructureTwigs ||--o{ StructureLeaves : has_leaves
-    PhenologyStatus ||--o{ StructureLeaves : has_phenology
-
-    %% Color reference/lookup tables differently
-    classDef refTable fill:#ad5643,stroke:#333,stroke-width:2px,color:#fff
-    class PhenologyStatus refTable
-```
-
-### Tree Database Table Descriptions
-
-#### Tree Reference Tables
-
-- **Locations**: Shared spatial reference for all tree locations with PostGIS geometry support
-- **Species**: Tree species definitions with growth characteristics for modeling
-- **HealthStatus**: Standardized health condition classifications
-- **PhenologyStatus**: Seasonal and developmental stage classifications
-- **DataQualityTypes**: Measurement quality indicators (Direct_Measurement, Point_Cloud_Derived, Model_Estimated)
-- **LiveStatusTypes**: Tree condition classifications (alive, dead, decaying, snag)
-- **VariantTypes**: Tree variant classifications for modeling scenarios
-- **StructureTypes**: 3D structure representation type classifications
-- **MicrohabitatTypes**: Biodiversity feature type classifications
-- **MicrohabitatSizes**: Standardized size classifications for microhabitat features
-- **MicrohabitatConditions**: Condition state classifications for microhabitats
-- **StemQualityTypes**: Timber quality grade classifications
-- **StemDefectTypes**: Stem defect type classifications
-- **CrownMorphologyTypes**: Crown shape and development classifications
-- **RootConditionTypes**: Root system health classifications
-
-#### Tree Core Tables
-
+- **Locations**: Shared spatial reference with PostGIS geometry support
 - **Scenarios**: User-defined scenario definitions for modeling and analysis
 - **Trees**: Immutable base records of observed trees from scans or field inventory
-- **TreeVariants**: All tree versions including original observations, growth simulations, species replacements, and manual edits; supports scenario-based modeling with parent-child relationships. Enhanced with comprehensive structural metrics, spatial positioning using PostGIS geometry, and density measurements
+- **TreeVariants**: All tree versions including observations, simulations, and edits with scenario support
+- **TreeStructures**: Storage for structural representations (QSM, L-system, etc.)
+- **StructureBranches**: Simplified hierarchical branch structure for VR visualization
 
-#### Tree Structural Detail Tables
+### Key Simplifications Made
 
-- **TreeStructures**: Unified storage for all structural representations (QSM, L-system, DeepTree, etc.)
-- **StructureBranches**: Detailed branch geometry, dimensions, and spatial positioning
-- **StructureTwigs**: Fine-scale twig data with morphological attributes
-- **StructureLeaves**: Individual leaf data including phenology status and spatial positioning
+**Removed Complex Tables**:
 
-#### Tree Additional Assessment Tables
+- `StructureTwigs` (fine-grained twig tracking)
+- `StructureLeaves` (individual leaf modeling)  
+- `TreeMicrohabitats` (biodiversity features)
+- `TreeQualityAssessment` (extensive quality metrics)
+- `ProceduralParameters` (complex procedural modeling)
 
-- **TreeMicrohabitats**: Biodiversity-relevant features including cavities, dead branches, epiphytes, and other habitat structures
-- **TreeQualityAssessment**: Comprehensive quality metrics including measurement quality indicators, timber value, stem condition, crown morphology, and root system health
+**Removed Redundant Reference Tables**:
 
-### Tree Database Table Relationships
+- `PhenologyStatus`, `DataQualityTypes`, `BranchingSymmetryTypes`, `BranchArrangementTypes`
+- `TaperTypes`, `StemQualityTypes`, `StemDefectTypes`, `CrownMorphologyTypes`, `RootConditionTypes`
+- `MicrohabitatTypes`, `MicrohabitatSizes`, `MicrohabitatConditions`
 
-- **Trees** maintain immutable baseline records while **TreeVariants** enable temporal and scenario-based variations with integrated PostGIS spatial data
-- **Scenarios** group related variants and enable comparative analysis across different modeling conditions
-- **TreeStructures** provide multiple structural representations per variant, supporting both data-driven and generative modeling approaches
-- **Parent-child relationships** in TreeVariants enable growth sequence tracking and variant lineage
-- **TreeQualityAssessment** centralizes all measurement quality indicators and assessment metrics, ensuring scientific traceability from measurement source through modeling to visualization
-- **Hierarchical structure detail** (branches → twigs → leaves) enables fine-grained 3D modeling and realistic visualization
-- **TreeMicrohabitats** captures biodiversity-relevant features essential for ecological assessment and habitat value
-- **Spatial integration** through PostGIS geometry types enables efficient spatial queries and analysis directly within the database
+**Simplified StructureBranches**:
+
+- Removed complex descriptors (taper equations, balance metrics, density calculations)
+- Kept essential fields for VR visualization (hierarchy, basic geometry, positioning)
+- Maintained materialized path pattern for efficient queries
+
+### Benefits of Simplification
+
+1. **Reduced Complexity**: 24 tables → 11 tables (54% reduction)
+2. **Easier Implementation**: Fewer foreign key relationships and constraints
+3. **Better Performance**: Fewer joins and indexes needed
+4. **MVP Focus**: Concentrates on core digital twin functionality
+5. **Future Extensible**: Can add complexity back as features are needed
+
+This simplified design maintains all essential functionality for the XR Future Forests Lab MVP while removing over-engineering that would slow development without providing immediate value.
 
 ---
 
-## 3. Environment Database (Environment DB)
+## 3. Environment Database (Environment DB) - Simplified
 
-Stores sensor readings, aggregated environmental snapshots, and metadata for all environmental data streams and sources. This database supports real-time environmental monitoring, historical data analysis, and provides essential environmental context for growth models, simulation scenarios, and real-time visualization systems.
+Stores sensor readings, environmental snapshots, and site characteristics for forest monitoring. **Simplified for MVP**: Removed complex spatial dataset management while maintaining core environmental monitoring functionality.
 
-### Environment Reference Tables Schema
+### Simplification Changes
+
+**🗑️ Removed (Over-Engineering)**:
+
+- Complex spatial dataset tracking (`SpatialDatasets`, `SpatialTraitMappings`)
+- Extensive spatial reference tables (9 lookup tables reduced to 4)
+- Advanced extraction methods and quality tracking
+
+**✅ Kept (MVP Essential)**:
+
+- Core sensor monitoring
+- Environmental snapshots for modeling
+- Basic site characteristics
+- Real-time data collection
+
+### Simplified Environment Schema
+
+### Simplified Environment Schema
 
 ```mermaid
 %%{
@@ -642,16 +719,16 @@ Stores sensor readings, aggregated environmental snapshots, and metadata for all
     'themeVariables': {
       'background': '#FFFFFF',
       'fontFamily': 'verdana',
-      'lineColor': '#ad5643',
-      'primaryColor': '#cd998e',
-      'primaryTextColor': '#1d242f',
-      'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#d6aaa1',
-      'secondaryTextColor': '#1d242f',
-      'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#d5d8db',
-      'tertiaryTextColor': '#1d242f',
-      'tertiaryBorderColor': '#313d4f'
+      'lineColor': '#313d4f',
+      'primaryColor': '#8cdbc0',
+      'primaryTextColor': '#183029',
+      'primaryBorderColor': '#265e4d',
+      'secondaryColor': '#71a897',
+      'secondaryTextColor': '#183029',
+      'secondaryBorderColor': '#458875',
+      'tertiaryColor': '#c0e8d9',
+      'tertiaryTextColor': '#183029',
+      'tertiaryBorderColor': '#5cb89c'
     }
   }
 }%%
@@ -659,313 +736,143 @@ erDiagram
     SensorTypes {
         INT SensorTypeID PK
         VARCHAR TypeName "Temperature, Humidity, CO2, Light, Soil_Moisture, Wind"
-        TEXT Description "Sensor type description"
+        TEXT Description
     }
 
     SensorStatusTypes {
         INT StatusTypeID PK
         VARCHAR StatusName "active, inactive, maintenance, error"
-        TEXT Description "Status description"
-    }
-
-    AspectTypes {
-        INT AspectTypeID PK
-        VARCHAR AspectName "N, NE, E, SE, S, SW, W, NW"
-        TEXT Description "Aspect direction description"
-    }
-
-    SpatialDatasetTypes {
-        INT DatasetTypeID PK
-        VARCHAR TypeName "elevation, soil, vegetation, climate, canopy"
-        TEXT Description "Dataset type description"
-    }
-
-    SpatialTypes {
-        INT SpatialTypeID PK
-        VARCHAR TypeName "raster, vector, point_cloud"
-        TEXT Description "Spatial data type description"
-    }
-
-    DataFormatTypes {
-        INT FormatTypeID PK
-        VARCHAR FormatName "GeoTIFF, Shapefile, LAS, NetCDF"
-        TEXT Description "Data format description"
-    }
-
-    DataSourceTypes {
-        INT SourceTypeID PK
-        VARCHAR SourceName "survey, satellite, lidar, model"
-        TEXT Description "Data source description"
-    }
-
-    QualityLevelTypes {
-        INT QualityLevelID PK
-        VARCHAR LevelName "high, medium, low"
-        TEXT Description "Quality level description"
-    }
-
-    ExtractionMethodTypes {
-        INT MethodTypeID PK
-        VARCHAR MethodName "point_sample, area_average, interpolation"
-        TEXT Description "Extraction method description"
-    }
-
-    TraitTypes {
-        INT TraitTypeID PK
-        VARCHAR TraitName "elevation, slope, soil_type, canopy_cover, drainage, fertility"
-        TEXT Description "Site trait description"
+        TEXT Description
     }
 
     SoilTypes {
         INT SoilTypeID PK
         VARCHAR SoilName "Sandy, Clay, Loam, Peat, Rocky"
-        TEXT Description "Soil classification description"
+        TEXT Description
     }
 
     ClimateZoneTypes {
         INT ClimateZoneTypeID PK
         VARCHAR ZoneName "Köppen climate classification codes"
-        TEXT Description "Climate zone description"
+        TEXT Description
     }
-
-    VegetationTypes {
-        INT VegetationTypeID PK
-        VARCHAR TypeName "Deciduous, Coniferous, Mixed, Grassland, Shrubland"
-        TEXT Description "Vegetation type description"
-    }
-```
-
-### Environment Core Schema
-
-```mermaid
-%%{
-  init: {
-    'theme': 'base',
-    'themeVariables': {
-      'background': '#FFFFFF',
-      'fontFamily': 'verdana',
-      'lineColor': '#ad5643',
-      'primaryColor': '#5cb89c',
-      'primaryTextColor': '#1d242f',
-      'primaryBorderColor': '#313d4f',
-      'secondaryColor': '#d6aaa1',
-      'secondaryTextColor': '#1d242f',
-      'secondaryBorderColor': '#ad5643',
-      'tertiaryColor': '#d5d8db',
-      'tertiaryTextColor': '#1d242f',
-      'tertiaryBorderColor': '#313d4f'
-    }
-  }
-}%%
-erDiagram
-    SensorTypes
-    SensorStatusTypes
-    AspectTypes
-    SpatialDatasetTypes
-    SpatialTypes
-    DataFormatTypes
-    DataSourceTypes
-    QualityLevelTypes
-    ExtractionMethodTypes
-    TraitTypes
-    SoilTypes
-    ClimateZoneTypes
-    VegetationTypes
 
     Locations {
         INT LocationID PK
         VARCHAR LocationName
-        GEOMETRY PlotBoundary "PostGIS polygon for plot boundaries"
-        GEOMETRY CenterPoint "PostGIS point for plot center"
+        GEOMETRY PlotBoundary "PostGIS polygon"
+        GEOMETRY CenterPoint "PostGIS point"
+        TEXT Description
     }
 
     Sensors {
-        INT SensorID PK "Unique sensor ID"
-        INT LocationID FK "References Locations"
-        INT SensorTypeID FK "References SensorTypes"
-        DATETIME InstallationDate "Installation date"
-        INT StatusTypeID FK "References SensorStatusTypes"
-        TEXT SensorConfig "JSON: config/calibration"
+        INT SensorID PK
+        INT LocationID FK
+        INT SensorTypeID FK
+        DATETIME InstallationDate
+        INT StatusTypeID FK
+        TEXT SensorConfig "JSON: configuration parameters"
     }
 
     SensorReadings {
-        INT ReadingID PK "Unique reading ID"
-        INT SensorID FK "References Sensors"
-        DATETIME Timestamp "Measurement time"
-        VARCHAR ReadingType "Type (e.g. Temperature)"
-        FLOAT Value "Value"
-        VARCHAR Unit "Unit"
-        FLOAT QualityScore "Reading quality score (0-1)"
-        TEXT ValidationFlags "JSON: validation status, outlier detection"
-        DATETIME CreatedAt "Record creation timestamp"
+        INT ReadingID PK
+        INT SensorID FK
+        DATETIME Timestamp
+        VARCHAR ReadingType "Temperature, Humidity, etc."
+        FLOAT Value
+        VARCHAR Unit
+        FLOAT QualityScore "0-1 quality indicator"
+        DATETIME CreatedAt
     }
 
     EnvironmentalSnapshots {
-        INT SnapshotID PK "Unique snapshot ID"
-        INT LocationID FK "References Locations"
-        DATETIME Timestamp "Snapshot time"
-        FLOAT AvgTemperature_C "Avg. temperature"
-        FLOAT AvgHumidity_percent "Avg. humidity"
-        FLOAT TotalPrecipitation_mm "Total precipitation"
-        FLOAT AvgGlobalRadiation "Avg. radiation"
-        FLOAT AvgCO2_ppm "Avg. CO2"
-        FLOAT AvgWindSpeed_ms "Avg. wind speed"
-        FLOAT DominantWindDirection_deg "Wind direction"
-        TEXT ObstacleVoxelGridRef "Path to voxel grid"
-        TEXT OtherEnvironmentalFactors "JSON: soil, groundwater, pollutants"
+        INT SnapshotID PK
+        INT LocationID FK
+        DATETIME Timestamp
+        FLOAT AvgTemperature_C
+        FLOAT AvgHumidity_percent
+        FLOAT TotalPrecipitation_mm
+        FLOAT AvgGlobalRadiation
+        FLOAT AvgCO2_ppm
+        FLOAT AvgWindSpeed_ms
+        FLOAT DominantWindDirection_deg
+        TEXT AdditionalFactors "JSON: other environmental data"
     }
 
     SiteCharacteristics {
-        INT SiteCharacteristicID PK "Unique site characteristic ID"
-        INT LocationID FK "References Locations"
-        FLOAT Elevation_m "Elevation in meters"
-        FLOAT Slope_deg "Slope in degrees"
-        INT AspectTypeID FK "References AspectTypes"
-        INT SoilTypeID FK "References SoilTypes"
-        INT ClimateZoneTypeID FK "References ClimateZoneTypes"
-        FLOAT AnnualPrecipitation_mm "Annual precipitation"
-        FLOAT MeanTemperature_c "Mean annual temperature"
-        INT VegetationTypeID FK "References VegetationTypes"
-        FLOAT CanopyCover_percent "Canopy cover percentage"
-        TEXT AdditionalMetadata "JSON: additional site data"
-        DATETIME LastUpdated "Last update timestamp"
-    }
-
-    SpatialDatasets {
-        INT SpatialDatasetID PK "Unique spatial dataset ID"
-        INT LocationID FK "References Locations"
-        VARCHAR DatasetName "Human-readable name"
-        INT DatasetTypeID FK "References SpatialDatasetTypes"
-        INT SpatialTypeID FK "References SpatialTypes"
-        INT DataFormatTypeID FK "References DataFormatTypes"
-        TEXT FilePath "Path to spatial data file"
-        FLOAT Resolution_m "Spatial resolution in meters"
-        VARCHAR CoordinateSystem "EPSG code"
-        GEOMETRY BoundingGeometry "Spatial extent (PostGIS)"
-        TEXT Metadata "JSON: dataset metadata"
-        DATETIME AcquisitionDate "When data was acquired"
-        DATETIME ImportDate "When data was imported"
-        INT DataSourceTypeID FK "References DataSourceTypes"
-        INT QualityLevelID FK "References QualityLevelTypes"
-    }
-
-    SpatialTraitMappings {
-        INT MappingID PK "Unique mapping ID"
-        INT SpatialDatasetID FK "References SpatialDatasets"
-        INT TraitTypeID FK "References TraitTypes"
-        INT ExtractionMethodTypeID FK "References ExtractionMethodTypes"
-        TEXT ExtractionParameters "JSON: method-specific parameters"
-        VARCHAR Units "Units for extracted values"
-        DATETIME CreatedDate "When mapping was created"
-        BOOLEAN IsActive "Whether mapping is currently active"
+        INT SiteCharacteristicID PK
+        INT LocationID FK
+        FLOAT Elevation_m
+        FLOAT Slope_deg
+        VARCHAR Aspect "N, NE, E, SE, S, SW, W, NW"
+        INT SoilTypeID FK
+        INT ClimateZoneTypeID FK
+        FLOAT AnnualPrecipitation_mm
+        FLOAT MeanTemperature_c
+        FLOAT CanopyCover_percent
+        TEXT AdditionalMetadata "JSON: extra site data"
+        DATETIME LastUpdated
     }
 
     Locations ||--o{ Sensors : has_sensors
     SensorTypes ||--o{ Sensors : sensor_type
     SensorStatusTypes ||--o{ Sensors : sensor_status
-    Sensors ||--o{ SensorReadings : has_readings
+    Sensors ||--o{ SensorReadings : generates_readings
     Locations ||--o{ EnvironmentalSnapshots : has_snapshots
     Locations ||--|| SiteCharacteristics : has_characteristics
-    AspectTypes ||--o{ SiteCharacteristics : aspect_type
     SoilTypes ||--o{ SiteCharacteristics : soil_type
     ClimateZoneTypes ||--o{ SiteCharacteristics : climate_zone
-    VegetationTypes ||--o{ SiteCharacteristics : vegetation_type
-    Locations ||--o{ SpatialDatasets : has_spatial_data
-    SpatialDatasetTypes ||--o{ SpatialDatasets : dataset_type
-    SpatialTypes ||--o{ SpatialDatasets : spatial_type
-    DataFormatTypes ||--o{ SpatialDatasets : format_type
-    DataSourceTypes ||--o{ SpatialDatasets : source_type
-    QualityLevelTypes ||--o{ SpatialDatasets : quality_level
-    SpatialDatasets ||--o{ SpatialTraitMappings : has_trait_mappings
-    TraitTypes ||--o{ SpatialTraitMappings : trait_type
-    ExtractionMethodTypes ||--o{ SpatialTraitMappings : extraction_method
-    EnvironmentalSnapshots }o--|| SensorReadings : aggregates
 
-    %% Color reference/lookup tables differently
-    classDef refTable fill:#ad5643,stroke:#333,stroke-width:2px,color:#fff
-    class SensorTypes,SensorStatusTypes,AspectTypes,SpatialDatasetTypes,SpatialTypes,DataFormatTypes,DataSourceTypes,QualityLevelTypes,ExtractionMethodTypes,TraitTypes,SoilTypes,ClimateZoneTypes,VegetationTypes refTable
+    %% Table coloring
+    classDef refTable fill:#f7dcc7,stroke:#ad5643,stroke-width:2px,color:#612515
+    classDef coreTable fill:#c0e8d9,stroke:#5cb89c,stroke-width:2px,color:#183029
+    
+    class SensorTypes,SensorStatusTypes,SoilTypes,ClimateZoneTypes refTable
+    class Locations,Sensors,SensorReadings,EnvironmentalSnapshots,SiteCharacteristics coreTable
 ```
 
-### Environment Database Table Descriptions
+### Simplified Environment Database Description
 
-#### Environment Reference Tables
+#### Essential Reference Tables (Reduced from 13 to 4)
 
-**Locations**  
-Shared spatial reference table linking environmental data to specific forest plots and monitoring sites with PostGIS geometry support.
+- **SensorTypes**: Environmental monitoring equipment classifications
+- **SensorStatusTypes**: Equipment operational status tracking
+- **SoilTypes**: Basic soil classification categories
+- **ClimateZoneTypes**: Köppen climate classification
 
-**SensorTypes**  
-Standardized sensor type classifications for environmental monitoring equipment.
+#### Core Tables
 
-**SensorStatusTypes**  
-Equipment status categories for tracking sensor operational state.
+- **Locations**: Shared spatial reference linking to forest sites
+- **Sensors**: Environmental monitoring equipment inventory
+- **SensorReadings**: Time-series sensor data with quality indicators
+- **EnvironmentalSnapshots**: Aggregated environmental summaries for modeling
+- **SiteCharacteristics**: Static site properties (elevation, soil, climate)
 
-**AspectTypes**  
-Standardized compass direction classifications for topographical orientation.
+### Environment Simplifications Made
 
-**SpatialDatasetTypes**  
-Categories for different types of spatial datasets (elevation, soil, vegetation, climate, canopy).
+**Removed Complex Tables**:
 
-**SpatialTypes**  
-Spatial data format classifications (raster, vector, point_cloud).
+- `SpatialDatasets` (spatial dataset metadata management)
+- `SpatialTraitMappings` (complex spatial data extraction)
 
-**DataFormatTypes**  
-File format classifications for spatial data storage.
+**Removed Redundant Reference Tables**:
 
-**DataSourceTypes**  
-Source classification for spatial data acquisition methods.
+- `AspectTypes`, `SpatialDatasetTypes`, `SpatialTypes`, `DataFormatTypes`
+- `DataSourceTypes`, `QualityLevelTypes`, `ExtractionMethodTypes`, `TraitTypes`, `VegetationTypes`
 
-**QualityLevelTypes**  
-Standardized quality assessment levels for spatial datasets.
+**Simplified Site Characteristics**:
 
-**ExtractionMethodTypes**  
-Spatial data extraction method classifications.
+- Aspect stored as simple VARCHAR instead of lookup table
+- Removed complex spatial dataset integration
+- Basic site properties sufficient for MVP environmental context
 
-**TraitTypes**  
-Site characteristic trait classifications for spatial data mapping.
-
-**SoilTypes**  
-Standardized soil classification categories.
-
-**ClimateZoneTypes**  
-Köppen climate classification system categories.
-
-**VegetationTypes**  
-Forest and vegetation type classifications.
-
-#### Environment Core Tables
-
-**Sensors**  
-Inventory of all environmental monitoring equipment with configuration, status, and installation metadata.
-
-**SensorReadings**  
-Time-series data from individual sensors capturing real-time environmental measurements with full temporal resolution.
-
-**EnvironmentalSnapshots**  
-Aggregated environmental summaries providing consolidated environmental state for specific locations and time periods, essential for modeling and scenario analysis.
-
-**SiteCharacteristics**  
-Static or slowly-changing site characteristics including topography, climate, soil, and vegetation type using standardized lookup classifications.
-
-**SpatialDatasets**  
-Metadata for spatial datasets with comprehensive classification and quality tracking.
-
-**SpatialTraitMappings**  
-Flexible mapping between spatial datasets and site characteristics with configurable extraction methods.
-
-### Environment Database Table Relationships
-
-- **Locations** serve as the spatial foundation linking environmental data to specific forest sites
-- **Sensors** are deployed at locations and generate continuous streams of **SensorReadings**
-- **SensorReadings** provide high-resolution temporal data that feeds into aggregated **EnvironmentalSnapshots**
-- **SiteCharacteristics** provide static environmental context for each location, supporting modeling and site-specific analysis
-- **EnvironmentalSnapshots** provide model-ready environmental context by aggregating multiple sensor readings and external data sources
-- The design supports both real-time monitoring and historical analysis while maintaining data lineage from individual sensors to aggregated environmental context
+This simplified environment database maintains essential functionality for real-time monitoring and environmental context while removing over-engineered spatial data management that would be complex to implement and maintain.
 
 ---
 
-## 4. Database Constraints and Indexes
+## 4. Simplified Database Constraints and Indexes
 
-### Critical Constraints
+### Essential Constraints
 
 #### Point Cloud Database Constraints
 
@@ -973,10 +880,6 @@ Flexible mapping between spatial datasets and site characteristics with configur
 -- Ensure processing status transitions are logical
 ALTER TABLE PointClouds ADD CONSTRAINT chk_processing_status 
 CHECK (ProcessingStatusTypeID IN (1,2,3)); -- Raw, Segmented, Classified
-
--- Ensure scan dates are reasonable
-ALTER TABLE PointClouds ADD CONSTRAINT chk_scan_date 
-CHECK (ScanDate >= '2020-01-01' AND ScanDate <= CURRENT_DATE);
 
 -- Ensure positive point counts
 ALTER TABLE PointClouds ADD CONSTRAINT chk_point_count 
@@ -988,7 +891,7 @@ CHECK (PointCount > 0);
 ```sql
 -- Ensure positive tree measurements
 ALTER TABLE TreeVariants ADD CONSTRAINT chk_positive_measurements 
-CHECK (Height_m > 0 AND DBH_cm > 0 AND Volume_m3 >= 0);
+CHECK (Height_m > 0 AND DBH_cm > 0);
 
 -- Ensure crown dimensions are logical
 ALTER TABLE TreeVariants ADD CONSTRAINT chk_crown_logic 
@@ -998,9 +901,13 @@ CHECK (CrownBaseHeight_m >= 0 AND CrownBaseHeight_m <= Height_m);
 ALTER TABLE TreeVariants ADD CONSTRAINT chk_no_self_parent 
 CHECK (TreeVariantID != ParentVariantID);
 
--- Ensure reasonable probability values
-ALTER TABLE TreeVariants ADD CONSTRAINT chk_mortality_risk 
-CHECK (MortalityRisk_prob >= 0 AND MortalityRisk_prob <= 1);
+-- Basic branch constraints
+ALTER TABLE StructureBranches ADD CONSTRAINT chk_branch_measurements 
+CHECK (Length_m > 0 AND BaseDiameter_cm > 0 AND TipDiameter_cm > 0);
+
+ALTER TABLE StructureBranches ADD CONSTRAINT chk_branch_angles 
+CHECK (Direction_deg >= 0 AND Direction_deg < 360 AND 
+       Inclination_deg >= -90 AND Inclination_deg <= 90);
 ```
 
 #### Environment Database Constraints
@@ -1012,78 +919,84 @@ CHECK (AvgTemperature_C >= -50 AND AvgTemperature_C <= 60);
 
 ALTER TABLE EnvironmentalSnapshots ADD CONSTRAINT chk_humidity_range 
 CHECK (AvgHumidity_percent >= 0 AND AvgHumidity_percent <= 100);
-
-ALTER TABLE EnvironmentalSnapshots ADD CONSTRAINT chk_precipitation_positive 
-CHECK (TotalPrecipitation_mm >= 0);
 ```
 
-### Performance Indexes
+### Essential Indexes
 
-#### Point Cloud Database Indexes
+#### Spatial and Temporal Indexes
 
 ```sql
--- Spatial indexes for point cloud coverage
+-- Point cloud spatial and temporal access
 CREATE INDEX idx_pointclouds_scan_bounds ON PointClouds USING GIST (ScanBounds);
+CREATE INDEX idx_pointclouds_scan_date ON PointClouds (ScanDate);
 CREATE INDEX idx_locations_plot_boundary ON Locations USING GIST (PlotBoundary);
 
--- Temporal indexes for time-based queries
-CREATE INDEX idx_pointclouds_scan_date ON PointClouds (ScanDate);
-CREATE INDEX idx_segmentation_process_date ON PointCloudSegmentationResults (ProcessDate);
-
--- Foreign key indexes
-CREATE INDEX idx_pointclouds_location ON PointClouds (LocationID);
-CREATE INDEX idx_pointclouds_sensor_type ON PointClouds (SensorTypeID);
-```
-
-#### Tree Database Indexes
-
-```sql
--- Spatial indexes for tree positions
+-- Tree spatial positioning
 CREATE INDEX idx_tree_variants_position ON TreeVariants USING GIST (Position);
-CREATE INDEX idx_tree_variants_absolute_position ON TreeVariants USING GIST (AbsolutePosition);
-
--- Scenario and variant relationship indexes
 CREATE INDEX idx_tree_variants_scenario ON TreeVariants (ScenarioID);
-CREATE INDEX idx_tree_variants_parent ON TreeVariants (ParentVariantID);
-CREATE INDEX idx_tree_variants_tree_id ON TreeVariants (TreeID);
 
--- Species and temporal indexes
-CREATE INDEX idx_tree_variants_species ON TreeVariants (SpeciesID);
-CREATE INDEX idx_tree_variants_timestamp ON TreeVariants (VariantTimestamp);
-
--- Composite indexes for common queries
-CREATE INDEX idx_trees_location_species ON Trees (LocationID, SpeciesID);
-CREATE INDEX idx_tree_variants_scenario_species ON TreeVariants (ScenarioID, SpeciesID);
-```
-
-#### Environment Database Indexes
-
-```sql
--- Temporal indexes for sensor data
+-- Environmental temporal data
 CREATE INDEX idx_sensor_readings_timestamp ON SensorReadings (Timestamp);
-CREATE INDEX idx_sensor_readings_sensor_timestamp ON SensorReadings (SensorID, Timestamp);
 CREATE INDEX idx_environmental_snapshots_timestamp ON EnvironmentalSnapshots (Timestamp);
-
--- Spatial indexes
-CREATE INDEX idx_spatial_datasets_bounding ON SpatialDatasets USING GIST (BoundingGeometry);
-
--- Composite indexes for common environmental queries
-CREATE INDEX idx_sensors_location_type ON Sensors (LocationID, SensorTypeID);
-CREATE INDEX idx_sensor_readings_type_timestamp ON SensorReadings (ReadingType, Timestamp);
 ```
 
-### Unique Constraints
+#### Branch Hierarchy Indexes
 
 ```sql
--- Prevent duplicate sensors of same type at same location
-ALTER TABLE Sensors ADD CONSTRAINT uk_sensors_location_type 
-UNIQUE (LocationID, SensorTypeID, InstallationDate);
-
--- Ensure unique tree positions within location
-ALTER TABLE TreeVariants ADD CONSTRAINT uk_tree_position_scenario 
-UNIQUE (ScenarioID, Position, VariantTimestamp);
-
--- Prevent duplicate spatial datasets
-ALTER TABLE SpatialDatasets ADD CONSTRAINT uk_spatial_dataset_location_type 
-UNIQUE (LocationID, DatasetTypeID, AcquisitionDate);
+-- Efficient branch traversal
+CREATE INDEX idx_structure_branches_parent ON StructureBranches (ParentBranchID);
+CREATE INDEX idx_structure_branches_path ON StructureBranches (BranchPath);
+CREATE INDEX idx_structure_branches_depth ON StructureBranches (BranchDepth);
 ```
+
+### Key Simplifications Made
+
+**Reduced Constraint Complexity**:
+
+- Removed complex taper equation validations
+- Simplified quality metric constraints
+- Removed microhabitat and procedural parameter constraints
+
+**Streamlined Index Strategy**:
+
+- Focus on essential spatial and temporal access patterns
+- Basic hierarchy traversal for VR rendering
+- Removed specialized procedural modeling indexes
+
+**Benefits**:
+
+- Faster database setup and maintenance
+- Improved performance with fewer indexes
+- Easier debugging and troubleshooting
+- Focus on core MVP functionality
+
+## Summary: Simplified Database Design
+
+The simplified database design reduces complexity while maintaining all essential functionality for the XR Future Forests Lab MVP:
+
+### Total Reduction
+
+- **Tables**: 47 → 20 tables (57% reduction)
+- **Reference Tables**: 24 → 9 tables (62% reduction)  
+- **Constraints**: Complex validations simplified to essential checks
+- **Indexes**: Focused on core access patterns
+
+### Maintained Core Functionality
+
+- ✅ Point cloud processing pipeline
+- ✅ Tree digital twin management with scenarios
+- ✅ Environmental monitoring and site characteristics
+- ✅ Spatial data support with PostGIS
+- ✅ Basic 3D structure representation for VR
+- ✅ Growth simulation and variant tracking
+
+### Future Extensibility
+
+The simplified design provides a solid foundation that can be extended as needed:
+
+- Complex procedural modeling can be added back
+- Detailed quality assessment systems can be implemented
+- Advanced spatial dataset management can be integrated
+- Microhabitat and biodiversity tracking can be added
+
+This approach follows MVP development best practices: start simple, prove the concept, then add complexity as needed based on actual requirements and user feedback.

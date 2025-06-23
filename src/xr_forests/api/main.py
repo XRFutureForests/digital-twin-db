@@ -15,6 +15,8 @@ from .routers import (
     tree_router,
     point_cloud_router,
     environment_router,
+    species_router,
+    sensors_router,
 )
 
 # Redis connection
@@ -57,6 +59,8 @@ def create_app() -> FastAPI:
     app.include_router(tree_router)
     app.include_router(point_cloud_router)
     app.include_router(environment_router)
+    app.include_router(species_router)
+    app.include_router(sensors_router)
 
     # Register exception handlers
     for exception_type, handler in EXCEPTION_HANDLERS.items():

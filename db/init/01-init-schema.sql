@@ -16,6 +16,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE locations (
     id SERIAL PRIMARY KEY,
     location_name VARCHAR(200) NOT NULL,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    area_hectares DECIMAL(10, 4),
     plot_boundary GEOMETRY(POLYGON, 4326),
     center_point GEOMETRY(POINT, 4326),
     description TEXT,
@@ -28,7 +31,15 @@ CREATE TABLE species (
     id SERIAL PRIMARY KEY,
     common_name VARCHAR(200),
     scientific_name VARCHAR(200) NOT NULL UNIQUE,
+    family_name VARCHAR(200),
+    genus VARCHAR(100),
+    species_name VARCHAR(100),
     growth_characteristics JSONB,
+    max_height_m DECIMAL(5,2),
+    max_dbh_cm DECIMAL(6,2),
+    typical_lifespan_years INTEGER,
+    growth_rate_category VARCHAR(50), -- slow, medium, fast
+    shade_tolerance VARCHAR(50), -- tolerant, intermediate, intolerant
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -199,6 +210,25 @@ CREATE TABLE root_condition_types (
     description TEXT
 );
 
+-- Additional missing reference tables from documentation
+CREATE TABLE branching_symmetry_types (
+    id SERIAL PRIMARY KEY,
+    symmetry_name VARCHAR(50) NOT NULL UNIQUE, -- radial, alternate, opposite, whorled, irregular
+    description TEXT
+);
+
+CREATE TABLE branch_arrangement_types (
+    id SERIAL PRIMARY KEY,
+    arrangement_name VARCHAR(50) NOT NULL UNIQUE, -- alternate, opposite, whorled, dichotomous, spiral
+    description TEXT
+);
+
+CREATE TABLE taper_types (
+    id SERIAL PRIMARY KEY,
+    taper_name VARCHAR(50) NOT NULL UNIQUE, -- linear, exponential, power, paraboloid, neiloid
+    description TEXT
+);
+
 -- Tree Core Tables
 CREATE TABLE scenarios (
     id SERIAL PRIMARY KEY,
@@ -287,35 +317,68 @@ CREATE TABLE tree_structures (
 CREATE TABLE structure_branches (
     id SERIAL PRIMARY KEY,
     structure_id INTEGER REFERENCES tree_structures(id),
+    parent_branch_id INTEGER REFERENCES structure_branches(id), -- Hierarchical structure
+    branch_order INTEGER, -- 0=trunk, 1=primary, 2=secondary, etc.
     length_m DECIMAL(6,3),
     diameter_cm DECIMAL(5,2),
+    start_diameter_cm DECIMAL(5,2), -- Diameter at branch base
+    end_diameter_cm DECIMAL(5,2), -- Diameter at branch tip
     direction_deg DECIMAL(5,2), -- Azimuth (horizontal direction in degrees)
     inclination_deg DECIMAL(5,2), -- Inclination angle from vertical (degrees)
     start_height_m DECIMAL(6,3), -- Height of branch start on parent (m)
     start_radius_cm DECIMAL(5,2), -- Radius at branch base (cm)
+    taper_type_id INTEGER REFERENCES taper_types(id),
+    branching_symmetry_type_id INTEGER REFERENCES branching_symmetry_types(id),
+    branch_arrangement_type_id INTEGER REFERENCES branch_arrangement_types(id),
+    straightness_index DECIMAL(3,2), -- 0-1, curvature measure
+    biomass_kg DECIMAL(8,3), -- Branch biomass
+    volume_m3 DECIMAL(8,4), -- Branch volume
+    surface_area_m2 DECIMAL(8,3), -- Branch surface area
+    leaf_area_m2 DECIMAL(8,3), -- Leaf area supported by branch
+    age_years INTEGER, -- Estimated branch age
+    health_status VARCHAR(50), -- healthy, damaged, dead
+    path VARCHAR(500), -- Materialized path for hierarchy (e.g., "1.2.5")
     geometry JSONB -- JSON/OBJ
 );
 
 CREATE TABLE structure_twigs (
     id SERIAL PRIMARY KEY,
     branch_id INTEGER REFERENCES structure_branches(id),
+    parent_twig_id INTEGER REFERENCES structure_twigs(id), -- Hierarchical twig structure
+    twig_order INTEGER, -- Order within twig hierarchy
     length_m DECIMAL(6,3),
     diameter_cm DECIMAL(5,2),
+    start_diameter_cm DECIMAL(5,2),
+    end_diameter_cm DECIMAL(5,2),
     direction_deg DECIMAL(5,2),
     inclination_deg DECIMAL(5,2),
     start_height_m DECIMAL(6,3),
+    taper_type_id INTEGER REFERENCES taper_types(id),
+    leaf_density_count INTEGER, -- Number of leaves on twig
+    internodal_length_cm DECIMAL(5,2), -- Average distance between nodes
+    age_years INTEGER, -- Estimated twig age
+    health_status VARCHAR(50), -- healthy, damaged, dead
     geometry JSONB -- JSON/OBJ
 );
 
 CREATE TABLE structure_leaves (
     id SERIAL PRIMARY KEY,
     twig_id INTEGER REFERENCES structure_twigs(id),
-    geometry JSONB, -- JSON/OBJ
+    leaf_position_on_twig INTEGER, -- Position number on twig
+    length_cm DECIMAL(5,2), -- Leaf length
+    width_cm DECIMAL(5,2), -- Leaf width
+    area_cm2 DECIMAL(7,2), -- Individual leaf area
+    thickness_mm DECIMAL(4,2), -- Leaf thickness
+    petiole_length_cm DECIMAL(4,2), -- Petiole (stem) length
+    geometry JSONB, -- JSON/OBJ for 3D leaf geometry
     phenology_status_id INTEGER REFERENCES phenology_status(id),
-    direction_deg DECIMAL(5,2),
-    inclination_deg DECIMAL(5,2),
-    start_height_m DECIMAL(6,3),
-    color VARCHAR(50) -- Optional: leaf color for phenology/health
+    direction_deg DECIMAL(5,2), -- Leaf orientation direction
+    inclination_deg DECIMAL(5,2), -- Leaf angle from horizontal
+    start_height_m DECIMAL(6,3), -- Height of leaf attachment
+    color VARCHAR(50), -- Optional: leaf color for phenology/health
+    health_status VARCHAR(50), -- healthy, damaged, diseased, senescing
+    age_days INTEGER, -- Age of individual leaf
+    chlorophyll_content DECIMAL(5,2) -- Relative chlorophyll content
 );
 
 CREATE TABLE tree_microhabitats (
@@ -349,6 +412,25 @@ CREATE TABLE tree_quality_assessment (
     assessment_date TIMESTAMP, -- When quality assessment was performed
     assessed_by VARCHAR(200), -- Personnel or method that performed assessment
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- VR-specific procedural generation parameters
+CREATE TABLE procedural_parameters (
+    id SERIAL PRIMARY KEY,
+    tree_variant_id INTEGER REFERENCES tree_variants(id),
+    species_id INTEGER REFERENCES species(id),
+    growth_rule_set JSONB, -- JSON: L-system rules, growth algorithms
+    branching_parameters JSONB, -- JSON: branching angles, probabilities
+    environmental_responses JSONB, -- JSON: responses to environmental factors
+    seasonal_variations JSONB, -- JSON: seasonal growth patterns
+    species_constraints JSONB, -- JSON: species-specific growth limits
+    procedural_seed INTEGER, -- Random seed for reproducible generation
+    complexity_level INTEGER, -- Detail level for VR rendering (1-5)
+    optimization_target VARCHAR(50), -- performance, quality, balanced
+    last_generated TIMESTAMP, -- When structure was last generated
+    generation_time_ms INTEGER, -- Time taken for last generation
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- =====================================================
 -- ENVIRONMENT DATABASE SCHEMA
@@ -598,6 +680,16 @@ CREATE INDEX idx_sensors_location ON sensors (location_id);
 CREATE INDEX idx_sensors_location_type ON sensors (location_id, sensor_type_id);
 CREATE INDEX idx_sensor_readings_type_timestamp ON sensor_readings (reading_type, timestamp);
 
+-- Additional hierarchical indexes for tree structures
+CREATE INDEX idx_structure_branches_parent ON structure_branches (parent_branch_id);
+CREATE INDEX idx_structure_branches_order ON structure_branches (branch_order);
+CREATE INDEX idx_structure_branches_path ON structure_branches (path);
+CREATE INDEX idx_structure_twigs_parent ON structure_twigs (parent_twig_id);
+
+-- Procedural generation indexes
+CREATE INDEX idx_procedural_parameters_variant ON procedural_parameters (tree_variant_id);
+CREATE INDEX idx_procedural_parameters_species ON procedural_parameters (species_id);
+
 -- =====================================================
 -- UNIQUE CONSTRAINTS
 -- =====================================================
@@ -628,12 +720,12 @@ INSERT INTO sensor_types (type_name, description) VALUES
     ('Mobile_LiDAR', 'Mobile mapping LiDAR system');
 
 -- Species data
-INSERT INTO species (common_name, scientific_name, growth_characteristics) VALUES 
-    ('European Beech', 'Fagus sylvatica', '{"max_height_m": 40.0, "longevity_years": 300}'),
-    ('Sessile Oak', 'Quercus petraea', '{"max_height_m": 35.0, "longevity_years": 800}'),
-    ('Norway Spruce', 'Picea abies', '{"max_height_m": 50.0, "longevity_years": 400}'),
-    ('Scots Pine', 'Pinus sylvestris', '{"max_height_m": 35.0, "longevity_years": 700}'),
-    ('Silver Fir', 'Abies alba', '{"max_height_m": 50.0, "longevity_years": 600}');
+INSERT INTO species (common_name, scientific_name, family_name, genus, species_name, growth_characteristics, max_height_m, max_dbh_cm, typical_lifespan_years, growth_rate_category, shade_tolerance) VALUES 
+    ('European Beech', 'Fagus sylvatica', 'Fagaceae', 'Fagus', 'sylvatica', '{"max_height_m": 40.0, "longevity_years": 300}', 40.0, 150.0, 300, 'medium', 'tolerant'),
+    ('Sessile Oak', 'Quercus petraea', 'Fagaceae', 'Quercus', 'petraea', '{"max_height_m": 35.0, "longevity_years": 800}', 35.0, 200.0, 800, 'slow', 'intermediate'),
+    ('Norway Spruce', 'Picea abies', 'Pinaceae', 'Picea', 'abies', '{"max_height_m": 50.0, "longevity_years": 400}', 50.0, 180.0, 400, 'fast', 'tolerant'),
+    ('Scots Pine', 'Pinus sylvestris', 'Pinaceae', 'Pinus', 'sylvestris', '{"max_height_m": 35.0, "longevity_years": 700}', 35.0, 120.0, 700, 'medium', 'intolerant'),
+    ('Silver Fir', 'Abies alba', 'Pinaceae', 'Abies', 'alba', '{"max_height_m": 50.0, "longevity_years": 600}', 50.0, 200.0, 600, 'slow', 'tolerant');
 
 -- Health Status
 INSERT INTO health_status (status, description) VALUES 
@@ -828,13 +920,37 @@ INSERT INTO vegetation_types (type_name, description) VALUES
     ('Grassland', 'Grassland vegetation'),
     ('Shrubland', 'Shrubland vegetation');
 
+-- Branching Symmetry Types
+INSERT INTO branching_symmetry_types (symmetry_name, description) VALUES 
+    ('radial', 'Radial symmetry branching pattern'),
+    ('alternate', 'Alternate branching pattern'),
+    ('opposite', 'Opposite branching pattern'),
+    ('whorled', 'Whorled branching pattern'),
+    ('irregular', 'Irregular branching pattern');
+
+-- Branch Arrangement Types
+INSERT INTO branch_arrangement_types (arrangement_name, description) VALUES 
+    ('alternate', 'Alternate branch arrangement'),
+    ('opposite', 'Opposite branch arrangement'),
+    ('whorled', 'Whorled branch arrangement'),
+    ('dichotomous', 'Dichotomous branch arrangement'),
+    ('spiral', 'Spiral branch arrangement');
+
+-- Taper Types
+INSERT INTO taper_types (taper_name, description) VALUES 
+    ('linear', 'Linear taper profile'),
+    ('exponential', 'Exponential taper profile'),
+    ('power', 'Power function taper profile'),
+    ('paraboloid', 'Paraboloid taper profile'),
+    ('neiloid', 'Neiloid taper profile');
+
 -- =====================================================
 -- INSERT SAMPLE DATA
 -- =====================================================
 
 -- Sample location
-INSERT INTO locations (location_name, description, center_point) VALUES 
-    ('Test Forest Plot A', 'Sample forest plot for testing', 
+INSERT INTO locations (location_name, latitude, longitude, area_hectares, description, center_point) VALUES 
+    ('Test Forest Plot A', 48.0041, 7.8494, 5.25, 'Sample forest plot for testing', 
      ST_SetSRID(ST_MakePoint(7.8494, 48.0041), 4326));
 
 -- Sample scenario

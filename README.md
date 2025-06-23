@@ -27,7 +27,7 @@ curl http://localhost:8000/health
 
 ### What You Get
 
-- **Complete REST API** with 40+ endpoints for forest data management
+- **Complete REST API** with 50+ endpoints for forest data management
 - **Interactive Documentation** for testing and exploration
 - **Spatial Database** with PostGIS for geographic data
 - **Real-time Events** via Redis for live updates
@@ -42,6 +42,7 @@ curl http://localhost:8000/health
 - **Point Cloud Processing** - Upload, segmentation, classification, and quality assessment
 - **Environmental Monitoring** - Sensor data collection and site characterization
 - **Species Database** - Tree species classification and management
+- **Sensor Management** - Sensor monitoring and data collection
 - **Bulk Operations** - CSV imports and batch processing
 - **Real-time Events** - WebSocket support and event-driven updates
 
@@ -116,7 +117,16 @@ curl http://localhost:8000/health
 
 ### Core Resources
 
+#### Locations
+
 - `GET /api/locations` - List all forest locations
+- `GET /api/locations/{id}` - Get specific location
+- `POST /api/locations` - Create new location
+- `PUT /api/locations/{id}` - Update location
+- `DELETE /api/locations/{id}` - Delete location
+
+#### Trees
+
 - `GET /api/trees` - List trees with optional filtering
 - `GET /api/trees/{tree_id}` - Get detailed tree information
 - `POST /api/trees` - Create new tree record
@@ -131,16 +141,39 @@ curl http://localhost:8000/health
 
 ### Environmental Data
 
+#### Sensors
+
 - `GET /api/sensors` - List environmental sensors
+- `GET /api/sensors/{sensor_id}` - Get specific sensor
 - `GET /api/sensors/{sensor_id}/readings` - Get sensor readings
+
+#### Environment Data
+
+- `GET /api/environment/readings` - Get sensor readings
+- `POST /api/environment/readings` - Add sensor reading
+- `GET /api/environment/snapshots` - Get environmental snapshots
+- `POST /api/environment/snapshots` - Create environmental snapshot
+- `GET /api/environment/sites/{id}/characteristics` - Get site characteristics
+- `POST /api/environment/sites/{id}/characteristics` - Add site characteristics
+- `PUT /api/environment/sites/{id}/characteristics` - Update site characteristics
 
 ### Point Cloud Data
 
 - `GET /api/point-clouds` - List point cloud scans
+- `GET /api/point-clouds/{id}` - Get specific point cloud
+- `POST /api/point-clouds` - Create point cloud record
+- `PUT /api/point-clouds/{id}` - Update point cloud
+- `DELETE /api/point-clouds/{id}` - Delete point cloud
+- `POST /api/point-clouds/upload` - Upload point cloud file
+- `GET /api/point-clouds/{id}/processing-jobs` - Get processing jobs
+- `POST /api/point-clouds/{id}/processing-jobs` - Start processing job
+- `GET /api/point-clouds/{id}/quality` - Get quality assessment
+- `POST /api/point-clouds/{id}/quality` - Run quality assessment
 
 ### Reference Data
 
 - `GET /api/species` - List tree species
+- `GET /api/species/{id}` - Get specific species
 
 ### Real-time Updates
 

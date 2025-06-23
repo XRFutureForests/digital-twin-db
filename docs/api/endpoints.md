@@ -24,6 +24,8 @@ flowchart TB
         L1[GET /api/locations/<br/>📋 List all locations]
         L2[GET /api/locations/id/<br/>🔍 Get specific location]
         L3[POST /api/locations/<br/>➕ Create new location]
+        L4[PUT /api/locations/id/<br/>✏️ Update location]
+        L5[DELETE /api/locations/id/<br/>🗑️ Delete location]
     end
     
     subgraph TREES["🌳 Tree Management"]
@@ -40,24 +42,68 @@ flowchart TB
         T11[POST /api/trees/upload-csv<br/>📄 Upload CSV]
     end
     
+    subgraph SPECIES["🌿 Species Management"]
+        S1[GET /api/species/<br/>📋 List tree species]
+        S2[GET /api/species/id/<br/>🔍 Get specific species]
+    end
+    
+    subgraph SENSORS["� Sensor Management"]
+        SE1[GET /api/sensors/<br/>📋 List sensors]
+        SE2[GET /api/sensors/id/<br/>🔍 Get specific sensor]
+        SE3[GET /api/sensors/id/readings<br/>📈 Get sensor readings]
+    end
+    
+    subgraph POINTCLOUDS["☁️ Point Clouds"]
+        PC1[GET /api/point-clouds/<br/>📋 List point clouds]
+        PC2[GET /api/point-clouds/id/<br/>� Get specific point cloud]
+        PC3[POST /api/point-clouds/<br/>➕ Create point cloud]
+        PC4[PUT /api/point-clouds/id/<br/>✏️ Update point cloud]
+        PC5[DELETE /api/point-clouds/id/<br/>🗑️ Delete point cloud]
+        PC6[POST /api/point-clouds/upload<br/>📤 Upload point cloud file]
+        PC7[GET /api/point-clouds/id/processing-jobs<br/>⚙️ Processing jobs]
+        PC8[POST /api/point-clouds/id/processing-jobs<br/>▶️ Start processing]
+        PC9[GET /api/point-clouds/id/quality<br/>🔍 Quality assessment]
+    end
+    
+    subgraph ENVIRONMENT["🌍 Environment"]
+        E1[GET /api/environment/readings<br/>📊 Sensor readings]
+        E2[POST /api/environment/readings<br/>➕ Add reading]
+        E3[GET /api/environment/snapshots<br/>📸 Environmental snapshots]
+        E4[POST /api/environment/snapshots<br/>➕ Create snapshot]
+        E5[GET /api/environment/sites/id/characteristics<br/>🏞️ Site characteristics]
+        E6[GET /api/environment/stats/readings<br/>📈 Reading statistics]
+    end
+    
     subgraph FUTURE["🔄 Coming Soon"]
-        F1[GET /api/sensors/<br/>📊 Sensor data]
-        F2[GET /api/point-clouds/<br/>☁️ Point cloud data]
-        F3[WebSocket /ws<br/>📡 Real-time events]
+        F1[WebSocket /ws<br/>📡 Real-time events]
+        F2[Advanced ML Processing<br/>🤖 AI-powered analysis]
     end
     
     BASE --> HEALTH
     BASE --> LOCATIONS
     BASE --> TREES
+    BASE --> SPECIES
+    BASE --> SENSORS
+    BASE --> POINTCLOUDS
+    BASE --> ENVIRONMENT
     BASE -.-> FUTURE
     
-    classDef api fill:#8cdbc0,stroke:#265e4d,stroke-width:3px
-    classDef implemented fill:#71a897,stroke:#183029,stroke-width:2px
-    classDef future fill:#e59778,stroke:#612515,stroke-width:2px,stroke-dasharray: 5 5
+    %% Subgraph styling - light colors
+    classDef api fill:#8cdbc0,stroke:#265e4d,stroke-width:3px,color:#183029
+    classDef implemented fill:#5cb89c,stroke:#265e4d,stroke-width:2px,color:#ffffff
+    classDef future fill:#e59778,stroke:#612515,stroke-width:2px,stroke-dasharray: 5 5,color:#ffffff
+    
+    %% Node styling - darkest colors  
+    classDef apiNodes fill:#265e4d,stroke:#183029,stroke-width:2px,color:#ffffff
+    classDef implementedNodes fill:#265e4d,stroke:#5cb89c,stroke-width:2px,color:#ffffff
+    classDef futureNodes fill:#612515,stroke:#ad5643,stroke-width:2px,color:#ffffff
     
     class API api
-    class HEALTH,LOCATIONS,TREES implemented
+    class BASE apiNodes
+    class HEALTH,LOCATIONS,TREES,SPECIES,SENSORS,POINTCLOUDS,ENVIRONMENT implemented
+    class H1,L1,L2,L3,L4,L5,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,S1,S2,SE1,SE2,SE3,PC1,PC2,PC3,PC4,PC5,PC6,PC7,PC8,PC9,E1,E2,E3,E4,E5,E6 implementedNodes
     class FUTURE future
+    class F1,F2 futureNodes
 ```
 
 ## 📋 **Endpoint Details**
@@ -184,89 +230,142 @@ curl http://localhost:8000/health
 }
 ```
 
-## 🧪 **Quick Testing Examples**
+### **Species Management Endpoints**
 
-### **Test Health Endpoint**
+| Method | Endpoint | Description | Request Body | Response |
+|--------|----------|-------------|--------------|----------|
+| GET | `/api/species/` | Get all tree species | None | Array of species objects |
+| GET | `/api/species/{id}` | Get specific species by ID | None | Single species object |
 
-```bash
-# Using curl
-curl -X GET http://localhost:8000/health
+#### **Species Data Structure**
 
-# Expected response
+**Response Schema**:
+
+```json
 {
-  "status": "healthy",
-  "service": "XR Future Forests Lab API", 
-  "version": "1.0.0"
+  "id": "uuid",
+  "common_name": "string",
+  "scientific_name": "string",
+  "family": "string",
+  "description": "string (optional)",
+  "growth_characteristics": "object (optional)",
+  "created_at": "datetime",
+  "updated_at": "datetime"
 }
 ```
 
-### **Test Location Endpoints**
+### **Sensor Management Endpoints**
 
-#### **Get All Locations**
+| Method | Endpoint | Description | Request Body | Response |
+|--------|----------|-------------|--------------|----------|
+| GET | `/api/sensors/` | Get all sensors | None | Array of sensor objects |
+| GET | `/api/sensors/{id}` | Get specific sensor by ID | None | Single sensor object |
+| GET | `/api/sensors/{id}/readings` | Get readings for a sensor | None | Array of reading objects |
 
-```bash
-curl -X GET http://localhost:8000/api/locations/
+#### **Sensor Data Structure**
+
+**Response Schema**:
+
+```json
+{
+  "id": "uuid",
+  "location_id": "uuid",
+  "sensor_type": "string",
+  "status": "string",
+  "installation_date": "datetime",
+  "last_maintenance": "datetime (optional)",
+  "metadata": "object (optional)"
+}
 ```
 
-#### **Create a New Location**
+### **Point Cloud Management Endpoints**
 
-```bash
-curl -X POST "http://localhost:8000/api/locations/" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "location_name": "Test Forest Plot",
-    "description": "A test forest location for API demonstration",
-    "plot_boundary": {
-      "type": "Polygon",
-      "coordinates": [[[7.8516, 48.0089], [7.8520, 48.0089], [7.8520, 48.0092], [7.8516, 48.0092], [7.8516, 48.0089]]]
-    },
-    "center_point": {
-      "type": "Point",
-      "coordinates": [7.8518, 48.0090]
-    }
-  }'
+| Method | Endpoint | Description | Request Body | Response |
+|--------|----------|-------------|--------------|----------|
+| GET | `/api/point-clouds/` | Get all point clouds | None | Array of point cloud objects |
+| POST | `/api/point-clouds/` | Create point cloud record | Point cloud data (JSON) | Created point cloud object |
+| GET | `/api/point-clouds/{id}` | Get specific point cloud by ID | None | Single point cloud object |
+| PUT | `/api/point-clouds/{id}` | Update point cloud | Point cloud update data (JSON) | Updated point cloud object |
+| DELETE | `/api/point-clouds/{id}` | Delete point cloud | None | Success message |
+| POST | `/api/point-clouds/upload` | Upload point cloud file | Multipart form data | Upload response |
+| GET | `/api/point-clouds/{id}/processing-jobs` | Get processing jobs | None | Array of job objects |
+| POST | `/api/point-clouds/{id}/processing-jobs` | Start processing job | Job parameters (JSON) | Job object |
+| GET | `/api/point-clouds/{id}/segmentation-jobs` | Get segmentation jobs | None | Array of job objects |
+| POST | `/api/point-clouds/{id}/segmentation-jobs` | Start segmentation job | Job parameters (JSON) | Job object |
+| GET | `/api/point-clouds/{id}/classification-jobs` | Get classification jobs | None | Array of job objects |
+| POST | `/api/point-clouds/{id}/classification-jobs` | Start classification job | Job parameters (JSON) | Job object |
+| GET | `/api/point-clouds/{id}/quality` | Get quality assessment | None | Quality assessment object |
+| POST | `/api/point-clouds/{id}/quality` | Run quality assessment | None | Quality assessment object |
+
+### **Environment Management Endpoints**
+
+| Method | Endpoint | Description | Request Body | Response |
+|--------|----------|-------------|--------------|----------|
+| GET | `/api/environment/readings` | Get sensor readings | None | Array of reading objects |
+| POST | `/api/environment/readings` | Add sensor reading | Reading data (JSON) | Created reading object |
+| GET | `/api/environment/readings/{id}` | Get specific reading | None | Single reading object |
+| POST | `/api/environment/readings/bulk` | Bulk add readings | Bulk reading data (JSON) | Bulk response object |
+| GET | `/api/environment/snapshots` | Get environmental snapshots | None | Array of snapshot objects |
+| POST | `/api/environment/snapshots` | Create snapshot | Snapshot data (JSON) | Created snapshot object |
+| GET | `/api/environment/snapshots/{id}` | Get specific snapshot | None | Single snapshot object |
+| GET | `/api/environment/sites/{id}/characteristics` | Get site characteristics | None | Site characteristics object |
+| POST | `/api/environment/sites/{id}/characteristics` | Add site characteristics | Characteristics data (JSON) | Created characteristics object |
+| PUT | `/api/environment/sites/{id}/characteristics` | Update site characteristics | Characteristics data (JSON) | Updated characteristics object |
+| GET | `/api/environment/stats/readings` | Get reading statistics | None | Statistics object |
+| GET | `/api/environment/locations/{id}/summary` | Get location summary | None | Location summary object |
+
+#### **Environmental Data Structures**
+
+**Sensor Reading Schema**:
+
+```json
+{
+  "id": "uuid",
+  "location_id": "uuid",
+  "sensor_type": "string",
+  "parameter_type": "string",
+  "value": "number",
+  "unit": "string",
+  "timestamp": "datetime",
+  "quality_flag": "string (optional)"
+}
 ```
 
-#### **Get Specific Location**
+**Environmental Snapshot Schema**:
 
-```bash
-# Replace {location_id} with actual UUID from creation response
-curl -X GET http://localhost:8000/api/locations/{location_id}
+```json
+{
+  "id": "uuid",
+  "location_id": "uuid",
+  "timestamp": "datetime",
+  "temperature_c": "number (optional)",
+  "humidity_percent": "number (optional)",
+  "soil_moisture_percent": "number (optional)",
+  "light_intensity_lux": "number (optional)",
+  "wind_speed_ms": "number (optional)",
+  "precipitation_mm": "number (optional)"
+}
 ```
 
-### **Test Tree Endpoints**
+## 🚀 **Future API Endpoints (In Development)**
 
-#### **List All Trees**
+### **Real-time Events**
 
 ```bash
-curl -X GET http://localhost:8000/api/trees/
+# Planned WebSocket endpoints
+WebSocket /ws/events                  # Real-time event stream
+WebSocket /ws/location/{id}/updates   # Location-specific updates
+WebSocket /ws/sensors/{id}/stream     # Live sensor data stream
 ```
 
-#### **Create a New Tree**
+### **Advanced ML Processing**
 
 ```bash
-curl -X POST "http://localhost:8000/api/trees/" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "location_id": 1,
-    "species_id": 2,
-    "tree_tag": "TFP-001",
-    "latitude": 48.0090,
-    "longitude": 7.8518,
-    "elevation_m": 150.5,
-    "initial_height_m": 1.2,
-    "initial_dbh_cm": 2.5,
-    "initial_crown_width_m": 0.8,
-    "initial_volume_m3": 0.3,
-    "initial_capture_date": "2023-10-01T10:00:00Z"
-  }'
-```
-
-#### **Get Specific Tree**
-
-```bash
-# Replace {tree_id} with actual ID from creation response
-curl -X GET http://localhost:8000/api/trees/{tree_id}
+# Planned ML/AI endpoints
+POST   /api/ml/tree-detection         # AI-powered tree detection from point clouds
+POST   /api/ml/species-classification # Automated species classification
+GET    /api/ml/growth-predictions     # Tree growth modeling predictions
+POST   /api/ml/health-assessment      # AI-powered health assessment
 ```
 
 ## 🔄 **Response Status Codes**
@@ -276,7 +375,7 @@ curl -X GET http://localhost:8000/api/trees/{tree_id}
 | **200** | OK | Successful GET request |
 | **201** | Created | Successful POST request (resource created) |
 | **400** | Bad Request | Invalid request data or malformed JSON |
-| **404** | Not Found | Requested resource (location/tree) doesn't exist |
+| **404** | Not Found | Requested resource doesn't exist |
 | **422** | Validation Error | Request data doesn't match expected schema |
 | **500** | Internal Server Error | Server-side error (database connection, etc.) |
 
@@ -307,6 +406,14 @@ BASE_URL = "http://localhost:8000"
 response = requests.get(f"{BASE_URL}/health")
 print(response.json())
 
+# Test species endpoint
+response = requests.get(f"{BASE_URL}/api/species/")
+print(f"Species count: {len(response.json())}")
+
+# Test sensors endpoint
+response = requests.get(f"{BASE_URL}/api/sensors/")
+print(f"Sensors count: {len(response.json())}")
+
 # Test location creation
 location_data = {
     "location_name": "Python Test Location",
@@ -328,81 +435,24 @@ response = requests.post(
 )
 print(response.status_code)
 print(response.json())
-
-# Test tree creation
-tree_data = {
-    "location_id": 1,
-    "species_id": 2,
-    "tree_tag": "TP-001",
-    "latitude": 48.0090,
-    "longitude": 7.8518,
-    "elevation_m": 150.5,
-    "initial_height_m": 1.2,
-    "initial_dbh_cm": 2.5,
-    "initial_crown_width_m": 0.8,
-    "initial_volume_m3": 0.3,
-    "initial_capture_date": "2023-10-01T10:00:00Z"
-}
-
-response = requests.post(
-    f"{BASE_URL}/api/trees/",
-    json=tree_data,
-    headers={"Content-Type": "application/json"}
-)
-print(response.status_code)
-print(response.json())
-```
-
-## 🚀 **Future API Endpoints (In Development)**
-
-### **Tree Management**
-
-```bash
-# Planned endpoints
-GET    /api/trees/                    # List all trees
-GET    /api/trees/{id}                # Get specific tree
-POST   /api/trees/                    # Create new tree record
-PUT    /api/trees/{id}                # Update tree data
-DELETE /api/trees/{id}                # Remove tree record
-GET    /api/trees/location/{loc_id}   # Get trees by location
-```
-
-### **Sensor Data**
-
-```bash
-# Planned endpoints  
-GET    /api/sensors/                  # List all sensors
-GET    /api/sensors/{id}/data         # Get sensor readings
-POST   /api/sensors/{id}/data         # Add new sensor reading
-GET    /api/sensors/location/{loc_id} # Get sensors by location
-```
-
-### **Point Cloud Data**
-
-```bash
-# Planned endpoints
-GET    /api/point-clouds/             # List point cloud files
-POST   /api/point-clouds/             # Upload new point cloud
-GET    /api/point-clouds/{id}         # Get point cloud metadata
-POST   /api/point-clouds/{id}/process # Trigger processing
-```
-
-### **Real-time Events**
-
-```bash
-# Planned WebSocket endpoints
-WebSocket /ws/events                  # Real-time event stream
-WebSocket /ws/location/{id}/updates   # Location-specific updates
-WebSocket /ws/sensors/{id}/stream     # Live sensor data stream
 ```
 
 ## 📚 **Related Documentation**
 
 - **[Interactive API Docs](http://localhost:8000/docs)**: Live, testable API documentation
-- **[Developer Guide](./developer_guide.md)**: How to extend and modify APIs  
-- **[System Introduction](./system_introduction.md)**: Understanding the technology stack
-- **[Database Design](./database_design.md)**: Data models and relationships
+- **[API Overview](./overview.md)**: Complete endpoint reference and examples
+- **[Development Guide](../guides/development.md)**: How to extend and modify APIs  
+- **[System Architecture](../architecture/system-architecture.md)**: Understanding the technology stack
+- **[Database Design](../architecture/database-design.md)**: Data models and relationships
 
 ---
 
 **💡 Quick Tip**: Always test new endpoints using the interactive documentation at `/docs` before integrating them into your applications!
+
+**🔗 Quick Links**:
+
+- **🌐 Live API**: <http://localhost:8000/docs>
+- **📊 API Status**: All documented endpoints are fully implemented and ready for use
+- **🎯 Total Endpoints**: 50+ endpoints across 6 main domains
+
+*Last updated: June 2025*

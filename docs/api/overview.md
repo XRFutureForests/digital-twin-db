@@ -1,6 +1,6 @@
 # API Overview
 
-> **Status**: Complete implementation with 40+ endpoints  
+> **Status**: Complete implementation with 50+ endpoints  
 > **Live Docs**: <http://localhost:8000/docs>  
 > **Base URL**: <http://localhost:8000>
 
@@ -158,6 +158,8 @@ curl -X POST http://localhost:8000/api/point-clouds/upload \
 | GET | `/api/species/` | List tree species |
 | GET | `/api/species/{id}` | Get specific species |
 
+**Note**: This endpoint is fully implemented and available.
+
 ### Sensors (`/api/sensors/`)
 
 | Method | Endpoint | Description |
@@ -165,6 +167,8 @@ curl -X POST http://localhost:8000/api/point-clouds/upload \
 | GET | `/api/sensors/` | List sensors |
 | GET | `/api/sensors/{id}` | Get specific sensor |
 | GET | `/api/sensors/{id}/readings` | Get sensor readings |
+
+**Note**: This endpoint is fully implemented and available.
 
 ## 📊 **Data Models**
 

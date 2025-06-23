@@ -117,41 +117,6 @@ class SensorReadingBulkResponse(BaseModel):
     batch_id: Optional[str] = Field(None, description="Batch identifier if provided")
 
 
-# Sensor management schemas
-class SensorBase(BaseModel):
-    """Base sensor schema."""
-
-    location_id: int
-    sensor_type_id: int
-    installation_date: Optional[datetime] = None
-    sensor_config: Optional[Dict[str, Any]] = None
-
-
-class SensorCreate(SensorBase):
-    """Schema for creating sensors."""
-
-    pass
-
-
-class SensorUpdate(BaseModel):
-    """Schema for updating sensors."""
-
-    status_type_id: Optional[int] = None
-    sensor_config: Optional[Dict[str, Any]] = None
-
-
-class SensorResponse(SensorBase):
-    """Schema for sensor response."""
-
-    id: int
-    status_type_id: Optional[int]
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 # Environmental snapshot schemas
 class EnvironmentalSnapshotBase(BaseModel):
     """Base environmental snapshot schema."""
