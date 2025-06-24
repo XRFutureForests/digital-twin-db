@@ -1,6 +1,7 @@
 """
 Location schemas for API request/response validation
 """
+
 from pydantic import BaseModel, Field
 
 
@@ -16,6 +17,6 @@ class LocationCreate(LocationBase):
 
 class LocationResponse(LocationBase):
     id: int
-    
+
     class Config:
         from_attributes = True

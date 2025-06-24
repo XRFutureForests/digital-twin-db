@@ -1,6 +1,7 @@
 """
 Tree schemas for API request/response validation
 """
+
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -21,6 +22,6 @@ class TreeResponse(TreeBase):
     species_id: int
     location_id: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True

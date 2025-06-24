@@ -100,6 +100,7 @@ P_REF[API Gateway & Clients]
 end
 
 S1 -->|Data Ingestion API| DB1
+S2 -->|Data Ingestion API<br/>Event Bus| DB2
 S2 -->|Data Ingestion API<br/>Event Bus| DB3
 S3 -->|Data Ingestion API| DB3
 S4 -->|Data Ingestion API| DB3
@@ -392,7 +393,7 @@ XR1[Virtual Tree Model]
 XR2[Environment Viewer]
 XR3[Sensor Dashboard]
 XR4[Point Cloud Viewer]
-W1[Web Interface]
+W1[Web Interface<br>  - Shiny App<br>  - Simplified Digital Twin<br>   - Point Cloud Viewer]
 I1[Interaction Tools]
 end
 end
