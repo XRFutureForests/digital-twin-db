@@ -11,6 +11,7 @@
 | [lidR](https://github.com/ForestTools/lidR) | R package for airborne LiDAR data manipulation and forest metrics extraction. |
 | [PDAL](https://pdal.io/) | Industry-standard point cloud data processing library (C++/Python). |
 | [CloudCompare](https://www.cloudcompare.org/) | Powerful open-source 3D point cloud and mesh processing software. |
+| [pytreedb](https://github.com/3dgeo-heidelberg/pytreedb) | Python library for the storage and sharing of single tree-based point clouds and all relevant (forest inventory) tree measurements. |
 
 ## Tree/Forest Growth Models
 

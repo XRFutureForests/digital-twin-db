@@ -1,10 +1,10 @@
-# XR Future Forests Lab
+# XR Future Forests Lab - MVP
 
-> **Status**: Full-featured MVP with comprehensive API implementation  
+> **Status**: Simple MVP with basic API implementation  
 > **Live API**: <http://localhost:8000/docs> (when running)  
 > **University**: University of Freiburg, Department of Forest Sciences
 
-A comprehensive digital twin ecosystem for forest research and management, combining extended reality (XR), spatial data processing, and real-time environmental monitoring.
+A minimal viable product for forest research and management, providing basic API endpoints for trees, locations, and point cloud data.
 
 ## 🚀 **Quick Start**
 
@@ -14,39 +14,188 @@ A comprehensive digital twin ecosystem for forest research and management, combi
 # Clone and setup
 git clone <repository-url>
 cd xr-future-forests-lab
+chmod +x setup.sh
 ./setup.sh
 
-# Start all services
-docker-compose up -d
-
-# Verify everything works
-curl http://localhost:8000/health
+# Test the API
+python test_api.py
 ```
 
 **✅ Done!** Access the interactive API at <http://localhost:8000/docs>
 
 ### What You Get
 
-- **Complete REST API** with 50+ endpoints for forest data management
-- **Interactive Documentation** for testing and exploration
-- **Spatial Database** with PostGIS for geographic data
-- **Real-time Events** via Redis for live updates
-- **Point Cloud Processing** for 3D forest data analysis
+- **Simple REST API** with 9 endpoints for basic forest data management
+- **Interactive Documentation** for testing and exploration  
+- **PostgreSQL Database** for data persistence
+- **Docker Setup** for easy deployment
 
 ## 🌟 **Current Capabilities**
 
-### ✅ **Fully Implemented**
+### ✅ **Implemented Features**
 
-- **Forest Location Management** - CRUD operations for forest sites with spatial data
-- **Tree Lifecycle Tracking** - Individual tree monitoring, measurements, and health assessments  
-- **Point Cloud Processing** - Upload, segmentation, classification, and quality assessment
-- **Environmental Monitoring** - Sensor data collection and site characterization
-- **Species Database** - Tree species classification and management
-- **Sensor Management** - Sensor monitoring and data collection
-- **Bulk Operations** - CSV imports and batch processing
-- **Real-time Events** - WebSocket support and event-driven updates
+- **Forest Location Management** - Create and retrieve forest locations with GPS coordinates
+- **Tree Management** - Track individual trees with basic measurements and health status  
+- **Point Cloud Records** - Store metadata for 3D scan files
+- **Species Database** - Basic tree species classification
+- **Database Relationships** - Proper foreign key relationships between entities
 
-### 🔄 **In Development**
+### 📊 **Database Schema**
+
+**Main Tables:**
+
+- `trees` - Individual tree records (height, diameter, status, species, location)
+- `point_clouds` - 3D scan file metadata (filename, size, point count, location)
+
+**Lookup Tables:**  
+
+- `locations` - Forest sites (name, GPS coordinates)
+- `species` - Tree species (common name, scientific name)
+
+## 🔌 **API Endpoints**
+
+### Trees (`/api/trees/`)
+
+- `POST /` - Create a new tree
+- `GET /` - Get all trees  
+- `GET /{id}` - Get specific tree
+
+### Locations (`/api/locations/`)
+
+- `POST /` - Create a new location
+- `GET /` - Get all locations
+- `GET /{id}` - Get specific location
+
+### Point Clouds (`/api/point-clouds/`)  
+
+- `POST /` - Create a point cloud record
+- `GET /` - Get all point clouds
+- `GET /{id}` - Get specific point cloud
+
+## 🏗️ **Architecture**
+
+### Simple Three-Tier Design
+
+```
+src/xr_forests/
+├── api/                  # 🌐 Presentation Layer
+│   ├── main.py          # FastAPI application
+│   └── routers/         # API endpoints
+├── core/                # ⚙️ Business Logic Layer  
+│   ├── models/          # Database models (SQLAlchemy)
+│   ├── schemas/         # API schemas (Pydantic)
+│   └── services/        # Business logic
+└── database/            # 🗄️ Data Access Layer
+    ├── connection.py    # Database setup
+    └── *.py            # Repository classes
+```
+
+## 🛠️ **Development**
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Python 3.11+ (for local development)
+
+### Local Development
+
+```bash
+# Start services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f api
+
+# Stop services  
+docker-compose down
+```
+
+### Manual Database Setup
+
+```bash
+# Create tables
+docker-compose exec api python create_tables.py
+
+# Insert sample data (automatically included)
+```
+
+## 🧪 **Testing**
+
+```bash
+# Test API endpoints
+python test_api.py
+
+# Manual testing via documentation
+open http://localhost:8000/docs
+```
+
+## 📝 **Sample API Usage**
+
+### Create a Location
+
+```bash
+curl -X POST "http://localhost:8000/api/locations/" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test Forest", "latitude": 47.9947, "longitude": 7.8394}'
+```
+
+### Create a Tree
+
+```bash  
+curl -X POST "http://localhost:8000/api/trees/" \
+  -H "Content-Type: application/json" \
+  -d '{"height": 15.5, "diameter": 45.2, "status": "healthy", "species_id": 1, "location_id": 1}'
+```
+
+### Get All Trees
+
+```bash
+curl "http://localhost:8000/api/trees/"
+```
+
+## 🔧 **Configuration**
+
+Environment variables (set in `docker-compose.yml`):
+
+- `XR_FORESTS_DATABASE_URL` - PostgreSQL connection string
+- `XR_FORESTS_API_HOST` - API host binding
+
+## 🐛 **Troubleshooting**
+
+### Common Issues
+
+**API not responding:**
+
+```bash
+# Check if containers are running
+docker-compose ps
+
+# Check API logs
+docker-compose logs api
+```
+
+**Database connection errors:**
+
+```bash
+# Restart PostgreSQL
+docker-compose restart postgres
+
+# Check database logs
+docker-compose logs postgres
+```
+
+## 🚧 **Future Enhancements**
+
+- Redis integration for caching
+- Authentication and authorization
+- File upload for point clouds
+- Advanced spatial queries with PostGIS
+- Real-time WebSocket updates
+- XR visualization clients
+
+---
+
+This MVP provides a solid foundation for forest research data management and can be extended with additional features as needed.
 
 - XR client applications for immersive forest exploration
 - Advanced machine learning for automated species classification
