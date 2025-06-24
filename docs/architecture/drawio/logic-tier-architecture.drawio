@@ -1,0 +1,153 @@
+<mxfile host="Electron" modified="2024-06-24T12:00:00.000Z" agent="Mozilla/5.0" version="24.6.4" etag="drawio-version" type="device">
+  <diagram name="Logic Tier Architecture" id="logic-tier">
+    <mxGraphModel dx="1422" dy="964" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Data Tier Reference -->
+        <mxCell id="data-ref" value="🗄️ Data Tier" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d2d2d2;strokeColor=#505050;strokeWidth=2;fontColor=#0f0f0f;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="200" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="db1" value="Point Cloud DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="data-ref">
+          <mxGeometry x="20" y="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="db2" value="Tree DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="data-ref">
+          <mxGeometry x="20" y="80" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="db3" value="Environment DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="data-ref">
+          <mxGeometry x="20" y="120" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Point Cloud Processing -->
+        <mxCell id="processing-group" value="⚙️ Point Cloud Processing" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ad5643;strokeColor=#612515;strokeWidth=2;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="80" width="200" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="pc1" value="Tree Segmentation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="processing-group">
+          <mxGeometry x="20" y="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="pc2" value="Species Classification" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="processing-group">
+          <mxGeometry x="20" y="80" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="pc3" value="Tree Attribute Extraction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="processing-group">
+          <mxGeometry x="20" y="120" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Simulation Models -->
+        <mxCell id="models-group" value="⚙️ Simulation Models" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ad5643;strokeColor=#612515;strokeWidth=2;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="80" width="200" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="mr" value="Model Registry/&#xa;Orchestrator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="models-group">
+          <mxGeometry x="20" y="40" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="x1" value="SILVA Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="models-group">
+          <mxGeometry x="20" y="90" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="x2" value="BALANCE Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="models-group">
+          <mxGeometry x="20" y="130" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="x3" value="iLand Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="models-group">
+          <mxGeometry x="20" y="170" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Tree Model Service -->
+        <mxCell id="tree-model-group" value="⚙️ Tree Model Service" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ad5643;strokeColor=#612515;strokeWidth=2;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="320" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="dt1" value="Structure Description" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="tree-model-group">
+          <mxGeometry x="20" y="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dt2" value="Growth Simulation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="tree-model-group">
+          <mxGeometry x="20" y="80" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Presentation Tier Reference -->
+        <mxCell id="presentation-ref" value="🖥️ API Gateway &amp; Clients" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#265e4d;strokeColor=#5cb89c;strokeWidth=2;fontColor=#ffffff;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="350" width="200" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Processing Pipeline Connections -->
+        <mxCell id="conn1" value="Processing Pipeline API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="db1" target="pc1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="135" as="sourcePoint" />
+            <mxPoint x="360" y="135" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn2" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;" edge="1" parent="1" source="pc1" target="pc2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="440" y="150" as="sourcePoint" />
+            <mxPoint x="440" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn3" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;" edge="1" parent="1" source="pc2" target="pc3">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="440" y="190" as="sourcePoint" />
+            <mxPoint x="440" y="220" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- DB Update connections -->
+        <mxCell id="conn4" value="DB Update API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="pc1" target="db1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="360" y="135" as="sourcePoint" />
+            <mxPoint x="300" y="135" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn5" value="DB Update API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="pc3" target="db2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="360" y="215" as="sourcePoint" />
+            <mxPoint x="300" y="175" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Tree Model Service connections -->
+        <mxCell id="conn6" value="Tree Model Service API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="db1" target="dt1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="135" as="sourcePoint" />
+            <mxPoint x="360" y="375" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn7" value="DB Update API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="dt1" target="db2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="360" y="375" as="sourcePoint" />
+            <mxPoint x="300" y="175" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn8" value="Tree Model Service API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="db3" target="dt2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="215" as="sourcePoint" />
+            <mxPoint x="360" y="415" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Model connections -->
+        <mxCell id="conn9" value="Model API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="mr" target="x1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="740" y="140" as="sourcePoint" />
+            <mxPoint x="740" y="170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn10" value="Model API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="x1" target="dt2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="640" y="185" as="sourcePoint" />
+            <mxPoint x="560" y="415" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Results to Presentation -->
+        <mxCell id="conn11" value="Results" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;dashed=1;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="tree-model-group" target="presentation-ref">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="370" as="sourcePoint" />
+            <mxPoint x="640" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn12" value="Simulation Results" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;dashed=1;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="models-group" target="presentation-ref">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="740" y="290" as="sourcePoint" />
+            <mxPoint x="740" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

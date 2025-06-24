@@ -214,6 +214,7 @@ This MVP provides a solid foundation for forest research data management and can
 - **[Development Guide](./docs/guides/development.md)** - Complete development workflow
 - **[Contributing Guide](./docs/guides/contributing.md)** - How to contribute to the project
 - **[System Architecture](./docs/architecture/system-architecture.md)** - Technical design details
+- **[Architecture Diagrams](./docs/architecture/diagrams-index.md)** - Visual diagrams (Mermaid + Draw.io)
 
 ### 🔧 **Technical Reference**
 

@@ -1,0 +1,125 @@
+<mxfile host="Electron" modified="2024-06-24T12:00:00.000Z" agent="Mozilla/5.0" version="24.6.4" etag="drawio-version" type="device">
+  <diagram name="Presentation Tier Architecture" id="presentation-tier">
+    <mxGraphModel dx="1422" dy="964" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Data Tier Reference -->
+        <mxCell id="data-ref" value="🗄️ Data Tier" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d2d2d2;strokeColor=#505050;strokeWidth=2;fontColor=#0f0f0f;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="200" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="db1" value="Point Cloud DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="data-ref">
+          <mxGeometry x="20" y="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="db2" value="Tree DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="data-ref">
+          <mxGeometry x="20" y="80" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="db3" value="Environment DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="data-ref">
+          <mxGeometry x="20" y="120" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Logic Tier Reference -->
+        <mxCell id="logic-ref" value="⚙️ Logic Tier" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e59778;strokeColor=#612515;strokeWidth=2;fontColor=#612515;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="280" width="200" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="dt1" value="Structure Description" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="logic-ref">
+          <mxGeometry x="20" y="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dt2" value="Growth Simulation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="logic-ref">
+          <mxGeometry x="20" y="80" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="mr" value="Model Registry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="logic-ref">
+          <mxGeometry x="20" y="120" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- API Layer -->
+        <mxCell id="gateway-group" value="🖥️ API Layer" style="swimlane;whiteSpace=wrap;html=1;fillColor=#5cb89c;strokeColor=#265e4d;strokeWidth=2;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="180" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="apigw" value="API Gateway" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#265e4d;strokeColor=#5cb89c;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="gateway-group">
+          <mxGeometry x="20" y="40" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Client Applications -->
+        <mxCell id="clients-group" value="🖥️ Client Applications" style="swimlane;whiteSpace=wrap;html=1;fillColor=#5cb89c;strokeColor=#265e4d;strokeWidth=2;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="80" width="240" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="xr1" value="Virtual Tree Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#265e4d;strokeColor=#5cb89c;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="clients-group">
+          <mxGeometry x="20" y="40" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="xr2" value="Environment Viewer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#265e4d;strokeColor=#5cb89c;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="clients-group">
+          <mxGeometry x="20" y="80" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="xr3" value="Sensor Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#265e4d;strokeColor=#5cb89c;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="clients-group">
+          <mxGeometry x="20" y="120" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="xr4" value="Point Cloud Viewer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#265e4d;strokeColor=#5cb89c;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="clients-group">
+          <mxGeometry x="20" y="160" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="w1" value="Web Interface&#xa;- Shiny App&#xa;- Simplified Digital Twin&#xa;- Point Cloud Viewer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#265e4d;strokeColor=#5cb89c;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="clients-group">
+          <mxGeometry x="20" y="200" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="i1" value="Interaction Tools" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#265e4d;strokeColor=#5cb89c;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="clients-group">
+          <mxGeometry x="20" y="280" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Data Access -->
+        <mxCell id="conn1" value="Data Access" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;dashed=1;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="data-ref" target="apigw">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="160" as="sourcePoint" />
+            <mxPoint x="360" y="220" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Service APIs -->
+        <mxCell id="conn2" value="Service APIs" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;dashed=1;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="logic-ref" target="apigw">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="360" as="sourcePoint" />
+            <mxPoint x="360" y="220" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- API Gateway to Clients -->
+        <mxCell id="conn3" value="REST/GraphQL" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="apigw" target="xr1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="220" as="sourcePoint" />
+            <mxPoint x="640" y="135" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn4" value="REST/GraphQL" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="apigw" target="xr2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="220" as="sourcePoint" />
+            <mxPoint x="640" y="175" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn5" value="REST/GraphQL" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="apigw" target="xr3">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="220" as="sourcePoint" />
+            <mxPoint x="640" y="215" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn6" value="REST/GraphQL" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="apigw" target="xr4">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="220" as="sourcePoint" />
+            <mxPoint x="640" y="255" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn7" value="REST/GraphQL" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="apigw" target="w1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="220" as="sourcePoint" />
+            <mxPoint x="640" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Bidirectional connection for Interaction Tools -->
+        <mxCell id="conn8" value="Bidirectional&#xa;Control" style="endArrow=classic;startArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="apigw" target="i1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="220" as="sourcePoint" />
+            <mxPoint x="640" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

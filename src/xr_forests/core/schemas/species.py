@@ -1,6 +1,7 @@
 """
 Species schemas for API request/response validation
 """
+
 from pydantic import BaseModel, Field
 
 
@@ -15,6 +16,6 @@ class SpeciesCreate(SpeciesBase):
 
 class SpeciesResponse(SpeciesBase):
     id: int
-    
+
     class Config:
         from_attributes = True

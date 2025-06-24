@@ -1,0 +1,108 @@
+<mxfile host="Electron" modified="2024-06-24T12:00:00.000Z" agent="Mozilla/5.0" version="24.6.4" etag="drawio-version" type="device">
+  <diagram name="Data Tier Architecture" id="data-tier">
+    <mxGraphModel dx="1422" dy="764" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Data Sources Section -->
+        <mxCell id="sources-group" value="🗄️ Data Sources" style="swimlane;whiteSpace=wrap;html=1;fillColor=#8e8e8e;strokeColor=#505050;strokeWidth=2;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="200" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="3dtrees" value="3DTrees Platform" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="sources-group">
+          <mxGeometry x="20" y="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ecosense" value="EcoSense Sensors" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="sources-group">
+          <mxGeometry x="20" y="80" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="climate" value="Climate/Weather Data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="sources-group">
+          <mxGeometry x="20" y="120" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="soil" value="Soil/Groundwater Data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="sources-group">
+          <mxGeometry x="20" y="160" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="inventory" value="Forest Inventory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="sources-group">
+          <mxGeometry x="20" y="200" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Data Storage Section -->
+        <mxCell id="storage-group" value="🗄️ Data Storage" style="swimlane;whiteSpace=wrap;html=1;fillColor=#8e8e8e;strokeColor=#505050;strokeWidth=2;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="80" width="200" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="pointcloud-db" value="Point Cloud DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="storage-group">
+          <mxGeometry x="20" y="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tree-db" value="Tree DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="storage-group">
+          <mxGeometry x="20" y="80" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="environment-db" value="Environment DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#505050;strokeColor=#0f0f0f;strokeWidth=2;fontColor=#ffffff;" vertex="1" parent="storage-group">
+          <mxGeometry x="20" y="120" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Logic Tier Reference -->
+        <mxCell id="logic-ref" value="⚙️ Processing &amp; Models" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#612515;strokeColor=#ad5643;strokeWidth=2;fontColor=#ffffff;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="300" width="200" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Presentation Tier Reference -->
+        <mxCell id="presentation-ref" value="🖥️ API Gateway &amp; Clients" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#265e4d;strokeColor=#5cb89c;strokeWidth=2;fontColor=#ffffff;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="180" width="200" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Data Ingestion Connections -->
+        <mxCell id="conn1" value="Data Ingestion API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="3dtrees" target="pointcloud-db">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="135" as="sourcePoint" />
+            <mxPoint x="380" y="135" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn2" value="Data Ingestion API&#xa;Event Bus" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ecosense" target="tree-db">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="175" as="sourcePoint" />
+            <mxPoint x="380" y="175" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn3" value="Data Ingestion API&#xa;Event Bus" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ecosense" target="environment-db">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="175" as="sourcePoint" />
+            <mxPoint x="380" y="215" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn4" value="Data Ingestion API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="climate" target="environment-db">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="215" as="sourcePoint" />
+            <mxPoint x="380" y="215" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn5" value="Data Ingestion API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="soil" target="environment-db">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="255" as="sourcePoint" />
+            <mxPoint x="380" y="215" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn6" value="Data Ingestion API" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="inventory" target="tree-db">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="295" as="sourcePoint" />
+            <mxPoint x="380" y="175" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Storage to Logic -->
+        <mxCell id="conn7" value="Provides Data" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;dashed=1;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="storage-group" target="logic-ref">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="460" y="250" as="sourcePoint" />
+            <mxPoint x="460" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Storage to Presentation -->
+        <mxCell id="conn8" value="Data Access APIs" style="endArrow=classic;html=1;rounded=0;strokeColor=#313d4f;strokeWidth=2;dashed=1;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="storage-group" target="presentation-ref">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="160" as="sourcePoint" />
+            <mxPoint x="600" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

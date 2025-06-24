@@ -1,0 +1,178 @@
+<mxfile host="Electron" modified="2024-06-24T12:00:00.000Z" agent="Mozilla/5.0" version="24.6.4" etag="drawio-version" type="device">
+  <diagram name="Tree Database ERD" id="tree-erd">
+    <mxGraphModel dx="1422" dy="964" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Reference Tables -->
+        <mxCell id="species" value="Species&#xa;────────────────────&#xa;+ SpeciesID (PK)&#xa;+ CommonName&#xa;+ ScientificName&#xa;+ GrowthCharacteristics" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=60;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#f7dcc7;strokeColor=#ad5643;fontColor=#612515;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tree-status" value="TreeStatus&#xa;────────────────────&#xa;+ TreeStatusID (PK)&#xa;+ StatusName&#xa;+ Description" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=60;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#f7dcc7;strokeColor=#ad5643;fontColor=#612515;" vertex="1" parent="1">
+          <mxGeometry x="260" y="40" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="variant-types" value="VariantTypes&#xa;────────────────────&#xa;+ VariantTypeID (PK)&#xa;+ TypeName&#xa;+ Description" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=60;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#f7dcc7;strokeColor=#ad5643;fontColor=#612515;" vertex="1" parent="1">
+          <mxGeometry x="480" y="40" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Core Tables -->
+        <mxCell id="locations" value="Locations&#xa;────────────────────&#xa;+ LocationID (PK)&#xa;+ LocationName&#xa;+ PlotBoundary (GEOMETRY)&#xa;+ CenterPoint (GEOMETRY)&#xa;+ Description" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=60;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#c0e8d9;strokeColor=#5cb89c;fontColor=#183029;" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="scenarios" value="Scenarios&#xa;────────────────────&#xa;+ ScenarioID (PK)&#xa;+ ScenarioName&#xa;+ CreatedByUserID&#xa;+ CreatedAt&#xa;+ ScenarioParameters" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=60;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#c0e8d9;strokeColor=#5cb89c;fontColor=#183029;" vertex="1" parent="1">
+          <mxGeometry x="260" y="160" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="trees" value="Trees&#xa;────────────────────&#xa;+ TreeID (PK)&#xa;+ LocationID (FK)&#xa;+ SpeciesID (FK)&#xa;+ InitialCaptureDate&#xa;+ InitialHeight_m&#xa;+ InitialDBH_cm&#xa;+ InitialCrownWidth_m&#xa;+ TreeStatusID (FK)&#xa;+ PointCloudID (FK)&#xa;+ Notes" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=60;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#c0e8d9;strokeColor=#5cb89c;fontColor=#183029;" vertex="1" parent="1">
+          <mxGeometry x="480" y="160" width="180" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tree-variants" value="TreeVariants&#xa;────────────────────&#xa;+ TreeVariantID (PK)&#xa;+ TreeID (FK)&#xa;+ ScenarioID (FK)&#xa;+ ParentVariantID (FK)&#xa;+ SpeciesID (FK)&#xa;+ VariantTimestamp&#xa;+ Height_m&#xa;+ DBH_cm&#xa;+ CrownWidth_m&#xa;+ CrownBaseHeight_m&#xa;+ Volume_m3&#xa;+ TreeStatusID (FK)&#xa;+ Position (GEOMETRY)&#xa;+ AbsolutePosition (GEOMETRY)&#xa;+ VariantTypeID (FK)&#xa;+ TimeDelta_yrs&#xa;+ ModelType&#xa;+ ModelParameters&#xa;+ EnvironmentalSnapshotID (FK)&#xa;+ CreatedBy&#xa;+ CreatedAt&#xa;+ UpdatedAt&#xa;+ Notes" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=60;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#c0e8d9;strokeColor=#5cb89c;fontColor=#183029;" vertex="1" parent="1">
+          <mxGeometry x="720" y="40" width="200" height="440" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tree-structures" value="TreeStructures&#xa;────────────────────&#xa;+ StructureID (PK)&#xa;+ TreeVariantID (FK)&#xa;+ StructureType&#xa;+ FilePath&#xa;+ StructureData&#xa;+ GenerationDate&#xa;+ Software&#xa;+ Metadata" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=60;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#c0e8d9;strokeColor=#5cb89c;fontColor=#183029;" vertex="1" parent="1">
+          <mxGeometry x="40" y="320" width="180" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="structure-branches" value="StructureBranches&#xa;────────────────────&#xa;+ BranchID (PK)&#xa;+ StructureID (FK)&#xa;+ ParentBranchID (FK)&#xa;+ BranchPath&#xa;+ BranchOrder&#xa;+ BranchDepth&#xa;+ Length_m&#xa;+ BaseDiameter_cm&#xa;+ TipDiameter_cm&#xa;+ Direction_deg&#xa;+ Inclination_deg&#xa;+ BranchAngle_deg&#xa;+ StartHeight_m&#xa;+ Geometry&#xa;+ CreatedAt&#xa;+ UpdatedAt" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=60;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#c0e8d9;strokeColor=#5cb89c;fontColor=#183029;" vertex="1" parent="1">
+          <mxGeometry x="260" y="320" width="180" height="320" as="geometry" />
+        </mxCell>
+
+        <!-- Relationships -->
+        <!-- Locations to Trees -->
+        <mxCell id="rel1" value="" style="endArrow=crow;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="locations" target="trees">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="230" y="210" as="sourcePoint" />
+            <mxPoint x="480" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Species to Trees -->
+        <mxCell id="rel2" value="" style="endArrow=crow;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.3;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="species" target="trees">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="130" y="130" as="sourcePoint" />
+            <mxPoint x="534" y="160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- TreeStatus to Trees -->
+        <mxCell id="rel3" value="" style="endArrow=crow;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tree-status" target="trees">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="350" y="130" as="sourcePoint" />
+            <mxPoint x="570" y="160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Trees to TreeVariants -->
+        <mxCell id="rel4" value="" style="endArrow=crow;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="trees" target="tree-variants">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="670" y="250" as="sourcePoint" />
+            <mxPoint x="720" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Scenarios to TreeVariants -->
+        <mxCell id="rel5" value="" style="endArrow=crow;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.2;entryDx=0;entryDy=0;" edge="1" parent="1" source="scenarios" target="tree-variants">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="450" y="210" as="sourcePoint" />
+            <mxPoint x="720" y="128" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- VariantTypes to TreeVariants -->
+        <mxCell id="rel6" value="" style="endArrow=crow;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.7;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="variant-types" target="tree-variants">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="130" as="sourcePoint" />
+            <mxPoint x="860" y="40" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- TreeVariants to TreeStructures -->
+        <mxCell id="rel7" value="" style="endArrow=crow;html=1;rounded=0;exitX=0;exitY=0.8;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="tree-variants" target="tree-structures">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="720" y="392" as="sourcePoint" />
+            <mxPoint x="230" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- TreeStructures to StructureBranches -->
+        <mxCell id="rel8" value="" style="endArrow=crow;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="tree-structures" target="structure-branches">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="230" y="400" as="sourcePoint" />
+            <mxPoint x="260" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Self-reference for TreeVariants -->
+        <mxCell id="rel9" value="" style="endArrow=crow;html=1;rounded=0;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=1;entryY=0.1;entryDx=0;entryDy=0;" edge="1" parent="1" source="tree-variants" target="tree-variants">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="930" y="172" as="sourcePoint" />
+            <mxPoint x="930" y="84" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="960" y="172" />
+              <mxPoint x="960" y="84" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Self-reference for StructureBranches -->
+        <mxCell id="rel10" value="" style="endArrow=crow;html=1;rounded=0;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=1;entryY=0.1;entryDx=0;entryDy=0;" edge="1" parent="1" source="structure-branches" target="structure-branches">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="450" y="416" as="sourcePoint" />
+            <mxPoint x="450" y="352" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="480" y="416" />
+              <mxPoint x="480" y="352" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Relationship Labels -->
+        <mxCell id="label1" value="has trees" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="230" y="190" width="70" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="label2" value="is species" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="200" y="130" width="70" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="label3" value="has status" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="390" y="130" width="70" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="label4" value="has variants" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="660" y="230" width="80" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="label5" value="in scenario" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="500" y="180" width="80" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="label6" value="variant type" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="630" y="80" width="80" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="label7" value="has structure" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="480" y="370" width="90" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="label8" value="has branches" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="230" y="460" width="90" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="label9" value="parent variant" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="960" y="120" width="90" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="label10" value="parent branch" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="480" y="380" width="90" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
