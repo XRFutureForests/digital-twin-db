@@ -2,25 +2,28 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies for PostgreSQL and PostGIS
+# Install system dependencies for PostgreSQL
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy pyproject.toml and source code first
-COPY pyproject.toml .
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code and scripts
 COPY src/ src/
-COPY config/ config/
+COPY create_tables.py .
+COPY start.sh .
+RUN chmod +x start.sh
 
-# Install the package in editable mode
-RUN pip install --no-cache-dir -e .
-
-# Create data directory
-RUN mkdir -p /app/data
+# Set Python path
+ENV PYTHONPATH=/app/src
 
 # Expose port
 EXPOSE 8000
 
 # Command to run the application
-CMD ["python", "-m", "xr_forests.api.main"]
+CMD ["./start.sh"]
