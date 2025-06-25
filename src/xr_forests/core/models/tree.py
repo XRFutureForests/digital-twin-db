@@ -2,7 +2,7 @@
 Tree model for individual tree records
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
@@ -25,7 +25,7 @@ class Tree(Base):
     height = Column(Float, nullable=False)  # in meters
     diameter = Column(Float, nullable=False)  # in centimeters
     status = Column(String(20), nullable=False, default=TreeStatus.HEALTHY)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
     # Foreign keys
     species_id = Column(Integer, ForeignKey("species.id"), nullable=False)

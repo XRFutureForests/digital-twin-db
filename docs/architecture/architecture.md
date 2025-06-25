@@ -85,29 +85,29 @@ S5[Forest Inventory]
 end
 
 subgraph STORAGE["🗄️ Data Storage"]
-DB1[Point Cloud DB]
-DB2[Tree DB]
-DB3[Environment DB]
+SC1[Point Cloud Schema]
+SC2[Tree Schema]
+SC3[Sensor Schema]
+SC4[Environment Schema]
 end
 end
 
-subgraph LOGIC_REF["⚙️ Logic Tier"]
-L_REF[Processing & Models]
-end
+LOGIC_REF["⚙️ Logic Tier"]
 
-subgraph PRESENTATION_REF["🖥️ Presentation Tier"]
-P_REF[API Gateway & Clients]
-end
 
-S1 -->|Data Ingestion API| DB1
-S2 -->|Data Ingestion API<br/>Event Bus| DB2
-S2 -->|Data Ingestion API<br/>Event Bus| DB3
-S3 -->|Data Ingestion API| DB3
-S4 -->|Data Ingestion API| DB3
-S5 -->|Data Ingestion API| DB2
+PRESENTATION_REF["🖥️ Presentation Tier"]
 
-STORAGE -.->|Provides Data| LOGIC_REF
-STORAGE -.->|Data Access APIs| PRESENTATION_REF
+S1 -->|DB API| SC1
+S2 -->|DB API<br/>Event Bus| SC3
+S3 -->|DB API| SC4
+S4 -->|DB API| SC4
+S5 -->|DB API| SC2
+
+SC3 --> SC4
+SC3 --> SC2
+
+DATA_TIER <-.-> LOGIC_REF
+DATA_TIER <-.-> PRESENTATION_REF
 
 %% Higher level tiers - light colors
 classDef dataBack fill:#d2d2d2,stroke:#505050,stroke-width:2px,color:#0f0f0f
@@ -124,13 +124,13 @@ classDef presentationNode fill:#265e4d,stroke:#5cb89c,stroke-width:2px,color:#ff
 
 class DATA_TIER dataBack
 class SOURCES,STORAGE dataTier
-class S1,S2,S3,S4,S5,DB1,DB2,DB3 dataNode
+class S1,S2,S3,S4,S5,SC1,SC2,SC3,SC4 dataNode
 class LOGIC_REF logicTier
 class L_REF logicNode
 class PRESENTATION_REF presentationTier
 class P_REF presentationNode
 
-linkStyle 0,1,2,3,4,5,6 stroke:#313d4f,stroke-width:2px
+linkStyle 0,1,2,3,4,5,6,7 stroke:#313d4f,stroke-width:2px
 ```
 
 The Data Tier serves as the foundation for all forest data management, handling both the ingestion of diverse data sources and the storage of processed information. This tier consists of multiple specialized data sources feeding into dedicated storage systems optimized for different data types.
@@ -145,7 +145,7 @@ Primary provider of high-resolution terrestrial or airborne LiDAR point cloud da
 
 #### EcoSense Sensors
 
-Network of environmental sensors providing real-time measurements including temperature, humidity, soil moisture, and other environmental parameters. This distributed sensor network enables continuous environmental monitoring with both real-time streaming and batch data collection capabilities.
+Network of environmental sensors providing real-time measurements including temperature, humidity, soil moisture, and other environmental parameters. This distributed sensor network enables continuous environmental monitoring with both real-time streaming and batch data collection capabilities. Data flows into the sensor schema where it's processed and aggregated to create environmental variants for modeling and analysis.
 
 #### Climate/Weather Data
 
@@ -161,19 +161,23 @@ Traditional field survey data including tree measurements like DBH, height, and 
 
 ### Data Storage Systems
 
-Three specialized databases provide optimized storage for different data types and access patterns:
+The unified PostgreSQL database provides optimized storage through four specialized schemas for different data types and access patterns:
 
-#### Point Cloud DB
+#### Point Cloud Schema
 
-Spatial database optimized for storage, indexing, and retrieval of massive 3D point cloud datasets. This system provides efficient spatial queries, supports point cloud processing workflows, and maintains metadata for all scanning sessions and their derived products.
+Spatial schema optimized for storage, indexing, and retrieval of massive 3D point cloud datasets. This schema provides efficient spatial queries, supports point cloud processing workflows, and maintains metadata for all scanning sessions and their derived products through base tables and variant management.
 
-#### Tree DB
+#### Tree Schema
 
-Comprehensive database for individual tree records, supporting scenario-based modeling, variant management, and detailed structural representations. This system enables both traditional attribute queries and advanced spatial analysis while maintaining complete lineage of all tree variants and modifications.
+Comprehensive schema for individual tree records managed entirely through variants, supporting scenario-based modeling, variant management, and detailed structural representations. This schema enables both traditional attribute queries and advanced spatial analysis while maintaining complete lineage of all tree variants and modifications.
 
-#### Environment DB
+#### Sensor Schema
 
-Time-series database for environmental sensor data, weather records, and aggregated environmental snapshots. This system supports both high-frequency sensor data storage and model-ready environmental summaries essential for growth simulation and scenario analysis.
+Hardware-focused schema managing sensor installations and their real-time data streams. This schema stores sensor metadata, installation details, and raw sensor readings from the EcoSense network, providing the foundation for both environmental data aggregation and direct tree-related sensor measurements that feed into tree modeling and analysis.
+
+#### Environment Schema
+
+Environmental analysis schema that aggregates and processes data from the sensor schema to create environmental snapshots and conditions. This schema stores processed environmental variants derived from sensor data, weather information, and soil conditions, providing model-ready environmental contexts for growth simulation and scenario analysis.
 
 ---
 
@@ -189,58 +193,41 @@ init: {
 }
 }
 }%%
-flowchart TB
+flowchart LR
 subgraph DATA_REF["🗄️ Data Tier"]
-DB1[Point Cloud DB]
-DB2[Tree DB]
-DB3[Environment DB]
+SC1[Point Cloud Schema]
+SC2[Tree Schema]
+SC4[Environment Schema]
 end
 
 subgraph LOGIC_TIER["Logic Tier"]
 subgraph PROCESSING["⚙️ Point Cloud Processing"]
 PC1[Tree Segmentation]
 PC2[Species Classification]
-PC3[Tree Attribute Extraction]
+PC3[Structural Attribute Extraction]
 end
 
-subgraph MODELS["⚙️ Simulation Models"]
-MR[Model Registry/<br/>Orchestrator]
-X1[SILVA Model]
-X2[BALANCE Model]
-X3[iLand Model]
+subgraph MODELS["⚙️ Growth Simulation"]
+X1[External Model]
+X2[Growth Simulation]
 end
 
-subgraph TREE_MODEL["⚙️ Tree Model Service"]
-DT1[Structure Description]
-DT2[Growth Simulation]
-end
 end
 
-subgraph PRESENTATION_REF["🖥️ Presentation Tier"]
-P_REF[API Gateway & Clients]
-end
+PRESENTATION_REF["🖥️ Presentation Tier"]
 
-DB1 -->|Processing Pipeline API| PC1
 PC1 --> PC2
 PC2 --> PC3
-PC1 -->|DB Update API| DB1
-PC2 -->|DB Update API| DB1
-PC3 -->|DB Update API| DB2
+PC1 <-->|PC API / DB API| SC1
+PC2 <-->|PC API / DB API| SC1
+PC3 -->|DB API| SC2
+X1 --> X2
+SC2 <-->|GS API / DB API| X2
+SC4 -->|GS API| X2
 
-DB1 -->|Tree Model Service API| DT1
-DT1 -->|DB Update API| DB2
-DB3 -->|Tree Model Service API| DT2
-DT2 -->|DB Update API| DB2
+DATA_REF <-.-> PRESENTATION_REF
+LOGIC_TIER <-.-> PRESENTATION_REF
 
-MR -->|Model API| X1
-MR -->|Model API| X2
-MR -->|Model API| X3
-X1 -->|Model API| DT2
-X2 -->|Model API| DT2
-X3 -->|Model API| DT2
-
-TREE_MODEL -.->|Results| PRESENTATION_REF
-MODELS -.->|Simulation Results| PRESENTATION_REF
 
 classDef logicBack fill:#e59778,stroke:#612515,stroke-width:2px,color:#612515
 classDef dataTier fill:#d2d2d2,stroke:#505050,stroke-width:2px,color:#0f0f0f
@@ -252,13 +239,13 @@ classDef presentationNode fill:#265e4d,stroke:#5cb89c,stroke-width:2px,color:#ff
 
 class LOGIC_TIER logicBack
 class DATA_REF dataTier
-class DB1,DB2,DB3 dataNode
-class PROCESSING,MODELS,TREE_MODEL logicTier
-class PC1,PC2,PC3,MR,X1,X2,X3,DT1,DT2 logicNode
+class SC1,SC2,SC4 dataNode
+class PROCESSING,MODELS logicTier
+class PC1,PC2,PC3,X1,X2 logicNode
 class PRESENTATION_REF presentationTier
 class P_REF presentationNode
 
-linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 stroke:#313d4f,stroke-width:2px
+linkStyle 0,1,2,3,4,5,6,7,8,9 stroke:#313d4f,stroke-width:2px
 ```
 
 The Logic Tier transforms raw data into actionable insights through sophisticated processing pipelines and simulation models. This tier bridges the gap between data storage and user presentation, implementing the core business logic of forest analysis and modeling.
@@ -322,7 +309,7 @@ Second stage that analyzes segmented tree point clouds to identify species using
 
 #### Tree Attribute Extraction
 
-Final stage that derives biometric measurements (height, DBH, crown dimensions) and health indicators from classified tree point clouds. This component processes classified tree segments and extracts quantitative measurements that feed into the Tree Database for modeling and analysis.
+Final stage that derives biometric measurements (height, DBH, crown dimensions) and health indicators from classified tree point clouds. This component processes classified tree segments and extracts quantitative measurements that feed into the Tree Schema for modeling and analysis.
 
 ### Simulation Models
 
@@ -372,9 +359,10 @@ init: {
 }%%
 flowchart TB
 subgraph DATA_REF["🗄️ Data Tier"]
-DB1[Point Cloud DB]
-DB2[Tree DB]
-DB3[Environment DB]
+SC1[Point Cloud Schema]
+SC2[Tree Schema]
+SC3[Sensor Schema]
+SC4[Environment Schema]
 end
 
 subgraph LOGIC_REF["⚙️ Logic Tier"]
@@ -417,7 +405,7 @@ classDef presentationNode fill:#265e4d,stroke:#5cb89c,stroke-width:2px,color:#ff
 
 class PRESENTATION_TIER presentationBack
 class DATA_REF dataTier
-class DB1,DB2,DB3 dataNode
+class SC1,SC2,SC3,SC4 dataNode
 class LOGIC_REF logicTier
 class DT1,DT2,MR logicNode
 class GATEWAY,CLIENTS presentationTier
@@ -525,7 +513,8 @@ The three-tier architecture enables clear separation of concerns while maintaini
 - Raw data flows from external sources through the Data Tier to the Logic Tier for processing
 - Processed results flow back to the Data Tier for storage and then to the Presentation Tier for visualization
 - User interactions flow from the Presentation Tier through the Logic Tier to update data in the Data Tier
-- Real-time sensor data creates continuous streams from the Data Tier through the Logic Tier to the Presentation Tier
+- Real-time sensor data flows from EcoSense sensors into the sensor schema, where it's processed and aggregated into environmental variants in the environment schema
+- Environmental variants provide context for tree modeling and growth simulation across all forest monitoring domains
 
 **Processing Workflows**:
 

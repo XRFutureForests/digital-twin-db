@@ -4,7 +4,7 @@ Main FastAPI application for XR Future Forests Lab MVP
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from xr_forests.api.routers import trees, locations
+from xr_forests.api.routers import trees, locations, species
 
 # Create FastAPI application
 app = FastAPI(
@@ -27,6 +27,7 @@ app.add_middleware(
 # Include routers
 app.include_router(trees.router)
 app.include_router(locations.router)
+app.include_router(species.router)
 
 
 @app.get("/health")

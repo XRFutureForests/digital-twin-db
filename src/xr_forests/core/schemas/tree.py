@@ -4,12 +4,13 @@ Tree schemas for API request/response validation
 
 from datetime import datetime
 from pydantic import BaseModel, Field
+from xr_forests.core.models.tree import TreeStatus
 
 
 class TreeBase(BaseModel):
     height: float = Field(..., gt=0, description="Height in meters")
     diameter: float = Field(..., gt=0, description="Diameter in centimeters")
-    status: str = Field(..., pattern="^(healthy|stressed|diseased|dead)$")
+    status: TreeStatus = Field(..., description="Tree health status")
 
 
 class TreeCreate(TreeBase):
