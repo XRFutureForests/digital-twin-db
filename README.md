@@ -4,7 +4,7 @@
 > **Live API**: <http://localhost:8000/docs> (when running)  
 > **University**: University of Freiburg, Department of Forest Sciences
 
-A minimal viable product for forest research and management, providing basic API endpoints for trees, locations, and point cloud data.
+A minimal viable product for forest research and management, providing basic API endpoints for trees and locations.
 
 ## 🚀 **Quick Start**
 
@@ -36,7 +36,6 @@ python test_api.py
 
 - **Forest Location Management** - Create and retrieve forest locations with GPS coordinates
 - **Tree Management** - Track individual trees with basic measurements and health status  
-- **Point Cloud Records** - Store metadata for 3D scan files
 - **Species Database** - Basic tree species classification
 - **Database Relationships** - Proper foreign key relationships between entities
 
@@ -45,7 +44,6 @@ python test_api.py
 **Main Tables:**
 
 - `trees` - Individual tree records (height, diameter, status, species, location)
-- `point_clouds` - 3D scan file metadata (filename, size, point count, location)
 
 **Lookup Tables:**  
 
@@ -65,12 +63,6 @@ python test_api.py
 - `POST /` - Create a new location
 - `GET /` - Get all locations
 - `GET /{id}` - Get specific location
-
-### Point Clouds (`/api/point-clouds/`)  
-
-- `POST /` - Create a point cloud record
-- `GET /` - Get all point clouds
-- `GET /{id}` - Get specific point cloud
 
 ## 🏗️ **Architecture**
 
@@ -188,7 +180,6 @@ docker-compose logs postgres
 
 - Redis integration for caching
 - Authentication and authorization
-- File upload for point clouds
 - Advanced spatial queries with PostGIS
 - Real-time WebSocket updates
 - XR visualization clients
@@ -241,7 +232,7 @@ This MVP provides a solid foundation for forest research data management and can
 - **Database**: `xr_forests_lab`
 - **Features**:
   - Spatial data support via PostGIS
-  - Three specialized database schemas (Point Cloud, Tree, Environment)
+  - Simplified MVP database schema (Trees, Locations, Species)
   - Sample data included
 
 ### 2. Redis (`redis`)
@@ -306,19 +297,6 @@ This MVP provides a solid foundation for forest research data management and can
 - `GET /api/environment/sites/{id}/characteristics` - Get site characteristics
 - `POST /api/environment/sites/{id}/characteristics` - Add site characteristics
 - `PUT /api/environment/sites/{id}/characteristics` - Update site characteristics
-
-### Point Cloud Data
-
-- `GET /api/point-clouds` - List point cloud scans
-- `GET /api/point-clouds/{id}` - Get specific point cloud
-- `POST /api/point-clouds` - Create point cloud record
-- `PUT /api/point-clouds/{id}` - Update point cloud
-- `DELETE /api/point-clouds/{id}` - Delete point cloud
-- `POST /api/point-clouds/upload` - Upload point cloud file
-- `GET /api/point-clouds/{id}/processing-jobs` - Get processing jobs
-- `POST /api/point-clouds/{id}/processing-jobs` - Start processing job
-- `GET /api/point-clouds/{id}/quality` - Get quality assessment
-- `POST /api/point-clouds/{id}/quality` - Run quality assessment
 
 ### Reference Data
 
