@@ -16,7 +16,7 @@ init: {
 }%%
 flowchart LR
 
-subgraph API_LAYER["🔌 API Layer"]
+subgraph API_LAYER["API Layer"]
 API1[Point Cloud API]
 API2[Tree API]
 API3[Sensor API]  
@@ -24,7 +24,7 @@ API4[Environment API]
 API5[Simulation API]
 end
 
-subgraph SCHEMAS["🗄️ Database Schemas"]
+subgraph SCHEMAS["Database Schemas"]
 SC1[pointclouds schema]
 SC2[trees schema]
 SC3[sensors schema]
@@ -32,7 +32,7 @@ SC4[environments schema]
 SC5[shared schema]
 end
 
-subgraph CONSUMERS["📱 API Consumers"]
+subgraph CONSUMERS["API Consumers"]
 C1[XR Lab Components]
 C2[Web Interfaces]
 C3[Logic Tier Services]

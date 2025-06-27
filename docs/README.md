@@ -6,7 +6,7 @@
 
 Welcome to the XR Future Forests Lab documentation. This guide helps you navigate our comprehensive digital forest ecosystem platform.
 
-## 🚀 **Quick Start**
+## **Quick Start**
 
 ### For New Users
 
@@ -20,32 +20,32 @@ Welcome to the XR Future Forests Lab documentation. This guide helps you navigat
 2. **[Architecture Overview](./architecture/system-architecture.md)** - System design
 3. **[Contributing Guide](./guides/contributing.md)** - How to contribute
 
-## 📁 **Documentation Structure**
+## **Documentation Structure**
 
 ```text
 docs/
-├── 📖 README.md                    ← You are here!
-├── 📁 guides/                      ← User & developer guides
+├── README.md                    ← You are here!
+├── guides/                      ← User & developer guides
 │   ├── setup.md                   ← Quick setup instructions
 │   ├── project-overview.md        ← What we're building
 │   ├── development.md              ← Development workflow
 │   └── contributing.md             ← Contribution guidelines
-├── 📁 api/                         ← API documentation
+├── api/                         ← API documentation
 │   ├── overview.md                 ← API overview & examples
 │   ├── endpoints.md                ← Complete endpoint reference
 │   └── schemas.md                  ← Data models & schemas
-├── 📁 architecture/                ← Technical architecture
+├── architecture/                ← Technical architecture
 │   ├── system-architecture.md     ← High-level system design
 │   ├── database-design.md          ← Database schema & design
 │   └── technology-stack.md         ← Technology explanations
-└── 📁 reference/                   ← Additional references
+└── reference/                   ← Additional references
     ├── sources.md                  ← Research sources & links
     └── deployment.md               ← Production deployment
 ```
 
-## 🎯 **Current System Capabilities**
+## **Current System Capabilities**
 
-### ✅ **Implemented Features**
+### **Implemented Features**
 
 - **Complete REST API** with 50+ endpoints
 - **Forest Location Management** - CRUD operations for forest sites
@@ -59,72 +59,72 @@ docs/
 - **Real-time Events** - Redis-based event system
 - **Spatial Data Support** - PostGIS integration for geographic data
 
-### 🔄 **In Development**
+### **In Development**
 
 - XR Client Applications
 - Advanced Forest Growth Models
 - Machine Learning Integration
 - Real-time Data Streaming
 
-## 🌐 **API Overview**
+## **API Overview**
 
 The system provides comprehensive REST APIs organized by domain:
 
 | Domain | Endpoints | Status | Description |
 |--------|-----------|--------|-------------|
-| **Health** | `/health` | ✅ Live | System health monitoring |
-| **Locations** | `/api/locations/*` | ✅ Live | Forest site management |
-| **Trees** | `/api/trees/*` | ✅ Live | Individual tree operations |
-| **Point Clouds** | `/api/point-clouds/*` | ✅ Live | 3D data processing |
-| **Environment** | `/api/environment/*` | ✅ Live | Environmental monitoring |
-| **Species** | `/api/species/*` | ✅ Live | Tree species database |
-| **Sensors** | `/api/sensors/*` | ✅ Live | Sensor management |
+| **Health** | `/health` | Live | System health monitoring |
+| **Locations** | `/api/locations/*` | Live | Forest site management |
+| **Trees** | `/api/trees/*` | Live | Individual tree operations |
+| **Point Clouds** | `/api/point-clouds/*` | Live | 3D data processing |
+| **Environment** | `/api/environment/*` | Live | Environmental monitoring |
+| **Species** | `/api/species/*` | Live | Tree species database |
+| **Sensors** | `/api/sensors/*` | Live | Sensor management |
 
 **Live Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-## 🏗️ **Architecture Summary**
+## **Architecture Summary**
 
 The system follows a three-tier architecture:
 
-- **🖥️ Presentation Tier**: FastAPI REST API with real-time WebSocket support
-- **⚙️ Logic Tier**: Business logic, data processing, and event handling
-- **🗄️ Data Tier**: PostgreSQL + PostGIS + Redis for comprehensive data management
+- **Presentation Tier**: FastAPI REST API with real-time WebSocket support
+- **Logic Tier**: Business logic, data processing, and event handling
+- **Data Tier**: PostgreSQL + PostGIS + Redis for comprehensive data management
 
 **Technology Stack**: Python, FastAPI, PostgreSQL, PostGIS, Redis, Docker
 
-## 📚 **Documentation Sections**
+## **Documentation Sections**
 
-### 🎯 **Getting Started**
+### **Getting Started**
 
 - [Setup Guide](./guides/setup.md) - Installation and first run
 - [Project Overview](./guides/project-overview.md) - Vision and goals
 - [API Overview](./api/overview.md) - Using the APIs
 
-### 👨‍💻 **For Developers**
+### **For Developers**
 
 - [Development Guide](./guides/development.md) - Complete development workflow
 - [Architecture Documentation](./architecture/system-architecture.md) - Technical details
 - [Contributing](./guides/contributing.md) - How to contribute
 
-### 🔧 **Technical Reference**
+### **Technical Reference**
 
 - [API Reference](./api/endpoints.md) - Complete endpoint documentation
 - [Database Design](./architecture/database-design.md) - Schema and models
 - [Technology Stack](./architecture/technology-stack.md) - Technical explanations
 
-### 📖 **Additional Resources**
+### **Additional Resources**
 
 - [Research Sources](./reference/sources.md) - Academic and technical references
 - [Deployment Guide](./reference/deployment.md) - Production deployment
 
-## 🔗 **Quick Links**
+## **Quick Links**
 
-- **🌐 Live API**: <http://localhost:8000/docs>
-- **🗄️ Database**: `docker exec -it xr_forests_db psql -U forests_user -d xr_forests_lab`
-- **📡 Redis**: `docker exec -it xr_forests_redis redis-cli`
-- **📊 Test Coverage**: `open htmlcov/index.html`
+- **Live API**: <http://localhost:8000/docs>
+- **Database**: `docker exec -it xr_forests_db psql -U forests_user -d xr_forests_lab`
+- **Redis**: `docker exec -it xr_forests_redis redis-cli`
+- **Test Coverage**: `open htmlcov/index.html`
 
-## 💡 **Need Help?**
+## **Need Help?**
 
 1. **First time here?** → Start with [Setup Guide](./guides/setup.md)
 2. **Want to develop?** → Follow [Development Guide](./guides/development.md)
