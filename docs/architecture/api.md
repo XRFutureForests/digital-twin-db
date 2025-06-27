@@ -10,7 +10,7 @@ init: {
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#d2d2d2'
+'secondaryColor': '#ababab'
 }
 }
 }%%
@@ -27,7 +27,7 @@ end
 subgraph SCHEMAS["Database Schemas"]
 SC1[pointclouds schema]
 SC2[trees schema]
-SC3[sensors schema]
+SC3[monitoring schema]
 SC4[environments schema]
 SC5[shared schema]
 end
@@ -63,13 +63,24 @@ C4 --> API2
 C4 --> API3
 C4 --> API4
 
-classDef apiLayer fill:#f9f,stroke:#333,stroke-width:2px
-classDef schemaLayer fill:#bbf,stroke:#333,stroke-width:2px
-classDef consumerLayer fill:#bfb,stroke:#333,stroke-width:2px
+%% Subgraph styling
+classDef apiLayer fill:#566b8a,stroke:#181d26,stroke-width:2px,color:#e8e8e8
+classDef schemaLayer fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
+classDef consumerLayer fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
+
+%% Node styling
+classDef apiNode fill:#313D4F,stroke:#181d26,stroke-width:2px,color:#e8e8e8
+classDef schemaNode fill:#797979,stroke:#4f4f4f,stroke-width:2px,color:#e8e8e8
+classDef consumerNode fill:#38806a,stroke:#19392f,stroke-width:2px,color:#e8e8e8
 
 class API_LAYER apiLayer
+class API1,API2,API3,API4,API5 apiNode
 class SCHEMAS schemaLayer
+class SC1,SC2,SC3,SC4,SC5 schemaNode
 class CONSUMERS consumerLayer
+class C1,C2,C3,C4 consumerNode
+
+linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21 stroke:#313D4F,stroke-width:2px
 ```
 
 ## Core APIs

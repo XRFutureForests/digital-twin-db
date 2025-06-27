@@ -10,7 +10,7 @@ init: {
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#d2d2d2'
+'secondaryColor': '#ababab'
 }
 }
 }%%
@@ -90,17 +90,32 @@ ES2 --> DS3
 ES3 --> DS1
 ES4 --> DS1
 
-classDef apiLayer fill:#f9f,stroke:#333,stroke-width:2px
-classDef dataServices fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
-classDef webServices fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-classDef xrServices fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
-classDef externalServices fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+%% Subgraph styling
+classDef apiLayer fill:#566b8a,stroke:#181d26,stroke-width:2px,color:#e8e8e8
+classDef dataServices fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
+classDef webServices fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
+classDef xrServices fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
+classDef externalServices fill:#F4EFA9,stroke:#c7bb1a,stroke-width:2px,color:#242424
+
+%% Node styling
+classDef apiNode fill:#313D4F,stroke:#181d26,stroke-width:2px,color:#e8e8e8
+classDef dataNode fill:#797979,stroke:#4f4f4f,stroke-width:2px,color:#e8e8e8
+classDef webNode fill:#38806a,stroke:#19392f,stroke-width:2px,color:#e8e8e8
+classDef xrNode fill:#38806a,stroke:#19392f,stroke-width:2px,color:#e8e8e8
+classDef externalNode fill:#ECE46f,stroke:#c7bb1a,stroke-width:2px,color:#242424
 
 class API_LAYER apiLayer
+class API1,API2,API3,API4,API5 apiNode
 class DATA_SERVICES dataServices
+class DS1,DS2,DS3,DS4 dataNode
 class WEB_SERVICES webServices
+class WS1,WS2,WS3 webNode
 class XR_SERVICES xrServices
+class XS1,XS2,XS3,XS4,XS5 xrNode
 class EXTERNAL_SERVICES externalServices
+class ES1,ES2,ES3,ES4 externalNode
+
+linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27 stroke:#313D4F,stroke-width:2px
 ```
 
 ## Data Services

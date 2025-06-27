@@ -1,106 +1,80 @@
-# XR Future Forests Lab - MVP
+# XR Future Forests Lab
 
-> **Status**: Simple MVP with basic API implementation  
-> **Live API**: <http://localhost:8000/docs> (when running)  
-> **University**: University of Freiburg, Department of Forest Sciences
+> **University**: University of Freiburg, Department of Forest Sciences  
+> **Status**: Architecture Design & Planning Phase
 
-A minimal viable product for forest research and management, providing basic API endpoints for trees and locations.
+An ambitious research project aimed at creating **digital twins of forests** through immersive XR technologies. The project combines advanced data acquisition, spatial analysis, and growth modeling to enable unprecedented forest visualization, research, and management capabilities.
 
-## 🚀 **Quick Start**
+## 🌟 **Project Vision**
 
-### 5-Minute Setup
+The XR Future Forests Lab represents a groundbreaking approach to forest science, combining cutting-edge technologies to create comprehensive digital forest ecosystems. Our vision encompasses three primary domains:
 
-```bash
-# Clone and setup
-git clone <repository-url>
-cd xr-future-forests-lab
-chmod +x setup.sh
-./setup.sh
+### 🔬 **Research Innovation**
 
-# Test the API
-python test_api.py
-```
+- **Digital Forest Twins**: Complete digital replications of forest ecosystems with real-time data integration
+- **Invisible Process Visualization**: Make hidden forest processes (sap flow, root competition, nutrient cycling) visible and interactive
+- **Advanced Growth Modeling**: Integration with SILVA and BALANCE models for scientifically accurate forest simulation
+- **Multi-scale Analysis**: Seamless exploration from individual tree characteristics to landscape-level dynamics
 
-**✅ Done!** Access the interactive API at <http://localhost:8000/docs>
+### 🎓 **Educational Excellence**
 
-### What You Get
+- **Immersive Learning**: Experience forest ecosystems in ways impossible in traditional field studies
+- **Risk-free Training**: Practice forest management decisions in virtual environments before real-world application
+- **Temporal Dynamics**: Visualize decades of forest change in accelerated time
+- **Interactive Data Exploration**: Transform complex datasets into intuitive, engaging learning experiences
 
-- **Simple REST API** with 9 endpoints for basic forest data management
-- **Interactive Documentation** for testing and exploration  
-- **PostgreSQL Database** for data persistence
-- **Docker Setup** for easy deployment
+### 🤝 **Stakeholder Engagement**
 
-## 🌟 **Current Capabilities**
+- **Policy Communication**: Translate complex forest research into accessible visualizations for decision-makers
+- **Public Outreach**: Make forest science engaging and understandable for broader audiences
+- **Interdisciplinary Collaboration**: Bridge forest science with technology, education, and policy domains
+- **Industry Partnerships**: Develop practical tools for modern forest management
 
-### ✅ **Implemented Features**
+## 🏗️ **System Architecture**
 
-- **Forest Location Management** - Create and retrieve forest locations with GPS coordinates
-- **Tree Management** - Track individual trees with basic measurements and health status  
-- **Species Database** - Basic tree species classification
-- **Database Relationships** - Proper foreign key relationships between entities
+The XR Future Forests Lab implements a sophisticated three-tier architecture designed to seamlessly integrate forest data acquisition, processing, and immersive visualization.
 
-### 📊 **Database Schema**
+### **Data Tier**
 
-**Main Tables:**
+- **Diverse Data Sources**: Integration with 3DTrees Platform, EcoSense Sensors, Forest Inventory systems, and External Environmental Data
+- **Intelligent Data Ingestion**: Automated pipeline service for data validation, format standardization, and temporal alignment
+- **Comprehensive Database**: PostgreSQL with PostGIS extensions organized into specialized schemas (shared, pointclouds, trees, monitoring, environments)
+- **Real-time Processing**: High-frequency sensor data aggregation with quality assessment and spatial correlation
 
-- `trees` - Individual tree records (height, diameter, status, species, location)
+### **Logic Tier**
 
-**Lookup Tables:**  
+- **Advanced Point Cloud Processing**: Automated tree segmentation, species classification, and structural attribute extraction
+- **Growth Simulation Engine**: Integration with scientific models (SILVA, BALANCE) for accurate forest development prediction
+- **Processing Services**: Distributed services for LiDAR analysis, environmental modeling, and simulation orchestration
 
-- `locations` - Forest sites (name, GPS coordinates)
-- `species` - Tree species (common name, scientific name)
+### **Presentation Tier**
 
-## 🔌 **API Endpoints**
+- **Immersive XR Experiences**: Full-featured XR applications for forest exploration and interaction
+- **3DTrees Web Platform**: Browser-based point cloud visualization and processing management
+- **Field Web Application**: Mobile-optimized interface with QR code scanning for real-time forest inventory
+- **API Gateway**: Unified access point with comprehensive REST APIs for all system components
 
-### Trees (`/api/trees/`)
+### **Core Technologies**
 
-- `POST /` - Create a new tree
-- `GET /` - Get all trees  
-- `GET /{id}` - Get specific tree
+- **Database**: PostgreSQL with PostGIS for spatial data management
+- **APIs**: RESTful services (Point Cloud, Tree, Sensor, Environment, Simulation APIs)
+- **Processing**: Python-based services for LiDAR analysis and growth modeling
+- **Visualization**: WebGL-based web interfaces and native XR applications
+- **Real-time**: Event-driven architecture for live data updates and collaborative experiences
 
-### Locations (`/api/locations/`)
+## � **Documentation**
 
-- `POST /` - Create a new location
-- `GET /` - Get all locations
-- `GET /{id}` - Get specific location
+### Architecture Documentation
 
-## 🏗️ **Architecture**
+- **[System Architecture](./docs/architecture/architecture.md)** - Comprehensive three-tier architecture design
+- **[Database Design](./docs/architecture/database.md)** - Detailed database schemas and relationships
+- **[API Architecture](./docs/architecture/api.md)** - Complete API specifications and interfaces
+- **[Services Architecture](./docs/architecture/services.md)** - Service layer design and integration patterns
 
-### Simple Three-Tier Design
+### Reference Documentation
 
-```
-src/xr_forests/
-├── api/                  # 🌐 Presentation Layer
-│   ├── main.py          # FastAPI application
-│   └── routers/         # API endpoints
-├── core/                # ⚙️ Business Logic Layer  
-│   ├── models/          # Database models (SQLAlchemy)
-│   ├── schemas/         # API schemas (Pydantic)
-│   └── services/        # Business logic
-└── database/            # 🗄️ Data Access Layer
-    ├── connection.py    # Database setup
-    └── *.py            # Repository classes
-```
-
-## 🛠️ **Development**
-
-### Prerequisites
-
-- Docker & Docker Compose
-- Python 3.11+ (for local development)
-
-### Local Development
-
-```bash
-# Start services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f api
-
-# Stop services  
-docker-compose down
-```
+- **[Project Overview & Vision](./docs/README.md)** - Understanding our goals and approach
+- **[Technology Stack](./docs/architecture/)** - Technical components and design decisions
 
 ### Manual Database Setup
 
@@ -343,24 +317,24 @@ The XR Future Forest Lab aims to create **digital twins of forests** that can be
 - **Julian Frey**: Quantitative Structure Models (QSM)
 - **Katja Kröner**: Tree Growth Models
 
-## Components
+## 🚀 **Core Components**
 
-### XR Lab
+### **XR Lab**
 
-**Responsible Team**: XRLab (Dr. Christian Scharinger)
+*Responsible Team*: XRLab (Dr. Christian Scharinger)
 
 The central hub where all components converge. The XR Lab develops immersive visualization applications that bring digital forest twins to life, enabling users to experience and interact with forest data in unprecedented ways.
 
-**Capabilities**:
+**Planned Capabilities**:
 
 - Real-time forest visualization and interaction
-- Multi-user collaborative environments
+- Multi-user collaborative environments  
 - Educational simulation scenarios
 - Research data exploration tools
 
-### Point Cloud Processing
+### **Point Cloud Processing**
 
-**Responsible Team**: Department of Sensor-Based Geoinformatics (Prof. Dr. Teja Kattenborn)
+*Responsible Team*: Department of Sensor-Based Geoinformatics (Prof. Dr. Teja Kattenborn)
 
 The foundation of the digital forest twin, transforming raw LiDAR and photogrammetric data into structured forest information.
 
@@ -373,188 +347,43 @@ The foundation of the digital forest twin, transforming raw LiDAR and photogramm
 
 **Technology Stack**: Python, R, CloudCompare, lidR, Machine Learning algorithms
 
-### Digital Forest Twin
+### **Digital Forest Twin**
 
-**Responsible Team**: Department of Forest Growth and Dendroecology (Prof. Dr. Thomas Seifert)
-
-#### Tree Database
-
-#### Quantitative Structure Model (QSM)
+*Responsible Team*: Department of Forest Growth and Dendroecology (Prof. Dr. Thomas Seifert)
 
 Digital representations of individual trees and forest ecosystems for growth simulation.
 
-#### Tree/Forest Growth Models
+**Growth Models**:
 
 - **SILVA**: Individual tree growth simulator
 - **BALANCE**: Stand-level forest growth model
+- **Quantitative Structure Models (QSM)**: Detailed tree structural analysis
 
-### Application Conceptualization
+## 🎯 **Applications & Use Cases**
 
-#### Teaching
+### **Teaching & Education**
 
 - **Sensor Network Visualization**: Experience EcoSense sensor networks and ecosystem fluxes (e.g., Hartheim site)
 - **Remote Sensing Education**: "Experience" LiDAR and other 3D data through immersive exploration
 - **Forest Management Training**: Practice forestry decisions in risk-free virtual environments
 - **Temporal Dynamics**: Visualize long-term forest changes in accelerated time
 
-#### Research
+### **Research Innovation**
 
 - **Invisible Processes**: Visualize hidden forest processes (sap flow, root competition, nutrient flows)
 - **Data Exploration**: Interactive analysis of complex forest datasets
 - **Hypothesis Testing**: Test management scenarios before real-world implementation
 - **Multi-scale Analysis**: Examine forests from tree level to landscape scale
 
-#### Communication
+### **Communication & Outreach**
 
 - **Faculty Collaboration**: Platform for visualizing research from Excellence Clusters, RTGs, SFBs
 - **Stakeholder Engagement**: Communicate forest research to policymakers and the public
 - **Interdisciplinary Outreach**: Bridge forest science with other disciplines
 - **Public Education**: Make forest science accessible to broader audiences
 
-## Database Schema
+## 🔮 **Future Vision**
 
-The implementation includes three specialized databases with minimal schemas:
+This project represents the future of forest science - where cutting-edge technology meets traditional forest research to create unprecedented insights and experiences. The XR Future Forests Lab will serve as a model for how immersive technologies can transform scientific research, education, and public engagement in environmental sciences.
 
-### Point Cloud Database
-
-- `point_clouds`: LiDAR scan metadata and file references
-- `processing_jobs`: Background processing job tracking
-- `processing_status_types`: Processing workflow states
-
-### Tree Database  
-
-- `trees`: Individual tree records with spatial positioning
-- `tree_measurements`: Biometric measurements over time
-- `species`: Tree species reference data
-
-### Environment Database
-
-- `environment_sensors`: Sensor device inventory
-- `sensor_readings`: Time-series environmental data
-- `environmental_snapshots`: Aggregated environmental summaries
-
-## Sample Data
-
-The database is initialized with sample data including:
-
-- Test forest plot location with PostGIS geometry
-- 3 sample trees (European Beech, Sessile Oak, Norway Spruce)
-- Tree measurements with quality indicators
-- Environmental sensor and readings
-- Complete species reference data
-
-## Configuration
-
-Environment variables can be set in `docker-compose.yml`:
-
-- `DATABASE_URL`: PostgreSQL connection string
-- `REDIS_URL`: Redis connection string  
-- `API_HOST` / `API_PORT`: API server configuration
-- `ENVIRONMENT`: Set to `development` for verbose logging
-
-Copy `.env.example` to `.env` to customize configuration.
-
-## Event System
-
-The system uses Redis for real-time event communication:
-
-- **Channels**: `tree_events`, `location_events`, `sensor_events`
-- **WebSocket**: Events are forwarded to connected clients via `/ws`
-- **Event Types**: `tree_created`, `tree_measurement_added`, `location_created`
-
-## Spatial Queries
-
-The implementation supports PostGIS spatial operations:
-
-- Point-in-polygon queries for trees within locations
-- Distance calculations between sensors and trees
-- Spatial indexing for performance
-- GeoJSON output for web mapping applications
-
-## Testing
-
-Run the included test script to verify API functionality:
-
-```bash
-python test_api.py
-```
-
-Or use the convenient setup script:
-
-```bash
-./setup.sh
-```
-
-## Troubleshooting
-
-### Database Connection Issues
-
-```bash
-# Check if PostgreSQL is ready
-docker exec -it xr_forests_db pg_isready -U forests_user
-
-# View database logs
-docker logs xr_forests_db
-
-# Connect to database
-docker exec -it xr_forests_db psql -U forests_user -d xr_forests_lab
-```
-
-### API Issues
-
-```bash
-# Check API logs
-docker logs xr_forests_api
-
-# Test database connectivity from API
-curl http://localhost:8000/health
-```
-
-### Redis Connection Issues
-
-```bash
-# Test Redis connectivity
-docker exec -it xr_forests_redis redis-cli ping
-
-# View Redis logs
-docker logs xr_forests_redis
-```
-
-## Next Steps
-
-This minimal implementation provides the foundation for:
-
-1. **Point Cloud Processing**: Add LiDAR file upload and processing workflows
-2. **Simulation Models**: Integrate SILVA, BALANCE, and iLand models
-3. **XR Client**: Build Unity/Unreal applications consuming the API
-4. **Advanced Analytics**: Add machine learning for species classification
-5. **Real-time Monitoring**: Expand sensor data ingestion capabilities
-
-## Documentation
-
-For detailed system architecture and design decisions, see:
-
-### 🎯 New to the Project?
-
-**Start Here**: [Documentation Overview](docs/documentation_overview.md) - Choose your learning path
-
-### 📚 Core Documentation
-
-- [Architecture Overview](docs/architecture.md) - System design and technology decisions
-- [Database Design](docs/database_design.md) - Data models and schema design
-- [Data Contracts & APIs](docs/data_contracts_and_apis.md) - API specifications
-- [System Introduction](docs/system_introduction.md) - Technology stack explanation
-
-### 🚀 Developer Resources
-
-- [Developer Guide](docs/developer_guide.md) - Complete development workflow and tutorials
-- [Project Structure Guide](docs/project_structure_guide.md) - Visual project overview and development workflow
-- [API Reference (Visual)](docs/api_reference_visual.md) - Quick visual API endpoint reference
-- [Interactive API Docs](http://localhost:8000/docs) - Live API documentation (when running)
-
-### 📋 Quick References
-
-- **New to the project?** Start with [Documentation Overview](docs/documentation_overview.md)
-- **Need API details?** Check [API Reference (Visual)](docs/api_reference_visual.md)
-- **Want to develop features?** Follow [Developer Guide](docs/developer_guide.md)
-- **Curious about technology?** Read [System Introduction](docs/system_introduction.md)
+The comprehensive architecture and database designs documented in this repository provide the foundation for implementing this vision, enabling the creation of truly immersive forest experiences that will revolutionize how we understand, study, and manage forest ecosystems.
