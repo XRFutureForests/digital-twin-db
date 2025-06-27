@@ -16,7 +16,7 @@ init: {
 }%%
 flowchart LR
 
-subgraph API_LAYER["🔌 Core APIs"]
+subgraph API_LAYER["Core APIs"]
 API1[Point Cloud API]
 API2[Tree API]
 API3[Sensor API]
@@ -24,20 +24,20 @@ API4[Environment API]
 API5[Simulation API]
 end
 
-subgraph DATA_SERVICES["📊 Data Services"]
+subgraph DATA_SERVICES["Data Services"]
 DS1[Data Ingestion Pipeline]
 DS2[Point Cloud Processing Service]
 DS3[Growth Simulation Service]
 DS4[Sensor Data Aggregation Service]
 end
 
-subgraph WEB_SERVICES["🌐 Web Services"]
+subgraph WEB_SERVICES["Web Services"]
 WS1[Field Web App Service]
 WS2[3DTrees Web Platform Service]
 WS3[API Gateway Service]
 end
 
-subgraph XR_SERVICES["🥽 XR Services"]
+subgraph XR_SERVICES["XR Services"]
 XS1[Virtual Tree Rendering Service]
 XS2[Environment Visualization Service]
 XS3[Point Cloud Viewer Service]
@@ -45,7 +45,7 @@ XS4[XR Interaction Service]
 XS5[Virtual Sensor Service]
 end
 
-subgraph EXTERNAL_SERVICES["🔗 External Integrations"]
+subgraph EXTERNAL_SERVICES["External Integrations"]
 ES1[SILVA Model Interface]
 ES2[BALANCE Model Interface]
 ES3[EcoSense Sensor Integration]
