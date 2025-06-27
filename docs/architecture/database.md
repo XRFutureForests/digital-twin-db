@@ -363,31 +363,3 @@ erDiagram
     EnvironmentVariants ||--o{ EnvironmentVariants : parent_variant
 ```
 
-## Database Design Summary
-
-This PostgreSQL database design provides a robust foundation for the XR Future Forests Lab with the following key characteristics:
-
-### Schema Organization
-
-- **Shared Schema**: Core reference tables (Locations, Species, Scenarios, VariantTypes) used across all domains
-- **Point Clouds Schema**: LiDAR scan management with processing variants and file path references
-- **Trees Schema**: Tree inventory with growth simulation support and QR code integration
-- **Monitoring Schema**: Efficient time-series sensor data storage optimized for high-frequency readings
-- **Environments Schema**: Environmental context management derived from sensor aggregations
-
-### Key Design Principles
-
-- **Variant Pattern**: Flexible data versioning across point clouds, trees, and environments
-- **Time-Series Optimization**: Efficient sensor readings storage for high-volume environmental monitoring
-- **File Path Management**: Simple file references within tables for external file handling
-- **Spatial Support**: PostGIS integration for geographic and geometric data
-- **Processing Flexibility**: External processing workflow support through clear status tracking
-
-### Scalability Features
-
-- Optimized for high-volume sensor data ingestion
-- Efficient querying through proper indexing on time-series data
-- Flexible JSON metadata storage for processing parameters
-- Cross-schema relationships enabling complex forest analysis workflows
-
-This design supports the three-tier architecture vision while maintaining data integrity, performance, and flexibility for forest research applications.

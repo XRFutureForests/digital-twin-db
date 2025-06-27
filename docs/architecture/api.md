@@ -95,106 +95,71 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 
 The Audit API provides field-level change tracking and history management across all variant tables, complementing the variant-based versioning system.
 
-**Key Functionality**:
-
-- **Recording field changes** automatically during PATCH operations
-- **Retrieving change history** for specific records with filtering options
-- **Reverting field modifications** using audit log data
-- **User attribution tracking** for all modifications
-- **Bulk change operations** with consolidated audit entries
+- **GET /api/audit/{table_name}/{record_id}/history** - Retrieve change history for specific records with filtering options
+- **POST /api/audit/{table_name}/{record_id}/revert** - Revert field modifications using audit log data
+- **GET /api/audit/users/{user_id}/activity** - Track user attribution for all modifications
+- **POST /api/audit/bulk-operations** - Handle bulk change operations with consolidated audit entries
 
 ### Point Cloud API
 
 The Point Cloud API manages all LiDAR data operations, providing endpoints for:
 
-- **Creating base `PointCloud` records** upon file upload
-- **Managing `PointCloudVariants`** with processing status tracking
+- **POST /api/pointclouds** - Create base `PointCloud` records upon file upload
+- **GET /api/pointclouds/{point_cloud_id}/variants** - Manage `PointCloudVariants` with processing status tracking
 - **PATCH /api/pointclouds/{variant_id}** - Update processing parameters with audit trail
 - **GET /api/pointclouds/{variant_id}/history** - Track processing parameter changes
-- **Querying point clouds** by location, date range, or processing status
-- **Retrieving processing results** and confidence scores
+- **GET /api/pointclouds** - Query point clouds by location, date range, or processing status
+- **GET /api/pointclouds/{variant_id}/results** - Retrieve processing results and confidence scores
 
 ### Tree API
 
 The Tree API serves as the primary interface for forest inventory data, supporting:
 
-- **CRUD operations on `TreeVariants`** with full lineage tracking
+- **GET /api/trees/{variant_id}** - Retrieve tree variant with full lineage tracking
+- **POST /api/trees** - Create new tree variants
+- **PUT /api/trees/{variant_id}** - Update complete tree variant records
+- **DELETE /api/trees/{variant_id}** - Remove tree variants
 - **PATCH /api/trees/{variant_id}** - Update specific fields with automatic audit logging
 - **GET /api/trees/{variant_id}/history** - Retrieve complete change history
 - **POST /api/trees/{variant_id}/revert** - Revert specific field changes
-- **QR code-based tree lookup** for field applications
-- **Growth simulation result storage** and retrieval
-- **Species and location-based queries** with spatial filtering
+- **GET /api/trees/qr/{qr_code}** - QR code-based tree lookup for field applications
+- **POST /api/trees/{variant_id}/simulation-results** - Store growth simulation results
+- **GET /api/trees** - Query trees by species and location with spatial filtering
 
 ### Sensor API
 
 The Sensor API handles environmental monitoring infrastructure:
 
-- **Managing `Sensors`** installation records and metadata
-- **High-throughput ingestion** of `SensorReadings` time-series data
-- **Real-time sensor status monitoring** and alerting
-- **Historical data aggregation** and statistical queries
+- **GET /api/sensors/{sensor_id}** - Retrieve sensor installation records and metadata
+- **POST /api/sensors** - Create new sensor installations
+- **PUT /api/sensors/{sensor_id}** - Update sensor metadata
+- **DELETE /api/sensors/{sensor_id}** - Remove sensor installations
+- **POST /api/sensors/{sensor_id}/readings** - High-throughput ingestion of `SensorReadings` time-series data
+- **GET /api/sensors/{sensor_id}/status** - Real-time sensor status monitoring and alerting
+- **GET /api/sensors/{sensor_id}/readings** - Retrieve historical data with aggregation and statistical queries
 
 ### Environment API
 
 The Environment API consolidates environmental context data:
 
-- **Creating and managing `EnvironmentVariants`** from sensor aggregations
+- **GET /api/environments/{variant_id}** - Retrieve environment variants from sensor aggregations
+- **POST /api/environments** - Create new environment variants
+- **PUT /api/environments/{variant_id}** - Update complete environment variant records
+- **DELETE /api/environments/{variant_id}** - Remove environment variants
 - **PATCH /api/environments/{variant_id}** - Update environmental measurements with audit trail
 - **GET /api/environments/{variant_id}/history** - Track environmental parameter changes
-- **Supporting scenario-based environmental modeling**
-- **Providing environmental context** for growth simulations
-- **Integrating user-defined environmental parameters** with change tracking
+- **GET /api/environments/scenarios/{scenario_id}** - Support scenario-based environmental modeling
+- **GET /api/environments/{variant_id}/context** - Provide environmental context for growth simulations
+- **POST /api/environments/user-defined** - Integrate user-defined environmental parameters with change tracking
 
 ### Simulation API
 
 The Simulation API orchestrates growth modeling workflows:
 
-- **Interfacing with external models** (SILVA, BALANCE)
-- **Managing simulation parameter sets** and scenarios
-- **Coordinating data flow** between Tree and Environment APIs
-- **Tracking simulation progress** and storing results as TreeVariants
-
-## API Design Principles
-
-This API architecture ensures consistent data access patterns while maintaining the flexibility needed for diverse use cases across XR visualization, web interfaces, and scientific modeling applications.
-
-### Key Design Features
-
-- **Schema Abstraction**: Each API directly maps to specific database schemas while hiding implementation details
-- **Field-Level Audit Integration**: Automatic change tracking for all PATCH operations across variant tables
-- **Cross-Schema Integration**: Tree and Environment APIs can access shared schema data for location and species information
-- **Multi-Consumer Support**: APIs serve diverse clients from XR components to data ingestion pipelines
-- **Temporal Data Handling**: Support for variant-based data with full temporal tracking and lineage
-- **Audit Trail Management**: Complete change history with user attribution and revert capabilities
-- **Real-time Capabilities**: High-throughput sensor data ingestion with streaming support
-- **Spatial Query Support**: Geographic filtering and spatial operations for forest inventory queries
-
-### API Response Formats
-
-All PATCH operations return responses including audit information:
-
-```json
-{
-  "variant_id": 123,
-  "fields_updated": ["Height_m", "DBH_cm"],
-  "audit_entries": [
-    {
-      "audit_id": 456,
-      "field_name": "Height_m",
-      "old_value": 14.2,
-      "new_value": 15.5,
-      "timestamp": "2025-06-27T10:30:00Z"
-    }
-  ],
-  "message": "Updated 2 fields with audit logging"
-}
-```
-
-### Future Considerations
-
-- **OpenAPI Specification**: Consider creating detailed OpenAPI/Swagger specifications for each API
-- **Authentication & Authorization**: Implement role-based access control for different user types
-- **Rate Limiting**: Add throttling for high-volume operations like sensor data ingestion
-- **Caching Strategy**: Implement intelligent caching for frequently accessed tree and environment data
-- **Versioning**: Plan API versioning strategy to support evolution while maintaining backward compatibility
+- **POST /api/simulations/models/{model_type}** - Interface with external models (SILVA, BALANCE)
+- **GET /api/simulations/parameters** - Retrieve simulation parameter sets and scenarios
+- **POST /api/simulations/parameters** - Create new simulation parameter configurations
+- **PUT /api/simulations/parameters/{parameter_set_id}** - Update simulation parameter sets
+- **POST /api/simulations/{simulation_id}/coordinate** - Coordinate data flow between Tree and Environment APIs
+- **GET /api/simulations/{simulation_id}/progress** - Track simulation progress and status
+- **POST /api/simulations/{simulation_id}/results** - Store simulation results as TreeVariants

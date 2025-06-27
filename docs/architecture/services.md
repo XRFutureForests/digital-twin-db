@@ -139,7 +139,7 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 - **Schema Routing**: Directs validated data to appropriate database schemas through Core APIs
 - **Change Audit Integration**: Logs all data modifications during ingestion for full traceability
 
-**API Dependencies**: Point Cloud API, Tree API, Sensor API, Environment API, **Audit API**
+**API Dependencies**: Point Cloud API, Tree API, Sensor API, Environment API, Audit API
 
 ### Point Cloud Processing Service
 
@@ -204,7 +204,7 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 - **GPS Integration**: Automatically captures location data for new measurements
 - **Revert Capability**: Enables correction of field measurement errors
 
-**API Dependencies**: Tree API, **Audit API**
+**API Dependencies**: Tree API, Audit API
 
 ### 3DTrees Web Platform Service
 
@@ -236,7 +236,7 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 - **Caching**: Implements intelligent caching strategies for frequently accessed data
 - **Change Notification**: Provides real-time notifications for field-level modifications
 
-**API Dependencies**: All Core APIs (Point Cloud, Tree, Sensor, Environment, Simulation, **Audit**)
+**API Dependencies**: All Core APIs (Point Cloud, Tree, Sensor, Environment, Simulation, Audit)
 
 ## XR Services
 
@@ -300,7 +300,7 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 - **Undo/Redo Functionality**: Leverages audit system for comprehensive change management
 - **Collaborative Editing**: Supports multiple users with conflict resolution and change attribution
 
-**API Dependencies**: Tree API, Environment API, Simulation API, **Audit API**
+**API Dependencies**: Tree API, Environment API, Simulation API, Audit API
 
 - **Feedback Systems**: Provides haptic and visual feedback for user actions
 
