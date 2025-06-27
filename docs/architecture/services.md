@@ -22,6 +22,7 @@ API2[Tree API]
 API3[Sensor API]
 API4[Environment API]
 API5[Simulation API]
+API6[Audit API]
 end
 
 subgraph DATA_SERVICES["Data Services"]
@@ -57,6 +58,7 @@ DS1 --> API1
 DS1 --> API2
 DS1 --> API3
 DS1 --> API4
+DS1 --> API6
 DS2 --> API1
 DS2 --> API2
 DS3 --> API2
@@ -67,6 +69,7 @@ DS4 --> API4
 
 %% Web Services connections
 WS1 --> API2
+WS1 --> API6
 WS2 --> API1
 WS2 --> API2
 WS3 --> API1
@@ -74,6 +77,7 @@ WS3 --> API2
 WS3 --> API3
 WS3 --> API4
 WS3 --> API5
+WS3 --> API6
 
 %% XR Services connections
 XS1 --> API2
@@ -82,6 +86,7 @@ XS3 --> API1
 XS4 --> API2
 XS4 --> API4
 XS4 --> API5
+XS4 --> API6
 XS5 --> API3
 
 %% External integrations
@@ -105,7 +110,7 @@ classDef xrNode fill:#38806a,stroke:#19392f,stroke-width:2px,color:#e8e8e8
 classDef externalNode fill:#ECE46f,stroke:#c7bb1a,stroke-width:2px,color:#242424
 
 class API_LAYER apiLayer
-class API1,API2,API3,API4,API5 apiNode
+class API1,API2,API3,API4,API5,API6 apiNode
 class DATA_SERVICES dataServices
 class DS1,DS2,DS3,DS4 dataNode
 class WEB_SERVICES webServices
@@ -115,14 +120,14 @@ class XS1,XS2,XS3,XS4,XS5 xrNode
 class EXTERNAL_SERVICES externalServices
 class ES1,ES2,ES3,ES4 externalNode
 
-linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27 stroke:#313D4F,stroke-width:2px
+linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31 stroke:#313D4F,stroke-width:2px
 ```
 
 ## Data Services
 
 ### Data Ingestion Pipeline Service
 
-**Purpose**: Orchestrates the collection, validation, and initial processing of data from diverse forest monitoring sources.
+**Purpose**: Orchestrates the collection, validation, and initial processing of data from diverse forest monitoring sources with comprehensive audit logging.
 
 **Key Functionality**:
 
@@ -132,8 +137,9 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 - **Format Standardization**: Converts diverse data formats into consistent internal representations
 - **Temporal Alignment**: Synchronizes timestamps across different data sources for coherent analysis
 - **Schema Routing**: Directs validated data to appropriate database schemas through Core APIs
+- **Change Audit Integration**: Logs all data modifications during ingestion for full traceability
 
-**API Dependencies**: Point Cloud API, Tree API, Sensor API, Environment API
+**API Dependencies**: Point Cloud API, Tree API, Sensor API, Environment API, **Audit API**
 
 ### Point Cloud Processing Service
 
@@ -184,18 +190,21 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 
 ### Field Web App Service
 
-**Purpose**: Provides mobile-optimized forest inventory access for field researchers and forest managers.
+**Purpose**: Provides mobile-optimized forest inventory access for field researchers and forest managers with comprehensive change tracking.
 
 **Key Functionality**:
 
 - **QR Code Scanning**: Enables instant tree identification through QR code recognition
 - **Tree Information Display**: Shows comprehensive tree data including growth history and predictions
+- **Field-Level Editing**: Allows granular updates to tree measurements with automatic audit logging
+- **Change History Viewing**: Displays complete modification history for each tree
 - **Offline Capability**: Maintains functionality in areas with limited network connectivity
 - **Data Collection Interface**: Allows field workers to update tree measurements and observations
 - **Photo Integration**: Supports image capture and association with tree records
 - **GPS Integration**: Automatically captures location data for new measurements
+- **Revert Capability**: Enables correction of field measurement errors
 
-**API Dependencies**: Tree API
+**API Dependencies**: Tree API, **Audit API**
 
 ### 3DTrees Web Platform Service
 
@@ -214,18 +223,20 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 
 ### API Gateway Service
 
-**Purpose**: Provides unified access point for all system APIs with security, routing, and monitoring capabilities.
+**Purpose**: Provides unified access point for all system APIs with security, routing, monitoring capabilities, and audit trail coordination.
 
 **Key Functionality**:
 
 - **Request Routing**: Directs API calls to appropriate backend services based on endpoints
 - **Authentication**: Manages user authentication and session handling across all APIs
 - **Authorization**: Enforces role-based access control for different user types and data access levels
+- **Audit Coordination**: Ensures consistent user attribution across all audit logging operations
 - **Rate Limiting**: Prevents API abuse through intelligent throttling mechanisms
 - **Monitoring & Analytics**: Tracks API usage patterns and performance metrics
 - **Caching**: Implements intelligent caching strategies for frequently accessed data
+- **Change Notification**: Provides real-time notifications for field-level modifications
 
-**API Dependencies**: All Core APIs (Point Cloud, Tree, Sensor, Environment, Simulation)
+**API Dependencies**: All Core APIs (Point Cloud, Tree, Sensor, Environment, Simulation, **Audit**)
 
 ## XR Services
 
@@ -276,15 +287,21 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 
 ### XR Interaction Service
 
-**Purpose**: Manages user interactions and parameter modifications within XR forest environments.
+**Purpose**: Manages user interactions and parameter modifications within XR forest environments with comprehensive change tracking.
 
 **Key Functionality**:
 
 - **Gesture Recognition**: Interprets hand gestures and controller inputs for natural interaction
-- **Environmental Manipulation**: Allows users to modify environmental parameters in real-time
-- **Tree Management**: Enables addition, removal, or modification of trees within scenarios
+- **Environmental Manipulation**: Allows users to modify environmental parameters in real-time with audit logging
+- **Tree Management**: Enables addition, removal, or modification of trees within scenarios with change tracking
 - **Simulation Control**: Provides interfaces for starting, pausing, and configuring growth simulations
 - **Data Input**: Captures user-defined parameters and scenario modifications
+- **Change Visualization**: Shows real-time visual feedback for user modifications
+- **Undo/Redo Functionality**: Leverages audit system for comprehensive change management
+- **Collaborative Editing**: Supports multiple users with conflict resolution and change attribution
+
+**API Dependencies**: Tree API, Environment API, Simulation API, **Audit API**
+
 - **Feedback Systems**: Provides haptic and visual feedback for user actions
 
 **API Dependencies**: Tree API, Environment API, Simulation API
