@@ -6,14 +6,9 @@
 %%{
 init: {
 'theme': 'base',
-'themeVariablend
-
-subgraph SERVICES["Data Services"]
-DS1[Data Ingestion Pipeline Service]
-DS4[Sensor Data Aggregation Service]
-end
+'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#d2d2d2'
+'secondaryColor': '#ababab'
 }
 }
 }%%
@@ -40,14 +35,14 @@ PRESENTATION --> LOGIC
 PRESENTATION <--> DATA
 
 %% Subgraph styling - light colors
-classDef dataTier fill:#d2d2d2,stroke:#505050,stroke-width:2px,color:#0f0f0f
-classDef logicTier fill:#e59778,stroke:#612515,stroke-width:2px,color:#612515
-classDef presentationTier fill:#8cdbc0,stroke:#265e4d,stroke-width:2px,color:#183029
+classDef dataTier fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
+classDef logicTier fill:#eeb896,stroke:#673428,stroke-width:2px,color:#673428
+classDef presentationTier fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
 
 %% Node styling - darkest colors
-classDef dataNode fill:#505050,stroke:#8e8e8e,stroke-width:2px,color:#ffffff
-classDef logicNode fill:#612515,stroke:#ad5643,stroke-width:2px,color:#ffffff
-classDef presentationNode fill:#265e4d,stroke:#5cb89c,stroke-width:2px,color:#ffffff
+classDef dataNode fill:#797979,stroke:#4f4f4f,stroke-width:2px,color:#e8e8e8
+classDef logicNode fill:#AD5643,stroke:#673428,stroke-width:2px,color:#e8e8e8
+classDef presentationNode fill:#38806a,stroke:#19392f,stroke-width:2px,color:#e8e8e8
 
 class DATA dataTier
 class D1,D2 dataNode
@@ -56,7 +51,7 @@ class L1,L2 logicNode
 class PRESENTATION presentationTier
 class P1,P2,P3 presentationNode
 
-linkStyle 0,1,2 stroke:#313d4f,stroke-width:2px
+linkStyle 0,1,2 stroke:#313D4F,stroke-width:2px
 ```
 
 The XR Future Forests Lab follows a modern three-tier architecture designed to seamlessly integrate forest data acquisition, processing, and immersive visualization. This architecture enables the creation of comprehensive digital forest twins that can be experienced through cutting-edge XR technologies.
@@ -79,7 +74,7 @@ init: {
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#d2d2d2'
+'secondaryColor': '#ababab'
 }
 }
 }%%
@@ -136,17 +131,17 @@ SC3 -->|Sensor API| PRESENTATION_REF
 SC4 <-->|Environment API| PRESENTATION_REF
 
 %% Higher level tiers - light colors
-classDef dataBack fill:#d2d2d2,stroke:#505050,stroke-width:2px,color:#0f0f0f
-classDef logicTier fill:#e59778,stroke:#612515,stroke-width:2px,color:#612515
-classDef presentationTier fill:#8cdbc0,stroke:#265e4d,stroke-width:2px,color:#183029
+classDef dataBack fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
+classDef logicTier fill:#eeb896,stroke:#AD5643,stroke-width:2px,color:#673428
+classDef presentationTier fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
 
 %% Mid-level subgraphs - medium colors  
-classDef dataTier fill:#8e8e8e,stroke:#505050,stroke-width:2px,color:#ffffff
+classDef dataTier fill:#ababab,stroke:#4f4f4f,stroke-width:2px,color:#242424
 
 %% Nodes - darkest colors
-classDef dataNode fill:#505050,stroke:#0f0f0f,stroke-width:2px,color:#ffffff
-classDef logicNode fill:#612515,stroke:#ad5643,stroke-width:2px,color:#ffffff
-classDef presentationNode fill:#265e4d,stroke:#5cb89c,stroke-width:2px,color:#ffffff
+classDef dataNode fill:#4f4f4f,stroke:#242424,stroke-width:2px,color:#e8e8e8
+classDef logicNode fill:#d36622,stroke:#AD5643,stroke-width:2px,color:#e8e8e8
+classDef presentationNode fill:#19392f,stroke:#38806a,stroke-width:2px,color:#e8e8e8
 
 class DATA_TIER dataBack
 class SOURCES,SERVICES,STORAGE dataTier
@@ -154,7 +149,7 @@ class S1,S2,S3,S5,SC1,SC2,SC3,SC4,DS1,DS4 dataNode
 class LOGIC_REF logicTier
 class PRESENTATION_REF presentationTier
 
-linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 stroke:#313d4f,stroke-width:2px
+linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 stroke:#313D4F,stroke-width:2px
 ```
 
 The Data Tier Architecture forms the foundational layer of the XR Future Forests Lab, orchestrating the complex flow of forest data from diverse sources into a unified, spatially-aware database system. This tier is strategically divided into three key components: data sources, ingestion infrastructure, and storage systems.
@@ -177,7 +172,7 @@ init: {
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#d2d2d2'
+'secondaryColor': '#ababab'
 }
 }
 }%%
@@ -216,13 +211,13 @@ DATA_REF -->|Environment API| GS
 GS -->|Tree API| DATA_REF
 PRESENTATION_REF -->|Simulation API| GS
 
-classDef logicBack fill:#e59778,stroke:#612515,stroke-width:2px,color:#612515
-classDef dataTier fill:#d2d2d2,stroke:#505050,stroke-width:2px,color:#0f0f0f
-classDef logicTier fill:#ad5643,stroke:#612515,stroke-width:2px,color:#ffffff
-classDef presentationTier fill:#8cdbc0,stroke:#265e4d,stroke-width:2px,color:#183029
-classDef dataNode fill:#505050,stroke:#0f0f0f,stroke-width:2px,color:#ffffff
-classDef logicNode fill:#612515,stroke:#ad5643,stroke-width:2px,color:#ffffff
-classDef presentationNode fill:#265e4d,stroke:#5cb89c,stroke-width:2px,color:#ffffff
+classDef logicBack fill:#eeb896,stroke:#673428,stroke-width:2px,color:#673428
+classDef dataTier fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
+classDef logicTier fill:#C67D6c,stroke:#673428,stroke-width:2px,color:#673428
+classDef presentationTier fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
+classDef dataNode fill:#4f4f4f,stroke:#242424,stroke-width:2px,color:#e8e8e8
+classDef logicNode fill:#AD5643,stroke:#673428,stroke-width:2px,color:#e8e8e8
+classDef presentationNode fill:#19392f,stroke:#38806a,stroke-width:2px,color:#e8e8e8
 
 class LOGIC_TIER logicBack
 class DATA_REF dataTier
@@ -232,7 +227,7 @@ class PC1,PC2,PC3,PCS,X1,X2,GS logicNode
 class PRESENTATION_REF presentationTier
 class P_REF presentationNode
 
-linkStyle 0,1,2,3,4,5,6,7,8,9,10 stroke:#313d4f,stroke-width:2px
+linkStyle 0,1,2,3,4,5,6,7,8,9,10 stroke:#313D4F,stroke-width:2px
 ```
 
 The Logic Tier Architecture serves as the analytical engine of the XR Future Forests Lab, transforming raw forest data into actionable insights through sophisticated processing pipelines and predictive modeling. This tier bridges the gap between data acquisition and visualization, enabling both automated analysis and user-driven forest simulations.
@@ -253,7 +248,7 @@ init: {
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#d2d2d2'
+'secondaryColor': '#ababab'
 }
 }
 }%%
@@ -291,13 +286,13 @@ DATA_REF <-->|Sensor API| XS5
 XS4 -->|Tree & Environment API| DATA_REF
 XS4 -->|Simulation API| LOGIC_REF
 
-classDef presentationBack fill:#8cdbc0,stroke:#265e4d,stroke-width:2px,color:#183029
-classDef dataTier fill:#d2d2d2,stroke:#505050,stroke-width:2px,color:#0f0f0f
-classDef logicTier fill:#e59778,stroke:#612515,stroke-width:2px,color:#612515
-classDef presentationTier fill:#5cb89c,stroke:#265e4d,stroke-width:2px,color:#ffffff
-classDef dataNode fill:#505050,stroke:#0f0f0f,stroke-width:2px,color:#ffffff
-classDef logicNode fill:#612515,stroke:#ad5643,stroke-width:2px,color:#ffffff
-classDef presentationNode fill:#265e4d,stroke:#5cb89c,stroke-width:2px,color:#ffffff
+classDef presentationBack fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
+classDef dataTier fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
+classDef logicTier fill:#eeb896,stroke:#673428,stroke-width:2px,color:#673428
+classDef presentationTier fill:#38806a,stroke:#19392f,stroke-width:2px,color:#e8e8e8
+classDef dataNode fill:#4f4f4f,stroke:#242424,stroke-width:2px,color:#e8e8e8
+classDef logicNode fill:#d36622,stroke:#673428,stroke-width:2px,color:#e8e8e8
+classDef presentationNode fill:#19392f,stroke:#19392f,stroke-width:2px,color:#e8e8e8
 
 class PRESENTATION_TIER presentationBack
 class DATA_REF dataTier
@@ -305,7 +300,7 @@ class LOGIC_REF logicTier
 class WEB_SERVICES,XR_SERVICES presentationTier
 class XS1,XS2,XS3,XS4,XS5,WS1,WS2,WS3 presentationNode
 
-linkStyle 0,1,2,3,4,5,6,7,8,9 stroke:#313d4f,stroke-width:2px
+linkStyle 0,1,2,3,4,5,6,7,8,9 stroke:#313D4F,stroke-width:2px
 ```
 
 The Presentation Tier Architecture represents the culmination of the XR Future Forests Lab vision, transforming complex forest data into immersive experiences and accessible interfaces that serve diverse user communities from researchers to field practitioners. This tier strategically balances cutting-edge XR technologies with practical web-based tools to maximize accessibility and impact.
@@ -336,7 +331,7 @@ init: {
 'theme': 'base',
 'themeVariables': {
 'fontSize': '14px',
-'secondaryColor': '#d2d2d2'
+'secondaryColor': '#ababab'
 }
 }
 }%%
@@ -416,17 +411,32 @@ ES2 --> DS3
 ES3 --> DS1
 ES4 --> DS1
 
-classDef apiLayer fill:#f9f,stroke:#333,stroke-width:2px
-classDef dataServices fill:#d2d2d2,stroke:#505050,stroke-width:2px
-classDef logicServices fill:#e59778,stroke:#612515,stroke-width:2px
-classDef presentationServices fill:#8cdbc0,stroke:#265e4d,stroke-width:2px
-classDef externalServices fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+%% Subgraph styling - light colors for main groups
+classDef apiBack fill:#566b8a,stroke:#181d26,stroke-width:2px,color:#181d26
+classDef dataBack fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
+classDef logicBack fill:#eeb896,stroke:#673428,stroke-width:2px,color:#673428
+classDef presentationBack fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
+classDef externalBack fill:#F4EFA9,stroke:#c7bb1a,stroke-width:2px,color:#242424
 
-class API_LAYER apiLayer
-class DATA_SERVICES dataServices
-class LOGIC_SERVICES logicServices
-class PRESENTATION_SERVICES presentationServices
-class EXTERNAL_SERVICES externalServices
+%% Node styling - darkest colors
+classDef apiNode fill:#313D4F,stroke:#181d26,stroke-width:2px,color:#e8e8e8
+classDef dataNode fill:#797979,stroke:#4f4f4f,stroke-width:2px,color:#e8e8e8
+classDef logicNode fill:#AD5643,stroke:#673428,stroke-width:2px,color:#e8e8e8
+classDef presentationNode fill:#38806a,stroke:#19392f,stroke-width:2px,color:#e8e8e8
+classDef externalNode fill:#ECE46f,stroke:#c7bb1a,stroke-width:2px,color:#242424
+
+class API_LAYER apiBack
+class API1,API2,API3,API4,API5 apiNode
+class DATA_SERVICES dataBack
+class DS1,DS4 dataNode
+class LOGIC_SERVICES logicBack
+class DS2,DS3 logicNode
+class PRESENTATION_SERVICES presentationBack
+class WS1,WS2,WS3,XS1,XS2,XS3,XS4,XS5 presentationNode
+class EXTERNAL_SERVICES externalBack
+class ES1,ES2,ES3,ES4 externalNode
+
+linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27 stroke:#313D4F,stroke-width:2px
 ```
 
 **Service Distribution Across Tiers:**

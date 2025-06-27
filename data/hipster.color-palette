@@ -1,32 +1,30 @@
 {
-  "name": "Custom Palette (Contextual Light, Normal, Dark)",
-  "colors": [
-    { "name": "Rust Light",      "hex": "#e59778" },
-    { "name": "Rust",            "hex": "#ad5643" },
-    { "name": "Rust Dark",       "hex": "#612515" },
+    "name": "Hipster",
+    "colors": [
+        { "name": "Blue 1",      "hex": "#566b8a" },
+        { "name": "Blue 2",      "hex": "#313D4F" },
+        { "name": "Blue 3",      "hex": "#181d26" },
 
-    { "name": "Ash Light",       "hex": "#d2d2d2" },
-    { "name": "Ash",             "hex": "#8e8e8e" },
-    { "name": "Ash Dark",        "hex": "#505050" },
+        { "name": "Green 1",     "hex": "#5CB89C" },
+        { "name": "Green 2",     "hex": "#38806a" },
+        { "name": "Green 3",     "hex": "#19392f" },
 
-    { "name": "Midnight Light",  "hex": "#434b5c" },
-    { "name": "Midnight",        "hex": "#191f28" },
-    { "name": "Midnight Dark",   "hex": "#07090c" },
+        { "name": "Yellow 1",    "hex": "#F4EFA9" },
+        { "name": "Yellow 2",    "hex": "#ECE46f" },
+        { "name": "Yellow 3",    "hex": "#c7bb1a" },
 
-    { "name": "Mint Light",      "hex": "#8cdbc0" },
-    { "name": "Mint",            "hex": "#5cb89c" },
-    { "name": "Mint Dark",       "hex": "#265e4d" },
+        { "name": "Orange 1",    "hex": "#eeb896" },
+        { "name": "Orange 2",    "hex": "#E48F59" },
+        { "name": "Orange 3",    "hex": "#d36622" },
 
-    { "name": "Pine Light",      "hex": "#71a897" },
-    { "name": "Pine",            "hex": "#458875" },
-    { "name": "Pine Dark",       "hex": "#183029" },
+        { "name": "Red 1",       "hex": "#C67D6c" },
+        { "name": "Red 2",       "hex": "#AD5643" },
+        { "name": "Red 3",       "hex": "#673428" },
 
-    { "name": "Slate Light",     "hex": "#59657e" },
-    { "name": "Slate",           "hex": "#313d4f" },
-    { "name": "Slate Dark",      "hex": "#11151c" },
-
-    { "name": "Charcoal Light",  "hex": "#666666" },
-    { "name": "Charcoal",        "hex": "#333333" },
-    { "name": "Charcoal Dark",   "hex": "#0f0f0f" }
-  ]
+        { "name": "Gray 1",      "hex": "#242424" },
+        { "name": "Gray 2",      "hex": "#4f4f4f" },
+        { "name": "Gray 3",      "hex": "#797979" },
+        { "name": "Gray 4",      "hex": "#ababab" },
+        { "name": "Gray 5",      "hex": "#e8e8e8" }
+    ]
 }
