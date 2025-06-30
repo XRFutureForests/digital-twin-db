@@ -315,165 +315,30 @@ The **XR Interaction Service** serves as the bridge between user intent and syst
 
 ---
 
-## API Layer
+## API and Service Integration
 
-The XR Future Forests Lab implements a comprehensive API layer that enables seamless data flow between the three architectural tiers. The API layer provides five core APIs (Point Cloud, Tree, Sensor, Environment, and Simulation) that abstract database operations and provide standardized interfaces for all system components.
+The XR Future Forests Lab implements a comprehensive API layer and distributed service architecture that enables seamless data flow between the three architectural tiers. This integration layer ensures all components can communicate effectively while maintaining clear separation of concerns.
+
+### API Layer
+
+The system provides five core APIs that abstract database operations and enable standardized communication:
+
+- **Point Cloud API**: Manages LiDAR data operations and processing workflows
+- **Tree API**: Handles forest inventory data with variant tracking and audit capabilities  
+- **Sensor API**: Manages environmental monitoring infrastructure and time-series data
+- **Environment API**: Consolidates environmental context from multiple sources
+- **Simulation API**: Orchestrates growth modeling workflows with external models
+- **Audit API**: Provides field-level change tracking across all variant tables
 
 For detailed API specifications, endpoint definitions, and integration patterns, see the [API Architecture Documentation](api.md).
 
----
+### Service Architecture
 
-## Service Architecture
+The distributed service architecture operates across all three tiers with specialized services consuming the core APIs:
 
-The XR Future Forests Lab implements a distributed service architecture where specialized services operate across all three tiers to deliver comprehensive forest monitoring, analysis, and visualization capabilities. These services consume the core APIs to provide the actual functionality that powers the system.
+- **Data Tier Services**: Handle ingestion, validation, and aggregation (Data Ingestion Pipeline, Sensor Data Aggregation)
+- **Logic Tier Services**: Implement computational algorithms (Point Cloud Processing, Growth Simulation)  
+- **Presentation Tier Services**: Provide interfaces and visualization (Web Apps, XR Services, API Gateway)
+- **External Integrations**: Interface with third-party systems (SILVA/BALANCE models, EcoSense sensors, 3DTrees platform)
 
-```mermaid
-%%{
-init: {
-'theme': 'base',
-'themeVariables': {
-'fontSize': '14px',
-'secondaryColor': '#ababab'
-}
-}
-}%%
-flowchart LR
-
-subgraph API_LAYER["Core APIs"]
-API1[Point Cloud API]
-API2[Tree API]
-API3[Sensor API]
-API4[Environment API]
-API5[Simulation API]
-end
-
-subgraph DATA_SERVICES["Data Tier Services"]
-DS1[Data Ingestion Pipeline Service]
-DS4[Sensor Data Aggregation Service]
-end
-
-subgraph LOGIC_SERVICES["Logic Tier Services"]
-DS2[Point Cloud Processing Service]
-DS3[Growth Simulation Service]
-end
-
-subgraph PRESENTATION_SERVICES["Presentation Tier Services"]
-WS1[Field Web App Service]
-WS2[3DTrees Web Platform Service]
-WS3[API Gateway Service]
-XS1[Virtual Tree Rendering Service]
-XS2[Environment Visualization Service]
-XS3[Point Cloud Viewer Service]
-XS4[XR Interaction Service]
-XS5[Virtual Sensor Service]
-end
-
-subgraph EXTERNAL_SERVICES["External Integrations"]
-ES1[SILVA Model Interface]
-ES2[BALANCE Model Interface]
-ES3[EcoSense Sensor Integration]
-ES4[3DTrees Platform Integration]
-end
-
-%% Data Services connections
-DS1 --> API1
-DS1 --> API2
-DS1 --> API3
-DS1 --> API4
-DS4 --> API3
-DS4 --> API4
-
-%% Logic Services connections
-DS2 --> API1
-DS2 --> API2
-DS3 --> API2
-DS3 --> API4
-DS3 --> API5
-
-%% Presentation Services connections
-WS1 --> API2
-WS2 --> API1
-WS2 --> API2
-WS3 --> API1
-WS3 --> API2
-WS3 --> API3
-WS3 --> API4
-WS3 --> API5
-XS1 --> API2
-XS2 --> API4
-XS3 --> API1
-XS4 --> API2
-XS4 --> API4
-XS4 --> API5
-XS5 --> API3
-
-%% External integrations
-ES1 --> DS3
-ES2 --> DS3
-ES3 --> DS1
-ES4 --> DS1
-
-%% Subgraph styling - light colors for main groups
-classDef apiBack fill:#566b8a,stroke:#181d26,stroke-width:2px,color:#181d26
-classDef dataBack fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
-classDef logicBack fill:#eeb896,stroke:#673428,stroke-width:2px,color:#673428
-classDef presentationBack fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
-classDef externalBack fill:#F4EFA9,stroke:#c7bb1a,stroke-width:2px,color:#242424
-
-%% Node styling - darkest colors
-classDef apiNode fill:#313D4F,stroke:#181d26,stroke-width:2px,color:#e8e8e8
-classDef dataNode fill:#797979,stroke:#4f4f4f,stroke-width:2px,color:#e8e8e8
-classDef logicNode fill:#AD5643,stroke:#673428,stroke-width:2px,color:#e8e8e8
-classDef presentationNode fill:#38806a,stroke:#19392f,stroke-width:2px,color:#e8e8e8
-classDef externalNode fill:#ECE46f,stroke:#c7bb1a,stroke-width:2px,color:#242424
-
-class API_LAYER apiBack
-class API1,API2,API3,API4,API5 apiNode
-class DATA_SERVICES dataBack
-class DS1,DS4 dataNode
-class LOGIC_SERVICES logicBack
-class DS2,DS3 logicNode
-class PRESENTATION_SERVICES presentationBack
-class WS1,WS2,WS3,XS1,XS2,XS3,XS4,XS5 presentationNode
-class EXTERNAL_SERVICES externalBack
-class ES1,ES2,ES3,ES4 externalNode
-
-linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27 stroke:#313D4F,stroke-width:2px
-```
-
-**Service Distribution Across Tiers:**
-
-- **Data Tier Services**: Handle data ingestion, validation, and aggregation at the storage layer
-- **Logic Tier Services**: Implement computational algorithms for processing and simulation
-- **Presentation Tier Services**: Provide user interfaces and visualization capabilities
-- **External Services**: Interface with third-party systems and scientific models
-
-### Data Tier Services
-
-**Data Ingestion Pipeline Service** orchestrates the collection, validation, and initial processing of data from diverse forest monitoring sources, including file monitoring for 3DTrees Platform uploads and API integration with EcoSense sensors.
-
-**Sensor Data Aggregation Service** processes high-frequency sensor data into meaningful environmental context, handling real-time streams with quality assessment and temporal aggregation to create EnvironmentVariants.
-
-### Logic Tier Services
-
-**Point Cloud Processing Service** transforms raw LiDAR data into structured forest information through automated tree segmentation, species classification, and structural analysis pipelines.
-
-**Growth Simulation Service** orchestrates forest growth modeling using external scientific models (SILVA, BALANCE), managing scenarios and processing results into temporal TreeVariants.
-
-### Presentation Tier Services
-
-**Web Services** provide browser-based interfaces:
-
-- **Field Web App Service**: Mobile-optimized forest inventory access with QR code scanning
-- **3DTrees Web Platform Service**: Point cloud visualization and processing management
-- **API Gateway Service**: Unified access point with security, routing, and monitoring
-
-**XR Services** deliver immersive forest experiences:
-
-- **Virtual Tree Rendering Service**: Creates photorealistic 3D tree models for XR
-- **Environment Visualization Service**: Transforms environmental data into visible phenomena
-- **Point Cloud Viewer Service**: Immersive LiDAR data visualization
-- **XR Interaction Service**: Manages user interactions and parameter modifications
-- **Virtual Sensor Service**: Interactive digital representations of monitoring equipment
-
-For detailed service specifications and functionality, see the [Service Architecture Documentation](services.md).
+For comprehensive service specifications, functionality details, and deployment considerations, see the [Service Architecture Documentation](services.md).
