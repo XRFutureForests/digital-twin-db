@@ -14,15 +14,17 @@ graph LR
         SC[Scenarios]
         SVT[VariantTypes]
         SAL[AuditLog]
+        SP[Processes]
+        SPP[ProcessParameters]
+        SPM[ProcessMetrics]
     end
     
     subgraph pointclouds ["Point Clouds Schema"]
-        PC[PointClouds]
-        PCV[PointCloudVariants]
+        PCV[PointClouds]
     end
     
     subgraph trees ["Trees Schema"]
-        TV[TreeVariants]
+        TV[Trees]
     end
     
     subgraph monitoring ["Monitoring Schema"]
@@ -31,11 +33,11 @@ graph LR
     end
     
     subgraph environments ["Environments Schema"]
-        EV[EnvironmentVariants]
+        EV[Environments]
     end
     
     %% Cross-schema relationships
-    SL --> PC
+    SL --> PCV
     SL --> TV
     SL --> S
     SL --> EV
@@ -47,11 +49,19 @@ graph LR
     SVT --> PCV
     SVT --> TV
     SVT --> EV
-    SVT --> SAL
+    SAL --> PCV
+    SAL --> TV
+    SAL --> EV
+    SP --> PCV
+    SP --> TV
+    SP --> EV
+    SPP --> PCV
+    SPP --> TV
+    SPP --> EV
     
     %% Within-schema relationships
-    PC --> PCV
     S --> SR
+    SP --> SPM
 
     classDef sharedNodes fill:#F4EFA9,stroke:#c7bb1a,stroke-width:2px,color:#242424
     classDef pointcloudsNodes fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
@@ -65,8 +75,8 @@ graph LR
     classDef monitoringSubgraph fill:#eeb896,fill-opacity:0.3,stroke:#673428,stroke-width:2px
     classDef environmentsSubgraph fill:#566b8a,fill-opacity:0.3,stroke:#181d26,stroke-width:2px
     
-    class SL,SS,SC,SVT,SAL sharedNodes
-    class PC,PCV pointcloudsNodes
+    class SL,SS,SC,SVT,SAL,SP,SPP,SPM sharedNodes
+    class PCV pointcloudsNodes
     class TV treesNodes
     class S,SR monitoringNodes
     class EV environmentsNodes
@@ -77,7 +87,7 @@ graph LR
     class monitoring monitoringSubgraph
     class environments environmentsSubgraph
 
-    linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 stroke:#313D4F,stroke-width:2px
+
 ```
 
 ### Shared Schema
@@ -101,21 +111,21 @@ erDiagram
         FLOAT Slope_deg "Site slope"
         VARCHAR Aspect "N, NE, E, SE, S, SW, W, NW"
         INT SoilTypeID FK "Soil type reference"
-        INT ClimateZoneTypeID FK "Climate zone reference"
+        INT ClimateZoneID FK "Climate zone reference"
     }
 
     SoilTypes {
         INT SoilTypeID PK
-        VARCHAR SoilName "Alfisol, Andisol, Aridisol, Entisol, Gelisol, Histosol, Inceptisol, Mollisol, xisol, Spodosol, Ultisol, Vertisol"
+        VARCHAR SoilName "Alfisol, Andisol, Aridisol, Entisol,<br>Gelisol, Histosol, Inceptisol, Mollisol,<br>Oxisol, Spodosol, Ultisol, Vertisol"
     }
 
-    ClimateZoneTypes {
-        INT ClimateZoneTypeID PK
+    ClimateZones {
+        INT ClimateZoneID PK
         VARCHAR ZoneName "Köppen climate classification codes"
     }
 
     SoilTypes ||--o{ Locations : soil_type
-    ClimateZoneTypes ||--o{ Locations : climate_zone
+    ClimateZones ||--o{ Locations : climate_zone
 ```
 
 #### Species Reference
@@ -140,6 +150,7 @@ erDiagram
   "theme": "neutral"
 }}%%
 erDiagram
+
     Scenarios {
         INT ScenarioID PK
         VARCHAR ScenarioName "Current_Conditions, Climate_Change_2050, Drought_Test"
@@ -148,13 +159,69 @@ erDiagram
 
     VariantTypes {
         INT VariantTypeID PK
-        VARCHAR TypeName "original, processed, manual, simulated_growth, user_input"
+        VARCHAR VariantTypeName "original, processed, manual, simulated_growth, user_input"
         TEXT Description "Description of variant type"
     }
 
+```
+
+#### Process Management and Algorithm Tracking
+
+```mermaid
+%%{init: {
+  "theme": "neutral"
+}}%%
+erDiagram
+    Processes {
+        INT ProcessID PK
+        VARCHAR ProcessName "LiDAR_Segmentation, Tree_Detection, Growth_Simulation, Climate_Modeling"
+        VARCHAR AlgorithmName "RandomForest, DeepLearning, RulesBased, Statistical"
+        VARCHAR Version "v1.0.2, v2.1.0"
+        TEXT Description "Algorithm description and purpose"
+        VARCHAR Author "Algorithm developer/organization"
+        DATE PublicationDate "When algorithm was published/released"
+        TEXT Citation "Academic citation if applicable"
+        VARCHAR Category "detection, classification, simulation, analysis"
+    }
+
+    ProcessParameters {
+        INT ParameterID PK
+        VARCHAR VariantSchema "pointclouds, trees, environments"
+        INT VariantID "References VariantID in the specified schema"
+        VARCHAR ParameterName "learning_rate, max_depth, threshold, growth_rate, interpolation_method"
+        VARCHAR ParameterValue "Actual parameter value used for this variant"
+        VARCHAR DataType "float, int, string, boolean"
+        TEXT Description "Parameter description"
+    }
+
+    ProcessMetrics {
+        INT MetricID PK
+        INT ProcessID FK "References Processes"
+        VARCHAR MetricName "accuracy, precision, recall, f1_score, rmse"
+        FLOAT MetricValue "Published performance value"
+        VARCHAR DatasetName "Dataset used for evaluation"
+        TEXT TestConditions "Conditions under which metric was measured"
+        DATE MeasurementDate "When metric was evaluated"
+        TEXT Source "Paper, report, or source of metric"
+    }
+
+    Processes ||--o{ ProcessMetrics : has_metrics
+```
+
+#### Field-Level Change Tracking
+
+```mermaid
+%%{init: {
+  "theme": "neutral"
+}}%%
+erDiagram
+    PointClouds
+    Trees
+    Environments
+
     AuditLog {
         BIGSERIAL AuditID PK
-        VARCHAR TableName "Source table name"
+        VARCHAR TableName "Source table name: pointclouds.PointClouds, trees.Trees, environments.Environments"
         INT RecordID "VariantID being modified"
         VARCHAR FieldName "Specific field changed"
         TEXT OldValue "Previous value (JSON)"
@@ -165,10 +232,10 @@ erDiagram
         VARCHAR ChangeType "field_update, bulk_update, revert"
     }
 
-    VariantTypes ||--o{ AuditLog : references_for_context
+    PointClouds ||--o{ AuditLog : tracks_changes
+    Trees ||--o{ AuditLog : tracks_changes
+    Environments ||--o{ AuditLog : tracks_changes
 ```
-
-#### Field-Level Change Tracking
 
 The AuditLog table provides granular change tracking for individual field modifications across all variant tables without creating full variants.
 
@@ -189,7 +256,7 @@ The AuditLog table provides granular change tracking for individual field modifi
 
 ### Point Clouds Schema
 
-Manages LiDAR scan data and processing variants, supporting different processing algorithms and results while maintaining links to the original scan data.
+Manages LiDAR scan data and processing variants through a unified variant-based approach. Original scans and processed variants are stored in the same table, with variant types determining the relationship and processing status.
 
 ```mermaid
 %%{init: {
@@ -199,42 +266,33 @@ erDiagram
     Locations
     VariantTypes
     Scenarios
+    Processes
+    ProcessParameters
 
     PointClouds {
-        INT PointCloudID PK "Unique scan ID"
-        VARCHAR FilePath "Path/URI to raw point cloud file"
-        DATETIME ScanDate "Date and time of scan"
-        INT LocationID FK "References shared.Locations"
-        VARCHAR SensorModel "LiDAR scanner model"
-        GEOMETRY ScanBounds "PostGIS polygon defining coverage"
-    }
-
-    PointCloudVariants {
         INT VariantID PK
-        INT PointCloudID FK "References PointClouds"
+        INT LocationID FK "References shared.Locations"
         INT VariantTypeID FK "References shared.VariantTypes"
         INT ScenarioID FK "References shared.Scenarios - NULL for non-scenario variants"
         INT ParentVariantID FK "Self-reference for variant lineage"
+        INT ProcessID FK "References shared.Processes - NULL for original scans"
         VARCHAR VariantName "Descriptive name for variant"
-        VARCHAR ProcessingAlgorithm "Algorithm used for processing"
-        VARCHAR FilePath "Path to processed point cloud file"
+        DATETIME ScanDate "Date and time of original scan"
+        VARCHAR SensorModel "LiDAR scanner model"
+        GEOMETRY ScanBounds "PostGIS polygon defining coverage"
+        VARCHAR FilePath "Path to point cloud file"
         BIGINT PointCount "Total number of points"
         FLOAT FileSizeMB "File size in megabytes"
-        VARCHAR ProcessingStatus "pending, processing, completed, failed"
-        FLOAT ProcessingProgress "0.0 to 1.0"
-        TIMESTAMP ProcessingStartTime
-        TIMESTAMP ProcessingEndTime
-        TEXT ErrorMessage
-        FLOAT SegmentationConfidence "Average confidence score"
-        FLOAT ClassificationConfidence "Average confidence score"
-        INT ProcessedTreeCount "Number of trees detected"
+        VARCHAR ProcessingStatus "pending, processing, completed, failed - NULL for original scans"
+        TIMESTAMP UpdatedAt "DEFAULT NOW()"
     }
 
     Locations ||--o{ PointClouds : located_at
-    VariantTypes ||--o{ PointCloudVariants : variant_type
-    Scenarios ||--o{ PointCloudVariants : scenario_context
-    PointClouds ||--o{ PointCloudVariants : has_variants
-    PointCloudVariants ||--o{ PointCloudVariants : parent_variant
+    VariantTypes ||--o{ PointClouds : variant_type
+    Scenarios ||--o{ PointClouds : scenario_context
+    Processes ||--o{ PointClouds : processing_algorithm
+    PointClouds ||--o{ PointClouds : parent_variant
+    PointClouds ||--o{ ProcessParameters : variant_parameters
 ```
 
 ### Trees Schema
@@ -250,6 +308,8 @@ erDiagram
     Species
     VariantTypes
     Scenarios
+    Processes
+    ProcessParameters
 
     TreeStatus {
         INT TreeStatusID PK
@@ -257,14 +317,15 @@ erDiagram
         TEXT Description
     }
 
-    TreeVariants {
+    Trees {
         INT VariantID PK
         INT LocationID FK "References shared.Locations"
         INT ScenarioID FK "References shared.Scenarios"
         INT ParentVariantID FK "Self-reference for variant lineage"
         INT SpeciesID FK "References shared.Species"
         INT VariantTypeID FK "References shared.VariantTypes"
-        INT PointCloudVariantID FK "References pointclouds.PointCloudVariants - NULL if not derived from point cloud"
+        INT PointCloudVariantID FK "References pointclouds.PointClouds - NULL if not derived from point cloud"
+        INT ProcessID FK "References shared.Processes - NULL for manual measurements"
         FLOAT Height_m
         FLOAT DBH_cm
         FLOAT CrownWidth_m
@@ -274,15 +335,17 @@ erDiagram
         INT TreeStatusID FK
         GEOMETRY Position "PostGIS point (plot coordinates)"
         FLOAT TimeDelta_yrs "Time since parent variant (for growth)"
-        TIMESTAMP UpdatedAt DEFAULT NOW()
+        TIMESTAMP UpdatedAt "DEFAULT NOW()"
     }
 
-    Locations ||--o{ TreeVariants : located_at
-    Scenarios ||--o{ TreeVariants : scenario_context
-    TreeStatus ||--o{ TreeVariants : tree_status
-    Species ||--o{ TreeVariants : tree_species
-    VariantTypes ||--o{ TreeVariants : variant_type
-    TreeVariants ||--o{ TreeVariants : parent_variant
+    Locations ||--o{ Trees : located_at
+    Scenarios ||--o{ Trees : scenario_context
+    TreeStatus ||--o{ Trees : tree_status
+    Species ||--o{ Trees : tree_species
+    VariantTypes ||--o{ Trees : variant_type
+    Processes ||--o{ Trees : processing_algorithm
+    Trees ||--o{ Trees : parent_variant
+    Trees ||--o{ ProcessParameters : variant_parameters
 ```
 
 ### Monitoring Schema
@@ -340,13 +403,16 @@ erDiagram
     Locations
     VariantTypes
     Scenarios
+    Processes
+    ProcessParameters
 
-    EnvironmentVariants {
+    Environments {
         INT VariantID PK
         INT LocationID FK "References shared.Locations"
         INT VariantTypeID FK "References shared.VariantTypes"
         INT ScenarioID FK "References shared.Scenarios"
         INT ParentVariantID FK "Self-reference for variant lineage"
+        INT ProcessID FK "References shared.Processes - NULL for manual input"
         VARCHAR VariantName "Descriptive name for variant"
         FLOAT AvgTemperature_C
         FLOAT AvgHumidity_percent
@@ -355,11 +421,13 @@ erDiagram
         FLOAT AvgCO2_ppm
         FLOAT AvgWindSpeed_ms
         FLOAT DominantWindDirection_deg
+        TIMESTAMP UpdatedAt "DEFAULT NOW()"
     }
 
-    Locations ||--o{ EnvironmentVariants : has_variants
-    VariantTypes ||--o{ EnvironmentVariants : variant_type
-    Scenarios ||--o{ EnvironmentVariants : scenario_context
-    EnvironmentVariants ||--o{ EnvironmentVariants : parent_variant
+    Locations ||--o{ Environments : has_variants
+    VariantTypes ||--o{ Environments : variant_type
+    Scenarios ||--o{ Environments : scenario_context
+    Processes ||--o{ Environments : processing_algorithm
+    Environments ||--o{ Environments : parent_variant
+    Environments ||--o{ ProcessParameters : variant_parameters
 ```
-
