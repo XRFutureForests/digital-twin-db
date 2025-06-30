@@ -2,7 +2,13 @@
 
 ## Unified Database Design with Schema Organization
 
-This design uses PostgreSQL schemas (`shared`, `pointclouds`, `trees`, `monitoring`, `environments`) to organize a unified forest monitoring database. The design supports efficient time-series sensor data storage with file references managed as simple file paths within the variant and base tables.
+This design uses PostgreSQL schemas (`shared`, `pointclouds`, `trees`, `sensor`, `environments`) to organize a unified forest monitoring database. The design supports efficient time-series sensor data storage with file references managed as simple file paths within the variant and base tables.
+
+> **📊 Complete ERD Available**: For a comprehensive view of the entire database structure in a single diagram, see the complete ERD files:
+>
+> - **Visual ERD**: [`xr_forests_complete_erd.dbml`](./xr_forests_complete_erd.dbml) - Use with [dbdiagram.io](https://dbdiagram.io/) for interactive visualization
+> - **SQL Schema**: [`xr_forests_complete_schema.sql`](./xr_forests_complete_schema.sql) - Ready-to-execute PostgreSQL DDL
+> - **Usage Guide**: [`README_ERD.md`](./README_ERD.md) - How to use the ERD files
 
 ## Schema Overview
 
@@ -25,9 +31,10 @@ graph LR
     
     subgraph trees ["Trees Schema"]
         TV[Trees]
+        TST[Stems]
     end
     
-    subgraph monitoring ["Monitoring Schema"]
+    subgraph sensor ["Sensor Schema"]
         S[Sensors]
         SR[SensorReadings]
     end
@@ -62,29 +69,30 @@ graph LR
     %% Within-schema relationships
     S --> SR
     SP --> SPM
+    TV --> TST
 
     classDef sharedNodes fill:#F4EFA9,stroke:#c7bb1a,stroke-width:2px,color:#242424
     classDef pointcloudsNodes fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
     classDef treesNodes fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
-    classDef monitoringNodes fill:#AD5643,stroke:#673428,stroke-width:2px,color:#e8e8e8
+    classDef sensorNodes fill:#AD5643,stroke:#673428,stroke-width:2px,color:#e8e8e8
     classDef environmentsNodes fill:#566b8a,stroke:#181d26,stroke-width:2px,color:#e8e8e8
     
     classDef sharedSubgraph fill:#F4EFA9,fill-opacity:0.3,stroke:#c7bb1a,stroke-width:2px
     classDef pointcloudsSubgraph fill:#e8e8e8,fill-opacity:0.3,stroke:#4f4f4f,stroke-width:2px
     classDef treesSubgraph fill:#5CB89C,fill-opacity:0.3,stroke:#19392f,stroke-width:2px
-    classDef monitoringSubgraph fill:#eeb896,fill-opacity:0.3,stroke:#673428,stroke-width:2px
+    classDef sensorSubgraph fill:#eeb896,fill-opacity:0.3,stroke:#673428,stroke-width:2px
     classDef environmentsSubgraph fill:#566b8a,fill-opacity:0.3,stroke:#181d26,stroke-width:2px
     
     class SL,SS,SC,SVT,SAL,SP,SPP,SPM sharedNodes
     class PCV pointcloudsNodes
-    class TV treesNodes
-    class S,SR monitoringNodes
+    class TV,TST treesNodes
+    class S,SR sensorNodes
     class EV environmentsNodes
     
     class shared sharedSubgraph
     class pointclouds pointcloudsSubgraph
     class trees treesSubgraph
-    class monitoring monitoringSubgraph
+    class sensor sensorSubgraph
     class environments environmentsSubgraph
 
 
@@ -186,7 +194,7 @@ erDiagram
 
     ProcessParameters {
         INT ParameterID PK
-        VARCHAR VariantSchema "pointclouds, trees, environments"
+        VARCHAR VariantSchema "pointclouds, trees, environments, stems"
         INT VariantID "References VariantID in the specified schema"
         VARCHAR ParameterName "learning_rate, max_depth, threshold, growth_rate, interpolation_method"
         VARCHAR ParameterValue "Actual parameter value used for this variant"
@@ -217,12 +225,13 @@ erDiagram
 erDiagram
     PointClouds
     Trees
+    Stems
     Environments
 
     AuditLog {
         BIGSERIAL AuditID PK
-        VARCHAR TableName "Source table name: pointclouds.PointClouds, trees.Trees, environments.Environments"
-        INT RecordID "VariantID being modified"
+        VARCHAR TableName "Source table name: pointclouds.PointClouds, trees.Trees, trees.Stems, environments.Environments"
+        INT RecordID "VariantID or StemID being modified"
         VARCHAR FieldName "Specific field changed"
         TEXT OldValue "Previous value (JSON)"
         TEXT NewValue "New value (JSON)"
@@ -234,6 +243,7 @@ erDiagram
 
     PointClouds ||--o{ AuditLog : tracks_changes
     Trees ||--o{ AuditLog : tracks_changes
+    Stems ||--o{ AuditLog : tracks_changes
     Environments ||--o{ AuditLog : tracks_changes
 ```
 
@@ -317,6 +327,35 @@ erDiagram
         TEXT Description
     }
 
+    TaperTypes {
+        INT TaperTypeID PK
+        VARCHAR TaperTypeName "Cylinder, Cone, Paraboloid, Neiloid"
+        TEXT Description "Form description"
+        FLOAT TypicalTaperRatioMin "Typical minimum taper ratio"
+        FLOAT TypicalTaperRatioMax "Typical maximum taper ratio"
+    }
+
+    StraightnessTypes {
+        INT StraightnessTypeID PK
+        VARCHAR StraightnessName "Straight, Slight_sweep, Moderate_sweep, Severe_sweep"
+        TEXT Description "Curvature description"
+        FLOAT DeviationAngleMin "Minimum deviation angle in degrees"
+        FLOAT DeviationAngleMax "Maximum deviation angle in degrees"
+    }
+
+    BranchingPatterns {
+        INT BranchingPatternID PK
+        VARCHAR PatternName "Alternate, Opposite, Whorled, Spiral, Random"
+        TEXT Description "Branching arrangement description"
+    }
+
+    BarkCharacteristics {
+        INT BarkCharacteristicID PK
+        VARCHAR BarkTypeName "Smooth, Furrowed, Plated, Exfoliating"
+        TEXT Description "Bark texture description"
+        TEXT TypicalSpecies "Examples: e.g., Fagus, Quercus, Pinus, Platanus"
+    }
+
     Trees {
         INT VariantID PK
         INT LocationID FK "References shared.Locations"
@@ -326,15 +365,34 @@ erDiagram
         INT VariantTypeID FK "References shared.VariantTypes"
         INT PointCloudVariantID FK "References pointclouds.PointClouds - NULL if not derived from point cloud"
         INT ProcessID FK "References shared.Processes - NULL for manual measurements"
-        FLOAT Height_m
-        FLOAT DBH_cm
-        FLOAT CrownWidth_m
-        FLOAT CrownBaseHeight_m
+        INT TreeStatusID FK "References TreeStatus"
+        INT BranchingPatternID FK "References BranchingPatterns"
+        INT BarkCharacteristicID FK "References BarkCharacteristics"
+        FLOAT Height_m "Total tree height"
+        FLOAT CrownWidth_m "Crown diameter"
+        FLOAT CrownBaseHeight_m "Height to crown base"
         GEOMETRY CrownBoundary "PostGIS polygon"
-        FLOAT Volume_m3
-        INT TreeStatusID FK
+        FLOAT Volume_m3 "Total tree volume"
         GEOMETRY Position "PostGIS point (plot coordinates)"
+        FLOAT LeanAngle_deg "0-90 degrees from vertical"
+        INT LeanDirection_azimuth "0-360 degrees, 0=North"
         FLOAT TimeDelta_yrs "Time since parent variant (for growth)"
+        TIMESTAMP UpdatedAt "DEFAULT NOW()"
+    }
+
+    Stems {
+        INT StemID PK
+        INT TreeVariantID FK "References Trees.VariantID"
+        INT StemNumber "1=main stem, 2+=secondary stems"
+        INT TaperTypeID FK "References TaperTypes"
+        INT StraightnessTypeID FK "References StraightnessTypes"
+        FLOAT DBH_cm "Diameter at breast height (1.3m)"
+        FLOAT TaperRatio "0.0-1.0, diameter ratio top/bottom"
+        FLOAT Sweep_cm_per_m "Maximum horizontal deviation per meter"
+        FLOAT StemHeight_m "Individual stem height"
+        FLOAT StemVolume_m3 "Individual stem volume"
+        GEOMETRY StemPosition "PostGIS point for multi-stem trees"
+        TEXT Notes "Additional stem observations"
         TIMESTAMP UpdatedAt "DEFAULT NOW()"
     }
 
@@ -346,9 +404,14 @@ erDiagram
     Processes ||--o{ Trees : processing_algorithm
     Trees ||--o{ Trees : parent_variant
     Trees ||--o{ ProcessParameters : variant_parameters
+    BranchingPatterns ||--o{ Trees : branching_pattern
+    BarkCharacteristics ||--o{ Trees : bark_characteristic
+    Trees ||--o{ Stems : has_stems
+    TaperTypes ||--o{ Stems : taper_type
+    StraightnessTypes ||--o{ Stems : straightness_type
 ```
 
-### Monitoring Schema
+### Sensor Schema
 
 Manages sensor hardware installations and time-series sensor readings. Base tables contain sensor metadata and installation info, while readings tables contain actual sensor measurements optimized for time-series queries.
 
