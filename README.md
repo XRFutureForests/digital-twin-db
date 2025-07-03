@@ -36,13 +36,15 @@ Complete system documentation is available in the `docs/` directory:
 
 - **[System Architecture](./docs/architecture/architecture.md)** - Three-tier architecture design
 - **[Database Design](./docs/architecture/database.md)** - Schema specifications  
+- **[Tech Stack](./docs/tech-stack.md)** - Technology overview and data flow examples
 - **[API Architecture](./docs/architecture/api.md)** - REST API interfaces
 - **[Services Architecture](./docs/architecture/services.md)** - Service layer design
 
 ## **System Services**
 
-The system runs three core services via Docker Compose:
+The system runs four core services via Docker Compose:
 
-- **PostgreSQL + PostGIS** (`postgres:5432`) - Spatial database
-- **Redis** (`redis:6379`) - Caching and event messaging  
-- **Python API** (`api:8000`) - FastAPI REST services
+- **PostgreSQL + PostGIS** (`postgres:5432`) - Spatial database with forest-specific schemas
+- **Redis** (`redis:6379`) - Caching and event messaging for real-time updates
+- **Python API** (`api:8000`) - FastAPI REST services with async processing
+- **nginx** (`nginx:80`) - Reverse proxy and static file server for large LiDAR files

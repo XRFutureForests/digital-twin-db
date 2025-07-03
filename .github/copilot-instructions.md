@@ -111,5 +111,11 @@ Single tree record in `trees.Trees` references multiple stems in `trees.Stems` t
 - Audit logs track changes through junction tables (`shared.AuditLog_Trees`, `AuditLog_PointClouds`, etc.)
 - Environmental context through `ScenarioID` references
 
+## Documentation & Resources
+- Avoid using emojis in documentation
+- Use clear, concise language with technical accuracy
+- Maintain consistent naming conventions across schemas
+- Keep the TODO list updated with current tasks and priorities
+
 ## Project Status
 Currently in **Architecture Design & Planning Phase** - database schema complete, API implementation pending. Focus on schema understanding and PostgreSQL/PostGIS spatial database patterns.
