@@ -13,6 +13,12 @@ Unified forest monitoring database with schema organization:
 - trees: Tree measurement and simulation data with multi-stem support
 - sensor: Environmental sensor hardware and time-series readings
 - environments: Environmental variants from sensor data or simulations
+
+EXPLICIT RELATIONSHIPS:
+This database uses junction tables to explicitly model relationships between shared
+tables (ProcessParameters, AuditLog) and domain-specific variant tables. This approach
+provides clear foreign key relationships visible in the ERD while maintaining
+flexibility for cross-schema operations.
   '''
 }
 
@@ -21,13 +27,13 @@ Unified forest monitoring database with schema organization:
 // =============================================================================
 
 Table shared.Locations {
-  LocationID integer [primary key, note: 'Unique site/plot ID']
-  LocationName varchar [note: 'Site name']
-  PlotBoundary geometry [note: 'PostGIS polygon for plot boundaries']
-  CenterPoint geometry [note: 'PostGIS point for plot center coordinates']
-  Description text [note: 'Description of the site']
-  Elevation_m float [note: 'Site elevation']
-  Slope_deg float [note: 'Site slope']
+  LocationID integer [primary key, note: 'Unique location ID']
+  LocationName varchar [note: 'Location name']
+  Boundary geometry [note: 'PostGIS polygon for location boundaries']
+  CenterPoint geometry [note: 'PostGIS point for location center coordinates']
+  Description text [note: 'Description of the location']
+  Elevation_m float [note: 'Location elevation']
+  Slope_deg float [note: 'Location slope']
   Aspect varchar [note: 'N, NE, E, SE, S, SW, W, NW']
   SoilTypeID integer [ref: > shared.SoilTypes.SoilTypeID, note: 'Soil type reference']
   ClimateZoneID integer [ref: > shared.ClimateZones.ClimateZoneID, note: 'Climate zone reference']
@@ -35,12 +41,12 @@ Table shared.Locations {
 
 Table shared.SoilTypes {
   SoilTypeID integer [primary key]
-  SoilName varchar [note: 'Alfisol, Andisol, Aridisol, Entisol, Gelisol, Histosol, Inceptisol, Mollisol, Oxisol, Spodosol, Ultisol, Vertisol']
+  SoilTypeName varchar [note: 'Alfisol, Andisol, Aridisol, Entisol, Gelisol, Histosol, Inceptisol, Mollisol, Oxisol, Spodosol, Ultisol, Vertisol']
 }
 
 Table shared.ClimateZones {
   ClimateZoneID integer [primary key]
-  ZoneName varchar [note: 'Köppen climate classification codes']
+  ClimateZoneName varchar [note: 'Köppen climate classification codes']
 }
 
 Table shared.Species {
@@ -76,12 +82,47 @@ Table shared.Processes {
 
 Table shared.ProcessParameters {
   ParameterID integer [primary key]
-  VariantSchema varchar [note: 'pointclouds, trees, environments, stems']
-  VariantID integer [note: 'References VariantID in the specified schema']
   ParameterName varchar [note: 'learning_rate, max_depth, threshold, growth_rate, interpolation_method']
   ParameterValue varchar [note: 'Actual parameter value used for this variant']
   DataType varchar [note: 'float, int, string, boolean']
   Description text [note: 'Parameter description']
+}
+
+// Junction tables for ProcessParameters polymorphic relationships
+Table shared.ProcessParameters_PointClouds {
+  ParameterID integer [ref: > shared.ProcessParameters.ParameterID, note: 'References ProcessParameters']
+  VariantID integer [ref: > pointclouds.PointClouds.VariantID, note: 'References PointClouds variant']
+  
+  indexes {
+    (ParameterID, VariantID) [pk]
+  }
+}
+
+Table shared.ProcessParameters_Trees {
+  ParameterID integer [ref: > shared.ProcessParameters.ParameterID, note: 'References ProcessParameters']
+  VariantID integer [ref: > trees.Trees.VariantID, note: 'References Trees variant']
+  
+  indexes {
+    (ParameterID, VariantID) [pk]
+  }
+}
+
+Table shared.ProcessParameters_Environments {
+  ParameterID integer [ref: > shared.ProcessParameters.ParameterID, note: 'References ProcessParameters']
+  VariantID integer [ref: > environments.Environments.VariantID, note: 'References Environments variant']
+  
+  indexes {
+    (ParameterID, VariantID) [pk]
+  }
+}
+
+Table shared.ProcessParameters_Stems {
+  ParameterID integer [ref: > shared.ProcessParameters.ParameterID, note: 'References ProcessParameters']
+  StemID integer [ref: > trees.Stems.StemID, note: 'References Stems']
+  
+  indexes {
+    (ParameterID, StemID) [pk]
+  }
 }
 
 Table shared.ProcessMetrics {
@@ -89,16 +130,11 @@ Table shared.ProcessMetrics {
   ProcessID integer [ref: > shared.Processes.ProcessID, note: 'References Processes']
   MetricName varchar [note: 'accuracy, precision, recall, f1_score, rmse']
   MetricValue float [note: 'Published performance value']
-  DatasetName varchar [note: 'Dataset used for evaluation']
-  TestConditions text [note: 'Conditions under which metric was measured']
-  MeasurementDate date [note: 'When metric was evaluated']
   Source text [note: 'Paper, report, or source of metric']
 }
 
 Table shared.AuditLog {
   AuditID bigint [primary key]
-  TableName varchar [note: 'Source table name: pointclouds.PointClouds, trees.Trees, trees.Stems, environments.Environments']
-  RecordID integer [note: 'VariantID or StemID being modified']
   FieldName varchar [note: 'Specific field changed']
   OldValue text [note: 'Previous value (JSON)']
   NewValue text [note: 'New value (JSON)']
@@ -108,16 +144,53 @@ Table shared.AuditLog {
   ChangeType varchar [note: 'field_update, bulk_update, revert']
 }
 
+// Junction tables for AuditLog polymorphic relationships
+Table shared.AuditLog_PointClouds {
+  AuditID bigint [ref: > shared.AuditLog.AuditID, note: 'References AuditLog']
+  VariantID integer [ref: > pointclouds.PointClouds.VariantID, note: 'References PointClouds variant']
+  
+  indexes {
+    (AuditID, VariantID) [pk]
+  }
+}
+
+Table shared.AuditLog_Trees {
+  AuditID bigint [ref: > shared.AuditLog.AuditID, note: 'References AuditLog']
+  VariantID integer [ref: > trees.Trees.VariantID, note: 'References Trees variant']
+  
+  indexes {
+    (AuditID, VariantID) [pk]
+  }
+}
+
+Table shared.AuditLog_Environments {
+  AuditID bigint [ref: > shared.AuditLog.AuditID, note: 'References AuditLog']
+  VariantID integer [ref: > environments.Environments.VariantID, note: 'References Environments variant']
+  
+  indexes {
+    (AuditID, VariantID) [pk]
+  }
+}
+
+Table shared.AuditLog_Stems {
+  AuditID bigint [ref: > shared.AuditLog.AuditID, note: 'References AuditLog']
+  StemID integer [ref: > trees.Stems.StemID, note: 'References Stems']
+  
+  indexes {
+    (AuditID, StemID) [pk]
+  }
+}
+
 // =============================================================================
 // POINTCLOUDS SCHEMA
 // =============================================================================
 
 Table pointclouds.PointClouds {
   VariantID integer [primary key]
-  LocationID integer [ref: > shared.Locations.LocationID, note: 'References shared.Locations']
-  VariantTypeID integer [ref: > shared.VariantTypes.VariantTypeID, note: 'References shared.VariantTypes']
-  ScenarioID integer [ref: > shared.Scenarios.ScenarioID, note: 'References shared.Scenarios - NULL for non-scenario variants']
   ParentVariantID integer [ref: > pointclouds.PointClouds.VariantID, note: 'Self-reference for variant lineage']
+  LocationID integer [ref: > shared.Locations.LocationID, note: 'References shared.Locations']
+  ScenarioID integer [ref: > shared.Scenarios.ScenarioID, note: 'References shared.Scenarios - NULL for non-scenario variants']
+  VariantTypeID integer [ref: > shared.VariantTypes.VariantTypeID, note: 'References shared.VariantTypes']
   ProcessID integer [ref: > shared.Processes.ProcessID, note: 'References shared.Processes - NULL for original scans']
   VariantName varchar [note: 'Descriptive name for variant']
   ScanDate timestamp [note: 'Date and time of original scan']
@@ -127,7 +200,6 @@ Table pointclouds.PointClouds {
   PointCount bigint [note: 'Total number of points']
   FileSizeMB float [note: 'File size in megabytes']
   ProcessingStatus varchar [note: 'pending, processing, completed, failed - NULL for original scans']
-  UpdatedAt timestamp [default: 'NOW()', note: 'DEFAULT NOW()']
 }
 
 // =============================================================================
@@ -136,7 +208,7 @@ Table pointclouds.PointClouds {
 
 Table trees.TreeStatus {
   TreeStatusID integer [primary key]
-  StatusName varchar [note: 'healthy, stressed, declining, dead']
+  TreeStatusName varchar [note: 'healthy, stressed, declining, dead']
   Description text
 }
 
@@ -158,26 +230,26 @@ Table trees.StraightnessTypes {
 
 Table trees.BranchingPatterns {
   BranchingPatternID integer [primary key]
-  PatternName varchar [note: 'Alternate, Opposite, Whorled, Spiral, Random']
+  BranchingPatternName varchar [note: 'Alternate, Opposite, Whorled, Spiral, Random']
   Description text [note: 'Branching arrangement description']
 }
 
 Table trees.BarkCharacteristics {
   BarkCharacteristicID integer [primary key]
-  BarkTypeName varchar [note: 'Smooth, Furrowed, Plated, Exfoliating']
+  BarkCharacteristicName varchar [note: 'Smooth, Furrowed, Plated, Exfoliating']
   Description text [note: 'Bark texture description']
   TypicalSpecies text [note: 'Examples: e.g., Fagus, Quercus, Pinus, Platanus']
 }
 
 Table trees.Trees {
   VariantID integer [primary key]
+  ParentVariantID integer [ref: > trees.Trees.VariantID, note: 'Self-reference for variant lineage']
+  PointCloudVariantID integer [ref: > pointclouds.PointClouds.VariantID, note: 'References pointclouds.PointClouds - NULL if not derived from point cloud']
   LocationID integer [ref: > shared.Locations.LocationID, note: 'References shared.Locations']
   ScenarioID integer [ref: > shared.Scenarios.ScenarioID, note: 'References shared.Scenarios']
-  ParentVariantID integer [ref: > trees.Trees.VariantID, note: 'Self-reference for variant lineage']
-  SpeciesID integer [ref: > shared.Species.SpeciesID, note: 'References shared.Species']
   VariantTypeID integer [ref: > shared.VariantTypes.VariantTypeID, note: 'References shared.VariantTypes']
-  PointCloudVariantID integer [ref: > pointclouds.PointClouds.VariantID, note: 'References pointclouds.PointClouds - NULL if not derived from point cloud']
   ProcessID integer [ref: > shared.Processes.ProcessID, note: 'References shared.Processes - NULL for manual measurements']
+  SpeciesID integer [ref: > shared.Species.SpeciesID, note: 'References shared.Species']
   TreeStatusID integer [ref: > trees.TreeStatus.TreeStatusID, note: 'References TreeStatus']
   BranchingPatternID integer [ref: > trees.BranchingPatterns.BranchingPatternID, note: 'References BranchingPatterns']
   BarkCharacteristicID integer [ref: > trees.BarkCharacteristics.BarkCharacteristicID, note: 'References BarkCharacteristics']
@@ -186,11 +258,10 @@ Table trees.Trees {
   CrownBaseHeight_m float [note: 'Height to crown base']
   CrownBoundary geometry [note: 'PostGIS polygon']
   Volume_m3 float [note: 'Total tree volume']
-  Position geometry [note: 'PostGIS point (plot coordinates)']
+  Position geometry [note: 'PostGIS point (tree coordinates)']
   LeanAngle_deg float [note: '0-90 degrees from vertical']
   LeanDirection_azimuth integer [note: '0-360 degrees, 0=North']
   TimeDelta_yrs float [note: 'Time since parent variant (for growth)']
-  UpdatedAt timestamp [default: 'NOW()', note: 'DEFAULT NOW()']
 }
 
 Table trees.Stems {
@@ -204,9 +275,6 @@ Table trees.Stems {
   Sweep_cm_per_m float [note: 'Maximum horizontal deviation per meter']
   StemHeight_m float [note: 'Individual stem height']
   StemVolume_m3 float [note: 'Individual stem volume']
-  StemPosition geometry [note: 'PostGIS point for multi-stem trees']
-  Notes text [note: 'Additional stem observations']
-  UpdatedAt timestamp [default: 'NOW()', note: 'DEFAULT NOW()']
 }
 
 // =============================================================================
@@ -215,7 +283,7 @@ Table trees.Stems {
 
 Table sensor.SensorTypes {
   SensorTypeID integer [primary key]
-  TypeName varchar [note: 'Temperature, Humidity, CO2, Light, Soil_Moisture, Wind']
+  SensorTypeName varchar [note: 'Temperature, Humidity, CO2, Light, Soil_Moisture, Wind']
   Description text
 }
 
@@ -244,10 +312,10 @@ Table sensor.SensorReadings {
 
 Table environments.Environments {
   VariantID integer [primary key]
-  LocationID integer [ref: > shared.Locations.LocationID, note: 'References shared.Locations']
-  VariantTypeID integer [ref: > shared.VariantTypes.VariantTypeID, note: 'References shared.VariantTypes']
-  ScenarioID integer [ref: > shared.Scenarios.ScenarioID, note: 'References shared.Scenarios']
   ParentVariantID integer [ref: > environments.Environments.VariantID, note: 'Self-reference for variant lineage']
+  LocationID integer [ref: > shared.Locations.LocationID, note: 'References shared.Locations']
+  ScenarioID integer [ref: > shared.Scenarios.ScenarioID, note: 'References shared.Scenarios']
+  VariantTypeID integer [ref: > shared.VariantTypes.VariantTypeID, note: 'References shared.VariantTypes']
   ProcessID integer [ref: > shared.Processes.ProcessID, note: 'References shared.Processes - NULL for manual input']
   VariantName varchar [note: 'Descriptive name for variant']
   AvgTemperature_C float
@@ -257,7 +325,6 @@ Table environments.Environments {
   AvgCO2_ppm float
   AvgWindSpeed_ms float
   DominantWindDirection_deg float
-  UpdatedAt timestamp [default: 'NOW()', note: 'DEFAULT NOW()']
 }
 
 // =============================================================================
@@ -273,8 +340,16 @@ TableGroup "Shared Schema" {
   shared.VariantTypes
   shared.Processes
   shared.ProcessParameters
+  shared.ProcessParameters_PointClouds
+  shared.ProcessParameters_Trees
+  shared.ProcessParameters_Environments
+  shared.ProcessParameters_Stems
   shared.ProcessMetrics
   shared.AuditLog
+  shared.AuditLog_PointClouds
+  shared.AuditLog_Trees
+  shared.AuditLog_Environments
+  shared.AuditLog_Stems
 }
 
 TableGroup "Point Clouds Schema" {
