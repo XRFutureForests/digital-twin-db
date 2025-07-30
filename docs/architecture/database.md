@@ -2,7 +2,13 @@
 
 ## Unified Database Design with Schema Organization
 
-This design uses PostgreSQL schemas (`shared`, `pointclouds`, `trees`, `monitoring`, `environments`) to organize a unified forest monitoring database. The design supports efficient time-series sensor data storage with file references managed as simple file paths within the variant and base tables.
+This design uses PostgreSQL schemas (`shared`, `pointclouds`, `trees`, `sensor`, `environments`) to organize a unified forest monitoring database. The design supports efficient time-series sensor data storage with file references managed as simple file paths within the variant and base tables.
+
+> **📊 Complete ERD Available**: For a comprehensive view of the entire database structure in a single diagram, see the complete ERD files:
+>
+> - **Visual ERD**: [`xr_forests_complete_erd.dbml`](./xr_forests_complete_erd.dbml) - Use with [dbdiagram.io](https://dbdiagram.io/) for interactive visualization
+> - **SQL Schema**: [`xr_forests_complete_schema.sql`](./xr_forests_complete_schema.sql) - Ready-to-execute PostgreSQL DDL
+> - **Usage Guide**: [`README_ERD.md`](./README_ERD.md) - How to use the ERD files
 
 ## Schema Overview
 
@@ -17,6 +23,14 @@ graph LR
         SP[Processes]
         SPP[ProcessParameters]
         SPM[ProcessMetrics]
+        SPPPC[ProcessParameters_PointClouds]
+        SPPT[ProcessParameters_Trees]
+        SPPE[ProcessParameters_Environments]
+        SPPS[ProcessParameters_Stems]
+        SALPC[AuditLog_PointClouds]
+        SALT[AuditLog_Trees]
+        SALE[AuditLog_Environments]
+        SALS[AuditLog_Stems]
     end
     
     subgraph pointclouds ["Point Clouds Schema"]
@@ -25,16 +39,41 @@ graph LR
     
     subgraph trees ["Trees Schema"]
         TV[Trees]
+        TST[Stems]
+        TTS[TreeStatus]
+        TTT[TaperTypes]
+        TST2[StraightnessTypes]
+        TBP[BranchingPatterns]
+        TBC[BarkCharacteristics]
     end
     
-    subgraph monitoring ["Monitoring Schema"]
+    subgraph sensor ["Sensor Schema"]
         S[Sensors]
         SR[SensorReadings]
+        SST[SensorTypes]
     end
     
     subgraph environments ["Environments Schema"]
         EV[Environments]
     end
+    
+    %% Junction table connections
+    SPP --> SPPPC
+    SPP --> SPPT  
+    SPP --> SPPE
+    SPP --> SPPS
+    SAL --> SALPC
+    SAL --> SALT
+    SAL --> SALE
+    SAL --> SALS
+    SPPPC --> PCV
+    SPPT --> TV
+    SPPE --> EV
+    SPPS --> TST
+    SALPC --> PCV
+    SALT --> TV
+    SALE --> EV
+    SALS --> TST
     
     %% Cross-schema relationships
     SL --> PCV
@@ -42,6 +81,16 @@ graph LR
     SL --> S
     SL --> EV
     SS --> TV
+    SST --> S
+    S --> SR
+    TV --> TST
+    TV --> TTS
+    TV --> TTT
+    TV --> TST2
+    TV --> TBP
+    TV --> TBC
+    TST --> TTT
+    TST --> TST2
     SC --> PCV
     SC --> TV
     SC --> SR
@@ -49,42 +98,33 @@ graph LR
     SVT --> PCV
     SVT --> TV
     SVT --> EV
-    SAL --> PCV
-    SAL --> TV
-    SAL --> EV
     SP --> PCV
     SP --> TV
     SP --> EV
-    SPP --> PCV
-    SPP --> TV
-    SPP --> EV
-    
-    %% Within-schema relationships
-    S --> SR
     SP --> SPM
 
     classDef sharedNodes fill:#F4EFA9,stroke:#c7bb1a,stroke-width:2px,color:#242424
     classDef pointcloudsNodes fill:#e8e8e8,stroke:#4f4f4f,stroke-width:2px,color:#242424
     classDef treesNodes fill:#5CB89C,stroke:#19392f,stroke-width:2px,color:#19392f
-    classDef monitoringNodes fill:#AD5643,stroke:#673428,stroke-width:2px,color:#e8e8e8
+    classDef sensorNodes fill:#AD5643,stroke:#673428,stroke-width:2px,color:#e8e8e8
     classDef environmentsNodes fill:#566b8a,stroke:#181d26,stroke-width:2px,color:#e8e8e8
     
     classDef sharedSubgraph fill:#F4EFA9,fill-opacity:0.3,stroke:#c7bb1a,stroke-width:2px
     classDef pointcloudsSubgraph fill:#e8e8e8,fill-opacity:0.3,stroke:#4f4f4f,stroke-width:2px
     classDef treesSubgraph fill:#5CB89C,fill-opacity:0.3,stroke:#19392f,stroke-width:2px
-    classDef monitoringSubgraph fill:#eeb896,fill-opacity:0.3,stroke:#673428,stroke-width:2px
+    classDef sensorSubgraph fill:#eeb896,fill-opacity:0.3,stroke:#673428,stroke-width:2px
     classDef environmentsSubgraph fill:#566b8a,fill-opacity:0.3,stroke:#181d26,stroke-width:2px
     
-    class SL,SS,SC,SVT,SAL,SP,SPP,SPM sharedNodes
+    class SL,SS,SC,SVT,SAL,SP,SPP,SPM,SPPPC,SPPT,SPPE,SPPS,SALPC,SALT,SALE,SALS sharedNodes
     class PCV pointcloudsNodes
-    class TV treesNodes
-    class S,SR monitoringNodes
+    class TV,TST,TTS,TTT,TST2,TBP,TBC treesNodes
+    class S,SR,SST sensorNodes
     class EV environmentsNodes
     
     class shared sharedSubgraph
     class pointclouds pointcloudsSubgraph
     class trees treesSubgraph
-    class monitoring monitoringSubgraph
+    class sensor sensorSubgraph
     class environments environmentsSubgraph
 
 
@@ -186,12 +226,30 @@ erDiagram
 
     ProcessParameters {
         INT ParameterID PK
-        VARCHAR VariantSchema "pointclouds, trees, environments"
-        INT VariantID "References VariantID in the specified schema"
         VARCHAR ParameterName "learning_rate, max_depth, threshold, growth_rate, interpolation_method"
         VARCHAR ParameterValue "Actual parameter value used for this variant"
         VARCHAR DataType "float, int, string, boolean"
         TEXT Description "Parameter description"
+    }
+
+    ProcessParameters_PointClouds {
+        INT ParameterID FK "References ProcessParameters"
+        INT VariantID FK "References pointclouds.PointClouds.VariantID"
+    }
+
+    ProcessParameters_Trees {
+        INT ParameterID FK "References ProcessParameters"
+        INT VariantID FK "References trees.Trees.VariantID"
+    }
+
+    ProcessParameters_Environments {
+        INT ParameterID FK "References ProcessParameters"
+        INT VariantID FK "References environments.Environments.VariantID"
+    }
+
+    ProcessParameters_Stems {
+        INT ParameterID FK "References ProcessParameters"
+        INT StemID FK "References trees.Stems.StemID"
     }
 
     ProcessMetrics {
@@ -199,14 +257,17 @@ erDiagram
         INT ProcessID FK "References Processes"
         VARCHAR MetricName "accuracy, precision, recall, f1_score, rmse"
         FLOAT MetricValue "Published performance value"
-        VARCHAR DatasetName "Dataset used for evaluation"
-        TEXT TestConditions "Conditions under which metric was measured"
-        DATE MeasurementDate "When metric was evaluated"
         TEXT Source "Paper, report, or source of metric"
     }
 
     Processes ||--o{ ProcessMetrics : has_metrics
+    ProcessParameters ||--o{ ProcessParameters_PointClouds : parameter_links
+    ProcessParameters ||--o{ ProcessParameters_Trees : parameter_links
+    ProcessParameters ||--o{ ProcessParameters_Environments : parameter_links
+    ProcessParameters ||--o{ ProcessParameters_Stems : parameter_links
 ```
+
+**Junction Table Design**: Process parameters use explicit junction tables to link with domain-specific variants, providing clear foreign key relationships while maintaining flexibility for cross-schema operations.
 
 #### Field-Level Change Tracking
 
@@ -217,12 +278,11 @@ erDiagram
 erDiagram
     PointClouds
     Trees
+    Stems
     Environments
 
     AuditLog {
-        BIGSERIAL AuditID PK
-        VARCHAR TableName "Source table name: pointclouds.PointClouds, trees.Trees, environments.Environments"
-        INT RecordID "VariantID being modified"
+        BIGINT AuditID PK
         VARCHAR FieldName "Specific field changed"
         TEXT OldValue "Previous value (JSON)"
         TEXT NewValue "New value (JSON)"
@@ -232,15 +292,41 @@ erDiagram
         VARCHAR ChangeType "field_update, bulk_update, revert"
     }
 
-    PointClouds ||--o{ AuditLog : tracks_changes
-    Trees ||--o{ AuditLog : tracks_changes
-    Environments ||--o{ AuditLog : tracks_changes
+    AuditLog_PointClouds {
+        BIGINT AuditID FK "References AuditLog"
+        INT VariantID FK "References pointclouds.PointClouds.VariantID"
+    }
+
+    AuditLog_Trees {
+        BIGINT AuditID FK "References AuditLog"
+        INT VariantID FK "References trees.Trees.VariantID"
+    }
+
+    AuditLog_Environments {
+        BIGINT AuditID FK "References AuditLog"
+        INT VariantID FK "References environments.Environments.VariantID"
+    }
+
+    AuditLog_Stems {
+        BIGINT AuditID FK "References AuditLog"
+        INT StemID FK "References trees.Stems.StemID"
+    }
+
+    AuditLog ||--o{ AuditLog_PointClouds : audit_links
+    AuditLog ||--o{ AuditLog_Trees : audit_links
+    AuditLog ||--o{ AuditLog_Environments : audit_links
+    AuditLog ||--o{ AuditLog_Stems : audit_links
+    AuditLog_PointClouds }o--|| PointClouds : tracks_changes
+    AuditLog_Trees }o--|| Trees : tracks_changes
+    AuditLog_Stems }o--|| Stems : tracks_changes
+    AuditLog_Environments }o--|| Environments : tracks_changes
 ```
 
-The AuditLog table provides granular change tracking for individual field modifications across all variant tables without creating full variants.
+The AuditLog system provides granular change tracking for individual field modifications across all variant tables through explicit junction tables.
 
 **Key Features**:
 
+- **Junction Table Design**: Explicit relationships through dedicated junction tables (AuditLog_PointClouds, AuditLog_Trees, etc.)
 - **API-Level Tracking**: All changes go through REST API endpoints to ensure audit logging
 - **Granular Logging**: Each field change creates a separate audit entry with full before/after context
 - **Revert Capability**: Changes can be undone using audit log data without creating new variants
@@ -249,8 +335,8 @@ The AuditLog table provides granular change tracking for individual field modifi
 
 **Implementation Strategy**:
 
-1. **Single Field Updates**: Modify variant record directly, log change in AuditLog
-2. **Multiple Field Updates**: Option to create micro-variant or log individual changes  
+1. **Single Field Updates**: Modify variant record directly, create AuditLog entry with junction table link
+2. **Multiple Field Updates**: Option to create micro-variant or log individual changes through junction tables
 3. **Major Changes**: Continue using full variant system for significant modifications
 4. **Revert Operations**: Use audit log to restore previous values with new audit entries
 
@@ -292,7 +378,6 @@ erDiagram
     Scenarios ||--o{ PointClouds : scenario_context
     Processes ||--o{ PointClouds : processing_algorithm
     PointClouds ||--o{ PointClouds : parent_variant
-    PointClouds ||--o{ ProcessParameters : variant_parameters
 ```
 
 ### Trees Schema
@@ -317,25 +402,69 @@ erDiagram
         TEXT Description
     }
 
+    TaperTypes {
+        INT TaperTypeID PK
+        VARCHAR TaperTypeName "Cylinder, Cone, Paraboloid, Neiloid"
+        TEXT Description "Form description"
+        FLOAT TypicalTaperRatioMin "Typical minimum taper ratio"
+        FLOAT TypicalTaperRatioMax "Typical maximum taper ratio"
+    }
+
+    StraightnessTypes {
+        INT StraightnessTypeID PK
+        VARCHAR StraightnessName "Straight, Slight_sweep, Moderate_sweep, Severe_sweep"
+        TEXT Description "Curvature description"
+        FLOAT DeviationAngleMin "Minimum deviation angle in degrees"
+        FLOAT DeviationAngleMax "Maximum deviation angle in degrees"
+    }
+
+    BranchingPatterns {
+        INT BranchingPatternID PK
+        VARCHAR PatternName "Alternate, Opposite, Whorled, Spiral, Random"
+        TEXT Description "Branching arrangement description"
+    }
+
+    BarkCharacteristics {
+        INT BarkCharacteristicID PK
+        VARCHAR BarkTypeName "Smooth, Furrowed, Plated, Exfoliating"
+        TEXT Description "Bark texture description"
+        TEXT TypicalSpecies "Examples: e.g., Fagus, Quercus, Pinus, Platanus"
+    }
+
     Trees {
         INT VariantID PK
+        INT ParentVariantID FK "Self-reference for variant lineage"
+        INT PointCloudVariantID FK "References pointclouds.PointClouds - NULL if not derived from point cloud"
         INT LocationID FK "References shared.Locations"
         INT ScenarioID FK "References shared.Scenarios"
-        INT ParentVariantID FK "Self-reference for variant lineage"
-        INT SpeciesID FK "References shared.Species"
         INT VariantTypeID FK "References shared.VariantTypes"
-        INT PointCloudVariantID FK "References pointclouds.PointClouds - NULL if not derived from point cloud"
         INT ProcessID FK "References shared.Processes - NULL for manual measurements"
-        FLOAT Height_m
-        FLOAT DBH_cm
-        FLOAT CrownWidth_m
-        FLOAT CrownBaseHeight_m
+        INT SpeciesID FK "References shared.Species"
+        INT TreeStatusID FK "References TreeStatus"
+        INT BranchingPatternID FK "References BranchingPatterns"
+        INT BarkCharacteristicID FK "References BarkCharacteristics"
+        FLOAT Height_m "Total tree height"
+        FLOAT CrownWidth_m "Crown diameter"
+        FLOAT CrownBaseHeight_m "Height to crown base"
         GEOMETRY CrownBoundary "PostGIS polygon"
-        FLOAT Volume_m3
-        INT TreeStatusID FK
-        GEOMETRY Position "PostGIS point (plot coordinates)"
+        FLOAT Volume_m3 "Total tree volume"
+        GEOMETRY Position "PostGIS point (tree coordinates)"
+        FLOAT LeanAngle_deg "0-90 degrees from vertical"
+        INT LeanDirection_azimuth "0-360 degrees, 0=North"
         FLOAT TimeDelta_yrs "Time since parent variant (for growth)"
-        TIMESTAMP UpdatedAt "DEFAULT NOW()"
+    }
+
+    Stems {
+        INT StemID PK
+        INT TreeVariantID FK "References Trees.VariantID"
+        INT StemNumber "1=main stem, 2+=secondary stems"
+        INT TaperTypeID FK "References TaperTypes"
+        INT StraightnessTypeID FK "References StraightnessTypes"
+        FLOAT DBH_cm "Diameter at breast height (1.3m)"
+        FLOAT TaperRatio "0.0-1.0, diameter ratio top/bottom"
+        FLOAT Sweep_cm_per_m "Maximum horizontal deviation per meter"
+        FLOAT StemHeight_m "Individual stem height"
+        FLOAT StemVolume_m3 "Individual stem volume"
     }
 
     Locations ||--o{ Trees : located_at
@@ -345,10 +474,14 @@ erDiagram
     VariantTypes ||--o{ Trees : variant_type
     Processes ||--o{ Trees : processing_algorithm
     Trees ||--o{ Trees : parent_variant
-    Trees ||--o{ ProcessParameters : variant_parameters
+    BranchingPatterns ||--o{ Trees : branching_pattern
+    BarkCharacteristics ||--o{ Trees : bark_characteristic
+    Trees ||--o{ Stems : has_stems
+    TaperTypes ||--o{ Stems : taper_type
+    StraightnessTypes ||--o{ Stems : straightness_type
 ```
 
-### Monitoring Schema
+### Sensor Schema
 
 Manages sensor hardware installations and time-series sensor readings. Base tables contain sensor metadata and installation info, while readings tables contain actual sensor measurements optimized for time-series queries.
 
@@ -377,8 +510,8 @@ erDiagram
     }
 
     SensorReadings {
-        BIGSERIAL ReadingID PK
-        INT SensorID FK "References sensors.Sensors"
+        BIGINT ReadingID PK
+        INT SensorID FK "References sensor.Sensors"
         TIMESTAMP Timestamp "Reading timestamp"
         FLOAT Value
         VARCHAR Quality "good, suspect, bad"
@@ -408,10 +541,10 @@ erDiagram
 
     Environments {
         INT VariantID PK
-        INT LocationID FK "References shared.Locations"
-        INT VariantTypeID FK "References shared.VariantTypes"
-        INT ScenarioID FK "References shared.Scenarios"
         INT ParentVariantID FK "Self-reference for variant lineage"
+        INT LocationID FK "References shared.Locations"
+        INT ScenarioID FK "References shared.Scenarios"
+        INT VariantTypeID FK "References shared.VariantTypes"
         INT ProcessID FK "References shared.Processes - NULL for manual input"
         VARCHAR VariantName "Descriptive name for variant"
         FLOAT AvgTemperature_C
@@ -421,7 +554,6 @@ erDiagram
         FLOAT AvgCO2_ppm
         FLOAT AvgWindSpeed_ms
         FLOAT DominantWindDirection_deg
-        TIMESTAMP UpdatedAt "DEFAULT NOW()"
     }
 
     Locations ||--o{ Environments : has_variants
@@ -429,5 +561,4 @@ erDiagram
     Scenarios ||--o{ Environments : scenario_context
     Processes ||--o{ Environments : processing_algorithm
     Environments ||--o{ Environments : parent_variant
-    Environments ||--o{ ProcessParameters : variant_parameters
 ```

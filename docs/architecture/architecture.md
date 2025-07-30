@@ -27,11 +27,10 @@ end
 subgraph PRESENTATION["Presentation Tier"]
 P2[XR Forest]
 P3[Web Interface]
-P1[API Gateway]
 end
 
 DATA <--> LOGIC
-PRESENTATION --> LOGIC
+PRESENTATION <--> LOGIC
 PRESENTATION <--> DATA
 
 %% Subgraph styling - light colors
@@ -49,7 +48,7 @@ class D1,D2 dataNode
 class LOGIC logicTier
 class L1,L2 logicNode
 class PRESENTATION presentationTier
-class P1,P2,P3 presentationNode
+class P2,P3 presentationNode
 
 linkStyle 0,1,2 stroke:#313D4F,stroke-width:2px
 ```
@@ -191,7 +190,6 @@ end
 
 subgraph SIMULATION["Growth Simulation"]
 X1[SILVA Model Interface]
-X2[BALANCE Model Interface]
 GS[Growth Simulation Service]
 end
 end
@@ -207,7 +205,6 @@ PCS <-->|Point Cloud API| DATA_REF
 PC3 -->|Tree API| DATA_REF
 
 X1 --> GS
-X2 --> GS
 DATA_REF <-->|Tree API| GS
 DATA_REF -->|Environment API| GS
 GS -->|Tree API| DATA_REF
@@ -225,18 +222,18 @@ class LOGIC_TIER logicBack
 class DATA_REF dataTier
 class SC1,SC2,SC4 dataNode
 class PROCESSING,SIMULATION logicTier
-class PC1,PC2,PC3,PCS,X1,X2,GS logicNode
+class PC1,PC2,PC3,PCS,X1,GS logicNode
 class PRESENTATION_REF presentationTier
 class P_REF presentationNode
 
-linkStyle 0,1,2,3,4,5,6,7,8,9,10 stroke:#313D4F,stroke-width:2px
+linkStyle 0,1,2,3,4,5,6,7,8,9 stroke:#313D4F,stroke-width:2px
 ```
 
 The Logic Tier Architecture serves as the analytical engine of the XR Future Forests Lab, transforming raw forest data into actionable insights through sophisticated processing pipelines and predictive modeling. This tier bridges the gap between data acquisition and visualization, enabling both automated analysis and user-driven forest simulations.
 
 **Point Cloud Processing** is implemented by the **Point Cloud Processing Service** which orchestrates the core computational workflow that converts raw LiDAR data into structured forest information through a variant-based processing system. Upon upload through the 3DTrees platform, the system creates a base `PointCloud` record and the service automatically initiates processing variants: Tree Segmentation creates a "Processing_Result" variant with individual tree identification, Species Classification generates additional variants with species-specific attributes, and Structural Attribute Extraction produces final variants containing precise measurements including height, diameter at breast height (DBH), crown dimensions, and crown base height. Each processing step is tracked through the `PointCloudVariants` table with status monitoring (pending, processing, completed, failed) and confidence scores for segmentation and classification. This variant-based approach ensures processing lineage is maintained while derived tree attributes flow into the Tree Schema through `TreeVariants` that reference their originating `PointCloudVariant` via the `PointCloudVariantID` field.
 
-**Growth Simulation** is managed by the **Growth Simulation Service** which leverages external forest growth models to predict tree and forest development under various scenarios. The service integrates with established models like SILVA (individual tree growth) and BALANCE (stand-level growth) to provide scientifically validated projections. Environmental conditions from the Environment Schema and current tree states from the Tree Schema serve as input parameters, while the Growth Simulation Service prepares data formats specific to each model's requirements. A key innovation is the integration of user interaction from the XR Presentation Tier, allowing researchers and forest managers to modify environmental parameters, adjust management practices, or test climate scenarios in real-time. Simulation results are automatically saved back to the Tree Schema as temporal variants, with the `ModelType` field recording which growth model was used and `TimeDelta_yrs` tracking the projected time progression. This enables users to visualize forest evolution and compare different management strategies within the immersive XR environment through the standardized Simulation API.
+**Growth Simulation** is managed by the **Growth Simulation Service** which leverages external forest growth models to predict tree and forest development under various scenarios. The service integrates with established models like SILVA (individual tree growth) and other tree-based growth models to provide scientifically validated projections. Environmental conditions from the Environment Schema and current tree states from the Tree Schema serve as input parameters, while the Growth Simulation Service prepares data formats specific to each model's requirements. A key innovation is the integration of user interaction from the XR Presentation Tier, allowing researchers and forest managers to modify environmental parameters, adjust management practices, or test climate scenarios in real-time. Simulation results are automatically saved back to the Tree Schema as temporal variants, with the `ModelType` field recording which growth model was used and `TimeDelta_yrs` tracking the projected time progression. This enables users to visualize forest evolution and compare different management strategies within the immersive XR environment through the standardized Simulation API.
 
 This dual-component architecture ensures both automated efficiency and interactive flexibility, supporting the lab's mission to combine rigorous scientific analysis with innovative visualization technologies.
 
@@ -273,14 +270,11 @@ end
 subgraph WEB_SERVICES["Web Services"]
 WS1[Field Web App Service]
 WS2[3DTrees Web Platform Service]
-WS3[API Gateway Service]
 end
 end
 
 DATA_REF -->|Tree API| WS1
 DATA_REF -->|Point Cloud API| WS2
-WS3 --> DATA_REF
-WS3 --> LOGIC_REF
 DATA_REF <-->|Tree API| XS1
 DATA_REF <-->|Environment API| XS2
 DATA_REF <-->|Point Cloud API| XS3
@@ -300,9 +294,9 @@ class PRESENTATION_TIER presentationBack
 class DATA_REF dataTier
 class LOGIC_REF logicTier
 class WEB_SERVICES,XR_SERVICES presentationTier
-class XS1,XS2,XS3,XS4,XS5,WS1,WS2,WS3 presentationNode
+class XS1,XS2,XS3,XS4,XS5,WS1,WS2 presentationNode
 
-linkStyle 0,1,2,3,4,5,6,7,8,9 stroke:#313D4F,stroke-width:2px
+linkStyle 0,1,2,3,4,5,6,7 stroke:#313D4F,stroke-width:2px
 ```
 
 The Presentation Tier Architecture represents the culmination of the XR Future Forests Lab vision, transforming complex forest data into immersive experiences and accessible interfaces that serve diverse user communities from researchers to field practitioners. This tier strategically balances cutting-edge XR technologies with practical web-based tools to maximize accessibility and impact.
@@ -311,7 +305,7 @@ The Presentation Tier Architecture represents the culmination of the XR Future F
 
 The **XR Interaction Service** serves as the bridge between user intent and system response, enabling real-time modification of forest parameters and growth scenarios. Users can manipulate environmental variables, remove or replace trees, adjust management practices, and observe immediate visual feedback of their decisions. These interactions seamlessly integrate with the Growth Simulation Service in the Logic Tier through the standardized APIs, creating a dynamic feedback loop where user experiments drive scientific modeling and visualization updates.
 
-**Web Services** ensure broad accessibility and specialized functionality for different user groups. The **Field Web App Service** empowers forest practitioners to access tree information instantly by scanning QR codes attached to individual trees, pulling comprehensive data including growth history, health status, and predicted development trajectories through the Tree API. Each tree's QR code links directly to its `TreeVariants` record, providing immediate access to current measurements, processing confidence scores, and growth model predictions. The **3DTrees Web Platform Service** provides browser-based visualization of uploaded point clouds, with the ability to overlay segmentation results through color-coded point classification and display simplified virtual tree models derived from processing algorithms via the Point Cloud API. The **API Gateway Service** provides unified access point for all system APIs with security, routing, and monitoring capabilities.
+**Web Services** ensure broad accessibility and specialized functionality for different user groups. The **Field Web App Service** empowers forest practitioners to access tree information instantly by scanning QR codes attached to individual trees, pulling comprehensive data including growth history, health status, and predicted development trajectories through the Tree API. Each tree's QR code links directly to its `TreeVariants` record, providing immediate access to current measurements, processing confidence scores, and growth model predictions. The **3DTrees Web Platform Service** provides browser-based visualization of uploaded point clouds, with the ability to overlay segmentation results through color-coded point classification and display simplified virtual tree models derived from processing algorithms via the Point Cloud API.
 
 ---
 
@@ -338,7 +332,7 @@ The distributed service architecture operates across all three tiers with specia
 
 - **Data Tier Services**: Handle ingestion, validation, and aggregation (Data Ingestion Pipeline, Sensor Data Aggregation)
 - **Logic Tier Services**: Implement computational algorithms (Point Cloud Processing, Growth Simulation)  
-- **Presentation Tier Services**: Provide interfaces and visualization (Web Apps, XR Services, API Gateway)
+- **Presentation Tier Services**: Provide interfaces and visualization (Web Apps, XR Services)
 - **External Integrations**: Interface with third-party systems (SILVA/BALANCE models, EcoSense sensors, 3DTrees platform)
 
 For comprehensive service specifications, functionality details, and deployment considerations, see the [Service Architecture Documentation](services.md).
