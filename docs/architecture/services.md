@@ -35,7 +35,6 @@ end
 subgraph WEB_SERVICES["Web Services"]
 WS1[Field Web App Service]
 WS2[3DTrees Web Platform Service]
-WS3[API Gateway Service]
 end
 
 subgraph XR_SERVICES["XR Services"]
@@ -48,7 +47,6 @@ end
 
 subgraph EXTERNAL_SERVICES["External Integrations"]
 ES1[SILVA Model Interface]
-ES2[BALANCE Model Interface]
 ES3[EcoSense Sensor Integration]
 ES4[3DTrees Platform Integration]
 end
@@ -72,12 +70,6 @@ WS1 --> API2
 WS1 --> API6
 WS2 --> API1
 WS2 --> API2
-WS3 --> API1
-WS3 --> API2
-WS3 --> API3
-WS3 --> API4
-WS3 --> API5
-WS3 --> API6
 
 %% XR Services connections
 XS1 --> API2
@@ -91,7 +83,6 @@ XS5 --> API3
 
 %% External integrations
 ES1 --> DS3
-ES2 --> DS3
 ES3 --> DS1
 ES4 --> DS1
 
@@ -114,13 +105,13 @@ class API1,API2,API3,API4,API5,API6 apiNode
 class DATA_SERVICES dataServices
 class DS1,DS2,DS3,DS4 dataNode
 class WEB_SERVICES webServices
-class WS1,WS2,WS3 webNode
+class WS1,WS2 webNode
 class XR_SERVICES xrServices
 class XS1,XS2,XS3,XS4,XS5 xrNode
 class EXTERNAL_SERVICES externalServices
-class ES1,ES2,ES3,ES4 externalNode
+class ES1,ES3,ES4 externalNode
 
-linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31 stroke:#313D4F,stroke-width:2px
+linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26 stroke:#313D4F,stroke-width:2px
 ```
 
 ## Data Services
@@ -162,7 +153,7 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 
 **Key Functionality**:
 
-- **Model Integration**: Interfaces with external growth models (SILVA, BALANCE) through standardized protocols
+- **Model Integration**: Interfaces with external growth models (SILVA and other tree-based models) through standardized protocols
 - **Scenario Management**: Creates and manages simulation scenarios with varying environmental conditions
 - **Parameter Preparation**: Formats current tree and environmental data for specific model requirements
 - **Simulation Orchestration**: Coordinates execution of growth models with appropriate input parameters
@@ -220,23 +211,6 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 - **Export Functionality**: Enables download of processed data in various formats
 
 **API Dependencies**: Point Cloud API, Tree API
-
-### API Gateway Service
-
-**Purpose**: Provides unified access point for all system APIs with security, routing, monitoring capabilities, and audit trail coordination.
-
-**Key Functionality**:
-
-- **Request Routing**: Directs API calls to appropriate backend services based on endpoints
-- **Authentication**: Manages user authentication and session handling across all APIs
-- **Authorization**: Enforces role-based access control for different user types and data access levels
-- **Audit Coordination**: Ensures consistent user attribution across all audit logging operations
-- **Rate Limiting**: Prevents API abuse through intelligent throttling mechanisms
-- **Monitoring & Analytics**: Tracks API usage patterns and performance metrics
-- **Caching**: Implements intelligent caching strategies for frequently accessed data
-- **Change Notification**: Provides real-time notifications for field-level modifications
-
-**API Dependencies**: All Core APIs (Point Cloud, Tree, Sensor, Environment, Simulation, Audit)
 
 ## XR Services
 
@@ -334,18 +308,6 @@ linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26
 - **Result Processing**: Interprets SILVA growth predictions and converts to internal TreeVariant format
 - **Version Management**: Maintains compatibility with different SILVA model versions
 - **Performance Optimization**: Manages batch processing for efficient model execution
-
-### BALANCE Model Interface
-
-**Purpose**: Enables integration with the BALANCE stand-level forest growth model.
-
-**Key Functionality**:
-
-- **Stand Aggregation**: Prepares stand-level input data from individual tree measurements
-- **Model Execution**: Manages BALANCE model runs with appropriate environmental parameters
-- **Result Distribution**: Distributes stand-level predictions back to individual tree variants
-- **Scenario Processing**: Handles multiple scenario runs for comparative analysis
-- **Quality Assurance**: Validates model outputs and handles error conditions
 
 ### EcoSense Sensor Integration
 

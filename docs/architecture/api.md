@@ -28,7 +28,7 @@ end
 subgraph SCHEMAS["Database Schemas"]
 SC1[pointclouds schema]
 SC2[trees schema]
-SC3[monitoring schema]
+SC3[sensor schema]
 SC4[environments schema]
 SC5[shared schema]
 end
@@ -156,7 +156,7 @@ The Environment API consolidates environmental context data:
 
 The Simulation API orchestrates growth modeling workflows:
 
-- **POST /api/simulations/models/{model_type}** - Interface with external models (SILVA, BALANCE)
+- **POST /api/simulations/models/{model_type}** - Interface with external models (SILVA and other tree-based models)
 - **GET /api/simulations/parameters** - Retrieve simulation parameter sets and scenarios
 - **POST /api/simulations/parameters** - Create new simulation parameter configurations
 - **PUT /api/simulations/parameters/{parameter_set_id}** - Update simulation parameter sets
