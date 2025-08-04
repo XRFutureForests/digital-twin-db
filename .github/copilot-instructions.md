@@ -1,4 +1,26 @@
-# GitHub Copilot Instructions - XR Future Forests Lab
+````instructions
+# GitHub Copilot Instructions - Digital Twin Repository
+
+## Repository Role: Data Tier Implementation
+
+This repository implements the **Data Tier** of the XR Future Forests Lab multi-repository architecture. It serves as the central data infrastructure for the entire forest monitoring and visualization system, providing unified database services and APIs for the Logic and Presentation tiers.
+
+## Multi-Repository Architecture Context
+
+### **Planning Hub**: XR Future Forests Lab Repository
+- **Role**: Central planning and coordination workspace  
+- **Contains**: Architecture documentation, issue distribution, milestone tracking
+- **Linear Integration**: Coordinates work across all three specialized repositories
+
+### **This Repository**: Digital Twin (Data Tier Implementation)
+- **Architecture**: Data Tier - Database infrastructure and API services
+- **Linear Project**: Digital Twin Ecosense (`b618c5d3-5daf-45b1-82ba-8a9de81532d8`)
+- **Team**: XR Future Forests (`5e3b87df-5f1a-4f70-8621-4ced0ed7bdcf`)
+- **Focus**: PostgreSQL + PostGIS database, FastAPI endpoints, VM deployment
+
+### **Consumer Repositories (Logic Tier)**:
+- **🌲 The Grove Repository**: Tree Asset Generation Service - consumes Tree API for species/measurements
+- **☁️ Potree Docker Repository**: Point Cloud Processing Service - stores results via Point Cloud API
 
 ## Project Overview
 This is a research project for creating **digital twins of forests** through XR technologies, combining LiDAR point clouds, tree measurements, sensor data, and growth modeling. The system uses a three-tier architecture (Data/Logic/Presentation) with PostgreSQL + PostGIS for spatial forest data.
@@ -54,6 +76,18 @@ UPDATE trees.Trees SET Height_m = 25.3 WHERE VariantID = 456;
 ```
 
 ## Development Workflows
+
+### Data Tier Implementation Focus
+This repository focuses on:
+1. **Database Schema Implementation**: Converting DBML to PostgreSQL DDL
+2. **API Development**: FastAPI endpoints for data access and manipulation  
+3. **Infrastructure Deployment**: VM setup and production database deployment
+4. **Integration Services**: APIs consumed by Logic Tier repositories (Grove, Potree Docker)
+
+### Service Consumers
+- **The Grove Repository**: Consumes Tree API for species data and measurement input
+- **Potree Docker Repository**: Uses Point Cloud API to store processing results
+- **External VR Applications**: Access forest data through standardized APIs
 
 ### Database Development
 1. **Schema Changes**: Modify `docs/architecture/xr_forests_complete_erd.dbml` first
@@ -117,5 +151,12 @@ Single tree record in `trees.Trees` references multiple stems in `trees.Stems` t
 - Maintain consistent naming conventions across schemas
 - Keep the TODO list updated with current tasks and priorities
 
-## Project Status
-Currently in **Architecture Design & Planning Phase** - database schema complete, API implementation pending. Focus on schema understanding and PostgreSQL/PostGIS spatial database patterns.
+## Project Status (August 2025)
+Currently in **Database Implementation Phase** - schema complete, API implementation pending. Focus on schema understanding and PostgreSQL/PostGIS spatial database patterns.
+
+**Target Date**: August 15, 2025
+- **Must-have**: Core database running on VM
+- **Should-have**: Basic API endpoints functional  
+- **Could-have**: Unity/Unreal Engine integration research
+
+This repository serves as the **data foundation** for the entire XR Future Forests Lab system, providing unified data services to specialized Logic Tier repositories and external applications.
