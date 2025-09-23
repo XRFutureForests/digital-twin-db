@@ -1,0 +1,60 @@
+flowchart TB
+    subgraph DATABASE["DIGITAL TWIN DATABASE"]
+        subgraph CORE_DATA["Core Data Storage"]
+            TREES["Tree Data<br/>Individual Trees<br/>Height and DBH<br/>Crown Dimensions<br/>Species and Health<br/>Spatial Position"]
+            ENVIRONMENT["Environmental Data<br/>Conditions and Monitoring<br/>Temperature and Humidity<br/>CO2 and Precipitation<br/>Sensor Networks<br/>Weather Patterns"]
+        end
+        
+        subgraph MANAGEMENT_SYSTEM["Management System"]
+            SCENARIOS["Scenarios<br/>What-If Analysis<br/>Climate Scenarios<br/>Management Options<br/>Disturbance Events<br/>Policy Testing"]
+            VARIANTS["Variants<br/>Data Versions<br/>Temporal Evolution<br/>Processing Results<br/>Model Outputs<br/>Historical States"]
+        end
+        
+        subgraph AUDIT_SYSTEM["Change Tracking"]
+            AUDIT["Audit System<br/>Complete Traceability<br/>Field-level Changes<br/>User Attribution<br/>Revert Capability"]
+        end
+    end
+    
+    subgraph PROCESS_MODELS["Integrated Process Models"]
+        MODELS["Scientific Models<br/>Published Research Integration<br/>Forest Growth Models SILVA iLand<br/>Environmental Models<br/>Management Models<br/>Ecological Processes"]
+    end
+    
+    subgraph UPDATE_SOURCES["Data Updates"]
+        REAL_TIME["Real-time<br/>Sensor Streams<br/>Weather APIs"]
+        PERIODIC["Periodic<br/>Field Surveys<br/>Remote Sensing"]
+        INTERACTIVE["Interactive<br/>User Input<br/>Scenario Testing"]
+    end
+
+    TREES --> MODELS
+    ENVIRONMENT --> MODELS
+    SCENARIOS --> MODELS
+    MODELS --> VARIANTS
+    MODELS --> SCENARIOS
+    
+    REAL_TIME --> ENVIRONMENT
+    PERIODIC --> TREES
+    PERIODIC --> ENVIRONMENT
+    INTERACTIVE --> SCENARIOS
+    INTERACTIVE --> VARIANTS
+    
+    VARIANTS --> AUDIT
+    SCENARIOS --> AUDIT
+    
+    VARIANTS -.-> TREES
+    VARIANTS -.-> ENVIRONMENT
+    SCENARIOS -.-> TREES
+    SCENARIOS -.-> ENVIRONMENT
+
+    classDef databaseCore fill:#E8F5E8,stroke:#2E7D32,stroke-width:3px
+    classDef coreData fill:#C8E6C9,stroke:#388E3C,stroke-width:2px
+    classDef managementSystem fill:#A5D6A7,stroke:#4CAF50,stroke-width:2px
+    classDef auditSystem fill:#FFF8E1,stroke:#FF8F00,stroke-width:2px
+    classDef processModels fill:#FFF3E0,stroke:#F57C00,stroke-width:3px
+    classDef updateSources fill:#F3E5F5,stroke:#7B1FA2,stroke-width:3px
+
+    class DATABASE databaseCore
+    class TREES,ENVIRONMENT,CORE_DATA coreData
+    class SCENARIOS,VARIANTS,MANAGEMENT_SYSTEM managementSystem
+    class AUDIT,AUDIT_SYSTEM auditSystem
+    class MODELS,PROCESS_MODELS processModels
+    class REAL_TIME,PERIODIC,INTERACTIVE,UPDATE_SOURCES updateSources

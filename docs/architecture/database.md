@@ -1,5 +1,155 @@
 # Database Design - XR Future Forests Lab
 
+## Digital Twin System Overview
+
+```mermaid
+%%{
+init: {
+'theme': 'base',
+'themeVariables': {
+'primaryColor': '#2E7D32',
+'primaryTextColor': '#FFFFFF',
+'primaryBorderColor': '#1B5E20',
+'lineColor': '#388E3C',
+'secondaryColor': '#A5D6A7',
+'tertiaryColor': '#E8F5E8',
+'background': '#FFFFFF',
+'mainBkg': '#F1F8E9',
+'secondBkg': '#DCEDC8',
+'tertiaryBkg': '#C8E6C9'
+}
+}
+}%%
+flowchart TB
+    subgraph EXTERNAL["🌍 External Data Sources"]
+        direction TB
+        EcoSense["🌡️ EcoSense Sensors<br/>• Temperature<br/>• Humidity<br/>• CO₂<br/>• Wind Speed"]
+        Trees3D["📡 3DTrees Platform<br/>• LiDAR Point Clouds<br/>• Forest Scans<br/>• Spatial Data"]
+        ForestInv["📋 Forest Inventory<br/>• Tree Measurements<br/>• Species Data<br/>• Growth Records"]
+        ExtEnv["🌤️ Environmental APIs<br/>• Weather Data<br/>• Climate Models<br/>• Precipitation"]
+    end
+
+    subgraph INGESTION["📥 Data Ingestion Layer"]
+        direction LR
+        Pipeline["🔄 Data Pipeline<br/>• Validation<br/>• Standardization<br/>• Quality Control"]
+        SensorAgg["📊 Sensor Aggregation<br/>• Real-time Processing<br/>• Quality Assessment<br/>• Temporal Alignment"]
+    end
+
+    subgraph DATABASE["🗄️ Digital Twin Database Core"]
+        direction TB
+        subgraph SCHEMAS["🏗️ Unified Schema Architecture"]
+            direction LR
+            SharedS["🔗 Shared Schema<br/>• Locations<br/>• Species<br/>• Scenarios<br/>• Process Tracking"]
+            TreesS["🌳 Trees Schema<br/>• Tree Variants<br/>• Growth Data<br/>• Measurements"]
+            PointS["☁️ Point Clouds<br/>• LiDAR Data<br/>• Processing Results<br/>• Spatial Bounds"]
+            SensorS["📡 Sensor Schema<br/>• Hardware Config<br/>• Time-series Data<br/>• Quality Metrics"]
+            EnvS["🌿 Environment<br/>• Conditions<br/>• Aggregated Data<br/>• Model Inputs"]
+        end
+        
+        AuditSys["📝 Audit System<br/>• Field-level Tracking<br/>• Change History<br/>• User Attribution<br/>• Revert Capability"]
+    end
+
+    subgraph PROCESSING["⚙️ Processing & Analysis"]
+        direction TB
+        subgraph POINTCLOUD["☁️ Point Cloud Processing"]
+            TreeSeg["🎯 Tree Segmentation<br/>• Individual Detection<br/>• Boundary Definition"]
+            SpeciesClass["🔬 Species Classification<br/>• ML Algorithms<br/>• Confidence Scoring"]
+            StructExtract["📏 Structure Extraction<br/>• Height & DBH<br/>• Crown Dimensions"]
+        end
+        
+        subgraph MODELS["🌱 Growth & Process Models"]
+            SILVA["🌲 SILVA Model<br/>• Individual Tree Growth<br/>• Scientific Validation"]
+            Climate["🌡️ Climate Models<br/>• Temperature Effects<br/>• Precipitation Impact"]
+            Custom["⚡ Custom Algorithms<br/>• Research Models<br/>• Experimental Methods"]
+        end
+    end
+
+    subgraph APPLICATIONS["🖥️ User Applications"]
+        direction TB
+        subgraph XR["🥽 XR Forest Experience"]
+            VirtTrees["🌳 Virtual Trees<br/>• Photorealistic Models<br/>• Growth Visualization"]
+            EnvVis["🌪️ Environment Viz<br/>• Wind Patterns<br/>• CO₂ Flow<br/>• Nutrient Cycles"]
+            Interaction["👋 XR Interaction<br/>• Parameter Control<br/>• Scenario Testing<br/>• Real-time Feedback"]
+        end
+        
+        subgraph WEB["🌐 Web Applications"]
+            FieldApp["📱 Field App<br/>• QR Code Access<br/>• Mobile Interface<br/>• Data Collection"]
+            WebPlatform["💻 3DTrees Web<br/>• Point Cloud Viewer<br/>• Processing Dashboard"]
+        end
+    end
+
+    %% External to Ingestion
+    EcoSense --> SensorAgg
+    Trees3D --> Pipeline
+    ForestInv --> Pipeline
+    ExtEnv --> Pipeline
+
+    %% Ingestion to Database
+    Pipeline --> SharedS
+    Pipeline --> TreesS
+    Pipeline --> PointS
+    Pipeline --> EnvS
+    SensorAgg --> SensorS
+    SensorAgg --> EnvS
+
+    %% Database internal connections
+    SharedS -.-> TreesS
+    SharedS -.-> PointS
+    SharedS -.-> SensorS
+    SharedS -.-> EnvS
+    SensorS --> EnvS
+    PointS --> TreesS
+
+    %% Processing connections
+    PointS --> TreeSeg
+    TreeSeg --> SpeciesClass
+    SpeciesClass --> StructExtract
+    StructExtract --> TreesS
+
+    %% Model connections
+    TreesS --> SILVA
+    EnvS --> SILVA
+    EnvS --> Climate
+    SILVA --> TreesS
+    Climate --> EnvS
+
+    %% Applications connections
+    TreesS --> VirtTrees
+    EnvS --> EnvVis
+    PointS --> EnvVis
+    SensorS --> EnvVis
+    VirtTrees --> Interaction
+    EnvVis --> Interaction
+    Interaction --> TreesS
+    Interaction --> EnvS
+
+    TreesS --> FieldApp
+    PointS --> WebPlatform
+    TreesS --> WebPlatform
+
+    %% Audit connections
+    TreesS -.-> AuditSys
+    EnvS -.-> AuditSys
+    PointS -.-> AuditSys
+    FieldApp -.-> AuditSys
+    Interaction -.-> AuditSys
+
+    %% Styling
+    classDef externalSource fill:#E3F2FD,stroke:#1976D2,stroke-width:3px,color:#0D47A1
+    classDef ingestionLayer fill:#FFF3E0,stroke:#F57C00,stroke-width:3px,color:#E65100
+    classDef databaseCore fill:#E8F5E8,stroke:#2E7D32,stroke-width:3px,color:#1B5E20
+    classDef processingLayer fill:#F3E5F5,stroke:#7B1FA2,stroke-width:3px,color:#4A148C
+    classDef applicationLayer fill:#E0F2F1,stroke:#00695C,stroke-width:3px,color:#004D40
+    classDef auditSystem fill:#FFF8E1,stroke:#FF8F00,stroke-width:3px,color:#E65100
+
+    class EcoSense,Trees3D,ForestInv,ExtEnv externalSource
+    class Pipeline,SensorAgg ingestionLayer
+    class SharedS,TreesS,PointS,SensorS,EnvS,SCHEMAS databaseCore
+    class TreeSeg,SpeciesClass,StructExtract,SILVA,Climate,Custom,POINTCLOUD,MODELS processingLayer
+    class VirtTrees,EnvVis,Interaction,FieldApp,WebPlatform,XR,WEB applicationLayer
+    class AuditSys auditSystem
+```
+
 ## Unified Database Design with Schema Organization
 
 This design uses PostgreSQL schemas (`shared`, `pointclouds`, `trees`, `sensor`, `environments`) to organize a unified forest monitoring database. The design supports efficient time-series sensor data storage with file references managed as simple file paths within the variant and base tables.
