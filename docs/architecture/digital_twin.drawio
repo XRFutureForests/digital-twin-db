@@ -1,0 +1,99 @@
+<mxfile host="65bd71144e" scale="10" border="0">
+    <diagram id="ZlkKeNVFfqrZ-iLAWdCr" name="Page-1">
+        <mxGraphModel dx="6904" dy="4556" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2339" pageHeight="3300" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="12" value="DIGITAL TWIN DATABASE" style="swimlane;startSize=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1;verticalAlign=top;collapsible=0;swimlaneFillColor=#D5E8D4;backgroundOutline=0;separatorColor=none;fontFamily=Helvetica;fontSize=13;fillOpacity=25;" parent="1" vertex="1">
+                    <mxGeometry x="480" y="350" width="320" height="510" as="geometry">
+                        <mxRectangle x="425" y="340" width="50" height="40" as="alternateBounds"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="14" value="MANAGEMENT SYSTEM" style="swimlane;startSize=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1;verticalAlign=top;collapsible=0;fontFamily=Helvetica;fontSize=13;swimlaneFillColor=#D5E8D4;fillOpacity=33;" parent="12" vertex="1">
+                    <mxGeometry x="20" y="340" width="280" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="&lt;div&gt;&lt;b&gt;SCENARIOS&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;What-If Analysis, Climate Models, Management Options, Policy Testing, ...&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Helvetica;fontSize=13;" parent="14" vertex="1">
+                    <mxGeometry x="150" y="30" width="120" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="&lt;div&gt;&lt;b&gt;VARIANTS&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Data Versions, Field Data Updates, Processing Results, ...&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Helvetica;fontSize=13;" parent="14" vertex="1">
+                    <mxGeometry x="10" y="30" width="120" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="CHANGE TRACKING" style="swimlane;startSize=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1;verticalAlign=top;collapsible=0;fontFamily=Helvetica;fontSize=13;swimlaneFillColor=#D5E8D4;fillOpacity=33;" parent="12" vertex="1">
+                    <mxGeometry x="160" y="200" width="140" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="&lt;div&gt;&lt;b&gt;AUDIT SYSTEM&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Change History, Tracability, Revert Capability&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Helvetica;fontSize=13;" parent="16" vertex="1">
+                    <mxGeometry x="10" y="30" width="120" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="CORE DATA STORAGE" style="swimlane;startSize=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1;verticalAlign=top;collapsible=0;fontFamily=Helvetica;fontSize=13;swimlaneFillColor=#D5E8D4;fillOpacity=33;" parent="12" vertex="1">
+                    <mxGeometry x="20" y="30" width="280" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="&lt;b&gt;ENVIRONMENTAL DATA&lt;/b&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Climate, Weather, Soil, Terrain, Live Sensor Data, ...&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Helvetica;fontSize=13;" parent="17" vertex="1">
+                    <mxGeometry x="150" y="30" width="120" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="&lt;b&gt;TREE DATA&lt;/b&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Individual Trees, Growth Metrics, Species, Health, Location, Yield, ...&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Helvetica;fontSize=13;" parent="17" vertex="1">
+                    <mxGeometry x="10" y="30" width="120" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="35" style="edgeStyle=elbowEdgeStyle;html=1;elbow=vertical;strokeWidth=3;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Helvetica;fontSize=13;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=0.25;exitY=0;exitDx=0;exitDy=0;" parent="12" source="14" target="16" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="120" y="265"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="36" style="edgeStyle=elbowEdgeStyle;html=1;elbow=vertical;strokeWidth=3;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Helvetica;fontSize=13;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" parent="12" source="17" target="16" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="130" y="265"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="18" value="PROCESS MODELS" style="swimlane;startSize=0;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=1;verticalAlign=top;collapsible=0;swimlaneFillColor=#FFF2CC;fontFamily=Helvetica;fontSize=13;fillOpacity=50;" parent="1" vertex="1">
+                    <mxGeometry x="830" y="700" width="140" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="&lt;div&gt;&lt;b&gt;SCIENTIFIC MODELS&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Forest Growth, Environmental Processes, Management, ...&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Helvetica;fontSize=13;" parent="18" vertex="1">
+                    <mxGeometry x="10" y="30" width="120" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="19" value="DATA UPDATES" style="swimlane;startSize=0;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1;verticalAlign=top;rounded=0;swimlaneLine=0;glass=0;shadow=0;collapsible=0;fillStyle=auto;swimlaneFillColor=#DAE8FC;perimeterSpacing=0;fontFamily=Helvetica;fontSize=13;fillOpacity=50;" parent="1" vertex="1">
+                    <mxGeometry x="830" y="350" width="140" height="330" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="&lt;div&gt;&lt;b&gt;INTERACTIVE&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;User Input, Scenario Testing, ...&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=13;" parent="19" vertex="1">
+                    <mxGeometry x="10" y="230" width="120" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="&lt;div&gt;&lt;b&gt;PERIODIC&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Field Surveys, Remote Sensing, ...&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=13;" parent="19" vertex="1">
+                    <mxGeometry x="10" y="130" width="120" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="&lt;div&gt;&lt;b&gt;REAL-TIME&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Sensor Streams, Weather APIs, ...&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=13;" parent="19" vertex="1">
+                    <mxGeometry x="10" y="30" width="120" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="37" style="edgeStyle=elbowEdgeStyle;html=1;strokeWidth=3;fillColor=#fff2cc;strokeColor=#d6b656;entryX=1;entryY=0.75;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;fontFamily=Helvetica;fontSize=13;" parent="1" source="18" target="17" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="810" y="660"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="38" style="edgeStyle=elbowEdgeStyle;html=1;strokeWidth=3;fillColor=#fff2cc;strokeColor=#d6b656;entryX=1;entryY=0.75;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;fontFamily=Helvetica;fontSize=13;" parent="1" source="18" target="14" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="810" y="800"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="33" style="edgeStyle=elbowEdgeStyle;html=1;strokeWidth=3;fillColor=#dae8fc;strokeColor=#6c8ebf;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;fontFamily=Helvetica;fontSize=13;" parent="1" source="19" target="17" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="820" y="550"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="34" style="edgeStyle=elbowEdgeStyle;html=1;strokeWidth=3;fillColor=#dae8fc;strokeColor=#6c8ebf;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;fontFamily=Helvetica;fontSize=13;" parent="1" source="19" target="14" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="820" y="660"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
