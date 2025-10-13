@@ -150,9 +150,62 @@ flowchart TB
     class AuditSys auditSystem
 ```
 
+## Supabase Database Implementation
+
+This database is implemented on **Supabase**, a PostgreSQL-based platform that provides:
+
+- **PostgREST Auto-Generated APIs**: Every table automatically gets REST endpoints for CRUD operations, eliminating the need for custom API code
+- **Row-Level Security (RLS)**: Fine-grained access control policies defined at the database level for secure multi-user access
+- **Real-time Subscriptions**: WebSocket-based change notifications for live updates in XR and web applications
+- **Edge Functions**: Deno-based serverless functions for complex business logic (SILVA integration, S3 presigned URLs, data aggregation)
+- **Built-in Authentication**: JWT-based auth system (GoTrue) with user management and role-based access
+- **PostGIS Extensions**: Full geospatial query capabilities for tree positions, sensor locations, and plot boundaries
+- **Automatic Audit Logging**: Database triggers create audit entries automatically on all UPDATE operations
+- **S3 Integration**: Point cloud files stored in external S3 buckets, with S3 URIs stored in database
+
+### Key Supabase Features Used
+
+**Auto-Generated REST API via PostgREST**:
+- All tables exposed through REST endpoints: `GET/POST/PATCH/DELETE /table_name`
+- URL-based filtering, sorting, pagination, aggregation
+- Relationship embedding via foreign keys (`?select=*,Species(*),Stems(*)`)
+- No custom backend code required for standard CRUD operations
+
+**Row-Level Security Policies**:
+```sql
+-- Example RLS policy on Trees table
+CREATE POLICY "Trees are viewable by everyone"
+    ON trees.Trees FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can update trees"
+    ON trees.Trees FOR UPDATE
+    TO authenticated
+    USING (CreatedBy = auth.uid()::TEXT);
+```
+
+**Audit Triggers**:
+```sql
+-- Automatic field-level change tracking
+CREATE TRIGGER audit_trees_changes
+    BEFORE UPDATE ON trees.Trees
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.log_field_changes();
+```
+
+**Real-time Change Notifications**:
+```javascript
+// Client-side real-time subscription
+supabase
+  .channel('tree-changes')
+  .on('postgres_changes', {event: '*', schema: 'trees', table: 'Trees'},
+      (payload) => updateVirtualForest(payload.new))
+  .subscribe()
+```
+
 ## Unified Database Design with Schema Organization
 
-This design uses PostgreSQL schemas (`shared`, `pointclouds`, `trees`, `sensor`, `environments`) to organize a unified forest monitoring database. The design supports efficient time-series sensor data storage with file references managed as simple file paths within the variant and base tables.
+This design uses PostgreSQL schemas (`shared`, `pointclouds`, `trees`, `sensor`, `environments`) to organize a unified forest monitoring database deployed on Supabase. The design supports efficient time-series sensor data storage with S3 URIs for point cloud file references.
 
 > **📊 Complete ERD Available**: For a comprehensive view of the entire database structure in a single diagram, see the complete ERD files:
 >

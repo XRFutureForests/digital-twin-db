@@ -1,93 +1,308 @@
+# XR Future Forests Lab - Supabase Docker Compose
+# This configuration deploys a complete Supabase stack for local development and production
+
+version: '3.8'
+
 services:
-  # PostgreSQL with PostGIS for spatial data
-  postgres:
-    image: postgis/postgis:15-3.3
-    container_name: xr_forests_db
-    environment:
-      POSTGRES_DB: xr_forests_lab
-      POSTGRES_USER: forests_user
-      POSTGRES_PASSWORD: forests_password
-      POSTGRES_MULTIPLE_EXTENSIONS: postgis,uuid-ossp
+  # =============================================================================
+  # SUPABASE STUDIO - Web-based Database Management UI
+  # =============================================================================
+  studio:
+    image: supabase/studio:20241111-5e411d9
+    container_name: xr_forests_studio
+    restart: unless-stopped
     ports:
-      - "5432:5432"
+      - ${STUDIO_PORT:-54323}:3000/tcp
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${API_EXTERNAL_URL:-http://localhost:54321}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+    networks:
+      - xr_forests_network
+
+  # =============================================================================
+  # KONG - API Gateway (replaces nginx)
+  # =============================================================================
+  kong:
+    image: kong:2.8.1
+    container_name: xr_forests_kong
+    restart: unless-stopped
+    ports:
+      - ${KONG_HTTP_PORT:-54321}:8000/tcp
+      - ${KONG_HTTPS_PORT:-54322}:8443/tcp
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./db/init:/docker-entrypoint-initdb.d
+      - ./supabase/kong.yml:/var/lib/kong/kong.yml:ro
+    networks:
+      - xr_forests_network
+    depends_on:
+      - auth
+      - rest
+      - realtime
+      - storage
+
+  # =============================================================================
+  # AUTH - Supabase Authentication Service
+  # =============================================================================
+  auth:
+    image: supabase/gotrue:v2.151.0
+    container_name: xr_forests_auth
+    restart: unless-stopped
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://localhost:54321}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:3000}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
+      GOTRUE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP:-true}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM:-true}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-admin@example.com}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:-supabase-mail}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-2500}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-}
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+    networks:
+      - xr_forests_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =============================================================================
+  # REST - PostgREST API Server (auto-generated REST API from database)
+  # =============================================================================
+  rest:
+    image: postgrest/postgrest:v12.0.1
+    container_name: xr_forests_rest
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      PGRST_DB_SCHEMAS: public,shared,pointclouds,trees,sensor,environments
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
+    networks:
+      - xr_forests_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =============================================================================
+  # REALTIME - WebSocket Server for Real-time Subscriptions
+  # =============================================================================
+  realtime:
+    image: supabase/realtime:v2.25.35
+    container_name: xr_forests_realtime
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO public,shared,pointclouds,trees,sensor,environments'
+      DB_ENC_KEY: supabaserealtimedevenckey
+      API_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      FLY_ALLOC_ID: fly123
+      FLY_APP_NAME: realtime
+      SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+      ERL_AFLAGS: -proto_dist inet_tcp
+      ENABLE_TAILSCALE: "false"
+      DNS_NODES: "''"
+    command: >
+      sh -c "/app/bin/migrate && /app/bin/realtime eval 'Realtime.Release.seeds(Realtime.Repo)' && /app/bin/server"
+    networks:
+      - xr_forests_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =============================================================================
+  # STORAGE - S3-compatible Storage API (can connect to external S3)
+  # =============================================================================
+  storage:
+    image: supabase/storage-api:v0.43.11
+    container_name: xr_forests_storage
+    restart: unless-stopped
+    environment:
+      ANON_KEY: ${SUPABASE_ANON_KEY}
+      SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      FILE_SIZE_LIMIT: 2147483648  # 2GB for LiDAR files
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-file}  # Can be 's3' for external S3
+      # S3 configuration (if using external S3)
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${S3_REGION:-us-east-1}
+      AWS_S3_BUCKET: ${S3_BUCKET_NAME:-}
+      TENANT_ID: stub
+      # @TODO: https://github.com/supabase/storage-api/issues/55
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:5001
+    volumes:
+      - storage_data:/var/lib/storage:z
+    networks:
+      - xr_forests_network
+    depends_on:
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_started
+      imgproxy:
+        condition: service_started
+
+  # =============================================================================
+  # IMGPROXY - Image transformation service
+  # =============================================================================
+  imgproxy:
+    image: darthsim/imgproxy:v3.8.0
+    container_name: xr_forests_imgproxy
+    restart: unless-stopped
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+    volumes:
+      - storage_data:/var/lib/storage:z
+    networks:
+      - xr_forests_network
+
+  # =============================================================================
+  # META - Database metadata service
+  # =============================================================================
+  meta:
+    image: supabase/postgres-meta:v0.75.0
+    container_name: xr_forests_meta
+    restart: unless-stopped
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - xr_forests_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =============================================================================
+  # FUNCTIONS - Edge Functions Runtime (Deno)
+  # =============================================================================
+  functions:
+    image: supabase/edge-runtime:v1.30.5
+    container_name: xr_forests_functions
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # Add any environment variables needed by your functions
+      S3_ENDPOINT: ${S3_ENDPOINT:-https://s3.amazonaws.com}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
+    volumes:
+      - ./supabase/functions:/home/deno/functions:Z
+    command:
+      - start
+      - --main-service
+      - /home/deno/functions/main
+    networks:
+      - xr_forests_network
+
+  # =============================================================================
+  # DATABASE - PostgreSQL with PostGIS
+  # =============================================================================
+  db:
+    image: supabase/postgres:15.1.0.147
+    container_name: xr_forests_db
+    restart: unless-stopped
+    ports:
+      - ${POSTGRES_PORT:-54322}:5432
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+      - -c
+      - log_min_messages=fatal
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: 5432
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: --encoding=UTF-8 --lc-collate=C --lc-ctype=C
+      JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
+    volumes:
+      - db_data:/var/lib/postgresql/data:Z
+      - ./supabase/migrations:/docker-entrypoint-initdb.d:Z
     networks:
       - xr_forests_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U forests_user -d xr_forests_lab"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
-  # Redis for event bus and caching
-  redis:
-    image: redis:7-alpine
-    container_name: xr_forests_redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - xr_forests_network
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
-  # nginx reverse proxy and static file server
-  nginx:
-    image: nginx:alpine
-    container_name: xr_forests_nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./web:/usr/share/nginx/html
-      - ./data/pointclouds:/usr/share/nginx/html/pointclouds:ro
-      - ./data/uploads:/var/uploads
-    networks:
-      - xr_forests_network
-    depends_on:
-      - api
+  # =============================================================================
+  # VECTOR - Log aggregation and observability
+  # =============================================================================
+  vector:
+    image: timberio/vector:0.28.1-alpine
+    container_name: xr_forests_vector
     restart: unless-stopped
-
-  # Python API service
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: xr_forests_api
+    volumes:
+      - ./supabase/vector.yml:/etc/vector/vector.yml:ro
     environment:
-      XR_FORESTS_DATABASE_URL: postgresql+asyncpg://forests_user:forests_password@postgres:5432/xr_forests_lab
-      XR_FORESTS_REDIS_URL: redis://redis:6379/0
-      XR_FORESTS_API_HOST: 0.0.0.0
-      API_PORT: 8000
-      ENVIRONMENT: development
-    expose:
-      - "8000"
-    volumes:
-      - ./src:/app/src
-      - ./config:/app/config
-      - ./data:/app/data
+      LOGFLARE_API_KEY: ${LOGFLARE_API_KEY:-}
+    command: ["--config", "/etc/vector/vector.yml"]
     networks:
       - xr_forests_network
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
+      - kong
 
 volumes:
-  postgres_data:
-  redis_data:
+  db_data:
+    driver: local
+  storage_data:
+    driver: local
 
 networks:
   xr_forests_network:
     driver: bridge
+    name: xr_forests_network
