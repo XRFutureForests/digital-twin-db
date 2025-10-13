@@ -55,7 +55,7 @@ linkStyle 0,1,2 stroke:#313D4F,stroke-width:2px
 
 The XR Future Forests Lab follows a modern three-tier architecture designed to seamlessly integrate forest data acquisition, processing, and immersive visualization. This architecture enables the creation of comprehensive digital forest twins that can be experienced through cutting-edge XR technologies.
 
-The **Data Tier** serves as the foundation, managing both data acquisition from diverse sources and robust storage infrastructure. It handles data ingestion from external services like EcoSense environmental sensors, forest inventory systems, and the 3DTrees platform, while maintaining a sophisticated PostgreSQL database with PostGIS extensions for spatial data management. This tier acts as both a data sink and source, providing bi-directional data flow to support real-time updates and historical analysis. With comprehensive field-level audit logging, the Data Tier ensures complete traceability of all data modifications while maintaining efficient access patterns for both scientific analysis and immersive visualization.
+The **Data Tier** serves as the foundation, managing both data acquisition from diverse sources and robust storage infrastructure built on **Supabase**. It handles data ingestion from external services like EcoSense environmental sensors, forest inventory systems, and the 3DTrees platform, while maintaining a sophisticated PostgreSQL database with PostGIS extensions for spatial data management. **Supabase** provides auto-generated REST APIs via PostgREST, built-in authentication with row-level security, real-time subscriptions via WebSockets, and Edge Functions for serverless business logic. Point cloud files are stored in external S3 buckets with metadata in the database. This tier acts as both a data sink and source, providing bi-directional data flow to support real-time updates and historical analysis. With comprehensive field-level audit logging, the Data Tier ensures complete traceability of all data modifications while maintaining efficient access patterns for both scientific analysis and immersive visualization.
 
 The **Logic Tier** forms the analytical backbone of the system, processing raw forest data into actionable insights. It encompasses advanced point cloud processing for tree segmentation and species classification, as well as sophisticated growth simulation models that predict forest development under various scenarios. This tier transforms disparate data sources into coherent forest models, enabling both scientific analysis and immersive visualization.
 
@@ -155,9 +155,9 @@ The Data Tier Architecture forms the foundational layer of the XR Future Forests
 
 *Data Sources* represent the diverse ecosystem of forest information providers. The 3DTrees Platform delivers high-resolution LiDAR point clouds as file uploads, while Forest Inventory systems provide structured tree measurement data. EcoSense Sensors continuously stream real-time environmental measurements through dedicated APIs, and External Environmental Data sources contribute broader contextual information such as weather patterns and climate data. This heterogeneous data landscape requires sophisticated coordination to maintain data integrity and temporal consistency.
 
-**Data Ingestion** is managed by the **Data Ingestion Pipeline Service** that acts as an intelligent orchestrator for all incoming data streams. This service continuously monitors file-based sources like 3DTrees and Forest Inventory for new uploads, while maintaining active connections to API-based sources like EcoSense Sensors and external environmental services. The ingestion pipeline handles data validation, format standardization, and temporal alignment before routing information to appropriate database schemas, ensuring consistent data quality across all sources. Additionally, the **Sensor Data Aggregation Service** processes high-frequency sensor readings in real-time, performing quality assessment and temporal aggregation to create meaningful environmental context.
+**Data Ingestion** is managed by **Supabase Edge Functions** that act as intelligent orchestrators for all incoming data streams. These serverless Deno functions continuously monitor file-based sources like 3DTrees and Forest Inventory for new uploads, while maintaining active connections to API-based sources like EcoSense Sensors and external environmental services. The ingestion pipeline handles data validation, format standardization, and temporal alignment before routing information to appropriate database schemas via PostgREST, ensuring consistent data quality across all sources. Additionally, **Edge Functions** process high-frequency sensor readings in real-time, performing quality assessment and temporal aggregation to create meaningful environmental context stored in the Environment Schema.
 
-**Data Storage** implements the comprehensive database design detailed in the database schema documentation, organized into four specialized schemas with field-level audit logging capabilities. The Point Cloud Schema manages LiDAR scan metadata and processing results, maintaining file references and spatial bounds through the `PointClouds` base table and `PointCloudVariants` for different processing results. The Tree Schema serves as the central repository for individual tree information through `TreeVariants`, supporting both measured and simulated data with full temporal tracking, QR code integration for field applications, and granular field-level change auditing for precise measurement updates. The Sensor Schema manages physical sensor installations through the `Sensors` table and time-series environmental measurements via `SensorReadings`, acting as an intelligent intermediary that aggregates real-time sensor readings and distributes relevant information to both Tree and Environment schemas based on measurement context. The Environment Schema consolidates environmental conditions through `EnvironmentVariants` that can be derived from sensor data, user input, or hybrid approaches, providing essential context for growth modeling and XR visualization with complete change tracking for parameter modifications.
+**Data Storage** implements the comprehensive database design detailed in the database schema documentation, organized into five specialized PostgreSQL schemas (`shared`, `pointclouds`, `trees`, `sensor`, `environments`) with field-level audit logging capabilities. **PostgREST** automatically generates REST API endpoints from these schemas, eliminating the need for custom backend code. **Row-level security (RLS) policies** enforce fine-grained access control at the database level. The Point Cloud Schema manages LiDAR scan metadata with S3 URIs pointing to point cloud files stored in external buckets, maintaining spatial bounds through the `PointClouds` table with variant-based processing lineage. The Tree Schema serves as the central repository for individual tree information with multi-stem support, supporting both measured and simulated data with full temporal tracking, QR code integration for field applications, and granular field-level change auditing for precise measurement updates. The Sensor Schema manages physical sensor installations through the `Sensors` table and time-series environmental measurements via `SensorReadings`, optimized for high-frequency data ingestion and aggregation. The Environment Schema consolidates environmental conditions that can be derived from sensor data, user input, or hybrid approaches, providing essential context for growth modeling and XR visualization with complete change tracking for parameter modifications.
 
 The **Audit Logging System** provides comprehensive field-level change tracking across all variant tables, ensuring complete traceability of data modifications without the overhead of full variant creation. This system captures user attribution, change reasons, and temporal context for every field modification, enabling precise revert capabilities and supporting collaborative research workflows with full accountability.
 
@@ -330,9 +330,93 @@ For detailed API specifications, endpoint definitions, and integration patterns,
 
 The distributed service architecture operates across all three tiers with specialized services consuming the core APIs:
 
-- **Data Tier Services**: Handle ingestion, validation, and aggregation (Data Ingestion Pipeline, Sensor Data Aggregation)
-- **Logic Tier Services**: Implement computational algorithms (Point Cloud Processing, Growth Simulation)  
+- **Data Tier Services**: Supabase Edge Functions handle ingestion, validation, and aggregation
+- **Logic Tier Services**: Implement computational algorithms (Point Cloud Processing, Growth Simulation)
 - **Presentation Tier Services**: Provide interfaces and visualization (Web Apps, XR Services)
 - **External Integrations**: Interface with third-party systems (SILVA/BALANCE models, EcoSense sensors, 3DTrees platform)
 
 For comprehensive service specifications, functionality details, and deployment considerations, see the [Service Architecture Documentation](services.md).
+
+---
+
+## Supabase Implementation
+
+The Data Tier is built entirely on **Supabase**, an open-source Firebase alternative that provides a complete backend-as-a-service platform. This section details the Supabase services and their role in the architecture.
+
+### Supabase Services Stack
+
+The complete Supabase stack consists of 11 containerized services deployed via Docker Compose:
+
+1. **PostgreSQL + PostGIS** - Core database with spatial extensions
+2. **PostgREST** - Auto-generates REST API from database schema
+3. **Kong** - API gateway for routing and authentication (replaces nginx)
+4. **GoTrue** - Built-in authentication service with JWT support
+5. **Realtime** - WebSocket server for live data subscriptions
+6. **Storage API** - S3-compatible storage (connects to external S3 for point clouds)
+7. **Edge Functions** - Deno-based serverless function runtime
+8. **Supabase Studio** - Web-based database management UI
+9. **Postgres Meta** - Database metadata and introspection service
+10. **ImgProxy** - Image transformation service
+11. **Vector** - Log aggregation and observability
+
+### Key Architectural Benefits
+
+**Auto-generated REST API**: PostgREST automatically creates RESTful endpoints for all database tables and views, eliminating the need for custom backend code. Every table in the `shared`, `pointclouds`, `trees`, `sensor`, and `environments` schemas is immediately accessible via HTTP.
+
+**Row-Level Security (RLS)**: Fine-grained access control is enforced at the database level through PostgreSQL RLS policies. These policies define who can read, insert, update, or delete specific rows based on user authentication, eliminating the need for authorization logic in application code.
+
+**Real-time Subscriptions**: The Realtime server provides WebSocket connections for subscribing to database changes. XR applications and web interfaces can receive live updates when trees, sensors, or environmental data changes, enabling collaborative editing and live monitoring.
+
+**Edge Functions for Business Logic**: Complex workflows that cannot be expressed as simple CRUD operations are implemented as Edge Functions (Deno/TypeScript). Examples include:
+- Generating S3 presigned URLs for point cloud access
+- Orchestrating multi-step processing workflows
+- Aggregating sensor data into environmental variants
+- Coordinating external model integrations
+
+**S3 Integration**: Point cloud files (up to 2GB) are stored in external S3 buckets. The database stores only S3 URIs (e.g., `s3://bucket-name/file.las`). Edge Functions generate temporary presigned URLs for secure client access without exposing S3 credentials.
+
+**Built-in Authentication**: GoTrue provides JWT-based authentication with support for email/password, OAuth providers, and magic links. User sessions are managed automatically, and authentication tokens are validated by Kong before reaching PostgREST.
+
+### Database Schemas and API Endpoints
+
+All five PostgreSQL schemas are exposed through PostgREST with automatic endpoint generation:
+
+| Schema | Tables | Primary Use | Example Endpoint |
+|--------|--------|-------------|------------------|
+| `shared` | 15 tables | Reference data, processes, audit logs | `/rest/v1/Species?select=*` |
+| `pointclouds` | 1 table | LiDAR metadata with S3 URIs | `/rest/v1/PointClouds?select=*&ProcessingStatus=eq.completed` |
+| `trees` | 7 tables | Tree measurements, stems, characteristics | `/rest/v1/Trees?select=*,Species(*),Stems(*)` |
+| `sensor` | 3 tables | Sensor installations and time-series readings | `/rest/v1/SensorReadings?Timestamp=gte.2024-01-01` |
+| `environments` | 1 table | Environmental condition variants | `/rest/v1/Environments?select=*&ScenarioID=eq.2` |
+
+### Deployment Architecture
+
+**Local Development**:
+- Single `docker-compose up` command starts all services
+- Supabase Studio accessible at `localhost:54323` for database management
+- PostgREST API at `localhost:54321/rest/v1`
+- Direct PostgreSQL access at `localhost:54322`
+
+**Production Deployment**:
+- Same Docker Compose configuration deployed on VM
+- Kong handles SSL/TLS termination and HTTPS
+- External S3 bucket for point cloud storage
+- Automated backups and monitoring
+- Horizontal scaling via read replicas
+
+### Migration from FastAPI/nginx
+
+The previous architecture used FastAPI for REST APIs, nginx as a reverse proxy, and Redis for caching/pub-sub. Supabase replaces all three:
+
+| Component | Before | After | Benefit |
+|-----------|--------|-------|---------|
+| REST API | FastAPI (~2000 lines) | PostgREST (auto-generated) | Zero custom API code |
+| API Gateway | nginx | Kong (included) | Unified auth and routing |
+| Real-time | Redis pub/sub | Realtime (native) | Built-in WebSockets |
+| Authentication | Custom middleware | GoTrue + RLS | Database-level security |
+| Caching | Redis | PostgREST + connection pooling | Simplified stack |
+| Database UI | External tools | Supabase Studio | Integrated management |
+
+This architecture reduction significantly simplifies deployment, maintenance, and scaling while providing better security and developer experience.
+
+For detailed Supabase setup instructions, see the [Supabase Setup Guide](../supabase/setup-guide.md).
