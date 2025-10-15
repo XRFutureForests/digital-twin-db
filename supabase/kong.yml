@@ -109,10 +109,10 @@ services:
 consumers:
   - username: anon
     keyauth_credentials:
-      - key: ${SUPABASE_ANON_KEY}
+      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYwNTE3MzI3LCJleHAiOjIwNzU4NzczMjd9.lIi-KdAxFeBpXYR5jdKJA-vJfZ0eL9y0n7Lx4mUYNv8
   - username: service_role
     keyauth_credentials:
-      - key: ${SUPABASE_SERVICE_ROLE_KEY}
+      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NjA1MTczMjcsImV4cCI6MjA3NTg3NzMyN30.SBbtSD8usWyQNSuOZYPFLdJ0SJh2i77fUMLZkeA0DDc
 
 plugins:
   - name: cors

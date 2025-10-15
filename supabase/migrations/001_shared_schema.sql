@@ -3,9 +3,10 @@
 -- Dependencies: PostgreSQL with PostGIS extension
 
 -- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+-- Note: These extensions are already available in the Supabase postgres image
+-- CREATE EXTENSION IF NOT EXISTS postgis;
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 -- Create shared schema
 CREATE SCHEMA IF NOT EXISTS shared;
