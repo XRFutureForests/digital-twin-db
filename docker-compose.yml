@@ -1,14 +1,12 @@
 # XR Future Forests Lab - Supabase Docker Compose
 # This configuration deploys a complete Supabase stack for local development and production
 
-version: '3.8'
-
 services:
   # =============================================================================
   # SUPABASE STUDIO - Web-based Database Management UI
   # =============================================================================
   studio:
-    image: supabase/studio:20241111-5e411d9
+    image: supabase/studio:latest
     container_name: xr_forests_studio
     restart: unless-stopped
     ports:
@@ -32,7 +30,7 @@ services:
     restart: unless-stopped
     ports:
       - ${KONG_HTTP_PORT:-54321}:8000/tcp
-      - ${KONG_HTTPS_PORT:-54322}:8443/tcp
+      - ${KONG_HTTPS_PORT:-54324}:8443/tcp
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
@@ -98,7 +96,9 @@ services:
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      PGRST_DB_SCHEMAS: public,shared,pointclouds,trees,sensor,environments
+      PGRST_DB_SCHEMAS: shared,public,pointclouds,trees,sensor,environments
+      PGRST_DB_SCHEMA: shared
+      PGRST_DB_EXTRA_SEARCH_PATH: public,pointclouds,trees,sensor,environments
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${SUPABASE_JWT_SECRET}
       PGRST_DB_USE_LEGACY_GUCS: "false"
@@ -220,7 +220,7 @@ services:
   # FUNCTIONS - Edge Functions Runtime (Deno)
   # =============================================================================
   functions:
-    image: supabase/edge-runtime:v1.30.5
+    image: supabase/edge-runtime:v1.69.14
     container_name: xr_forests_functions
     restart: unless-stopped
     environment:
