@@ -1,0 +1,10 @@
+name: dftdb-import
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11.8
+  - supabase=2.26.0
+  - pandas=2.2.0
+  - pyproj=3.6.1
+  - python-dotenv=1.0.0
