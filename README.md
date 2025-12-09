@@ -225,11 +225,16 @@ curl -X POST "http://localhost:54321/functions/v1/ecosense-ingest?days_back=7" \
 }
 ```
 
-#### `/functions/v1/galaxy-submit`
+#### `/functions/v1/galaxy-submit` *(CONCEPTUAL - Not yet implemented)*
 
-Submits processing jobs to Galaxy workflows (under development).
+> **Note**: Galaxy integration is planned for future development. The Edge Functions
+> code exists as scaffolding but requires a Galaxy instance with configured workflows
+> before it can be tested or used in production.
+
+Submits processing jobs to Galaxy workflows.
 
 ```bash
+# Example (requires Galaxy instance configuration)
 curl -X POST "http://localhost:54321/functions/v1/galaxy-submit" \
   -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY" \
   -H "Content-Type: application/json" \
@@ -240,9 +245,12 @@ curl -X POST "http://localhost:54321/functions/v1/galaxy-submit" \
   }'
 ```
 
-#### `/functions/v1/galaxy-callback`
+#### `/functions/v1/galaxy-callback` *(CONCEPTUAL - Not yet implemented)*
 
 Receives results from Galaxy workflows (validated via HMAC signature).
+
+> **Note**: This webhook endpoint requires a Galaxy instance to send callbacks.
+> The HMAC signature validation code is implemented but untested without Galaxy.
 
 **Authentication:** All Edge Functions require `SERVICE_ROLE_KEY` except `galaxy-callback` which uses webhook signature validation.
 
