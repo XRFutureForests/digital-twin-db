@@ -35,3 +35,53 @@ CREATE INDEX IF NOT EXISTS idx_sensors_external_id ON sensor.Sensors(ExternalID)
 -- 5. Grant permissions
 GRANT ALL ON sensor.SensorTreeLinks TO service_role;
 GRANT SELECT ON sensor.SensorTreeLinks TO authenticated, anon;
+
+-- 6. Create bulk upsert function for sensors (views don't support ON CONFLICT)
+CREATE OR REPLACE FUNCTION public.bulk_upsert_sensors(
+    p_sensors JSONB
+) RETURNS TABLE(externalid VARCHAR, sensorid INT) AS $$
+DECLARE
+    sensor_rec JSONB;
+BEGIN
+    FOR sensor_rec IN SELECT * FROM jsonb_array_elements(p_sensors)
+    LOOP
+        INSERT INTO sensor.sensors (
+            locationid, sensortypeid, sensormodel, serialnumber, 
+            position, samplinginterval_seconds, unit, externalid,
+            externalmetadata, isactive, createdby
+        )
+        VALUES (
+            (sensor_rec->>'locationid')::INT,
+            (sensor_rec->>'sensortypeid')::INT,
+            sensor_rec->>'sensormodel',
+            sensor_rec->>'serialnumber',
+            ST_GeomFromText(sensor_rec->>'position', 4326),
+            (sensor_rec->>'samplinginterval_seconds')::INT,
+            sensor_rec->>'unit',
+            sensor_rec->>'externalid',
+            (sensor_rec->'externalmetadata')::JSONB,
+            (sensor_rec->>'isactive')::BOOLEAN,
+            sensor_rec->>'createdby'
+        )
+        ON CONFLICT (externalid) DO UPDATE SET
+            locationid = EXCLUDED.locationid,
+            sensortypeid = EXCLUDED.sensortypeid,
+            sensormodel = EXCLUDED.sensormodel,
+            serialnumber = EXCLUDED.serialnumber,
+            position = EXCLUDED.position,
+            samplinginterval_seconds = EXCLUDED.samplinginterval_seconds,
+            unit = EXCLUDED.unit,
+            externalmetadata = EXCLUDED.externalmetadata,
+            isactive = EXCLUDED.isactive,
+            updatedby = EXCLUDED.createdby,
+            updatedat = NOW();
+        
+        RETURN QUERY SELECT 
+            sensor_rec->>'externalid', 
+            (SELECT s.sensorid FROM sensor.sensors s WHERE s.externalid = sensor_rec->>'externalid');
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMENT ON FUNCTION public.bulk_upsert_sensors IS 'Bulk upserts sensors from JSON array, returns external IDs and sensor IDs';
+GRANT EXECUTE ON FUNCTION public.bulk_upsert_sensors TO service_role;

@@ -7,9 +7,11 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Load environment variables
+# Load environment variables (only the ones we need, handling spaces properly)
 if [ -f "$DOCKER_DIR/.env" ]; then
-    source "$DOCKER_DIR/.env"
+    export SERVICE_ROLE_KEY=$(grep -E "^SERVICE_ROLE_KEY=" "$DOCKER_DIR/.env" | cut -d '=' -f2-)
+    export SUPABASE_PUBLIC_URL=$(grep -E "^SUPABASE_PUBLIC_URL=" "$DOCKER_DIR/.env" | cut -d '=' -f2-)
+    export AQUARIUS_HOSTNAME=$(grep -E "^AQUARIUS_HOSTNAME=" "$DOCKER_DIR/.env" | cut -d '=' -f2-)
 fi
 
 # Default values

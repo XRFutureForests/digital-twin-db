@@ -115,25 +115,26 @@ serve(async (req: Request) => {
         }
 
         // Batch fetch all sensor types and locations (avoid N+1 queries)
+        // Note: Table/column names are lowercase in the database schema
         const { data: allSensorTypes } = await supabase
-            .from('SensorTypes')
-            .select('SensorTypeID, SensorTypeName')
+            .from('sensortypes')
+            .select('sensortypeid, sensortypename')
 
         const { data: allLocations } = await supabase
-            .from('Locations')
-            .select('LocationID, LocationName')
+            .from('locations')
+            .select('locationid, locationname')
 
         const sensorTypeMap = new Map(
-            (allSensorTypes || []).map((st: { SensorTypeID: number; SensorTypeName: string }) => [
-                st.SensorTypeName,
-                st.SensorTypeID,
+            (allSensorTypes || []).map((st: { sensortypeid: number; sensortypename: string }) => [
+                st.sensortypename,
+                st.sensortypeid,
             ])
         )
 
         const locationMap = new Map(
-            (allLocations || []).map((loc: { LocationID: number; LocationName: string }) => [
-                loc.LocationName,
-                loc.LocationID,
+            (allLocations || []).map((loc: { locationid: number; locationname: string }) => [
+                loc.locationname,
+                loc.locationid,
             ])
         )
 
@@ -154,15 +155,15 @@ serve(async (req: Request) => {
             // Only create location if it doesn't exist (checked on next sync)
             if (!locationId) {
                 const { data: newLocation } = await supabase
-                    .from('Locations')
+                    .from('locations')
                     .insert({
-                        LocationName: ts.LocationIdentifier,
-                        CenterPoint: 'POINT(0 0)', // Default, should be updated later
+                        locationname: ts.LocationIdentifier,
+                        centerpoint: 'POINT(0 0)', // Default, should be updated later
                     })
-                    .select('LocationID')
+                    .select('locationid')
                     .single()
 
-                locationId = newLocation?.LocationID
+                locationId = newLocation?.locationid
                 if (locationId) {
                     locationMap.set(ts.LocationIdentifier, locationId)
                 } else {
@@ -172,53 +173,62 @@ serve(async (req: Request) => {
             }
 
             sensorsToUpsert.push({
-                LocationID: locationId,
-                SensorTypeID: sensorTypeId,
-                SensorModel: 'Ecosense Node',
-                SerialNumber: ts.Label,
-                Position: 'POINT(0 0)', // Default
-                SamplingInterval_seconds: ts.Unit ? 900 : 900, // Placeholder - should use actual value
-                Unit: ts.Unit,
-                ExternalID: ts.UniqueId,
-                ExternalMetadata: {
+                locationid: locationId,
+                sensortypeid: sensorTypeId,
+                sensormodel: 'Ecosense Node',
+                serialnumber: ts.Label,
+                position: 'POINT(0 0)', // Default
+                samplinginterval_seconds: ts.Unit ? 900 : 900, // Placeholder - should use actual value
+                unit: ts.Unit,
+                externalid: ts.UniqueId,
+                externalmetadata: {
                     LocationIdentifier: ts.LocationIdentifier,
                     Parameter: ts.Parameter,
                     Label: ts.Label,
                 },
-                IsActive: true,
-                CreatedBy: 'ecosense-ingest-function',
+                isactive: true,
+                createdby: 'ecosense-ingest-function',
             })
         }
 
         if (sensorsToUpsert.length > 0) {
-            // Batch upsert sensors with retry
-            console.log(`Upserting ${sensorsToUpsert.length} sensors`)
-            await withRetry(
-                () => supabase
-                    .from('Sensors')
-                    .upsert(sensorsToUpsert, {
-                        onConflict: 'ExternalID',
-                    }),
+            // Use RPC for bulk upsert (views don't support ON CONFLICT)
+            console.log(`Upserting ${sensorsToUpsert.length} sensors via RPC`)
+            const { data: upsertedSensors, error: upsertError } = await withRetry(
+                () => supabase.rpc('bulk_upsert_sensors', {
+                    p_sensors: sensorsToUpsert
+                }),
                 { maxRetries: 3, baseDelayMs: 500 }
             )
+
+            if (upsertError) {
+                console.error('Sensor upsert error:', upsertError)
+            } else {
+                console.log(`Upserted ${upsertedSensors?.length || 0} sensors`)
+            }
         }
 
         // Fetch sensor IDs mapping with retry
-        const { data: createdSensors } = await withRetry(
+        const { data: createdSensors, error: sensorFetchError } = await withRetry(
             () => supabase
-                .from('Sensors')
-                .select('SensorID, ExternalID')
+                .from('sensors')
+                .select('sensorid, externalid')
                 .in(
-                    'ExternalID',
+                    'externalid',
                     ecosenseTS.map(ts => ts.UniqueId)
                 ),
             { maxRetries: 3, baseDelayMs: 500 }
         )
 
+        if (sensorFetchError) {
+            console.error('Error fetching sensors:', sensorFetchError)
+        }
+        console.log(`Fetched ${createdSensors?.length || 0} sensor mappings from database`)
+
         const sensorIdMap = new Map(
-            (createdSensors || []).map((s: { SensorID: number; ExternalID: string }) => [
-                s.ExternalID,
-                s.SensorID,
+            (createdSensors || []).map((s: { sensorid: number; externalid: string }) => [
+                s.externalid,
+                s.sensorid,
             ])
         )
 
@@ -261,11 +271,11 @@ serve(async (req: Request) => {
             const readings = points
                 .filter(p => p.Value?.Numeric !== null && p.Value?.Numeric !== undefined)
                 .map(p => ({
-                    SensorID: sensorId,
-                    Timestamp: p.Timestamp,
-                    Value: p.Value.Numeric,
-                    Quality: 'good',
-                    CreatedBy: 'ecosense-ingest-function',
+                    sensorid: sensorId,
+                    timestamp: p.Timestamp,
+                    value: p.Value.Numeric,
+                    quality: 'good',
+                    createdby: 'ecosense-ingest-function',
                 }))
 
             // Insert in batches to avoid oversizing requests with retry
@@ -274,9 +284,9 @@ serve(async (req: Request) => {
 
                 await withRetry(
                     () => supabase
-                        .from('SensorReadings')
+                        .from('sensorreadings')
                         .upsert(batch, {
-                            onConflict: 'SensorID,Timestamp',
+                            onConflict: 'sensorid,timestamp',
                             ignoreDuplicates: true,
                         }),
                     { maxRetries: 3, baseDelayMs: 1000 }
