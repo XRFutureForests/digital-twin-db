@@ -18,6 +18,7 @@ Comprehensive guide for running and maintaining the Digital Forest Twin Database
 ### Before Production Deployment
 
 - [ ] **Regenerate all secrets** - Do NOT use development values
+
   ```bash
   # Generate new secure values
   openssl rand -base64 32  # PostgreSQL password
@@ -41,6 +42,7 @@ Comprehensive guide for running and maintaining the Digital Forest Twin Database
   - [ ] Monitoring service (Sentry, DataDog, etc.)
 
 - [ ] **Set environment-specific variables**
+
   ```bash
   DISABLE_SIGNUP=true              # Prevent public registration
   FUNCTIONS_VERIFY_JWT=true        # Enable JWT verification for functions
@@ -84,6 +86,7 @@ docker compose logs -f
 ```
 
 Services start in dependency order:
+
 1. Database (`db`) - must be healthy first
 2. Analytics (`analytics`) - required by other services
 3. REST API (`rest`), Auth (`auth`), etc. - start once database is ready
@@ -225,24 +228,28 @@ docker exec dftdb-db psql -U postgres -c "SELECT version();"
 ### Key Metrics to Monitor
 
 **Database**
+
 - Connection pool usage: `SELECT count(*) FROM pg_stat_activity`
 - Slow queries: Enable `log_min_duration_statement`
 - Table bloat: `SELECT pg_total_relation_size(schemaname||'.'||tablename) FROM pg_tables`
 - Replication lag (if applicable)
 
 **API**
+
 - Response time (95th percentile should be <500ms)
 - Error rate (5xx should be <0.1%)
 - Request rate (requests/second)
 - Cache hit ratio
 
 **Functions**
+
 - Cold start time (<3 seconds)
 - Execution time distribution
 - Memory usage
 - Error count and types
 
 **Disk Space**
+
 ```bash
 # Database volume usage
 docker exec dftdb-db du -sh /var/lib/postgresql/data
@@ -320,6 +327,7 @@ If Deno standard library versions need updating:
 **Symptom**: `docker compose logs db` shows connection errors
 
 **Solutions**:
+
 ```bash
 # Check database volume health
 docker exec dftdb-db pg_isready
@@ -337,6 +345,7 @@ docker compose up -d db
 **Symptom**: curl to function endpoint times out or returns 502
 
 **Solutions**:
+
 ```bash
 # Restart functions
 docker compose restart functions
@@ -357,6 +366,7 @@ docker stats dftdb-edge-functions
 **Symptom**: `docker system df` shows low available space
 
 **Solutions**:
+
 ```bash
 # Clean up unused volumes
 docker volume prune
@@ -374,6 +384,7 @@ docker exec dftdb-db psql -U postgres \
 **Symptom**: Queries take >1 second
 
 **Solutions**:
+
 1. Check database connection pool: are connections maxed out?
 2. Enable query logging: `log_statement = 'all'` in postgres config
 3. Check for missing indexes
@@ -384,6 +395,7 @@ docker exec dftdb-db psql -U postgres \
 **Symptom**: "service X depends on service Y"
 
 **Solutions**:
+
 ```bash
 # Full restart with explicit wait
 docker compose up -d
@@ -424,6 +436,7 @@ For production scale, consider:
 ### Vertical Scaling (Larger Single Instance)
 
 1. **Increase container resource limits**
+
    ```yaml
    services:
      db:
@@ -435,6 +448,7 @@ For production scale, consider:
    ```
 
 2. **Tune PostgreSQL**
+
    ```sql
    -- In postgresql.conf
    shared_buffers = 4GB
@@ -444,6 +458,7 @@ For production scale, consider:
    ```
 
 3. **Optimize connection pool**
+
    ```
    POOLER_DEFAULT_POOL_SIZE = 50  # from 20
    POOLER_MAX_CLIENT_CONN = 200   # from 100
@@ -520,11 +535,13 @@ openssl enc -d -aes-256-cbc -in backup.sql.enc -out backup.sql
 ### Connection Pool Optimization
 
 Monitor current usage:
+
 ```bash
 SELECT sum(numbackends) FROM pg_stat_database;
 ```
 
 Adjust if consistently near max:
+
 ```bash
 # docker/.env
 POOLER_DEFAULT_POOL_SIZE=30  # increase from 20
@@ -534,6 +551,7 @@ POOLER_MAX_CLIENT_CONN=150   # increase from 100
 ### Query Optimization
 
 Identify slow queries:
+
 ```sql
 SELECT query, calls, mean_time, total_time
 FROM pg_stat_statements
@@ -541,6 +559,7 @@ ORDER BY mean_time DESC LIMIT 10;
 ```
 
 Add indexes for frequently accessed columns:
+
 ```sql
 CREATE INDEX idx_trees_species_id ON trees.Trees(SpeciesID);
 CREATE INDEX idx_sensors_location_id ON sensor.Sensors(LocationID);
@@ -550,6 +569,7 @@ CREATE INDEX idx_readings_timestamp ON sensor.SensorReadings(Timestamp);
 ### Memory Management
 
 For large sensor data syncs:
+
 - Batch size is configurable in `ecosense-ingest/index.ts`
 - Default: 5000 readings per batch
 - Reduce if OOM errors occur, increase if memory available
@@ -580,6 +600,7 @@ For large sensor data syncs:
 ### Testing Recovery
 
 Periodically test recovery procedures:
+
 ```bash
 # On development/staging environment:
 # 1. Restore latest backup

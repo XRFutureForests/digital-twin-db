@@ -22,6 +22,7 @@ curl -X POST "http://fuhys006.public.ads.uni-freiburg.de/AQUARIUS/Publish/v2/ses
 ```
 
 Expected response: A token string (wrapped in quotes)
+
 ```json
 "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
 ```
@@ -74,6 +75,7 @@ docker exec -it dftdb-db psql -U postgres -c \
 ```
 
 Expected output:
+
 ```
  sensorid |                        serialnumber                        |  sensormodel  | isactive
 ----------+-------------------------------------------------------------+---------------+----------
@@ -104,6 +106,7 @@ curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=7" \
 ```
 
 Expected response (401):
+
 ```json
 {
   "error": "Unauthorized",
@@ -142,6 +145,7 @@ docker logs -f dftdb-edge-functions 2>&1 | grep "ecosense-ingest\|Fetched\|Upser
 ```
 
 You should see:
+
 ```
 ecosense-ingest function started
 Starting ecosense data sync (days_back=7)
@@ -165,6 +169,7 @@ docker logs dftdb-edge-functions 2>&1 | grep -i timeout
 ```
 
 If timeout occurs, you should see:
+
 ```json
 {
   "error": "Import failed",
@@ -205,6 +210,7 @@ chmod +x import-docker.sh
 ```
 
 When prompted for column mapping:
+
 ```
 Column: 'species_name'
 Sample values: ['Beech', 'Beech', 'Beech']
@@ -275,6 +281,7 @@ cd scripts/import-data
 ```
 
 Should show:
+
 ```
 Detected Docker network: digital_forest_twin_db_default
 ```
@@ -291,6 +298,7 @@ cd ../scripts/import-data
 ```
 
 Should show:
+
 ```
 ❌ Error: Supabase stack is not running
    Start it with: cd /home/maximilian_sperlich/git/digital_twin_db/docker && docker compose up -d
@@ -314,6 +322,7 @@ cd scripts/import-data
 ```
 
 Should show:
+
 ```
 🔍 DRY RUN MODE - Validating all rows without inserting...
   ✓ Successfully validated 3 rows
@@ -363,6 +372,7 @@ When prompted, map columns same as before. Expected output:
 ```
 
 Notice:
+
 - Row with invalid species was **skipped** (not inserted with NULL FK)
 - Error message is **specific** with row number
 - No partial data left in database
