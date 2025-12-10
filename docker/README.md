@@ -73,10 +73,11 @@ The forest database schemas are automatically initialized via SQL files in `volu
 | `15-environments-schema.sql` | Environmental conditions |
 | `16-rls-policies.sql` | Row-level security |
 | `17-audit-functions.sql` | Change tracking |
-| `18-seed-data.sql` | Essential reference data (species, locations) |
+| `18a-seed-lookup-data.sql` | Species lookup data |
+| `18b-seed-sample-locations.sql` | Sample locations for testing |
 | `21-aquarius-integration.sql` | Aquarius time series API integration |
 | `22-link-sensors-to-trees.sql` | Associate sensors with tree measurements |
-| `23-processing-jobs.sql` | Galaxy workflow job tracking |
+| `23-processing-jobs.sql` | External workflow job tracking |
 
 These run automatically when the database is first initialized.
 
@@ -222,7 +223,7 @@ This setup differs from the official Supabase Docker in these ways:
 2. **PostGIS Enabled**: Automatically enabled in initialization
 3. **Forest Schema Migrations**: Custom SQL files in `volumes/db/init/`
 4. **Dual Geometry Support**: Both original CRS and WGS84 coordinates stored
-5. **Edge Functions**: Deno functions for ecosense sync and Galaxy workflow integration
+5. **Edge Functions**: Deno functions for ecosense sensor data sync
 6. **Manual Data Import**: CSV importer with audit trail and coordinate transformation
 7. **Studio Port**: Exposed on port 54323 for WSL/Windows compatibility
 

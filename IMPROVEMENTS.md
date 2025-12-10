@@ -291,6 +291,7 @@ def _cache_lookup_data(self) -> None:
 ```
 
 Then in `import_data()`:
+
 ```python
 # Pre-load reference data to avoid N+1 queries
 self._cache_lookup_data()
@@ -402,11 +403,13 @@ class CSVImporter:
 #### ✅ Better Error Messages
 
 **Before**:
+
 ```
 ⚠️  Species not found: Beech
 ```
 
 **After**:
+
 ```
 Row 45: Species 'Beech' not found
 Row 45: ValueError: Invalid coordinate in gps_latitude: abc
@@ -528,11 +531,13 @@ fi
 ## 6. Files Modified
 
 ### Edge Functions
+
 - `docker/volumes/functions/_shared/validators.ts` - Timing attack fix, HMAC validation
 - `docker/volumes/functions/_shared/aquarius.ts` - Error handling, timeouts, configuration validation
 - `docker/volumes/functions/ecosense-ingest/index.ts` - Query batching, parallel API calls, error handling
 
 ### CSV Importer
+
 - `scripts/import-data/csv_importer.py` - Caching, error handling, validation
 - `scripts/import-data/import-docker.sh` - Network detection, runtime checks
 
@@ -593,7 +598,6 @@ fi
 - [ ] Implement connection pooling for Edge Functions
 - [ ] Add rate limiting to Edge Functions
 - [ ] Create web UI dashboard for ecosystem function monitoring
-- [ ] Implement Galaxy workflow integration (currently stubbed)
 
 ---
 
