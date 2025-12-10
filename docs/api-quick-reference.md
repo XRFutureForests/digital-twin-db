@@ -1,43 +1,46 @@
 # Supabase Quick Reference - Digital Twin Project
 
-## 🌐 Access URLs (Use from Windows)
+## 🌐 Access URLs
 
 | Service | URL | Purpose |
 |---------|-----|---------|
-| **Supabase Studio** | http://172.17.200.223:54323 | Database management UI |
-| **REST API** | http://172.17.200.223:54321 | API Gateway (Kong) |
-| **Database Direct** | 172.17.200.223:54322 | PostgreSQL connection |
+| **Supabase Studio** | http://localhost:54323 | Database management UI |
+| **REST API** | http://localhost:8000/rest/v1 | API Gateway (Kong) |
+| **Database Direct** | localhost:5432 | PostgreSQL connection (via pooler) |
 
 ## 🔑 API Keys
 
+Get your keys from `docker/.env`:
+
 ```bash
 # Anonymous Key (use in client applications - public)
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYwNTE3MzI3LCJleHAiOjIwNzU4NzczMjd9.lIi-KdAxFeBpXYR5jdKJA-vJfZ0eL9y0n7Lx4mUYNv8
+# Find ANON_KEY in your .env file
 
 # Service Role Key (use server-side only - KEEP SECRET!)
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NjA1MTczMjcsImV4cCI6MjA3NTg3NzMyN30.SBbtSD8usWyQNSuOZYPFLdJ0SJh2i77fUMLZkeA0DDc
-
-# JWT Secret (for token verification)
-SUPABASE_JWT_SECRET=ihoCUZVDMY+OSlgFoMCmjsEidbo5BtCK6i4kBsecm3c=
+# Find SERVICE_ROLE_KEY in your .env file
 ```
 
 ## 🗄️ Database Credentials
 
 ```
-Host: 172.17.200.223
-Port: 54322
+Host: localhost
+Port: 5432
 Database: postgres
 Username: postgres
-Password: postgres
+Password: (from POSTGRES_PASSWORD in docker/.env)
 ```
 
-### Connect with psql (from WSL2)
+### Connect with psql
 ```bash
-psql -h localhost -p 54322 -U postgres
+# From within Docker network
+docker exec -it dftdb-db psql -U postgres
+
+# Or via pooler
+psql -h localhost -p 5432 -U postgres
 ```
 
-### Connect from Windows (using pgAdmin or DBeaver)
-Use the credentials above with host `172.17.200.223`
+### Connect from external clients (pgAdmin, DBeaver)
+Use the credentials above with host `localhost` and port `5432`
 
 ## 📊 Database Schemas
 
@@ -60,12 +63,12 @@ Your database has these schemas:
 
 ```bash
 # Get all soil types
-curl "http://172.17.200.223:54321/rest/v1/soiltypes?select=*" \
-  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYwNTE3MzI3LCJleHAiOjIwNzU4NzczMjd9.lIi-KdAxFeBpXYR5jdKJA-vJfZ0eL9y0n7Lx4mUYNv8" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYwNTE3MzI3LCJleHAiOjIwNzU4NzczMjd9.lIi-KdAxFeBpXYR5jdKJA-vJfZ0eL9y0n7Lx4mUYNv8"
+curl "http://localhost:8000/rest/v1/soiltypes?select=*" \
+  -H "apikey: YOUR_ANON_KEY" \
+  -H "Authorization: Bearer YOUR_ANON_KEY"
 
 # Create a new location
-curl -X POST "http://172.17.200.223:54321/rest/v1/locations" \
+curl -X POST "http://localhost:8000/rest/v1/locations" \
   -H "apikey: YOUR_ANON_KEY" \
   -H "Authorization: Bearer YOUR_ANON_KEY" \
   -H "Content-Type: application/json" \
@@ -80,8 +83,8 @@ curl -X POST "http://172.17.200.223:54321/rest/v1/locations" \
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
-  'http://172.17.200.223:54321',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYwNTE3MzI3LCJleHAiOjIwNzU4NzczMjd9.lIi-KdAxFeBpXYR5jdKJA-vJfZ0eL9y0n7Lx4mUYNv8'
+  'http://localhost:8000',
+  'YOUR_ANON_KEY'  // from docker/.env
 )
 
 // Query data
@@ -103,8 +106,8 @@ const { data, error } = await supabase
 from supabase import create_client
 
 supabase = create_client(
-    "http://172.17.200.223:54321",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYwNTE3MzI3LCJleHAiOjIwNzU4NzczMjd9.lIi-KdAxFeBpXYR5jdKJA-vJfZ0eL9y0n7Lx4mUYNv8"
+    "http://localhost:8000",
+    "YOUR_ANON_KEY"  # from docker/.env
 )
 
 # Query data
@@ -122,7 +125,7 @@ response = supabase.table('locations').insert({
 
 ### Start all services
 ```bash
-cd ~/git/digital-twin
+cd docker
 docker compose up -d
 ```
 
@@ -155,12 +158,13 @@ docker compose restart kong
 
 ### Access database shell
 ```bash
-docker exec -it xr_forests_db psql -U postgres
+docker exec -it dftdb-db psql -U postgres
 ```
 
 ### Stop and remove all data (⚠️ DESTRUCTIVE)
 ```bash
 docker compose down -v
+sudo rm -rf volumes/db/data
 ```
 
 ## 📝 Common Tasks in Studio
@@ -195,14 +199,6 @@ docker compose down
 docker compose up -d
 ```
 
-### Can't connect from Windows
-```bash
-# Get current WSL2 IP (run in WSL2)
-hostname -I
-
-# Update your URLs with the new IP
-```
-
 ### Database connection refused
 ```bash
 # Check if database is healthy
@@ -215,7 +211,8 @@ docker compose logs db
 ### Port already in use
 ```bash
 # See what's using the port
-sudo lsof -i :54322
+sudo lsof -i :8000
+sudo lsof -i :5432
 
 # Or stop other Docker containers
 docker ps
@@ -232,21 +229,21 @@ docker stop <container-id>
 ## ⚙️ Environment Files
 
 Your configuration is in:
-- `.env` - Environment variables (JWT keys, passwords, ports)
-- `docker compose.yml` - Service definitions
-- `supabase/migrations/` - Database schema migrations
-- `supabase/kong.yml` - API Gateway configuration
+- `docker/.env` - Environment variables (JWT keys, passwords, ports)
+- `docker/docker-compose.yml` - Service definitions
+- `docker/volumes/db/init/` - Database schema initialization
+- `docker/volumes/api/kong.yml` - API Gateway configuration
 
 **Note**: Never commit `.env` to git - it contains secrets!
 
 ## 🎯 Next Steps
 
-1. ✅ Access Studio at http://172.17.200.223:54323
+1. ✅ Access Studio at http://localhost:54323
 2. Explore the Table Editor to see your data
 3. Try running SQL queries in the SQL Editor
 4. Test the REST API with curl or from your application
-5. Read the [README.md](README.md) for project-specific information
+5. Read the [README.md](../README.md) for project-specific information
 
 ---
 
-**For detailed WSL2 networking help, see [WSL2_ACCESS_GUIDE.md](WSL2_ACCESS_GUIDE.md)**
+**For detailed troubleshooting help, see [troubleshooting.md](troubleshooting.md)**

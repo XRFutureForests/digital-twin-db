@@ -70,7 +70,7 @@ python csv_importer.py --csv data.csv --table Trees --created-by "import_user" -
 
 ```bash
 # Trigger ecosense data sync (requires SERVICE_ROLE_KEY)
-curl -X POST "http://localhost:54321/functions/v1/ecosense-ingest?days_back=7" \
+curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=7" \
   -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY"
 ```
 
@@ -185,8 +185,8 @@ Key features:
 ### Docker Services & Ports
 
 ```
-Port 54321 → Kong Gateway (REST API + functions)
-Port 54322 → PostgreSQL (via Supavisor pooler)
+Port 8000  → Kong Gateway (REST API + functions)
+Port 5432  → PostgreSQL (via Supavisor pooler)
 Port 54323 → Supabase Studio (Web UI)
 Port 4000  → Analytics (Logflare)
 ```
@@ -273,17 +273,17 @@ Key environment variables in `docker/.env`:
 export SUPABASE_KEY="<your ANON_KEY from .env>"
 
 # Get all species
-curl "http://localhost:54321/rest/v1/species?select=*" \
+curl "http://localhost:8000/rest/v1/species?select=*" \
   -H "apikey: $SUPABASE_KEY" \
   -H "Authorization: Bearer $SUPABASE_KEY"
 
 # Get trees with species info (nested select)
-curl "http://localhost:54321/rest/v1/trees?select=*,species(*)" \
+curl "http://localhost:8000/rest/v1/trees?select=*,species(*)" \
   -H "apikey: $SUPABASE_KEY" \
   -H "Authorization: Bearer $SUPABASE_KEY"
 
 # Create new location
-curl -X POST "http://localhost:54321/rest/v1/locations" \
+curl -X POST "http://localhost:8000/rest/v1/locations" \
   -H "apikey: $SUPABASE_KEY" \
   -H "Authorization: Bearer $SUPABASE_KEY" \
   -H "Content-Type: application/json" \

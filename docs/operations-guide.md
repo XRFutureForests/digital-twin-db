@@ -300,7 +300,7 @@ curl http://localhost:9000/health
 docker compose logs functions -f
 
 # Test function directly
-curl -X POST http://localhost:54321/functions/v1/ecosense-ingest \
+curl -X POST http://localhost:8000/functions/v1/ecosense-ingest \
   -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY"
 ```
 

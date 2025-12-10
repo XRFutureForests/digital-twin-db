@@ -117,14 +117,14 @@ docker compose logs -f auth
 
 **Symptoms:**
 
-- Error: `Bind for 0.0.0.0:54321 failed: port is already allocated`
+- Error: `Bind for 0.0.0.0:8000 failed: port is already allocated`
 
 **Solution:**
 
 ```bash
 # Find what's using the port
-sudo lsof -i :54321
-sudo lsof -i :54322
+sudo lsof -i :8000
+sudo lsof -i :5432
 
 # Stop the conflicting service or change ports in docker-compose.yml
 ```

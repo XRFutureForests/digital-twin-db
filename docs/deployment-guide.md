@@ -106,11 +106,11 @@ Services should be running at:
 | Service | URL | Description |
 |---------|-----|-------------|
 | Supabase Studio | <http://localhost:54323> | Database management UI |
-| REST API | <http://localhost:54321/rest/v1> | PostgREST endpoints |
-| Auth API | <http://localhost:54321/auth/v1> | Authentication |
-| Realtime | <http://localhost:54321/realtime/v1> | WebSocket subscriptions |
-| Edge Functions | <http://localhost:54321/functions/v1> | Serverless functions |
-| PostgreSQL | localhost:54322 | Direct database access |
+| REST API | <http://localhost:8000/rest/v1> | PostgREST endpoints |
+| Auth API | <http://localhost:8000/auth/v1> | Authentication |
+| Realtime | <http://localhost:8000/realtime/v1> | WebSocket subscriptions |
+| Edge Functions | <http://localhost:8000/functions/v1> | Serverless functions |
+| PostgreSQL | localhost:5432 | Direct database access (via pooler) |
 
 ### 5. Access Supabase Studio
 
@@ -149,7 +149,7 @@ See `scripts/import-data/README.md` for full CSV import documentation.
 export SUPABASE_KEY="your_anon_key_from_env_file"
 
 # Test REST API
-curl "http://localhost:54321/rest/v1/Trees?select=*" \
+curl "http://localhost:8000/rest/v1/Trees?select=*" \
   -H "apikey: $SUPABASE_KEY" \
   -H "Authorization: Bearer $SUPABASE_KEY"
 
@@ -233,7 +233,7 @@ server {
     server_name api.your-domain.com;
 
     location / {
-        proxy_pass http://localhost:54321;
+        proxy_pass http://localhost:8000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -361,9 +361,9 @@ done
 ### Optional Environment Variables
 
 | Variable | Description | Default |
-|----------|-------------|---------|
-| `POSTGRES_PORT` | PostgreSQL port | `54322` |
-| `KONG_HTTP_PORT` | API gateway HTTP port | `54321` |
+|----------|-------------|--------|
+| `POSTGRES_PORT` | PostgreSQL port | `5432` |
+| `KONG_HTTP_PORT` | API gateway HTTP port | `8000` |
 | `STUDIO_PORT` | Studio UI port | `54323` |
 | `S3_REGION` | AWS region | `us-east-1` |
 | `S3_ENDPOINT` | S3 endpoint URL | `https://s3.amazonaws.com` |

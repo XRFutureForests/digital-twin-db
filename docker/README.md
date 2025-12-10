@@ -31,7 +31,7 @@ PGRST_DB_SCHEMAS=public,storage,graphql_public,shared,pointclouds,trees,sensor,e
 # Access ports
 KONG_HTTP_PORT=8000          # API Gateway
 KONG_HTTPS_PORT=8443         # API Gateway (SSL)
-POSTGRES_PORT=5432           # Database (via pooler on 54322)
+POSTGRES_PORT=5432           # Database (via Supavisor pooler)
 ```
 
 ### 2. Start Services
@@ -56,8 +56,8 @@ All services should show as "healthy" after about 30 seconds.
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | **Studio UI** | <http://localhost:54323> | Username: `supabase`<br>Password: (from `.env`) |
-| **REST API** | <http://localhost:54321/rest/v1> | API Key: (from `.env` ANON_KEY) |
-| **PostgreSQL** | localhost:54322 | User: `postgres`<br>Password: (from `.env`) |
+| **REST API** | <http://localhost:8000/rest/v1> | API Key: (from `.env` ANON_KEY) |
+| **PostgreSQL** | localhost:5432 | User: `postgres`<br>Password: (from `.env`) |
 
 ### 4. Custom Database Initialization
 
@@ -208,11 +208,11 @@ The `.env` file is organized into sections:
 ### Port Mapping
 
 | Internal | External | Service |
-|----------|----------|---------|
+|----------|----------|--------|
 | 3000 | 54323 | Studio UI |
-| 8000 | 54321 | Kong Gateway (HTTP) |
-| 8443 | 54322 | Kong Gateway (HTTPS) |
-| 5432 | 54322 | PostgreSQL (via Supavisor pooler) |
+| 8000 | 8000 | Kong Gateway (HTTP) |
+| 8443 | 8443 | Kong Gateway (HTTPS) |
+| 5432 | 5432 | PostgreSQL (via Supavisor pooler) |
 | 4000 | 4000 | Analytics |
 
 ## Customization for Forest Database

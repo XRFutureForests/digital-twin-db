@@ -50,8 +50,8 @@ The `.env` file is already set up with secure credentials. It contains:
 Once running, access the database through:
 
 - **Supabase Studio UI**: <http://localhost:54323> - Visual database management
-- **REST API**: <http://localhost:54321/rest/v1> - Auto-generated endpoints
-- **PostgreSQL**: `localhost:54322` - Direct database access
+- **REST API**: <http://localhost:8000/rest/v1> - Auto-generated endpoints (Kong Gateway)
+- **PostgreSQL**: `localhost:5432` - Direct database access (via Supavisor pooler)
 
 ### Verify Installation
 
@@ -211,7 +211,7 @@ Syncs sensor data from Aquarius API (EcoSense sensors).
 **Trigger manually:**
 
 ```bash
-curl -X POST "http://localhost:54321/functions/v1/ecosense-ingest?days_back=7" \
+curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=7" \
   -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY"
 ```
 
@@ -261,24 +261,24 @@ WHERE s.speciesname = 'Fagus sylvatica';
 
 The database automatically provides REST endpoints for all tables.
 
-**API Base URL**: `http://localhost:54321/rest/v1`
+**API Base URL**: `http://localhost:8000/rest/v1`
 **API Key**: Find `SUPABASE_ANON_KEY` in your `.env` file
 
 **Example using curl**:
 
 ```bash
 # Get all species
-curl "http://localhost:54321/rest/v1/species?select=*" \
+curl "http://localhost:8000/rest/v1/species?select=*" \
   -H "apikey: YOUR_ANON_KEY" \
   -H "Authorization: Bearer YOUR_ANON_KEY"
 
 # Get trees with species information
-curl "http://localhost:54321/rest/v1/trees?select=*,species(*)" \
+curl "http://localhost:8000/rest/v1/trees?select=*,species(*)" \
   -H "apikey: YOUR_ANON_KEY" \
   -H "Authorization: Bearer YOUR_ANON_KEY"
 
 # Create a new location
-curl -X POST "http://localhost:54321/rest/v1/locations" \
+curl -X POST "http://localhost:8000/rest/v1/locations" \
   -H "apikey: YOUR_ANON_KEY" \
   -H "Authorization: Bearer YOUR_ANON_KEY" \
   -H "Content-Type: application/json" \
@@ -292,7 +292,7 @@ from supabase import create_client
 
 # Initialize client
 supabase = create_client(
-    "http://localhost:54321",
+    "http://localhost:8000",
     "YOUR_ANON_KEY"  # from .env file
 )
 
@@ -318,7 +318,7 @@ api_key <- "YOUR_ANON_KEY"
 
 # Make request
 response <- GET(
-  "http://localhost:54321/rest/v1/species?select=*",
+  "http://localhost:8000/rest/v1/species?select=*",
   add_headers(
     apikey = api_key,
     Authorization = paste("Bearer", api_key)
@@ -335,7 +335,7 @@ Connect with any PostgreSQL client (psql, DBeaver, pgAdmin, etc.):
 
 ```
 Host: localhost
-Port: 54322
+Port: 5432
 Database: postgres
 Username: postgres
 Password: (from POSTGRES_PASSWORD in .env)
@@ -431,7 +431,7 @@ docker compose logs -f
 export SUPABASE_KEY="your_anon_key"
 
 # Test endpoints
-curl "http://localhost:54321/rest/v1/species?select=*" \
+curl "http://localhost:8000/rest/v1/species?select=*" \
   -H "apikey: $SUPABASE_KEY" \
   -H "Authorization: Bearer $SUPABASE_KEY"
 ```
@@ -529,11 +529,11 @@ docker compose logs storage
 
 **Port conflicts:**
 
-If ports 54321, 54322, 54323, or 5432 are already in use:
+If ports 8000, 5432, 54323, or 6543 are already in use:
 
 ```bash
 # Find what's using the port
-sudo lsof -i :54321
+sudo lsof -i :8000
 
 # Stop the conflicting service or change ports in docker-compose.yml
 ```
