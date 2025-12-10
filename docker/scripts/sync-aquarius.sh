@@ -1,27 +1,27 @@
 #!/bin/bash
 # Sync sensor data from Aquarius API
 # Requires: University VPN connection for Aquarius access
+# Runs inside a Docker container - no host dependencies needed
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Load environment variables (only the ones we need, handling spaces properly)
+# Load environment variables
 if [ -f "$DOCKER_DIR/.env" ]; then
     export SERVICE_ROLE_KEY=$(grep -E "^SERVICE_ROLE_KEY=" "$DOCKER_DIR/.env" | cut -d '=' -f2-)
-    export SUPABASE_PUBLIC_URL=$(grep -E "^SUPABASE_PUBLIC_URL=" "$DOCKER_DIR/.env" | cut -d '=' -f2-)
     export AQUARIUS_HOSTNAME=$(grep -E "^AQUARIUS_HOSTNAME=" "$DOCKER_DIR/.env" | cut -d '=' -f2-)
 fi
 
 # Default values
 DAYS_BACK=${1:-30}
-API_URL="${SUPABASE_PUBLIC_URL:-http://localhost:8000}"
+# Use internal Docker network URL for container-to-container communication
+API_URL="http://kong:8000"
 
 echo "========================================"
 echo "Aquarius Data Sync"
 echo "========================================"
-echo "API URL: $API_URL"
 echo "Days back: $DAYS_BACK"
 echo ""
 
@@ -32,9 +32,10 @@ if ! docker compose -f "$DOCKER_DIR/docker-compose.yml" ps --quiet kong &>/dev/n
     exit 1
 fi
 
-# Check VPN connectivity to Aquarius (optional warning)
-if ! curl -s --connect-timeout 5 "${AQUARIUS_HOSTNAME:-http://fuhys006.public.ads.uni-freiburg.de}/AQUARIUS/" >/dev/null 2>&1; then
-    echo "Warning: Cannot reach Aquarius server"
+# Check VPN connectivity to Aquarius from edge-functions container
+echo "Checking Aquarius connectivity..."
+if ! docker exec dftdb-edge-functions sh -c "wget -q --spider --timeout=5 '${AQUARIUS_HOSTNAME:-http://fuhys006.public.ads.uni-freiburg.de}/AQUARIUS/'" 2>/dev/null; then
+    echo "Warning: Cannot reach Aquarius server from container"
     echo "Make sure you are connected to the university VPN"
     echo ""
 fi
@@ -42,21 +43,51 @@ fi
 echo "Calling ecosense-ingest function..."
 echo ""
 
-# Call the edge function
-RESPONSE=$(curl -s -X POST \
+# Get the Docker network name (matches docker-compose project)
+NETWORK_NAME=$(docker network ls --format '{{.Name}}' | grep -E "digital.*forest.*twin.*default|dftdb.*default" | head -1)
+if [ -z "$NETWORK_NAME" ]; then
+    # Fallback: try to get network from running kong container
+    NETWORK_NAME=$(docker inspect dftdb-kong --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null | head -1)
+fi
+
+if [ -z "$NETWORK_NAME" ]; then
+    echo "Error: Could not determine Docker network name"
+    exit 1
+fi
+
+# Run curl inside a container connected to the Docker network
+RESPONSE=$(docker run --rm --network "$NETWORK_NAME" \
+    curlimages/curl:latest \
+    -s -X POST \
     "${API_URL}/functions/v1/ecosense-ingest?days_back=${DAYS_BACK}" \
     -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
     -H "Content-Type: application/json")
 
-# Check if response is valid JSON
-if echo "$RESPONSE" | jq . >/dev/null 2>&1; then
-    echo "$RESPONSE" | jq .
+# Parse JSON using grep/sed (no jq dependency)
+parse_json_field() {
+    echo "$1" | grep -o "\"$2\":[^,}]*" | sed 's/.*://' | tr -d ' "' 
+}
+
+# Pretty print JSON using Python (available in most systems) or fallback to raw
+pretty_print_json() {
+    if command -v python3 &>/dev/null; then
+        echo "$1" | python3 -m json.tool 2>/dev/null || echo "$1"
+    elif command -v python &>/dev/null; then
+        echo "$1" | python -m json.tool 2>/dev/null || echo "$1"
+    else
+        echo "$1"
+    fi
+}
+
+# Check if response contains success field (valid JSON response)
+if echo "$RESPONSE" | grep -q '"success"'; then
+    pretty_print_json "$RESPONSE"
     
     # Check for success
-    SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+    SUCCESS=$(parse_json_field "$RESPONSE" "success")
     if [ "$SUCCESS" = "true" ]; then
-        COUNT=$(echo "$RESPONSE" | jq -r '.count // 0')
-        SENSORS=$(echo "$RESPONSE" | jq -r '.sensors // 0')
+        COUNT=$(parse_json_field "$RESPONSE" "count")
+        SENSORS=$(parse_json_field "$RESPONSE" "sensors")
         echo ""
         echo "========================================"
         echo "Sync completed successfully!"
@@ -64,9 +95,10 @@ if echo "$RESPONSE" | jq . >/dev/null 2>&1; then
         echo "Readings: $COUNT"
         echo "========================================"
     else
-        ERROR=$(echo "$RESPONSE" | jq -r '.error // .message // "Unknown error"')
+        ERROR=$(parse_json_field "$RESPONSE" "error")
+        [ -z "$ERROR" ] && ERROR=$(parse_json_field "$RESPONSE" "message")
         echo ""
-        echo "Error: $ERROR"
+        echo "Error: ${ERROR:-Unknown error}"
         exit 1
     fi
 else

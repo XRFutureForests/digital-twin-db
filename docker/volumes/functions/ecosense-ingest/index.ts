@@ -208,28 +208,32 @@ serve(async (req: Request) => {
             }
         }
 
-        // Fetch sensor IDs mapping with retry
-        const { data: createdSensors, error: sensorFetchError } = await withRetry(
-            () => supabase
-                .from('sensors')
-                .select('sensorid, externalid')
-                .in(
-                    'externalid',
-                    ecosenseTS.map(ts => ts.UniqueId)
-                ),
-            { maxRetries: 3, baseDelayMs: 500 }
-        )
+        // Fetch sensor IDs mapping in batches to avoid URI too long error
+        const BATCH_SIZE = 100 // Safe batch size for URL length
+        const allExternalIds = ecosenseTS.map(ts => ts.UniqueId)
+        const createdSensors: { sensorid: number; externalid: string }[] = []
 
-        if (sensorFetchError) {
-            console.error('Error fetching sensors:', sensorFetchError)
+        for (let i = 0; i < allExternalIds.length; i += BATCH_SIZE) {
+            const batchIds = allExternalIds.slice(i, i + BATCH_SIZE)
+            const { data: batchSensors, error: batchError } = await withRetry(
+                () => supabase
+                    .from('sensors')
+                    .select('sensorid, externalid')
+                    .in('externalid', batchIds),
+                { maxRetries: 3, baseDelayMs: 500 }
+            )
+
+            if (batchError) {
+                console.error(`Error fetching sensor batch ${Math.floor(i / BATCH_SIZE) + 1}:`, batchError)
+            } else if (batchSensors) {
+                createdSensors.push(...batchSensors)
+            }
         }
-        console.log(`Fetched ${createdSensors?.length || 0} sensor mappings from database`)
+
+        console.log(`Fetched ${createdSensors.length} sensor mappings from database`)
 
         const sensorIdMap = new Map(
-            (createdSensors || []).map((s: { sensorid: number; externalid: string }) => [
-                s.externalid,
-                s.sensorid,
-            ])
+            createdSensors.map(s => [s.externalid, s.sensorid])
         )
 
         // Sync readings with parallelization (up to API_CONCURRENCY_LIMIT concurrent requests)
@@ -264,7 +268,8 @@ serve(async (req: Request) => {
             results.push(...await Promise.all(batch))
         }
 
-        // Batch insert readings (in chunks to avoid oversizing requests)
+        // Collect all readings for bulk insert
+        const allReadings: { sensorid: number; timestamp: string; value: number; quality: string }[] = []
         for (const { sensorId, points } of results) {
             if (!sensorId || points.length === 0) continue
 
@@ -275,24 +280,27 @@ serve(async (req: Request) => {
                     timestamp: p.Timestamp,
                     value: p.Value.Numeric,
                     quality: 'good',
-                    createdby: 'ecosense-ingest-function',
                 }))
 
-            // Insert in batches to avoid oversizing requests with retry
-            for (let i = 0; i < readings.length; i += READINGS_BATCH_SIZE) {
-                const batch = readings.slice(i, i + READINGS_BATCH_SIZE)
+            allReadings.push(...readings)
+        }
 
-                await withRetry(
-                    () => supabase
-                        .from('sensorreadings')
-                        .upsert(batch, {
-                            onConflict: 'sensorid,timestamp',
-                            ignoreDuplicates: true,
-                        }),
-                    { maxRetries: 3, baseDelayMs: 1000 }
-                )
+        // Insert in batches using RPC function with ON CONFLICT DO NOTHING
+        for (let i = 0; i < allReadings.length; i += READINGS_BATCH_SIZE) {
+            const batch = allReadings.slice(i, i + READINGS_BATCH_SIZE)
 
-                totalPoints += batch.length
+            const { data: insertResult, error: insertError } = await withRetry(
+                () => supabase.rpc('bulk_insert_readings', { readings: batch }),
+                { maxRetries: 3, baseDelayMs: 1000 }
+            )
+
+            if (insertError) {
+                // Only log first few errors to avoid spam
+                if (errors.length < 10) {
+                    errors.push(`Insert error: ${insertError.message}`)
+                }
+            } else if (insertResult && insertResult.length > 0) {
+                totalPoints += insertResult[0].out_inserted_count
             }
         }
 
