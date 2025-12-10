@@ -13,7 +13,6 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 from dotenv import load_dotenv
 from pyproj import Transformer
-
 from supabase import Client, create_client
 
 
@@ -34,7 +33,9 @@ class CSVImporter:
             # Check file size
             file_size_mb = csv_path.stat().st_size / (1024 * 1024)
             if file_size_mb > self._max_csv_size_mb:
-                print(f"❌ CSV file too large: {file_size_mb:.1f}MB (max: {self._max_csv_size_mb}MB)")
+                print(
+                    f"❌ CSV file too large: {file_size_mb:.1f}MB (max: {self._max_csv_size_mb}MB)"
+                )
                 sys.exit(1)
 
             df = pd.read_csv(csv_path)
@@ -92,26 +93,50 @@ class CSVImporter:
         print("\n📦 Pre-loading reference data...")
         try:
             # Cache species
-            species_result = self.supabase.table("Species").select("SpeciesID, CommonName, ScientificName").execute()
+            species_result = (
+                self.supabase.table("Species")
+                .select("SpeciesID, CommonName, ScientificName")
+                .execute()
+            )
             for species in species_result.data:
-                key_common = species["CommonName"].lower() if species["CommonName"] else ""
-                key_scientific = species["ScientificName"].lower() if species["ScientificName"] else ""
+                key_common = (
+                    species["CommonName"].lower() if species["CommonName"] else ""
+                )
+                key_scientific = (
+                    species["ScientificName"].lower()
+                    if species["ScientificName"]
+                    else ""
+                )
                 if key_common:
                     self._species_cache[key_common] = species["SpeciesID"]
                 if key_scientific:
                     self._species_cache[key_scientific] = species["SpeciesID"]
 
             # Cache locations
-            location_result = self.supabase.table("Locations").select("LocationID, LocationName").execute()
+            location_result = (
+                self.supabase.table("Locations")
+                .select("LocationID, LocationName")
+                .execute()
+            )
             for location in location_result.data:
-                key = location["LocationName"].lower() if location["LocationName"] else ""
+                key = (
+                    location["LocationName"].lower() if location["LocationName"] else ""
+                )
                 if key:
                     self._location_cache[key] = location["LocationID"]
 
             # Cache sensor types
-            sensor_result = self.supabase.table("SensorTypes").select("SensorTypeID, SensorTypeName").execute()
+            sensor_result = (
+                self.supabase.table("SensorTypes")
+                .select("SensorTypeID, SensorTypeName")
+                .execute()
+            )
             for sensor_type in sensor_result.data:
-                key = sensor_type["SensorTypeName"].lower() if sensor_type["SensorTypeName"] else ""
+                key = (
+                    sensor_type["SensorTypeName"].lower()
+                    if sensor_type["SensorTypeName"]
+                    else ""
+                )
                 if key:
                     self._sensor_type_cache[key] = sensor_type["SensorTypeID"]
 
@@ -299,7 +324,9 @@ class CSVImporter:
                     if sensor_type_id:
                         data[db_field] = sensor_type_id
                     else:
-                        critical_fields_missing.append(f"SensorType '{value}' not found")
+                        critical_fields_missing.append(
+                            f"SensorType '{value}' not found"
+                        )
 
                 else:
                     # Direct mapping - convert to appropriate type
@@ -370,7 +397,9 @@ class CSVImporter:
             prepared_count = 0
             error_count = 0
             for idx, row in df.iterrows():
-                prepared = self.prepare_row(row, mapping, table, created_by, crs, row_number=idx+2)
+                prepared = self.prepare_row(
+                    row, mapping, table, created_by, crs, row_number=idx + 2
+                )
                 if prepared is not None:
                     prepared_count += 1
                 else:
@@ -395,7 +424,9 @@ class CSVImporter:
 
         for idx, row in df.iterrows():
             try:
-                prepared_data = self.prepare_row(row, mapping, table, created_by, crs, row_number=idx+2)
+                prepared_data = self.prepare_row(
+                    row, mapping, table, created_by, crs, row_number=idx + 2
+                )
 
                 if prepared_data is None:
                     skipped += 1

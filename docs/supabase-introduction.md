@@ -11,6 +11,7 @@ This guide explains what Supabase is and how it's used in the XR Future Forests 
 ### Why Supabase?
 
 Instead of manually setting up:
+
 - A database server (PostgreSQL)
 - An API server (to let applications talk to the database)
 - An authentication system (for user logins)
@@ -29,6 +30,7 @@ Instead of manually setting up:
 PostgreSQL is a powerful, open-source relational database. Think of it like Excel on steroids - data is organized in tables with rows and columns, but it can handle millions of rows, complex relationships, and advanced queries.
 
 **What we use it for:**
+
 - Storing tree measurements
 - Recording sensor data
 - Managing point cloud metadata
@@ -36,6 +38,7 @@ PostgreSQL is a powerful, open-source relational database. Think of it like Exce
 
 **PostGIS Extension:**
 We also use PostGIS, which adds geographic/spatial capabilities to PostgreSQL. This allows us to:
+
 - Store coordinates and boundaries
 - Query trees within a specific area
 - Calculate distances between locations
@@ -45,6 +48,7 @@ We also use PostGIS, which adds geographic/spatial capabilities to PostgreSQL. T
 
 **What is an API?**
 An API (Application Programming Interface) is like a waiter in a restaurant:
+
 - You (the application) tell the waiter (API) what you want
 - The waiter goes to the kitchen (database) and gets it
 - The waiter brings back your food (data)
@@ -59,11 +63,13 @@ Auto-generated API: http://localhost:8000/rest/v1/species
 ```
 
 **Example - Get all tree species:**
+
 ```bash
 curl "http://localhost:8000/rest/v1/species?select=*"
 ```
 
 **Example - Get trees in a specific location:**
+
 ```bash
 curl "http://localhost:8000/rest/v1/trees?locationid=eq.15"
 ```
@@ -77,6 +83,7 @@ A built-in system for managing users, logins, and permissions.
 
 **Row-Level Security (RLS):**
 You can set rules like:
+
 - "Users can only see their own data"
 - "Admins can edit everything"
 - "Anonymous users can only read public data"
@@ -89,6 +96,7 @@ These rules are enforced at the database level, making them very secure.
 Instead of repeatedly asking "has the data changed?", you can subscribe to changes and get notified automatically.
 
 **Example use case:**
+
 - Multiple researchers viewing the same plot data
 - When one person adds a tree measurement, everyone else sees it instantly
 - No need to refresh the page
@@ -99,6 +107,7 @@ Instead of repeatedly asking "has the data changed?", you can subscribe to chang
 A system for storing and managing large files (like point cloud LiDAR scans).
 
 **How we use it:**
+
 - Point cloud files are too large to store in the database
 - They're stored in S3-compatible storage (like AWS S3 or MinIO)
 - The database stores just the file path: `s3://bucket/scan.las`
@@ -110,6 +119,7 @@ A system for storing and managing large files (like point cloud LiDAR scans).
 Serverless functions that run custom business logic. Written in TypeScript/JavaScript using Deno.
 
 **Example use case:**
+
 ```javascript
 // Edge Function: Generate presigned S3 URL
 export async function handler(req) {
@@ -128,6 +138,7 @@ Migrations are SQL files that define your database structure. They're like a rec
 
 **Where are they?**
 `supabase/migrations/` folder:
+
 ```
 001_shared_schema.sql       # Create reference tables
 002_pointclouds_schema.sql  # Create point cloud tables
@@ -136,11 +147,13 @@ Migrations are SQL files that define your database structure. They're like a rec
 ```
 
 **How do they work?**
+
 1. When you start the database for the first time, migrations run automatically
 2. They create all tables, relationships, and initial data
 3. If you need to change the schema later, you create a new migration file
 
 **Example migration:**
+
 ```sql
 -- 010_add_new_column.sql
 ALTER TABLE trees.trees
@@ -150,6 +163,7 @@ COMMENT ON COLUMN trees.trees.crown_diameter_m IS 'Crown diameter in meters';
 ```
 
 **Why use migrations?**
+
 - **Version control**: Your database structure is in git
 - **Reproducible**: Everyone on the team gets the same database structure
 - **Documented**: Each change has a clear purpose
@@ -164,12 +178,14 @@ COMMENT ON COLUMN trees.trees.crown_diameter_m IS 'Crown diameter in meters';
 There are two types of API keys:
 
 **1. Anonymous Key (SUPABASE_ANON_KEY)**
+
 - Safe to use in client applications (R scripts, web apps, Python notebooks)
 - Subject to Row-Level Security policies
 - Can only access what the RLS rules allow
 - Example: "anonymous users can read public data but not modify it"
 
 **2. Service Role Key (SUPABASE_SERVICE_ROLE_KEY)**
+
 - NEVER expose in client applications!
 - Bypasses all security rules
 - Only use server-side (in Edge Functions, backend scripts)
@@ -194,6 +210,7 @@ USING (true);
 ```
 
 **Benefits:**
+
 - Security enforced at database level (can't be bypassed)
 - Same rules apply whether accessing via API, SQL, or dashboard
 - Fine-grained control (row-by-row, column-by-column)
@@ -224,6 +241,7 @@ USING (true);
 ```
 
 **Step by step:**
+
 1. Your R script sends an HTTP request with an API key
 2. Kong checks if the API key is valid
 3. PostgREST translates your request into a SQL query
@@ -307,7 +325,7 @@ INSERT INTO trees.trees (
 
 ### View your data
 
-1. Open Supabase Studio: http://localhost:54323
+1. Open Supabase Studio: <http://localhost:54323>
 2. Click "Table Editor"
 3. Select a schema (shared, trees, etc.)
 4. Click on a table to view/edit data
@@ -316,6 +334,7 @@ INSERT INTO trees.trees (
 
 1. Click "SQL Editor" in Studio
 2. Write your query:
+
 ```sql
 SELECT
     l.locationname,
@@ -324,16 +343,19 @@ FROM trees.trees t
 JOIN shared.locations l ON t.locationid = l.locationid
 GROUP BY l.locationname;
 ```
+
 3. Click "Run" or press Ctrl+Enter
 
 ### Add a new column
 
 1. Create a new migration file: `supabase/migrations/011_add_column.sql`
 2. Write the SQL:
+
 ```sql
 ALTER TABLE trees.trees
 ADD COLUMN health_status TEXT CHECK (health_status IN ('healthy', 'stressed', 'dead'));
 ```
+
 3. Restart the database: `docker compose restart db`
 
 ### Check access policies
@@ -350,14 +372,17 @@ WHERE schemaname = 'trees';
 ## Troubleshooting
 
 **Problem: API returns 401 Unauthorized**
+
 - Check your API key is correct (from .env file)
 - Make sure you're using BOTH `apikey` header AND `Authorization` header
 
 **Problem: API returns empty results**
+
 - Check RLS policies - might be blocking access
 - Verify data exists: check in Studio or with SQL
 
 **Problem: Can't connect to database**
+
 - Ensure Docker is running: `docker compose ps`
 - Check database is healthy: `docker compose ps db`
 
@@ -373,6 +398,7 @@ WHERE schemaname = 'trees';
 ---
 
 **Next Steps:**
+
 1. Try querying data from Supabase Studio
 2. Make a test API request from R or Python
 3. Explore the database schema in `docs/architecture/database.md`
