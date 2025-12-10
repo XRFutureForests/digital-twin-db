@@ -37,14 +37,23 @@ GRANT ALL ON sensor.SensorTreeLinks TO service_role;
 GRANT SELECT ON sensor.SensorTreeLinks TO authenticated, anon;
 
 -- 6. Create bulk upsert function for sensors (views don't support ON CONFLICT)
+-- Uses extensions.ST_GeomFromText since PostGIS is in extensions schema
 CREATE OR REPLACE FUNCTION public.bulk_upsert_sensors(
     p_sensors JSONB
-) RETURNS TABLE(externalid VARCHAR, sensorid INT) AS $$
+) RETURNS TABLE(out_externalid VARCHAR, out_sensorid INT) AS $$
 DECLARE
     sensor_rec JSONB;
+    v_position extensions.geometry;
 BEGIN
     FOR sensor_rec IN SELECT * FROM jsonb_array_elements(p_sensors)
     LOOP
+        -- Parse position WKT if provided
+        IF sensor_rec->>'position' IS NOT NULL THEN
+            v_position := extensions.ST_GeomFromText(sensor_rec->>'position', 4326);
+        ELSE
+            v_position := NULL;
+        END IF;
+
         INSERT INTO sensor.sensors (
             locationid, sensortypeid, sensormodel, serialnumber, 
             position, samplinginterval_seconds, unit, externalid,
@@ -55,7 +64,7 @@ BEGIN
             (sensor_rec->>'sensortypeid')::INT,
             sensor_rec->>'sensormodel',
             sensor_rec->>'serialnumber',
-            ST_GeomFromText(sensor_rec->>'position', 4326),
+            v_position,
             (sensor_rec->>'samplinginterval_seconds')::INT,
             sensor_rec->>'unit',
             sensor_rec->>'externalid',
@@ -77,11 +86,53 @@ BEGIN
             updatedat = NOW();
         
         RETURN QUERY SELECT 
-            sensor_rec->>'externalid', 
-            (SELECT s.sensorid FROM sensor.sensors s WHERE s.externalid = sensor_rec->>'externalid');
+            (sensor_rec->>'externalid')::VARCHAR AS out_externalid, 
+            (SELECT s.sensorid FROM sensor.sensors s WHERE s.externalid = sensor_rec->>'externalid') AS out_sensorid;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION public.bulk_upsert_sensors IS 'Bulk upserts sensors from JSON array, returns external IDs and sensor IDs';
-GRANT EXECUTE ON FUNCTION public.bulk_upsert_sensors TO service_role;
+GRANT EXECUTE ON FUNCTION public.bulk_upsert_sensors TO service_role, anon, authenticated;
+
+-- 7. Create bulk insert function for readings with ON CONFLICT DO NOTHING
+-- Add unique constraint for sensorid,timestamp if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'sensorreadings_sensorid_timestamp_unique' 
+        AND conrelid = 'sensor.sensorreadings'::regclass
+    ) THEN
+        ALTER TABLE sensor.sensorreadings 
+        ADD CONSTRAINT sensorreadings_sensorid_timestamp_unique 
+        UNIQUE (sensorid, timestamp);
+    END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.bulk_insert_readings(readings jsonb)
+RETURNS TABLE (out_inserted_count integer)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, sensor
+AS $$
+DECLARE
+    inserted_count integer;
+BEGIN
+    INSERT INTO sensor.sensorreadings (sensorid, timestamp, value, quality)
+    SELECT 
+        (r->>'sensorid')::integer,
+        (r->>'timestamp')::timestamptz,
+        (r->>'value')::numeric,
+        COALESCE(r->>'quality', 'good')
+    FROM jsonb_array_elements(readings) AS r
+    ON CONFLICT (sensorid, timestamp) DO NOTHING;
+    
+    GET DIAGNOSTICS inserted_count = ROW_COUNT;
+    
+    RETURN QUERY SELECT inserted_count;
+END;
+$$;
+
+COMMENT ON FUNCTION public.bulk_insert_readings IS 'Bulk inserts readings from JSON array, skips duplicates';
+GRANT EXECUTE ON FUNCTION public.bulk_insert_readings(jsonb) TO anon, authenticated, service_role;

@@ -230,7 +230,8 @@ FOR EACH ROW EXECUTE FUNCTION public.sensors_delete();
 CREATE OR REPLACE FUNCTION public.sensorreadings_insert()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO sensor.sensorreadings SELECT NEW.*;
+    INSERT INTO sensor.sensorreadings (sensorid, timestamp, value, quality, scenarioid, batteryvoltage, signalstrength, notes)
+    VALUES (NEW.sensorid, NEW.timestamp, NEW.value, NEW.quality, NEW.scenarioid, NEW.batteryvoltage, NEW.signalstrength, NEW.notes);
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
