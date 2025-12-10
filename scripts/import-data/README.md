@@ -336,14 +336,14 @@ Add missing species via Supabase Studio or SQL.
 **Solution:**
 
 1. Verify database is running: `docker-compose ps`
-2. Check Supabase URL in `.env`: should be `http://localhost:54321`
-3. Test connection: `curl http://localhost:54321/rest/v1/`
+2. Check Supabase URL in `.env`: should be `http://localhost:8000`
+3. Test connection: `curl http://localhost:8000/rest/v1/`
 
 ## Configuration
 
 The importer reads credentials from `docker/.env`:
 
-- `SUPABASE_URL` - Supabase instance URL (default: `http://localhost:54321`)
+- `SUPABASE_URL` - Supabase instance URL (default: `http://localhost:8000`)
 - `SERVICE_ROLE_KEY` - Service role key with full database access
 
 ## Audit Trail

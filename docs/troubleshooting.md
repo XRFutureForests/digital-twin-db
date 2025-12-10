@@ -65,8 +65,9 @@ docker --version
 
 **Common ports used**:
 
-- `54321` - API Gateway (Kong)
-- `54322` - PostgreSQL
+- `8000` - API Gateway (Kong HTTP)
+- `8443` - API Gateway (Kong HTTPS)
+- `5432` - PostgreSQL (via Supavisor pooler)
 - `54323` - Supabase Studio
 
 **Solutions**:
@@ -75,13 +76,13 @@ docker --version
 
 ```bash
 # On Linux/Mac
-sudo lsof -i :54321
-sudo lsof -i :54322
+sudo lsof -i :8000
+sudo lsof -i :5432
 sudo lsof -i :54323
 
 # On Windows (PowerShell as Administrator)
-netstat -ano | findstr :54321
-netstat -ano | findstr :54322
+netstat -ano | findstr :8000
+netstat -ano | findstr :5432
 netstat -ano | findstr :54323
 ```
 
@@ -94,9 +95,9 @@ Then stop the process using that port.
 nano .env
 
 # Change these lines:
-KONG_HTTP_PORT=54321    # Change to 54321 → 55321
-POSTGRES_PORT=54322     # Change to 54322 → 55322
-STUDIO_PORT=54323       # Change to 54323 → 55323
+KONG_HTTP_PORT=8000     # Change to different port if needed
+POSTGRES_PORT=5432      # Change to different port if needed
+STUDIO_PORT=54323       # Change to different port if needed
 
 # Restart
 docker compose -f docker/docker-compose.yml down
@@ -283,7 +284,7 @@ grep SUPABASE_ANON_KEY .env
 
 ```bash
 # Replace YOUR_KEY with actual key from above
-curl "http://localhost:54321/rest/v1/species?select=*" \
+curl "http://localhost:8000/rest/v1/species?select=*" \
   -H "apikey: YOUR_KEY" \
   -H "Authorization: Bearer YOUR_KEY"
 ```
@@ -347,7 +348,7 @@ docker exec -it dftdb-db psql -U postgres
 
 ```
 Host: localhost (or 127.0.0.1)
-Port: 54322 (check POSTGRES_PORT in .env)
+Port: 5432 (check POSTGRES_PORT in .env)
 Database: postgres
 Username: postgres
 Password: (from POSTGRES_PASSWORD in .env)
@@ -724,7 +725,7 @@ curl http://localhost:54323
 # Should return HTML
 
 # 4. API is accessible
-curl http://localhost:54321/rest/v1/
+curl http://localhost:8000/rest/v1/
 # Should return JSON
 
 # 5. Database is accessible

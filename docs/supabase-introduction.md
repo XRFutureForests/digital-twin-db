@@ -55,17 +55,17 @@ For every table in your database, Supabase automatically creates API endpoints:
 ```
 Database Table: species
 ↓
-Auto-generated API: http://localhost:54321/rest/v1/species
+Auto-generated API: http://localhost:8000/rest/v1/species
 ```
 
 **Example - Get all tree species:**
 ```bash
-curl "http://localhost:54321/rest/v1/species?select=*"
+curl "http://localhost:8000/rest/v1/species?select=*"
 ```
 
 **Example - Get trees in a specific location:**
 ```bash
-curl "http://localhost:54321/rest/v1/trees?locationid=eq.15"
+curl "http://localhost:8000/rest/v1/trees?locationid=eq.15"
 ```
 
 No need to write API code! Supabase generates it all from your database schema.
@@ -245,7 +245,7 @@ api_key <- "eyJhbGci..."
 
 # Get all beech trees
 response <- GET(
-  "http://localhost:54321/rest/v1/trees",
+  "http://localhost:8000/rest/v1/trees",
   query = list(speciesid = "eq.1"),  # Filter: species ID = 1
   add_headers(
     apikey = api_key,
@@ -264,7 +264,7 @@ from supabase import create_client
 
 # Initialize client
 supabase = create_client(
-    "http://localhost:54321",
+    "http://localhost:8000",
     "your-anon-key"
 )
 

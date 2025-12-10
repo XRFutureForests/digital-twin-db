@@ -44,7 +44,7 @@ Then trigger the function:
 ```bash
 export SERVICE_ROLE_KEY="<your_key_from_.env>"
 
-curl -X POST "http://localhost:54321/functions/v1/ecosense-ingest?days_back=7" \
+curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=7" \
   -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
   -H "Content-Type: application/json"
 ```
@@ -98,7 +98,7 @@ Expected output: `reading_count` should be > 0 (e.g., 1500+)
 ### Test 2.1: Error Handling - Bad Authentication
 
 ```bash
-curl -X POST "http://localhost:54321/functions/v1/ecosense-ingest?days_back=7" \
+curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=7" \
   -H "Authorization: Bearer invalid_token" \
   -H "Content-Type: application/json"
 ```
@@ -121,11 +121,11 @@ Status should be **401** (not 500).
 export SERVICE_ROLE_KEY="<your_key>"
 
 # Test with days_back > 365 (should be clamped to 365)
-curl -X POST "http://localhost:54321/functions/v1/ecosense-ingest?days_back=400" \
+curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=400" \
   -H "Authorization: Bearer $SERVICE_ROLE_KEY"
 
 # Test with days_back < 1 (should be clamped to 1)
-curl -X POST "http://localhost:54321/functions/v1/ecosense-ingest?days_back=0" \
+curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=0" \
   -H "Authorization: Bearer $SERVICE_ROLE_KEY"
 ```
 
@@ -402,7 +402,7 @@ Expected output:
 Test with real Aquarius data:
 
 ```bash
-time curl -X POST "http://localhost:54321/functions/v1/ecosense-ingest?days_back=7" \
+time curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=7" \
   -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
   -w "\nHTTP Status: %{http_code}\n"
 ```

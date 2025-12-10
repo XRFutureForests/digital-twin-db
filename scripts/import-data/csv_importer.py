@@ -455,7 +455,7 @@ def main():
     env_path = Path(__file__).parent.parent.parent / "docker" / ".env"
     load_dotenv(env_path)
 
-    supabase_url = os.getenv("SUPABASE_URL", "http://localhost:54321")
+    supabase_url = os.getenv("SUPABASE_URL", "http://localhost:8000")
     service_role_key = os.getenv("SERVICE_ROLE_KEY")
 
     if not service_role_key:

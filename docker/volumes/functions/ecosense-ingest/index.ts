@@ -27,7 +27,7 @@ import { withRetry } from '../_shared/retry.ts'
  * @error 500 Internal Server Error - Database or Aquarius API errors
  *
  * @example
- * curl -X POST "http://localhost:54321/functions/v1/ecosense-ingest?days_back=7" \
+ * curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=7" \
  *   -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY"
  *
  * // Response (200 OK)
