@@ -393,6 +393,7 @@ services:
       - ./volumes/db/init/22-link-sensors-to-trees.sql:/docker-entrypoint-initdb.d/migrations/22-link-sensors-to-trees.sql:Z
       - ./volumes/db/init/23-processing-jobs.sql:/docker-entrypoint-initdb.d/migrations/23-processing-jobs.sql:Z
       - ./volumes/db/init/24-public-api-views.sql:/docker-entrypoint-initdb.d/migrations/24-public-api-views.sql:Z
+      - ./volumes/db/init/25-seed-aquarius-data.sql:/docker-entrypoint-initdb.d/migrations/25-seed-aquarius-data.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:

@@ -8,37 +8,13 @@
 -- SPECIES (Universal reference data)
 -- =============================================================================
 
-INSERT INTO shared.Species (CommonName, ScientificName, GrowthCharacteristics) VALUES
-    (
-        'European Beech',
-        'Fagus sylvatica',
-        '{"max_height_m": 40, "max_dbh_cm": 150, "typical_lifespan_years": 300, "growth_rate": "moderate", "shade_tolerance": "high"}'::jsonb
-    ),
-    (
-        'Pedunculate Oak',
-        'Quercus robur',
-        '{"max_height_m": 35, "max_dbh_cm": 200, "typical_lifespan_years": 500, "growth_rate": "slow", "shade_tolerance": "moderate"}'::jsonb
-    ),
-    (
-        'Norway Spruce',
-        'Picea abies',
-        '{"max_height_m": 50, "max_dbh_cm": 150, "typical_lifespan_years": 200, "growth_rate": "fast", "shade_tolerance": "high"}'::jsonb
-    ),
-    (
-        'Silver Fir',
-        'Abies alba',
-        '{"max_height_m": 50, "max_dbh_cm": 200, "typical_lifespan_years": 500, "growth_rate": "moderate", "shade_tolerance": "very_high"}'::jsonb
-    ),
-    (
-        'Scots Pine',
-        'Pinus sylvestris',
-        '{"max_height_m": 35, "max_dbh_cm": 100, "typical_lifespan_years": 300, "growth_rate": "moderate", "shade_tolerance": "low"}'::jsonb
-    ),
-    (
-        'Douglas Fir',
-        'Pseudotsuga menziesii',
-        '{"max_height_m": 60, "max_dbh_cm": 180, "typical_lifespan_years": 500, "growth_rate": "fast", "shade_tolerance": "moderate"}'::jsonb
-    );
+INSERT INTO shared.Species (CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance) VALUES
+    ('European Beech', 'Fagus sylvatica', 40, 150, 300, 'moderate', 'high'),
+    ('Pedunculate Oak', 'Quercus robur', 35, 200, 500, 'slow', 'moderate'),
+    ('Norway Spruce', 'Picea abies', 50, 150, 200, 'fast', 'high'),
+    ('Silver Fir', 'Abies alba', 50, 200, 500, 'moderate', 'very_high'),
+    ('Scots Pine', 'Pinus sylvestris', 35, 100, 300, 'moderate', 'low'),
+    ('Douglas Fir', 'Pseudotsuga menziesii', 60, 180, 500, 'fast', 'moderate');
 
 -- =============================================================================
 -- END OF LOOKUP DATA
