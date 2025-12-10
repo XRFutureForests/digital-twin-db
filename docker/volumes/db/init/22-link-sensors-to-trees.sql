@@ -179,8 +179,8 @@ SELECT
     substring(t.fieldnotes from 'TreeID: [^|]+') AS tree_identifier,
     substring(t.fieldnotes from 'FID: [0-9]+') AS tree_fid,
     l.locationname AS tree_location,
-    ST_X(t.position) AS tree_longitude,
-    ST_Y(t.position) AS tree_latitude
+    extensions.ST_X(t.position) AS tree_longitude,
+    extensions.ST_Y(t.position) AS tree_latitude
 FROM sensor.sensor_tree_links stl
 JOIN sensor.sensors s ON stl.sensor_id = s.sensorid
 JOIN sensor.sensortypes st ON s.sensortypeid = st.sensortypeid

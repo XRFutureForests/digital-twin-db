@@ -78,17 +78,27 @@ CREATE TABLE shared.Species (
     SpeciesID SERIAL PRIMARY KEY,
     CommonName VARCHAR(200),
     ScientificName VARCHAR(200) NOT NULL UNIQUE,
-    GrowthCharacteristics JSONB,
+    -- Growth characteristics as proper columns
+    MaxHeight_m NUMERIC(6, 2),
+    MaxDBH_cm NUMERIC(6, 2),
+    TypicalLifespan_years INTEGER,
+    GrowthRate VARCHAR(20) CHECK (GrowthRate IN ('very_slow', 'slow', 'moderate', 'fast', 'very_fast')),
+    ShadeTolerance VARCHAR(20) CHECK (ShadeTolerance IN ('very_low', 'low', 'moderate', 'high', 'very_high')),
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ
 );
 
 COMMENT ON TABLE shared.Species IS 'Tree species reference with growth characteristics';
-COMMENT ON COLUMN shared.Species.GrowthCharacteristics IS 'JSON object containing typical growth patterns, max height, lifespan, etc.';
+COMMENT ON COLUMN shared.Species.MaxHeight_m IS 'Maximum typical height in meters';
+COMMENT ON COLUMN shared.Species.MaxDBH_cm IS 'Maximum typical diameter at breast height in centimeters';
+COMMENT ON COLUMN shared.Species.TypicalLifespan_years IS 'Typical lifespan in years';
+COMMENT ON COLUMN shared.Species.GrowthRate IS 'Relative growth rate (very_slow, slow, moderate, fast, very_fast)';
+COMMENT ON COLUMN shared.Species.ShadeTolerance IS 'Shade tolerance level (very_low, low, moderate, high, very_high)';
 
 CREATE INDEX idx_species_scientific_name ON shared.Species(ScientificName);
 CREATE INDEX idx_species_common_name ON shared.Species(CommonName);
-CREATE INDEX idx_species_growth_characteristics ON shared.Species USING GIN (GrowthCharacteristics);
+CREATE INDEX idx_species_growth_rate ON shared.Species(GrowthRate);
+CREATE INDEX idx_species_shade_tolerance ON shared.Species(ShadeTolerance);
 
 -- =============================================================================
 -- SCENARIOS AND VARIANT TYPES
