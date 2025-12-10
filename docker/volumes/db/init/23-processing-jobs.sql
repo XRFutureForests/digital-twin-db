@@ -1,5 +1,5 @@
 -- XR Future Forests Lab - Processing Jobs Schema
--- This migration creates tables for tracking external processing jobs (e.g., Galaxy workflows)
+-- This migration creates tables for tracking external processing jobs and workflows
 
 -- Set search path
 SET search_path TO shared, public;
@@ -23,8 +23,8 @@ CREATE TABLE shared.ProcessingJobs (
     CONSTRAINT chk_completed_date CHECK (CompletedAt IS NULL OR CompletedAt >= SubmittedAt)
 );
 
-COMMENT ON TABLE shared.ProcessingJobs IS 'Tracks external processing jobs from Galaxy workflows and other compute services';
-COMMENT ON COLUMN shared.ProcessingJobs.ExternalJobID IS 'Unique identifier from external system (e.g., Galaxy job ID)';
+COMMENT ON TABLE shared.ProcessingJobs IS 'Tracks external processing jobs and compute workflows';
+COMMENT ON COLUMN shared.ProcessingJobs.ExternalJobID IS 'Unique identifier from external processing system';
 COMMENT ON COLUMN shared.ProcessingJobs.Status IS 'Job status: pending, running, completed, failed';
 COMMENT ON COLUMN shared.ProcessingJobs.InputData IS 'JSON representation of input parameters and data references';
 COMMENT ON COLUMN shared.ProcessingJobs.OutputData IS 'JSON representation of output data references and results';
@@ -72,6 +72,6 @@ BEGIN
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Processing Jobs Schema Created';
     RAISE NOTICE '=======================================================';
-    RAISE NOTICE 'Table: shared.ProcessingJobs - Ready for Galaxy integration';
+    RAISE NOTICE 'Table: shared.ProcessingJobs - Ready for external workflow integration';
     RAISE NOTICE '=======================================================';
 END $$;

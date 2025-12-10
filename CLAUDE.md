@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Digital Forest Twin Database** - A Supabase-powered PostgreSQL database infrastructure for forest research with PostGIS spatial support, real-time capabilities, and automated data integration.
 
 Key technologies:
+
 - **Supabase** - Self-hosted infrastructure
 - **PostgreSQL 15 + PostGIS** - Spatial database
 - **PostgREST** - Auto-generated REST APIs
@@ -71,12 +72,6 @@ python csv_importer.py --csv data.csv --table Trees --created-by "import_user" -
 # Trigger ecosense data sync (requires SERVICE_ROLE_KEY)
 curl -X POST "http://localhost:54321/functions/v1/ecosense-ingest?days_back=7" \
   -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY"
-
-# Submit Galaxy workflow job (under development)
-curl -X POST "http://localhost:54321/functions/v1/galaxy-submit" \
-  -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"workflow_name":"tree_detection","input_data":{"point_cloud_id":123}}'
 ```
 
 ### Resetting Database
@@ -122,6 +117,7 @@ docker compose up -d
    - `EnvironmentalConditions` - Processed environmental data
 
 All tables include:
+
 - **Variant tracking** - Version control for data iterations
 - **Audit logging** - Full change history (CreatedBy, CreatedAt)
 - **Row-Level Security** - Fine-grained access control
@@ -140,10 +136,11 @@ Migrations run automatically when database starts. Located in `docker/volumes/db
 | `15-environments-schema.sql` | Environmental data tables |
 | `16-rls-policies.sql` | Row-level security policies |
 | `17-audit-functions.sql` | Change tracking triggers |
-| `18-seed-data.sql` | Essential reference data |
+| `18a-seed-lookup-data.sql` | Species lookup data |
+| `18b-seed-sample-locations.sql` | Sample locations for testing |
 | `21-aquarius-integration.sql` | Aquarius API integration |
 | `22-link-sensors-to-trees.sql` | Sensor-tree associations |
-| `23-processing-jobs.sql` | Galaxy workflow tracking |
+| `23-processing-jobs.sql` | External workflow tracking |
 | `24-public-api-views.sql` | Public simplified API views |
 
 ### Edge Functions (Deno/TypeScript)
@@ -151,21 +148,14 @@ Migrations run automatically when database starts. Located in `docker/volumes/db
 Located in `docker/volumes/functions/`:
 
 **ecosense-ingest/index.ts**
+
 - Syncs sensor data from Aquarius API
 - Manages sensor metadata and time-series readings
 - Triggered via REST endpoint with `days_back` parameter
 - Uses `SERVICE_ROLE_KEY` authentication
 
-**galaxy-submit/index.ts**
-- Submits processing jobs to Galaxy workflows
-- Under development
-- Requires `SERVICE_ROLE_KEY`
-
-**galaxy-callback/index.ts**
-- Receives Galaxy workflow results
-- Uses HMAC signature validation (not JWT)
-
 **Shared utilities** (`_shared/`)
+
 - `database.ts` - Supabase client initialization
 - `aquarius.ts` - Aquarius API client
 - `validators.ts` - Authentication helpers
@@ -175,6 +165,7 @@ Located in `docker/volumes/functions/`:
 Located in `scripts/import-data/`:
 
 **csv_importer.py**
+
 - Interactive column mapping
 - Coordinate transformation (supports any EPSG code)
 - Automatic lookups for species, locations, sensor types
@@ -184,6 +175,7 @@ Located in `scripts/import-data/`:
 - Dry-run mode for validation
 
 Key features:
+
 - Supports Docker or Python environment
 - Maps CSV columns to any database field
 - Validates coordinates (-90 to 90 lat, -180 to 180 lon)
@@ -200,6 +192,7 @@ Port 4000  → Analytics (Logflare)
 ```
 
 **Service dependencies:**
+
 - Studio depends on Analytics
 - Kong/Auth/REST/Realtime/Storage depend on Analytics
 - All depend on database health checks
@@ -209,6 +202,7 @@ Port 4000  → Analytics (Logflare)
 Key environment variables in `docker/.env`:
 
 **Security (must be unique in production)**
+
 - `POSTGRES_PASSWORD` - Database password
 - `JWT_SECRET` - Token signing secret
 - `ANON_KEY` - Public API key
@@ -216,35 +210,41 @@ Key environment variables in `docker/.env`:
 - `SECRET_KEY_BASE` - Session encryption
 
 **API Configuration**
+
 - `PGRST_DB_SCHEMAS` - Schemas exposed via REST API (critical: must include custom schemas)
 - `PGRST_JWT_SECRET` - Must match JWT_SECRET
 
 **External Services**
+
 - `AQUARIUS_HOSTNAME`, `AQUARIUS_USERNAME`, `AQUARIUS_PASSWORD` - EcoSense sensor data API
-- `GALAXY_API_URL`, `GALAXY_API_KEY`, `GALAXY_WEBHOOK_SECRET` - Galaxy workflow integration
 
 **Access**
+
 - `DASHBOARD_USERNAME`, `DASHBOARD_PASSWORD` - Studio UI credentials
 - `SUPABASE_PUBLIC_URL` - External URL for Studio
 
 ## Key Design Patterns
 
 ### Geometry Storage
+
 - **PositionOriginal** - Preserves original coordinate reference system
 - **Position** - Always transformed to WGS84 (EPSG:4326) for consistency
 - Dual storage enables accurate coordinate transformations and historical CRS tracking
 
 ### Audit Trail
+
 - Every table has `CreatedBy` and `CreatedAt` fields
 - Database level triggers in `17-audit-functions.sql` track all changes
 - Query audit trail: `SELECT * FROM shared.processes WHERE TableName = 'Trees' ORDER BY CreatedAt DESC`
 
 ### Row-Level Security (RLS)
+
 - Implemented via PostgreSQL policies in `16-rls-policies.sql`
 - Controls data access based on user roles
 - Enforced at database layer for all API requests
 
 ### Data Import Pattern
+
 - CSV importer uses `SERVICE_ROLE_KEY` for full database access
 - All imports tracked with `CreatedBy` identifier
 - Batch operations with conflict handling
@@ -293,6 +293,7 @@ curl -X POST "http://localhost:54321/rest/v1/locations" \
 ## Important Notes
 
 ### Production Deployment
+
 - Regenerate all passwords, tokens, and encryption keys before production
 - Use strong cryptographic keys: `openssl rand -base64 32`
 - Set `DISABLE_SIGNUP=true` to prevent public registrations
@@ -300,16 +301,19 @@ curl -X POST "http://localhost:54321/rest/v1/locations" \
 - See `docs/deployment-guide.md` for full production setup
 
 ### Edge Function Auto-reload
+
 - Functions automatically reload on file changes during development
 - No Docker restart needed - changes take effect immediately
 - Keep `VERIFY_JWT=true` (set in `docker-compose.yml`) for security
 
 ### CSV Import Audit
+
 - All imports create an audit trail with `CreatedBy` identifier
 - Query your imports: `SELECT * FROM trees.Trees WHERE CreatedBy = 'your_name'`
 - Facilitate data lineage and reproducibility
 
 ### Coordinate Systems
+
 - Always use EPSG codes for coordinate transformations
 - Common codes: EPSG:4326 (WGS84), EPSG:32632 (UTM Zone 32N)
 - CSV importer validates latitude (-90 to 90) and longitude (-180 to 180)
@@ -317,6 +321,7 @@ curl -X POST "http://localhost:54321/rest/v1/locations" \
 ## Documentation Structure
 
 All documentation in `docs/`:
+
 - `README.md` - Documentation index
 - `supabase-introduction.md` - Supabase overview
 - `database-schema.md` - Complete schema specifications
@@ -326,6 +331,7 @@ All documentation in `docs/`:
 - `api-quick-reference.md` - Common API commands
 
 Docker-specific docs in `docker/`:
+
 - `README.md` - Docker setup and service details
 - `TROUBLESHOOTING.md` - Common issues and solutions
 - `CHANGELOG.md` - Version history
@@ -345,8 +351,7 @@ digital_twin_db/
 │   │   │   └── *.sql                 # Supabase infrastructure scripts
 │   │   ├── functions/                # Edge functions (Deno/TypeScript)
 │   │   │   ├── ecosense-ingest/
-│   │   │   ├── galaxy-submit/
-│   │   │   ├── galaxy-callback/
+│   │   │   ├── hello/                # Test function
 │   │   │   └── _shared/              # Shared utility modules
 │   │   ├── storage/                  # File storage volume
 │   │   └── logs/                     # Vector logging configuration

@@ -384,10 +384,11 @@ Migrations run automatically on first database startup from `docker/volumes/db/i
 6. `15-environments-schema.sql` - Environmental conditions
 7. `16-rls-policies.sql` - Row-level security policies
 8. `17-audit-functions.sql` - Audit logging functions
-9. `18-seed-data.sql` - Reference data (species, locations)
-10. `21-aquarius-integration.sql` - Aquarius time series API integration
-11. `22-link-sensors-to-trees.sql` - Associate sensors with trees
-12. `23-processing-jobs.sql` - Galaxy workflow job tracking
+9. `18a-seed-lookup-data.sql` - Species lookup data
+10. `18b-seed-sample-locations.sql` - Sample locations for testing
+11. `21-aquarius-integration.sql` - Aquarius time series API integration
+12. `22-link-sensors-to-trees.sql` - Associate sensors with trees
+13. `23-processing-jobs.sql` - External workflow job tracking
 
 ### Creating New Migrations
 
