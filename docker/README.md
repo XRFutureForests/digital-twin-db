@@ -37,7 +37,7 @@ POSTGRES_PORT=5432           # Database (via Supavisor pooler)
 ### 2. Start Services
 
 ```bash
-cd /home/maximilian_sperlich/git/digital_twin_db/docker
+cd docker
 
 # Start all services
 docker compose up -d
@@ -75,9 +75,13 @@ The forest database schemas are automatically initialized via SQL files in `volu
 | `17-audit-functions.sql` | Change tracking |
 | `18a-seed-lookup-data.sql` | Species lookup data |
 | `18b-seed-sample-locations.sql` | Sample locations for testing |
+| `19-mathisle-seed-data.sql` | Mathisle data seeding |
+| `20-mathisle-tree-import.sql` | Mathisle tree data import |
 | `21-aquarius-integration.sql` | Aquarius time series API integration |
 | `22-link-sensors-to-trees.sql` | Associate sensors with tree measurements |
 | `23-processing-jobs.sql` | External workflow job tracking |
+| `24-public-api-views.sql` | Public API views |
+| `25-seed-aquarius-data.sql` | Aquarius data seeding |
 
 These run automatically when the database is first initialized.
 
