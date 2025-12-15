@@ -15,7 +15,7 @@ Get the database running locally in 2 steps:
 ```bash
 # 1. Clone the repository
 git clone <repository-url>
-cd digital_twin_db
+cd digital-twin
 
 # 2. Start the Supabase stack (official Docker setup with pre-configured .env)
 cd docker
@@ -414,9 +414,9 @@ docker compose logs -f
 
 **Update database schema**:
 
-1. Create new migration file: `docker/volumes/db/init/19-your-changes.sql`
+1. Create new migration file: `docker/volumes/db/init/26-your-changes.sql`
 2. Write SQL DDL commands
-3. Apply manually: `docker exec -i dftdb-db psql -U postgres < docker/volumes/db/init/19-your-changes.sql`
+3. Apply manually: `docker exec -i dftdb-db psql -U postgres < docker/volumes/db/init/26-your-changes.sql`
 
 **Create Edge Functions**:
 
