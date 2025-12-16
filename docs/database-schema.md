@@ -431,6 +431,7 @@ erDiagram
         geometry CrownBoundary "PostGIS polygon"
         float Volume_m3 "Total tree volume"
         geometry Position "PostGIS point (tree coordinates)"
+        geometry PositionOriginal "Original CRS coordinates"
         float LeanAngle_deg "0-90 degrees from vertical"
         integer LeanDirection_azimuth "0-360 degrees, 0=North"
         float TimeDelta_yrs "Time since parent variant (for growth)"
@@ -465,6 +466,8 @@ erDiagram
     Trees ||--o{ Stems : "has_stems"
     Trees }o--|| Trees : "parent_variant"
 ```
+
+**Note**: The trees schema uses a variant-based approach for temporal tracking rather than a separate TreeSimulations table. Growth simulations are represented as new tree variants with ParentVariantID linkage.
 
 ### Utility Views
 

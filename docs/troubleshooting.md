@@ -11,16 +11,19 @@ This guide helps you solve common problems when running the database locally.
 90% of issues can be fixed by restarting:
 
 ```bash
+# Navigate to docker directory first
+cd docker
+
 # Stop everything
-docker compose -f docker/docker-compose.yml down
+docker compose down
 
 # Wait 5 seconds
 
 # Start again
-docker compose -f docker/docker-compose.yml up -d
+docker compose up -d
 
 # Check status
-docker compose -f docker/docker-compose.yml ps
+docker compose ps
 ```
 
 If this doesn't work, keep reading!
@@ -236,10 +239,12 @@ If this returns HTML, Studio is working but might be a browser issue.
 ls -la .env
 ```
 
-If it doesn't exist:
+If it doesn't exist, copy from the example:
 
 ```bash
-./utils/generate-keys.sh --write
+cp docker/.env.example docker/.env
+# Then edit with your own values
+nano docker/.env
 ```
 
 **Step 2: Verify keys are set**
@@ -255,13 +260,18 @@ Both should have long strings, not placeholders.
 
 ```bash
 # Backup current .env
-cp .env .env.backup
+cp docker/.env docker/.env.backup
 
-# Generate new keys
-./utils/generate-keys.sh --write
+# Generate new keys with openssl
+cd docker
+openssl rand -base64 32  # Use for JWT_SECRET
+openssl rand -base64 32  # Use for other secrets
+
+# Edit .env and paste new keys
+nano .env
 
 # Restart services
-docker compose -f docker/docker-compose.yml restart
+docker compose restart
 ```
 
 ---
@@ -442,10 +452,10 @@ docker exec -it dftdb-db psql -U postgres -c "\dt shared.*"
 
 ```bash
 # Check if seed migration ran
-docker compose -f docker/docker-compose.yml logs db | grep "18-seed-data"
+docker compose logs db | grep "18a-seed-lookup"
 
 # If it didn't run, apply it manually
-docker exec -it dftdb-db psql -U postgres -f /docker-entrypoint-initdb.d/18-seed-data.sql
+docker exec -it dftdb-db psql -U postgres -f /docker-entrypoint-initdb.d/migrations/18a-seed-lookup-data.sql
 ```
 
 ---
@@ -658,20 +668,22 @@ docker exec -it xr_forests_kong curl http://rest:3000
 ⚠️ **Warning**: This deletes everything and starts fresh!
 
 ```bash
+cd docker
+
 # 1. Stop all containers
-docker compose -f docker/docker-compose.yml down -v
+docker compose down -v
 
-# 2. Remove all images
-docker compose -f docker/docker-compose.yml down --rmi all
+# 2. Remove persistent database directory
+sudo rm -rf volumes/db/data
 
-# 3. Clean Docker system
+# 3. Clean Docker system (optional)
 docker system prune -a --volumes
 
-# 4. Regenerate keys
-./utils/generate-keys.sh --write
+# 4. Verify .env has proper keys (regenerate if needed)
+cat .env | grep JWT_SECRET
 
 # 5. Start fresh
-docker compose -f docker/docker-compose.yml up -d
+docker compose up -d
 ```
 
 ### Gather Information for Help
@@ -712,12 +724,15 @@ cat .env | grep -v SECRET | grep -v KEY | grep -v PASSWORD
 Use this to verify everything is working:
 
 ```bash
+# From the docker directory:
+cd docker
+
 # 1. Docker is running
 docker ps
-# Should list 8-10 containers
+# Should list 10+ containers
 
 # 2. All services are up
-docker compose -f docker/docker-compose.yml ps
+docker compose ps
 # All should show "Up" or "Up (healthy)"
 
 # 3. Studio is accessible
@@ -738,7 +753,7 @@ docker exec -it dftdb-db psql -U postgres -c "\dn"
 
 # 7. Reference data exists
 docker exec -it dftdb-db psql -U postgres -c "SELECT COUNT(*) FROM shared.species;"
-# Should return: 5 (basic species reference data)
+# Should return: 13+ (species reference data)
 ```
 
 All checks pass? You're good to go! 🎉

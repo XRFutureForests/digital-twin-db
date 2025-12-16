@@ -88,38 +88,42 @@ Real environmental sensor data from Douglas Fir tree monitoring in EcoSense mixe
 
 ## How to Import Data
 
-Use the Python CSV importer tool located in `scripts/`:
+Use the interactive Jupyter notebooks located in `scripts/`:
 
 ```bash
-# Install dependencies first
+# Setup environment (one-time)
 cd scripts
-pip install -r requirements.txt
+conda env create -f environment.yml
+conda activate digital-twin
 
-# Import tree data from Mathisle (WGS84 coordinates)
-python csv_importer.py \
-  --csv ../../data/mathisle_250904.csv \
-  --table Trees \
-  --created-by "your_name" \
-  --crs EPSG:4326 \
-  --interactive
+# Start Jupyter and open import_trees.ipynb
+jupyter notebook
 
-# Import tree data from EcoSense (UTM Zone 32N coordinates)
-python csv_importer.py \
-  --csv ../../data/ecosense/ecosense_250908.csv \
-  --table Trees \
-  --created-by "your_name" \
-  --crs EPSG:32632 \
-  --interactive
+# Or use R Markdown version in RStudio
+# Open import_trees.Rmd
 ```
 
-The `--interactive` flag will prompt you to map each CSV column to the appropriate database field. The importer will:
+### Import Workflow
+
+The notebooks provide a step-by-step interactive workflow:
+
+1. **Connect to database** and display available tables/columns
+2. **Load your CSV** (e.g., `mathisle_250904.csv` or `ecosense_250908.csv`)
+3. **Explore reference data** (species, locations, sensor types)
+4. **Define column mappings** with LOOKUP support to inspect values
+5. **Handle coordinates** - Specify CRS (e.g., `EPSG:4326` for WGS84, `EPSG:32632` for UTM)
+6. **Preview data** organized by table before insertion
+7. **Save mapping** as JSON for reuse
+8. **Insert data** (optional, review first)
+
+The notebooks will:
 
 - Display the first 5 rows of your CSV
-- Prompt you to map columns to database fields
+- Let you interactively map columns to database fields
 - Handle species lookups automatically
-- Transform coordinates to WGS84
+- Transform coordinates from any CRS to WGS84
 - Store both original and transformed geometries
-- Track all changes with your `--created-by` identifier for audit purposes
+- Track all changes with `CreatedBy` field for audit purposes
 
 For detailed usage instructions and troubleshooting, see [`scripts/README.md`](../scripts/README.md).
 

@@ -7,6 +7,7 @@ Comprehensive guide to the database structure, connected services, and interacti
 The Digital Forest Twin is a PostgreSQL-based database infrastructure for forest research with PostGIS spatial support, real-time capabilities, and automated data integration.
 
 **Core Technologies:**
+
 - PostgreSQL 15 + PostGIS (spatial database)
 - Supabase (self-hosted infrastructure)
 - PostgREST (auto-generated REST APIs)
@@ -20,6 +21,7 @@ The Digital Forest Twin is a PostgreSQL-based database infrastructure for forest
 The database is organized into 5 custom schemas, each handling a specific domain:
 
 #### 1. **shared** - Reference & Audit Data
+
 Central location for lookup tables and audit functionality used across all domains.
 
 | Table | Purpose |
@@ -35,11 +37,13 @@ Central location for lookup tables and audit functionality used across all domai
 | `ProcessMetrics` | Metrics from processing operations |
 
 **Audit Junction Tables:**
+
 - `ProcessParameters_PointClouds`, `_Trees`, `_Environments`, `_Stems`
 - `AuditLog_PointClouds`, `_Trees`, `_Environments`, `_Stems`
 - Map audit/process data to domain-specific variants
 
 #### 2. **pointclouds** - LiDAR Data Management
+
 Handles point cloud scan data and processing variants.
 
 | Table | Purpose |
@@ -47,12 +51,14 @@ Handles point cloud scan data and processing variants.
 | `PointClouds` | LiDAR scan metadata with S3 paths, quality metrics |
 
 **Key Fields:**
+
 - `LocationID` - Links to specific forest plot
 - `S3Path` - Object storage reference
 - `ProcessingVariants` - Track different processing attempts
 - `VariantID` - Variant tracking for temporal lineage
 
 #### 3. **trees** - Tree Measurements & Growth Models
+
 Individual tree data with support for multi-stem trees and growth simulations.
 
 | Table | Purpose |
@@ -66,6 +72,7 @@ Individual tree data with support for multi-stem trees and growth simulations.
 | `BarkCharacteristics` | Bark feature classifications |
 
 **Key Fields (Trees):**
+
 - `LocationID` - Forest plot location
 - `Position` - WGS84 point geometry (tree position)
 - `PositionOriginal` - Original coordinate system with elevation
@@ -75,6 +82,7 @@ Individual tree data with support for multi-stem trees and growth simulations.
 - `CreatedBy`, `CreatedAt` - Audit trail
 
 #### 4. **sensor** - Environmental Monitoring
+
 Sensor hardware configuration and time-series environmental data.
 
 | Table | Purpose |
@@ -85,14 +93,18 @@ Sensor hardware configuration and time-series environmental data.
 | `SensorTreeLinks` | Relationships between sensors and individual trees |
 
 **Key Fields (Sensors):**
+
 - `LocationID` - Forest plot where sensor is installed
 - `Position` - WGS84 point geometry (sensor location)
+- `PositionOriginal` - Original CRS coordinates before transformation
 - `SensorTypeID` - Links to SensorTypes
 - `SerialNumber`, `ExternalID` - Hardware identification
 - `InstallationDate`, `DecommissionDate` - Lifecycle tracking
 - `IsActive` - Current status
+- `ExternalID`, `ExternalMetadata` - Integration with external systems (e.g., Aquarius)
 
 **Key Fields (SensorReadings):**
+
 - `SensorID` - Links to Sensors table
 - `Timestamp` - Measurement time
 - `Value`, `Unit` - Actual measurement data
@@ -100,10 +112,12 @@ Sensor hardware configuration and time-series environmental data.
 - `BatteryVoltage`, `SignalStrength` - Hardware diagnostics
 
 **Key Fields (SensorTreeLinks):**
+
 - `SensorID`, `TreeID` - Direct relationship between sensor and tree
 - Enables growth monitoring and environmental correlation analysis
 
 #### 5. **environments** - Environmental Conditions
+
 Processed environmental data from sensor networks or simulations.
 
 | Table | Purpose |
@@ -113,6 +127,7 @@ Processed environmental data from sensor networks or simulations.
 ### Design Patterns
 
 #### Variant-Based Lineage
+
 Point clouds, trees, and environments use a parent-child variant pattern for version control:
 
 ```
@@ -123,11 +138,13 @@ VariantID (unique identifier for this version)
 ```
 
 This enables:
+
 - Temporal tracking of data changes
 - Comparison between different processing approaches
 - Reproducible analysis scenarios
 
 #### PostGIS Geometry Storage
+
 All spatial data uses PostGIS geometries:
 
 ```sql
@@ -140,13 +157,16 @@ PositionOriginal    -- Preserves original CRS
 ```
 
 #### Audit Trail
+
 Every variant table includes:
+
 - `CreatedBy` - User/system identifier
 - `CreatedAt` - Timestamp
 - `UpdatedBy` - Last modifier
 - `UpdatedAt` - Last modification time
 
 Linked to `Processes` table for full change history:
+
 ```sql
 SELECT * FROM shared.Processes
 WHERE TableName = 'Trees'
@@ -154,7 +174,9 @@ ORDER BY CreatedAt DESC;
 ```
 
 #### External System Integration
+
 Sensors table supports external integrations:
+
 - `ExternalID` - ID in external system (e.g., Aquarius API)
 - `ExternalMetadata` - JSONB metadata from external source
 - Enables bidirectional sync with APIs
@@ -177,6 +199,7 @@ Services run in Docker Compose (see `docker/docker-compose.yml`):
 | **analytics** | 4000 | Logging (Logflare) |
 
 **Service Dependencies:**
+
 - All depend on database health checks
 - Kong/Auth/REST depend on Analytics
 - Studio depends on Analytics
@@ -186,29 +209,35 @@ Services run in Docker Compose (see `docker/docker-compose.yml`):
 Serverless TypeScript/Deno functions deployed at `docker/volumes/functions/`:
 
 #### ecosense-ingest
+
 Syncs sensor data from Aquarius API to SensorReadings table.
 
 **Endpoint:** `POST http://localhost:8000/functions/v1/ecosense-ingest`
 
 **Parameters:**
+
 - `days_back` - Number of days to sync (e.g., 7)
 
 **Authentication:** `SERVICE_ROLE_KEY` required
 
 **Functionality:**
+
 - Fetches readings from Aquarius API
 - Creates/updates Sensor records
 - Inserts SensorReadings with validation
 - Tracks external IDs for deduplication
 
 **Example:**
+
 ```bash
 curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=7" \
   -H "Authorization: Bearer $SERVICE_ROLE_KEY"
 ```
 
 #### Shared Utilities
+
 `_shared/` directory contains reusable modules:
+
 - `database.ts` - Supabase client initialization
 - `aquarius.ts` - Aquarius API client
 - `validators.ts` - Authentication helpers
@@ -241,6 +270,7 @@ curl -X POST "http://localhost:8000/rest/v1/locations" \
 
 **Accessible Schemas:**
 Set in `docker/.env` via `PGRST_DB_SCHEMAS`:
+
 ```
 shared,pointclouds,trees,sensor,environments
 ```
@@ -255,6 +285,7 @@ Two API keys (in `docker/.env`):
 ### Row-Level Security (RLS)
 
 PostgreSQL policies enforce access control at database layer:
+
 - Implemented in `16-rls-policies.sql`
 - All API requests respect RLS regardless of client
 - Prevents unauthorized data access
@@ -263,36 +294,37 @@ PostgreSQL policies enforce access control at database layer:
 
 ### Importing Data
 
-**CSV Importer Script:**
-Located in `scripts/import_trees.py`
+**Interactive Jupyter Notebooks:**
+Located in `scripts/import_trees.ipynb` (Python) and `scripts/import_trees.Rmd` (R)
 
 ```bash
 # Setup
+cd scripts
 conda env create -f environment.yml
 conda activate digital-twin
 
-# Test import (dry-run)
-python import_trees.py mathisle \
-  --csv data/mathisle_250904.csv \
-  --created-by "username" \
-  --dry-run
+# Start Jupyter notebook
+jupyter notebook
+# Open import_trees.ipynb and follow the step-by-step workflow
 
-# Run import
-python import_trees.py mathisle \
-  --csv data/mathisle_250904.csv \
-  --created-by "username"
+# Or use R Markdown in RStudio
+# Open import_trees.Rmd
 ```
 
 **Features:**
-- Automatic coordinate transformation (UTM → WGS84)
-- Species name/code matching
-- Location lookup
-- Batch processing (70+ rows/sec)
-- Audit trail via CreatedBy
+
+- Interactive column mapping with LOOKUP support
+- Automatic coordinate transformation (any CRS → WGS84)
+- Species name/code matching via database lookups
+- Location lookup and validation
+- Preview data before insertion
+- Save/load column mappings as JSON
+- Audit trail via CreatedBy field
 
 ### Querying Data
 
 **Via REST API:**
+
 ```bash
 # Get trees at specific location with species
 curl "http://localhost:8000/rest/v1/trees?locationid=eq.4&select=*,species(commonname)" \
@@ -300,6 +332,7 @@ curl "http://localhost:8000/rest/v1/trees?locationid=eq.4&select=*,species(commo
 ```
 
 **Via psql (direct database access):**
+
 ```bash
 docker exec -it dftdb-db psql -U postgres
 
@@ -322,6 +355,7 @@ LIMIT 10;
 ### Working with Geometry
 
 **PostGIS Functions:**
+
 ```bash
 # Distance between two points (in meters)
 SELECT ST_Distance(
@@ -352,19 +386,23 @@ WHERE ST_Contains(
 Key variables in `docker/.env`:
 
 **Database:**
+
 - `POSTGRES_PASSWORD` - Database password
 - `PGRST_DB_SCHEMAS` - Schemas exposed via REST API
 
 **Security:**
+
 - `JWT_SECRET` - Token signing secret
 - `ANON_KEY` - Public API key
 - `SERVICE_ROLE_KEY` - Admin API key
 - `SECRET_KEY_BASE` - Session encryption
 
 **External Services:**
+
 - `AQUARIUS_HOSTNAME`, `AQUARIUS_USERNAME`, `AQUARIUS_PASSWORD` - EcoSense API credentials
 
 **Access:**
+
 - `DASHBOARD_USERNAME`, `DASHBOARD_PASSWORD` - Supabase Studio login
 - `SUPABASE_PUBLIC_URL` - External URL for Studio
 
@@ -392,6 +430,7 @@ Migrations run automatically when database starts. Located in `docker/volumes/db
 ## Common Operations
 
 ### Start/Stop Stack
+
 ```bash
 cd docker
 docker compose up -d      # Start services
@@ -401,6 +440,7 @@ docker compose logs -f    # View logs
 ```
 
 ### Database Access
+
 ```bash
 # Direct PostgreSQL access
 docker exec -it dftdb-db psql -U postgres
@@ -416,6 +456,7 @@ SELECT * FROM shared.species;
 ```
 
 ### Resetting Database
+
 ```bash
 cd docker
 ./reset.sh                    # Full reset (removes all data)
@@ -427,6 +468,7 @@ docker compose up -d
 ```
 
 ### Checking Imports
+
 ```bash
 # Count trees by importer
 docker exec -it dftdb-db psql -U postgres -c \

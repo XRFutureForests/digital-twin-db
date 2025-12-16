@@ -85,11 +85,13 @@ The forest database schemas are automatically initialized via SQL files in `volu
 
 These run automatically when the database is first initialized.
 
-**Data Import**: The database initializes with minimal reference data only. To import tree inventory and sensor data, use the Python CSV importer:
+**Data Import**: The database initializes with minimal reference data only. To import tree inventory and sensor data, use the interactive Jupyter notebooks:
 
 ```bash
 cd ../scripts
-python csv_importer.py --interactive
+conda env create -f environment.yml  # One-time setup
+conda activate digital-twin
+jupyter notebook  # Open import_trees.ipynb
 ```
 
 See [`scripts/README.md`](../scripts/README.md) for detailed import instructions.
