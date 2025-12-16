@@ -1,21 +1,20 @@
-# CSV Importer - User Guide
+# Data Importer Scripts
 
-Flexible, audit-aware tool for importing CSV data into the Digital Forest Twin Database with interactive column mapping.
+Interactive database schema introspection and CSV column mapping tools. Available in Python and R.
 
-## Installation
+## Overview
 
-You have three options to run the CSV importer:
+These scripts help you import CSV data into the database by:
 
-### Option 1: Docker (Recommended - No Python installation required)
+1. **Connecting to the database** and retrieving all table and column definitions
+2. **Loading your CSV file** and showing you the available columns
+3. **Creating an interactive mapping** between CSV columns and database tables/columns
+4. **Generating a mapping file** that you can reuse or edit
+5. **Preparing data as DataFrames/Tibbles** ready for insertion
 
-```bash
-cd scripts/import-data
-./import-docker.sh --help
-```
+## Quick Start
 
-The first run will build a Docker image with all dependencies. This is the easiest option if you don't have Python/conda installed.
-
-### Option 2: Conda Environment
+### Setup (One-time)
 
 ```bash
 cd scripts/import-data
@@ -23,371 +22,320 @@ conda env create -f environment.yml
 conda activate digital-twin
 ```
 
-**Requirements:**
-
-- Docker (Option 1) OR Conda (Option 2)
-- Access to `.env` file in `docker/` directory (for database credentials)
-- Running Supabase stack (`docker compose up` in `docker/` directory)
-
-## Basic Usage
-
-### Using Docker
+### Python
 
 ```bash
-./import-docker.sh \
-  --csv /data/PATH_TO_CSV \
-  --table TABLE_NAME \
-  --created-by YOUR_NAME \
-  [--crs EPSG:CODE] \
-  [--interactive] \
-  [--dry-run]
+# Run the importer
+python import_trees.py
+
+# Follow the interactive prompts:
+# 1. Database schema will be displayed
+# 2. CSV file will be loaded (defaults to mathisle_250904.csv)
+# 3. You'll map each column interactively: schema.table.column
+# 4. Mapping is saved as JSON
+# 5. Data preview shown before insertion
 ```
 
-### Using Python directly
+### R
 
 ```bash
-python csv_importer.py \
-  --csv PATH_TO_CSV \
-  --table TABLE_NAME \
-  --created-by YOUR_NAME \
-  [--crs EPSG:CODE] \
-  [--interactive] \
-  [--dry-run]
+# Run the importer
+Rscript import_trees.R
+
+# Follow the interactive prompts (same workflow as Python)
 ```
 
-Note: When using Docker, CSV file paths should be relative to the `data/` directory (automatically mounted as `/data` in the container).
+## Workflow
 
-### Required Arguments
+### Step 1: Database Introspection
 
-- `--csv` - Path to CSV file to import
-- `--table` - Target database table (e.g., `Trees`, `sensor.Sensors`)
-- `--created-by` - Your name/identifier for audit trail (tracked in `CreatedBy` field)
+The script connects to the database and displays:
 
-### Optional Arguments
-
-- `--crs` - Source coordinate reference system (e.g., `EPSG:32632` for UTM Zone 32N, `EPSG:4326` for WGS84)
-- `--interactive` - Enable interactive column mapping (default: true)
-- `--dry-run` - Validate CSV and mappings without inserting data
-
-## Interactive Column Mapping
-
-When you run the importer in interactive mode, it will:
-
-1. **Preview your CSV** - Shows first 5 rows and column names
-2. **Prompt for each column** - You map CSV columns to database fields
-
-For each column, you can enter:
-
-- **Database field name** (e.g., `Height_m`, `SpeciesID`, `SerialNumber`)
-- **`lat` or `lon`** - For geometry coordinates (latitude/longitude)
-- **`x` or `y`** - For geometry coordinates (projected systems like UTM)
-- **`skip`** - Ignore this column
-
-### Example Session
-
-```
-📄 CSV Preview (mathisle_250904.csv):
-Total rows: 743
-Columns: ['species_short', 'date_time', 'qr_code', 'gps_latitude', 'gps_longitude', 'DBH', 'TreeID']
-
-🗺️  Column Mapping for table 'Trees'
-============================================================
-
-Column: 'species_short'
-Sample values: ['BE', 'BE', 'BE']
-Map to: SpeciesID
-
-Column: 'gps_latitude'
-Sample values: [47.8851, 47.8852, 47.8850]
-Map to: lat
-
-Column: 'gps_longitude'
-Sample values: [8.0881, 8.0882, 8.0880]
-Map to: lon
-
-Column: 'DBH'
-Sample values: [0.42, 0.38, 0.51]
-Map to: skip
-
-Column: 'TreeID'
-Sample values: [1, 2, 3]
-Map to: skip
-
-📋 Column Mapping Summary:
-  species_short                  → SpeciesID
-  gps_latitude                   → lat
-  gps_longitude                  → lon
-  DBH                            → skip
-  TreeID                         → skip
-
-⚠️  Proceed with import to 'Trees'? (yes/no):
+```text
+📦 Schema: trees
+  📋 Trees (10 columns)
+     1. VariantID
+     2. LocationID
+     3. SpeciesID
+     ...
 ```
 
-## Geometry Handling
+All available schemas, tables, and columns are listed for reference.
 
-The importer supports dual geometry storage:
+### Step 2: CSV Loading
 
-### With CRS Specified
+Your CSV file is loaded and previewed:
 
-```bash
---crs EPSG:32632  # UTM Zone 32N
+```text
+📄 CSV File: mathisle_250904.csv
+   Rows: 741
+   Columns: species_short, gps_latitude, gps_longitude, ...
+
+First 3 rows:
+[data preview]
 ```
 
-- **PositionOriginal**: Stores coordinates in original CRS
-- **Position**: Transformed to WGS84 (EPSG:4326)
+### Step 3: Reference Data & Species Mapping
 
-### Without CRS
+The script displays reference tables to help with mapping:
 
-```bash
-# No --crs parameter
+```text
+📚 REFERENCE DATA - Use these for mapping CSV values to database IDs
+
+📚 Species:
+SpeciesID  CommonName         ScientificName
+    1      European Beech     Fagus sylvatica
+    6      Douglas Fir        Pseudotsuga menziesii
+    ...
+
+📚 Locations:
+LocationID  LocationName
+    4       Ecosense_MixedPlot
+    1       University Forest Plot A
+    ...
 ```
 
-- **Position**: Stores coordinates as-is (assumes WGS84)
-- **PositionOriginal**: NULL
+**How to handle species mapping:**
 
-### Coordinate Validation
+Your CSV might have species as names (e.g., "Beech", "Douglas Fir"), but the database uses numeric IDs (1, 6, etc.).
 
-The importer validates all coordinates:
+### Option 1: Map directly to CommonName (recommended)
 
-- Latitude: -90 to 90
-- Longitude: -180 to 180
+- `csv_species_column` → `shared.Species.CommonName`
+- The actual CSV values ("Beech", "Douglas Fir") will be inserted as species names
+- Database will match them to IDs via foreign key
 
-Invalid coordinates will cause the import to skip that row with an error message.
+### Option 2: Pre-map species in CSV
 
-## Automatic Lookups
+- Create a lookup: "Beech" → 1, "Douglas Fir" → 6
+- Edit your CSV before importing OR
+- Edit the mapping JSON to transform values
+- Then map to `SpeciesID` column directly
 
-The importer performs automatic lookups for:
+### Option 3: Use LOOKUP during mapping
 
-### Species
+- Type `LOOKUP` when prompted for a column
+- See sample CSV values to understand encoding
+- Then decide on mapping strategy
 
-Map column to `SpeciesID`:
+### Step 4: Interactive Mapping
 
-- Searches by common name OR scientific name
-- Case-insensitive fuzzy matching
-- Example: "Beech", "beech", "Fagus sylvatica" all match
+For each CSV column, you specify where it goes in the database:
 
-### Locations
+```text
+'species_short' maps to: shared.Species.CommonName
+✓ Mapped to shared.Species.CommonName
 
-Map column to `LocationID`:
+'gps_latitude' maps to: trees.Trees.Position
+✓ Mapped to trees.Trees.Position
 
-- Searches by location name
-- Case-insensitive partial matching
-
-### Sensor Types
-
-Map column to `SensorTypeID`:
-
-- Searches by sensor type name
-- Case-insensitive partial matching
-
-## Import Examples
-
-### Tree Inventory (WGS84 coordinates)
-
-**Docker:**
-
-```bash
-./import-docker.sh \
-  --csv /data/mathisle_250904.csv \
-  --table Trees \
-  --created-by "max_import_2024" \
-  --crs EPSG:4326 \
-  --interactive
+...
 ```
+
+**Format:** `schema.table.column`
+
+**Special values:**
+
+- `SKIP` - Ignore this column
+- `LOOKUP` - See sample values from CSV to help decide mapping
+
+### Step 4: Mapping Storage
+
+The mapping is automatically saved as JSON:
+
+```json
+{
+  "species_short": {
+    "schema": "trees",
+    "table": "Trees",
+    "column": "SpeciesID"
+  },
+  "gps_latitude": {
+    "schema": "trees",
+    "table": "Trees",
+    "column": "Position"
+  }
+}
+```
+
+You can edit this file and reuse it for multiple imports.
+
+### Step 5: Data Preparation
+
+Data is organized by table:
+
+```text
+📊 trees.Trees (741 rows, 3 columns)
+   Columns: SpeciesID, Position, FieldNotes
+
+   First 2 rows:
+   [data preview]
+
+📊 shared.Species (0 rows, 0 columns)
+   [if any species data was mapped]
+```
+
+### Step 6: Insertion
+
+Data is prepared as DataFrames/Tibbles ready for insertion:
 
 **Python:**
 
-```bash
-python csv_importer.py \
-  --csv ../../data/mathisle_250904.csv \
-  --table Trees \
-  --created-by "max_import_2024" \
-  --crs EPSG:4326 \
-  --interactive
+```python
+for table_name, df in table_dfs.items():
+    importer.supabase.table(table_name).insert(df.to_dict('records')).execute()
 ```
 
-### Tree Inventory (UTM coordinates)
+**R:**
 
-**Docker:**
-
-```bash
-./import-docker.sh \
-  --csv /data/ecosense/ecosense_250908.csv \
-  --table Trees \
-  --created-by "ecosense_import_nov2024" \
-  --crs EPSG:32632 \
-  --interactive
+```r
+for (table_name in names(table_dfs)) {
+  df <- table_dfs[[table_name]]
+  # Use RPostgres or httr to insert
+}
 ```
+
+## Column Mapping Examples
+
+### For Mathisle Trees
+
+Map the Mathisle CSV columns to database tables:
+
+| CSV Column | Maps To | Format |
+|---|---|---|
+| `species_short` | Species lookup | `shared.Species.CommonName` |
+| `gps_latitude` | Tree position | `trees.Trees.Position` |
+| `gps_longitude` | Tree position | `trees.Trees.Position` |
+| `DBH` | Field notes | `trees.Trees.FieldNotes` |
+| `TreeID` | Field notes | `trees.Trees.FieldNotes` |
+
+### For EcoSense Trees
+
+| CSV Column | Maps To | Format |
+|---|---|---|
+| `species` | Species lookup | `shared.Species.CommonName` |
+| `x_32632` | Sensor position | `sensor.Sensors.Position` |
+| `y_32632` | Sensor position | `sensor.Sensors.Position` |
+| `diameter_m` | Field notes | `sensor.Sensors.FieldNotes` |
+
+## Database Prerequisites
+
+Before running imports:
+
+1. **Database running:**
+   ```bash
+   cd docker
+   docker compose ps
+   ```
+
+2. **Environment variables in `docker/.env`:**
+
+   - `SUPABASE_URL` - Database URL (default: `http://localhost:8000`)
+   - `SERVICE_ROLE_KEY` - Admin API key (required)
+
+3. **Reference data exists:**
+
+   ```bash
+   # Check if species exist
+   docker exec -it dftdb-db psql -U postgres -c "SELECT * FROM shared.species;"
+
+   # Check if locations exist
+   docker exec -it dftdb-db psql -U postgres -c "SELECT * FROM shared.locations;"
+   ```
+
+## Customization
+
+### Using Saved Mappings
+
+After creating a mapping once, you can reuse it:
 
 **Python:**
 
-```bash
-python csv_importer.py \
-  --csv ../../data/ecosense/ecosense_250908.csv \
-  --table Trees \
-  --created-by "ecosense_import_nov2024" \
-  --crs EPSG:32632 \
-  --interactive
+```python
+importer.load_mapping(Path("mathisle_250904_mapping.json"))
 ```
 
-### Sensor Metadata
+**R:**
 
-**Docker:**
-
-```bash
-./import-docker.sh \
-  --csv /data/my_sensors.csv \
-  --table sensor.Sensors \
-  --created-by "sensor_deployment_2024" \
-  --crs EPSG:4326 \
-  --interactive
+```r
+importer$load_mapping("mathisle_250904_mapping.json")
 ```
 
-**Python:**
+### Specifying CSV Path
 
-```bash
-python csv_importer.py \
-  --csv ../../data/my_sensors.csv \
-  --table sensor.Sensors \
-  --created-by "sensor_deployment_2024" \
-  --crs EPSG:4326 \
-  --interactive
-```
+The scripts default to looking for:
 
-## Dry Run Mode
+- `../../data/mathisle_250904.csv`
 
-Test your import without actually inserting data:
+If not found, they'll prompt you to enter the path manually.
 
-```bash
-python csv_importer.py \
-  --csv data.csv \
-  --table Trees \
-  --created-by "test" \
-  --dry-run
-```
+### Direct Database Connection
 
-This will:
+For production use, you may want to:
 
-- Load and preview CSV
-- Perform interactive mapping
-- Validate all configurations
-- **NOT insert any data**
+1. **Python** - Use `psycopg2` for direct PostgreSQL connection
+2. **R** - Use `RPostgres` to connect directly to the database
 
-## Error Handling
-
-The importer continues on errors and reports them at the end:
-
-```
-📊 Import Summary
-============================================================
-✅ Successfully inserted: 720
-⏭️  Skipped: 23
-❌ Errors: 23
-
-⚠️  Error Details:
-  - Row 45: Species not found: Oak
-  - Row 102: Coordinates out of bounds: lat=95.2, lon=8.5
-  - Row 205: Missing required field: LocationID
-  ... and 20 more errors
-
-💡 Failed rows must be cleaned up manually via Supabase Studio
-============================================================
-```
-
-Failed rows are **not inserted** and must be corrected manually.
+Both are included in the conda environment.
 
 ## Troubleshooting
 
-### Connection Errors
+### SERVICE_ROLE_KEY not found
 
-**Problem:** `SERVICE_ROLE_KEY not found in .env file`
-
-**Solution:** Ensure you're running from the correct directory and the `.env` file exists in `docker/`:
+Check that `docker/.env` exists in the docker directory with:
 
 ```bash
-ls ../../docker/.env  # Should exist
+SERVICE_ROLE_KEY=your_key_here
 ```
 
-### Import Errors
+### CSV file not found
 
-**Problem:** `Species not found: Oak`
+Either:
 
-**Solution:** Check species exist in database:
+1. Place CSV in `data/` folder with expected name
+2. Specify full path when prompted
 
-```sql
-SELECT * FROM shared.Species WHERE CommonName ILIKE '%oak%';
-```
+### Column mapping validation fails
 
-Add missing species via Supabase Studio or SQL.
+Check the schema display output to ensure:
 
-### Geometry Errors
+1. Schema name is correct (trees, sensor, shared, etc.)
+2. Table name is correct
+3. Column name exists in that table
 
-**Problem:** `Coordinates out of bounds: lat=95.2`
+### Database connection fails
 
-**Solution:** Verify coordinate columns are mapped correctly:
+Verify:
 
-- Ensure lat/lon aren't swapped
-- Check if coordinates are in correct CRS
+1. Supabase services running: `docker compose -C docker ps`
+2. `SUPABASE_URL` in `docker/.env` is correct
+3. `SERVICE_ROLE_KEY` is valid
 
-### Supabase Connection
+## Files
 
-**Problem:** Import hangs or times out
+- `import_trees.py` - Python implementation
+- `import_trees.R` - R implementation
+- `environment.yml` - Conda environment with all dependencies
 
-**Solution:**
+## Next Steps
 
-1. Verify database is running: `docker-compose ps`
-2. Check Supabase URL in `.env`: should be `http://localhost:8000`
-3. Test connection: `curl http://localhost:8000/rest/v1/`
+1. Create mapping for your CSV files
+2. Review the data preview
+3. Implement insertion logic for your use case
+4. Monitor imports via database logs or Supabase Studio
 
-## Configuration
+## Language Choice
 
-The importer reads credentials from `docker/.env`:
+**Use Python if:**
 
-- `SUPABASE_URL` - Supabase instance URL (default: `http://localhost:8000`)
-- `SERVICE_ROLE_KEY` - Service role key with full database access
+- You prefer Python ecosystem
+- Working with multiple data formats
+- Need integrated data transformation
 
-## Audit Trail
+**Use R if:**
 
-All imported data is tracked with:
+- Prefer R for data science workflows
+- Want to use tidyverse ecosystem
+- Integrating with R-based analysis
 
-- **CreatedBy** - Your identifier from `--created-by`
-- **CreatedAt** - Automatic timestamp
-
-Query your imports:
-
-```sql
-SELECT * FROM trees.Trees WHERE CreatedBy = 'your_name';
-```
-
-## Advanced Usage
-
-### Batch Imports
-
-Import multiple files by running the script multiple times:
-
-```bash
-for file in data/*.csv; do
-  python csv_importer.py \
-    --csv "$file" \
-    --table Trees \
-    --created-by "batch_$(date +%Y%m%d)" \
-    --crs EPSG:4326 \
-    --interactive
-done
-```
-
-### Custom Field Mappings
-
-You can map CSV columns to any database field:
-
-- Direct fields: `Height_m`, `Age_years`, `HealthScore`
-- Foreign keys: `SpeciesID`, `LocationID`, `SensorTypeID`
-- Geometry: `lat`, `lon`, `x`, `y`
-
-See database schema documentation for available fields.
-
-## See Also
-
-- [Database Schema Documentation](../../docs/database-schema.md)
-- [Data Directory](../../data/README.md)
-- [Main Documentation](../../README.md)
+Both provide the same workflow and flexibility.

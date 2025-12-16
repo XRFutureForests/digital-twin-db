@@ -1,127 +1,183 @@
-# Digital Twin Database Documentation
+# Digital Forest Twin Database Documentation
 
-This folder contains all documentation for the XR Future Forests Lab digital twin database system.
+Complete reference for the database architecture, services, and operations.
 
 ## 📚 Documentation Index
 
-### Getting Started
+### Core Documentation
 
-- **[supabase-introduction.md](supabase-introduction.md)** - Start here! Explains what Supabase is and how the system works
-- **[deployment-guide.md](deployment-guide.md)** - Complete setup instructions for local development and production deployment
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Database structure, schemas, services, and interaction patterns
+  - Schema organization (shared, pointclouds, trees, sensor, environments)
+  - Service architecture and edge functions
+  - Data interaction patterns and common operations
 
-### Database Documentation
+- **[deployment-guide.md](deployment-guide.md)** - Setup and deployment instructions
+  - Local development environment
+  - Production deployment
+  - Configuration and security
 
-- **[database-schema.md](database-schema.md)** - Detailed database design documentation with schema organization and relationships
-- **[database-erd.dbml](database-erd.dbml)** - Entity Relationship Diagram in DBML format (view at [dbdiagram.io](https://dbdiagram.io/))
-- **[database-diagram.drawio](database-diagram.drawio)** - Editable database diagram (open with [draw.io](https://app.diagrams.net/))
+- **[supabase-introduction.md](supabase-introduction.md)** - Beginner-friendly system overview
+  - Core concepts and components
+  - Practical examples and operations
 
-### Reference Guides
+### Reference Materials
 
-- **[api-quick-reference.md](api-quick-reference.md)** - Quick reference for API endpoints, database credentials, and common operations
-- **[troubleshooting.md](troubleshooting.md)** - Common problems and solutions for local development and deployment
+- **[database-schema.md](database-schema.md)** - Detailed schema specifications
+  - Complete table definitions
+  - Field-level documentation
+  - Relationships and constraints
 
-## 🚀 Quick Links
+- **[database-erd.dbml](database-erd.dbml)** - Entity Relationship Diagram (DBML format)
+  - Visualize at [dbdiagram.io](https://dbdiagram.io/)
+  - Import into DBeaver or other tools
 
-### For First-Time Users
+- **[database-diagram.drawio](database-diagram.drawio)** - Editable visual diagram
+  - Open and edit in [draw.io](https://app.diagrams.net/)
+  - Update schema visualizations
 
-1. Read [supabase-introduction.md](supabase-introduction.md) to understand the system
-2. Follow [deployment-guide.md](deployment-guide.md) to set up your local environment
+- **[api-quick-reference.md](api-quick-reference.md)** - API usage and common commands
+  - REST endpoint examples
+  - Docker and database commands
+  - Quick lookup reference
+
+- **[troubleshooting.md](troubleshooting.md)** - Problem-solving guide
+  - Common issues and solutions
+  - Docker debugging
+  - Database troubleshooting
+
+## 🎯 Quick Navigation
+
+**Getting started?**
+
+1. Read [ARCHITECTURE.md](ARCHITECTURE.md) to understand the system
+2. Follow [deployment-guide.md](deployment-guide.md) to set up locally
 3. Use [api-quick-reference.md](api-quick-reference.md) for day-to-day operations
 
-### For Developers
+**Need technical details?**
 
-1. Review [database-schema.md](database-schema.md) to understand data structures
-2. View [database-erd.dbml](database-erd.dbml) for visual schema reference
-3. Check [troubleshooting.md](troubleshooting.md) when issues arise
+1. Review [database-schema.md](database-schema.md) for table specifications
+2. Check [database-erd.dbml](database-erd.dbml) for visual overview
+3. See [ARCHITECTURE.md](ARCHITECTURE.md) for design patterns
 
-### For Database Designers
+**Troubleshooting an issue?**
 
-1. Open [database-diagram.drawio](database-diagram.drawio) in draw.io for editing
-2. Export schema changes to [database-erd.dbml](database-erd.dbml)
-3. Update [database-schema.md](database-schema.md) with documentation
+1. Check [troubleshooting.md](troubleshooting.md) first
+2. Review relevant section in [ARCHITECTURE.md](ARCHITECTURE.md)
+3. Check service logs: `docker compose logs -f`
 
-## 📖 Document Descriptions
+## 📖 Document Details
 
-### supabase-introduction.md
+### ARCHITECTURE.md
 
-**Purpose:** Beginner-friendly introduction to Supabase and the database system  
-**Audience:** New users, researchers, students  
-**Content:** Core concepts, components, examples, and practical operations
+Comprehensive guide covering:
+
+- Database schema organization (5 custom schemas)
+- All tables, their purpose, and key fields
+- Design patterns (variants, audit trails, PostGIS)
+- Services architecture (Docker, edge functions, REST API)
+- Authentication and security
+- Data interaction patterns (importing, querying)
+- Common operations and configuration
 
 ### deployment-guide.md
 
-**Purpose:** Complete deployment and configuration instructions  
-**Audience:** System administrators, DevOps engineers  
-**Content:** Prerequisites, local setup, production deployment, environment configuration, migrations, and maintenance
+Complete setup instructions:
+
+- Prerequisites and dependencies
+- Local development setup
+- Production deployment steps
+- Environment configuration
+- Database migrations
+- SSL/TLS configuration
+- Maintenance and updates
+
+### supabase-introduction.md
+
+Beginner-friendly introduction:
+
+- What is Supabase and how it works
+- Core concepts (PostgREST, real-time, functions)
+- System components and their roles
+- Practical examples
+- Basic operations
 
 ### database-schema.md
 
-**Purpose:** Technical database design documentation  
-**Audience:** Database designers, backend developers  
-**Content:** Schema organization, table relationships, design principles, field-level specifications
+Technical database reference:
+
+- Detailed table definitions
+- Column specifications and types
+- Relationships and foreign keys
+- Constraints and validations
+- Design principles
+- Index documentation
 
 ### database-erd.dbml
 
-**Purpose:** Machine-readable entity relationship diagram  
-**Audience:** Developers, database tools  
-**Content:** Complete schema definition in DBML format (can be imported into dbdiagram.io, DBeaver, etc.)
+Machine-readable schema:
+
+- DBML format for standard tools
+- Can be imported into dbdiagram.io
+- Use for SQL generation and analysis
+- Keep in sync with schema changes
 
 ### database-diagram.drawio
 
-**Purpose:** Editable visual database diagram  
-**Audience:** Database designers, documentation maintainers  
-**Content:** Graphical schema representation (editable in draw.io)
+Visual schema diagram:
+
+- Editable in draw.io
+- Graphical representation of tables and relationships
+- Update when major schema changes occur
 
 ### api-quick-reference.md
 
-**Purpose:** Quick lookup for common tasks and configurations  
-**Audience:** All users  
-**Content:** Access URLs, API keys, credentials, code examples, Docker commands
+Quick lookup guide:
+
+- REST API endpoint examples
+- Docker commands
+- Database queries
+- Credentials and configuration
+- Common patterns and solutions
 
 ### troubleshooting.md
 
-**Purpose:** Problem-solving guide for common issues  
-**Audience:** All users  
-**Content:** Step-by-step solutions for Docker, database, API, and networking problems
+Problem-solving resource:
 
-## 🔧 Maintenance
+- Docker issues and solutions
+- Database connection problems
+- API and authentication issues
+- Performance troubleshooting
+- Debugging techniques
 
-### Updating Documentation
+## 🔄 Keeping Documentation Updated
 
 When making changes to the database:
 
-1. Update SQL migrations in `../docker/volumes/db/init/`
-2. Update [database-schema.md](database-schema.md) with new tables/columns
-3. Update [database-erd.dbml](database-erd.dbml) with schema changes
-4. Update [database-diagram.drawio](database-diagram.drawio) if major structural changes
-5. Add any new troubleshooting tips to [troubleshooting.md](troubleshooting.md)
+1. **Update SQL migrations** in `../docker/volumes/db/init/`
+2. **Update [ARCHITECTURE.md](ARCHITECTURE.md)** with new tables/schemas/services
+3. **Update [database-schema.md](database-schema.md)** with field specifications
+4. **Update [database-erd.dbml](database-erd.dbml)** with schema relationships
+5. **Update [database-diagram.drawio](database-diagram.drawio)** if major structural changes
+6. **Add tips to [troubleshooting.md](troubleshooting.md)** for new common issues
 
-### Documentation Standards
+## 📋 Document Format Standards
 
-- **File naming:** Use lowercase with hyphens (kebab-case): `my-document.md`
-- **Headings:** Use sentence case: "Getting started" not "Getting Started"
+- **File naming:** Lowercase with hyphens (kebab-case)
+- **Headings:** Use clear hierarchy with proper markdown levels
 - **Code blocks:** Always specify language for syntax highlighting
-- **Links:** Use relative links within docs folder
-- **Examples:** Include working examples with actual values (sanitized credentials)
+- **Links:** Use relative paths within docs folder
+- **Examples:** Include working, tested examples
+- **Tables:** Use markdown tables for structured data
 
-## 🤝 Contributing
+## 📞 Support & Resources
 
-When adding new documentation:
-
-1. Use descriptive filenames that indicate content
-2. Add entry to this README in appropriate section
-3. Cross-reference related documents
-4. Include practical examples
-5. Test all commands and code samples
-
-## 📞 Support
-
-For questions or issues:
-
-- Check [troubleshooting.md](troubleshooting.md) first
-- Review [Supabase documentation](https://supabase.com/docs)
-- Contact: University of Freiburg, Department of Forest Sciences
+- **Documentation:** Full guides in this folder
+- **Source code:** See `../docker/volumes/db/init/` for SQL migrations
+- **Data importer:** See `../scripts/import-data/` for Python importer
+- **Supabase docs:** [supabase.com/docs](https://supabase.com/docs)
+- **PostGIS docs:** [postgis.net/docs](https://postgis.net/docs/)
+- **Docker docs:** [docker.com/docs](https://docs.docker.com/)
 
 ---
 
-Last updated: November 2025
+**Last updated:** December 2025

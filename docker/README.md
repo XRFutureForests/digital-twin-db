@@ -55,9 +55,9 @@ All services should show as "healthy" after about 30 seconds.
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **Studio UI** | <http://localhost:54323> | Username: `supabase`<br>Password: (from `.env`) |
+| **Studio UI** | <http://localhost:54323> | Username: `supabase`; Password: (from `.env`) |
 | **REST API** | <http://localhost:8000/rest/v1> | API Key: (from `.env` ANON_KEY) |
-| **PostgreSQL** | localhost:5432 | User: `postgres`<br>Password: (from `.env`) |
+| **PostgreSQL** | localhost:5432 | User: `postgres`; Password: (from `.env`) |
 
 ### 4. Custom Database Initialization
 
@@ -185,7 +185,7 @@ The `.env` file is organized into sections:
 
 ### Service Dependencies
 
-```
+```text
                    ┌─────────────┐
                    │   Studio    │  (Web UI)
                    └──────┬──────┘
@@ -233,6 +233,43 @@ This setup differs from the official Supabase Docker in these ways:
 
 ## Troubleshooting
 
+### Database Container Shows Unhealthy
+
+The database takes 30-60 seconds to initialize on first startup. This is normal.
+
+```bash
+# Monitor initialization
+docker compose logs -f db
+
+# Wait for all 4 health checks to pass
+docker compose ps db
+
+# If it fails after 2+ minutes, check for errors
+docker compose logs db | tail -30
+```
+
+**Common database initialization issues:**
+
+1. **Port already in use**: Another service is using port 5432
+
+   ```bash
+   sudo lsof -i :5432
+   ```
+
+2. **Insufficient disk space**: Less than 1GB free
+
+   ```bash
+   df -h
+   ```
+
+3. **Docker resource limits**: Set at least 4GB RAM in Docker Desktop settings
+
+4. **File permissions**: On Linux, ensure write access to `volumes/db/data`
+
+   ```bash
+   sudo chown -R $USER:$USER volumes/db/data
+   ```
+
 ### Service Won't Start
 
 ```bash
@@ -245,14 +282,14 @@ docker compose logs [service-name]
 ### Can't Access API
 
 ```bash
-# Verify PostgREST is running
+# Verify PostgREST is running and healthy
 docker compose ps rest
 
 # Check if custom schemas are exposed
 grep PGRST_DB_SCHEMAS .env
 # Should include: shared,pointclouds,trees,sensor,environments
 
-# Restart PostgREST
+# Restart PostgREST (after db is healthy)
 docker compose restart rest
 ```
 
@@ -262,7 +299,7 @@ docker compose restart rest
 # Test database connectivity
 docker exec dftdb-db psql -U postgres -c "SELECT version();"
 
-# Check if database is healthy
+# Check database health and wait for readiness
 docker compose ps db
 ```
 
@@ -273,6 +310,18 @@ If running in WSL, the Studio UI might not be accessible from Windows browser:
 1. Try `http://localhost:54323` first (usually works)
 2. If that fails, get WSL IP: `ip addr show eth0 | grep inet`
 3. Access via WSL IP: `http://172.x.x.x:54323`
+
+### Services Keep Restarting
+
+On first start, auth, realtime, and storage may restart 2-3 times while waiting for database initialization. This is normal—wait 3-5 minutes for stabilization.
+
+```bash
+# If restarting continues after 5 minutes:
+docker compose restart auth realtime storage
+
+# Check specific logs
+docker compose logs auth
+```
 
 ## Production Deployment
 
