@@ -1,4 +1,4 @@
-name: dftdb-import
+name: digital-twin
 channels:
   - conda-forge
   - defaults
