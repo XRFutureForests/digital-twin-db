@@ -149,7 +149,7 @@ The database initializes with empty tables. Import data using the Python CSV imp
 ### Installation
 
 ```bash
-cd scripts/import-data
+cd scripts
 pip install -r requirements.txt
 ```
 
@@ -192,7 +192,7 @@ The tool will:
 - **Audit trail** - All imports tracked with `CreatedBy` field
 - **Error reporting** - Shows which rows failed and why
 
-For detailed usage guide, see [`scripts/import-data/README.md`](scripts/import-data/README.md)
+For detailed usage guide, see [`scripts/README.md`](scripts/README.md)
 
 ---
 

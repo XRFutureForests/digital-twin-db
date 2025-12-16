@@ -8,6 +8,8 @@ dependencies:
   - pandas=2.2.0
   - python-dotenv=1.0.0
   - psycopg2=2.9.9
+  - jupyter=1.0.0
+  - notebook=7.1.0
   - pip
   # R dependencies
   - r-base=4.3
@@ -20,6 +22,10 @@ dependencies:
   - r-r6
   - r-devtools
   - r-httr
+  - r-rmarkdown
+  - r-knitr
+  - pandoc
   # Python packages via pip
   - pip:
+    - pyproj>=3.4.0
     - supabase==2.26.0

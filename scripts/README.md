@@ -23,7 +23,7 @@ These notebooks help you import CSV data into the database by:
 ### Setup (One-time)
 
 ```bash
-cd scripts/import-data
+cd scripts
 conda env create -f environment.yml
 conda activate digital-twin
 ```

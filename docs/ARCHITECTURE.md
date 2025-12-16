@@ -264,7 +264,7 @@ PostgreSQL policies enforce access control at database layer:
 ### Importing Data
 
 **CSV Importer Script:**
-Located in `scripts/import-data/import_trees.py`
+Located in `scripts/import_trees.py`
 
 ```bash
 # Setup

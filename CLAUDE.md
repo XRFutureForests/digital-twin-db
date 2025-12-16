@@ -57,7 +57,7 @@ SELECT * FROM shared.species;
 ### Importing Data
 
 ```bash
-cd scripts/import-data
+cd scripts
 
 # Using Docker (recommended - no Python required)
 ./import-docker.sh --csv /data/PATH_TO_CSV --table TABLE_NAME --created-by YOUR_NAME --interactive
@@ -162,7 +162,7 @@ Located in `docker/volumes/functions/`:
 
 ### CSV Importer
 
-Located in `scripts/import-data/`:
+Located in `scripts/`:
 
 **csv_importer.py**
 
@@ -357,7 +357,7 @@ digital_twin_db/
 │   │   └── logs/                     # Vector logging configuration
 │   ├── reset.sh                      # Full database reset script
 │   └── cleanup-volumes.sh            # Volume cleanup script
-├── scripts/import-data/              # CSV importer
+├── scripts/              # CSV importer
 │   ├── csv_importer.py               # Main importer script
 │   ├── import-docker.sh              # Docker wrapper
 │   ├── requirements.txt              # Python dependencies

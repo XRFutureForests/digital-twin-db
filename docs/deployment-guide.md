@@ -127,7 +127,7 @@ Services should be running at:
 The database initializes with minimal reference data (species, locations). To import tree inventory and sensor data:
 
 ```bash
-cd scripts/import-data
+cd scripts
 
 # Interactive mode (prompts for all options)
 python csv_importer.py --interactive
@@ -140,7 +140,7 @@ python csv_importer.py \
   --crs EPSG:25832
 ```
 
-See `scripts/import-data/README.md` for full CSV import documentation.
+See `scripts/README.md` for full CSV import documentation.
 
 ### 7. Test API Access
 
