@@ -88,11 +88,11 @@ These run automatically when the database is first initialized.
 **Data Import**: The database initializes with minimal reference data only. To import tree inventory and sensor data, use the Python CSV importer:
 
 ```bash
-cd ../scripts/import-data
+cd ../scripts
 python csv_importer.py --interactive
 ```
 
-See [`scripts/import-data/README.md`](../scripts/import-data/README.md) for detailed import instructions.
+See [`scripts/README.md`](../scripts/README.md) for detailed import instructions.
 
 ## Common Operations
 

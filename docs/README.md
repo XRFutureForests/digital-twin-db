@@ -173,7 +173,7 @@ When making changes to the database:
 
 - **Documentation:** Full guides in this folder
 - **Source code:** See `../docker/volumes/db/init/` for SQL migrations
-- **Data importer:** See `../scripts/import-data/` for Python importer
+- **Data importer:** See `../scripts/` for Python importer
 - **Supabase docs:** [supabase.com/docs](https://supabase.com/docs)
 - **PostGIS docs:** [postgis.net/docs](https://postgis.net/docs/)
 - **Docker docs:** [docker.com/docs](https://docs.docker.com/)

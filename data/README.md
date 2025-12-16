@@ -88,11 +88,11 @@ Real environmental sensor data from Douglas Fir tree monitoring in EcoSense mixe
 
 ## How to Import Data
 
-Use the Python CSV importer tool located in `scripts/import-data/`:
+Use the Python CSV importer tool located in `scripts/`:
 
 ```bash
 # Install dependencies first
-cd scripts/import-data
+cd scripts
 pip install -r requirements.txt
 
 # Import tree data from Mathisle (WGS84 coordinates)
@@ -121,7 +121,7 @@ The `--interactive` flag will prompt you to map each CSV column to the appropria
 - Store both original and transformed geometries
 - Track all changes with your `--created-by` identifier for audit purposes
 
-For detailed usage instructions and troubleshooting, see [`scripts/import-data/README.md`](../scripts/import-data/README.md).
+For detailed usage instructions and troubleshooting, see [`scripts/README.md`](../scripts/README.md).
 
 ## Data Privacy
 
