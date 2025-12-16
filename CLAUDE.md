@@ -361,7 +361,7 @@ digital_twin_db/
 │   ├── csv_importer.py               # Main importer script
 │   ├── import-docker.sh              # Docker wrapper
 │   ├── requirements.txt              # Python dependencies
-│   └── environment.yaml              # Conda environment
+│   └── environment.yml              # Conda environment
 ├── docs/                             # Documentation
 │   ├── database-schema.md
 │   ├── deployment-guide.md

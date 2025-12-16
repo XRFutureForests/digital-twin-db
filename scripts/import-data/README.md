@@ -19,8 +19,8 @@ The first run will build a Docker image with all dependencies. This is the easie
 
 ```bash
 cd scripts/import-data
-conda env create -f environment.yaml
-conda activate dftdb-import
+conda env create -f environment.yml
+conda activate digital-twin
 ```
 
 **Requirements:**
