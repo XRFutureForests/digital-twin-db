@@ -3,7 +3,7 @@
 -- These locations are required for the Aquarius/Ecosense integration to work
 -- 
 -- For production deployments, you may want to replace these with your actual locations
--- or import locations using the CSV importer tool (scripts/csv_importer.py)
+-- or import locations using the import notebooks (scripts/import_trees.ipynb or import_trees.Rmd)
 
 -- =============================================================================
 -- SAMPLE LOCATIONS (Required for Ecosense integration and sensor linking)

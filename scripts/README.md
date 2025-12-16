@@ -3,6 +3,7 @@
 Step-by-step interactive notebooks for importing CSV data into the Digital Forest Twin database.
 
 Available as:
+
 - **Python**: Jupyter Notebook (`import_trees.ipynb`)
 - **R**: R Markdown (`import_trees.Rmd`)
 
@@ -275,6 +276,7 @@ Map the Mathisle CSV columns to database tables:
 Before running imports:
 
 1. **Database running:**
+
    ```bash
    cd docker
    docker compose ps
@@ -365,8 +367,8 @@ Verify:
 
 ## Files
 
-- `import_trees.py` - Python implementation
-- `import_trees.R` - R implementation
+- `import_trees.ipynb` - Python Jupyter Notebook implementation
+- `import_trees.Rmd` - R Markdown implementation
 - `environment.yml` - Conda environment with all dependencies
 
 ## Next Steps

@@ -129,18 +129,27 @@ The database initializes with minimal reference data (species, locations). To im
 ```bash
 cd scripts
 
-# Interactive mode (prompts for all options)
-python csv_importer.py --interactive
+# Setup environment (one-time)
+conda env create -f environment.yml
+conda activate digital-twin
 
-# Or specify parameters directly
-python csv_importer.py \
-  --csv ../../data/mathisle_250904.csv \
-  --table Trees \
-  --created-by "setup@example.com" \
-  --crs EPSG:25832
+# Start Jupyter notebook for interactive import
+jupyter notebook
+# Open import_trees.ipynb and follow the step-by-step workflow
+
+# Or use R Markdown version
+# Open import_trees.Rmd in RStudio
 ```
 
-See `scripts/README.md` for full CSV import documentation.
+The notebooks provide an interactive workflow to:
+
+- Explore your CSV data
+- Map columns to database fields
+- Handle coordinate transformations (any CRS → WGS84)
+- Preview data before insertion
+- Track changes with CreatedBy field
+
+See `scripts/README.md` for full import documentation.
 
 ### 7. Test API Access
 

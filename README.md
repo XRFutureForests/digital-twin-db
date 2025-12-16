@@ -114,11 +114,11 @@ Point cloud scan management:
 
 ### 3. **trees** - Tree Measurements
 
-Individual tree data and simulations:
+Individual tree data with multi-stem support:
 
 - **Trees** - Tree measurements and attributes
-- **Stems** - Multi-stem support for complex trees
-- **TreeSimulations** - Growth model outputs and predictions
+- **Stems** - Multi-stem measurements for trees with multiple main stems
+- **TreeStatus**, **TaperTypes**, **StraightnessTypes** - Classification tables for tree characteristics
 
 ### 4. **sensor** - Environmental Monitoring
 
@@ -144,53 +144,52 @@ All tables include:
 
 ## Importing Data
 
-The database initializes with empty tables. Import data using the Python CSV importer tool.
+The database initializes with empty tables. Import data using the interactive Jupyter notebooks.
 
 ### Installation
 
 ```bash
 cd scripts
-pip install -r requirements.txt
+conda env create -f environment.yml
+conda activate digital-twin
 ```
 
 ### Basic Usage
 
-```bash
-python csv_importer.py \
-  --csv PATH_TO_CSV \
-  --table TABLE_NAME \
-  --created-by YOUR_NAME \
-  --crs EPSG:CODE \
-  --interactive
-```
-
-### Example: Import Tree Data
+**Using Jupyter Notebook (Python):**
 
 ```bash
-# Import tree data with UTM coordinates
-python csv_importer.py \
-  --csv ../../data/ecosense/ecosense_250908.csv \
-  --table Trees \
-  --created-by "max_import_2024" \
-  --crs EPSG:32632 \
-  --interactive
+jupyter notebook
+# Open import_trees.ipynb and follow the step-by-step workflow
 ```
 
-The tool will:
+**Using R Markdown:**
 
-- Display a preview of your CSV
-- Prompt you to map columns to database fields
-- Handle coordinate transformations
-- Validate all data before inserting
-- Track changes with your `--created-by` identifier
+```bash
+# Open import_trees.Rmd in RStudio or render with:
+Rscript -e "rmarkdown::render('import_trees.Rmd')"
+```
+
+### How It Works
+
+The notebooks provide an interactive workflow that:
+
+- Displays database schema and available columns
+- Loads your CSV and shows preview
+- Explores reference data (species, locations, sensor types)
+- Creates interactive column mapping with LOOKUP support
+- Handles coordinate transformations (lat/lon or x/y with CRS)
+- Previews data organized by table before insertion
+- Saves mapping as JSON for reuse
 
 **Key Features:**
 
-- **Interactive column mapping** - Map CSV columns to any database field
+- **Interactive column mapping** - Visual workflow to map CSV columns to database fields
+- **LOOKUP support** - Inspect CSV values before deciding on mappings
 - **Automatic lookups** - Species, locations, sensor types matched by name
-- **Dual geometry storage** - Preserves original CRS and transforms to WGS84
+- **Coordinate transformation** - Handles lat/lon or x/y with automatic CRS detection and transformation
 - **Audit trail** - All imports tracked with `CreatedBy` field
-- **Error reporting** - Shows which rows failed and why
+- **Reusable mappings** - Save and load column mappings as JSON
 
 For detailed usage guide, see [`scripts/README.md`](scripts/README.md)
 

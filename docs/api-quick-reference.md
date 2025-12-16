@@ -52,7 +52,7 @@ Your database has these schemas:
 |--------|---------|--------|
 | **shared** | Reference data | SoilTypes, ClimateZones, Species, Locations, Scenarios, Processes |
 | **pointclouds** | LiDAR data | PointClouds (with S3 file paths) |
-| **trees** | Tree measurements | Trees, Stems, TreeSimulations |
+| **trees** | Tree measurements | Trees, Stems, TreeStatus, TaperTypes, StraightnessTypes, BranchingPatterns, BarkCharacteristics |
 | **sensor** | IoT sensors | Sensors, SensorReadings |
 | **environments** | Environmental data | EnvironmentalConditions |
 | **auth** | Supabase auth | (managed by Supabase) |
