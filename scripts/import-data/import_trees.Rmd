@@ -1,0 +1,639 @@
+---
+title: "🌳 Digital Forest Twin - Tree Data Importer (R)"
+author: "Digital Forest Twin Project"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: bootstrap
+    highlight: tango
+---
+
+# Overview
+
+This R Markdown notebook provides a step-by-step workflow to import tree data from CSV files into the Digital Forest Twin database.
+
+## Workflow
+
+1. **Setup**: Load dependencies and connect to database
+2. **Introspect**: Display available database schema
+3. **Load CSV**: Load your data file
+4. **Reference Data**: Explore species, locations, and sensor types
+5. **Define Mapping**: Create column mappings
+6. **Coordinate Mapping**: Handle lat/lon or x/y coordinates
+7. **Preview**: Review data before insertion
+8. **Insert**: Load data into database
+
+---
+
+# Step 1: Setup - Load Dependencies
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r dependencies}
+# Load required packages
+library(RPostgres)
+library(DBI)
+library(readr)
+library(dplyr)
+library(jsonlite)
+library(knitr)
+
+# Load environment variables
+readRenviron("../../docker/.env")
+
+cat("✓ Dependencies loaded\n")
+```
+
+---
+
+# Step 2: Connect to Database
+
+```{r database-config}
+# Read connection parameters from environment
+postgres_host <- Sys.getenv("POSTGRES_HOST", "localhost")
+postgres_user <- Sys.getenv("POSTGRES_USER", "postgres")
+postgres_password <- Sys.getenv("POSTGRES_PASSWORD")
+postgres_db <- Sys.getenv("POSTGRES_DB", "postgres")
+postgres_port <- as.integer(Sys.getenv("POSTGRES_PORT", "5432"))
+
+if (postgres_password == "") {
+  cat("❌ POSTGRES_PASSWORD not found in docker/.env\n")
+} else {
+  cat(sprintf("✓ Database config: %s@%s:%d/%s\n",
+              postgres_user, postgres_host, postgres_port, postgres_db))
+}
+```
+
+```{r database-connect}
+# Create database connection
+tryCatch({
+  conn <- dbConnect(
+    RPostgres::Postgres(),
+    host = postgres_host,
+    user = postgres_user,
+    password = postgres_password,
+    dbname = postgres_db,
+    port = postgres_port
+  )
+  cat("✓ Database connection successful\n")
+}, error = function(e) {
+  cat(sprintf("❌ Database connection failed: %s\n", e$message))
+})
+```
+
+---
+
+# Step 3: Introspect Database Schema
+
+```{r schema-query}
+# Query database schema
+query <- "
+  SELECT
+    table_schema,
+    table_name,
+    column_name
+  FROM information_schema.columns
+  WHERE table_schema IN ('shared', 'trees', 'sensor', 'pointclouds', 'environments')
+  ORDER BY table_schema, table_name, ordinal_position
+"
+
+schema_result <- dbGetQuery(conn, query)
+head(schema_result, 20)
+```
+
+```{r schema-display}
+# Build schema info structure
+schema_info <- list()
+
+for (i in seq_len(nrow(schema_result))) {
+  schema <- schema_result$table_schema[i]
+  table <- schema_result$table_name[i]
+  column <- schema_result$column_name[i]
+
+  if (!(schema %in% names(schema_info))) {
+    schema_info[[schema]] <- list()
+  }
+  if (!(table %in% names(schema_info[[schema]]))) {
+    schema_info[[schema]][[table]] <- c()
+  }
+
+  schema_info[[schema]][[table]] <- c(schema_info[[schema]][[table]], column)
+}
+
+# Display schema
+cat("\n", strrep("=", 80), "\n")
+cat("DATABASE SCHEMA - Available Tables & Columns\n")
+cat(strrep("=", 80), "\n")
+
+for (schema_name in names(schema_info)) {
+  cat(sprintf("\n📦 Schema: %s\n", schema_name))
+
+  tables <- schema_info[[schema_name]]
+  for (table_name in names(tables)) {
+    columns <- tables[[table_name]]
+    cat(sprintf("  📋 %s (%d columns)\n", table_name, length(columns)))
+
+    for (i in seq_along(columns)) {
+      cat(sprintf("     %2d. %s\n", i, columns[i]))
+    }
+  }
+}
+```
+
+---
+
+# Step 4: Load Reference Data
+
+```{r reference-data}
+# Load Species
+species <- dbGetQuery(conn,
+  "SELECT SpeciesID, CommonName, ScientificName FROM shared.Species ORDER BY CommonName"
+)
+
+# Load Locations
+locations <- dbGetQuery(conn,
+  "SELECT LocationID, LocationName FROM shared.Locations ORDER BY LocationName"
+)
+
+# Try to load SensorTypes
+sensor_types <- tryCatch({
+  dbGetQuery(conn,
+    "SELECT SensorTypeID, SensorTypeName FROM sensor.SensorTypes ORDER BY SensorTypeName"
+  )
+}, error = function(e) {
+  data.frame()
+})
+
+cat("✓ Reference data loaded\n")
+```
+
+```{r reference-data-display}
+cat("\n", strrep("=", 80), "\n")
+cat("📚 REFERENCE DATA - Use for mapping CSV values to database IDs\n")
+cat(strrep("=", 80), "\n\n")
+
+cat("📚 Species:\n")
+kable(species, format = "html")
+
+cat("\n📚 Locations:\n")
+kable(locations, format = "html")
+
+if (nrow(sensor_types) > 0) {
+  cat("\n📚 SensorTypes:\n")
+  kable(sensor_types, format = "html")
+}
+```
+
+---
+
+# Step 5: Load CSV File
+
+```{r load-csv}
+# Specify your CSV file path
+csv_path <- "../../data/mathisle_250904.csv"  # Change this to your CSV path
+
+# Check if file exists
+if (!file.exists(csv_path)) {
+  cat(sprintf("❌ CSV file not found: %s\n", csv_path))
+} else {
+  df <- read_csv(csv_path, show_col_types = FALSE)
+
+  cat(sprintf("✓ Loaded CSV: %s\n", basename(csv_path)))
+  cat(sprintf("  Rows: %d\n", nrow(df)))
+  cat(sprintf("  Columns: %s\n", paste(names(df), collapse = ", ")))
+}
+```
+
+```{r csv-preview}
+cat(sprintf("\nFirst 3 rows of %s:\n", basename(csv_path)))
+kable(head(df, 3), format = "html")
+```
+
+---
+
+# Step 6: Coordinate Mapping Guide
+
+If your CSV has separate lat/lon or x/y columns, follow these strategies:
+
+```{r coordinate-guide, results='asis'}
+cat("""
+## Mapping Strategies
+
+### 1️⃣ COMBINED COLUMN MAPPING (Recommended)
+Format: `lat_lon:EPSG_CODE` or `x_y:EPSG_CODE`
+
+Examples:
+- For lat/lon columns: `'coordinates'` maps to `lat_lon:EPSG:4326`
+- For x/y columns: `'utm_coords'` maps to `x_y:EPSG:32632`
+
+Benefits: Automatic combination + CRS transformation
+
+Available column names:
+- **Latitude**: latitude, lat, lat_col, latitude_col, gps_latitude
+- **Longitude**: longitude, lon, lon_col, longitude_col, gps_longitude
+- **X/Easting**: x, x_col, easting, easting_col, utm_x, x_32632
+- **Y/Northing**: y, y_col, northing, northing_col, utm_y, y_32632
+
+### 2️⃣ MANUAL GEOMETRY STRING
+Map to: `shared.Locations.Position` (or `trees.Trees.Position`, etc.)
+Create WKT format before import: `POINT(lon lat)`
+
+### 3️⃣ SEPARATE COORDINATES (Not Recommended)
+❌ Don't map lat/lon to separate database columns
+✅ Combine them first using option 1 or 2
+
+## CRS Support
+
+- **EPSG:4326** (WGS84) - default, no transformation needed
+- **EPSG:32632** (UTM Zone 32N) - automatically transforms to WGS84
+- **Other EPSG codes** - specify in mapping format
+
+Example: `x_y:EPSG:32633` (UTM Zone 33N)
+
+## Common Coordinates in Your Data
+
+- **Mathisle**: gps_latitude, gps_longitude (WGS84)
+- **EcoSense**: x_32632, y_32632 (UTM Zone 32N)
+"""
+)
+```
+
+---
+
+# Step 7: Define Column Mapping
+
+Edit the mapping below to configure for your CSV:
+
+```{r mapping-definition}
+# Define your column mapping
+# Format: csv_column = "schema.table.column" or "lat_lon:EPSG:4326" or "x_y:EPSG:32632" or "SKIP"
+
+mapping <- list(
+  # Example for Mathisle trees CSV:
+  # species_short = "shared.Species.CommonName",
+  # gps_latitude = "lat_lon:EPSG:4326",  # Auto-detects gps_longitude
+  # gps_longitude = "SKIP",              # Skip since lat_lon mapping handles it
+  # DBH = "trees.Trees.FieldNotes",
+  # TreeID = "trees.Trees.FieldNotes",
+  # height = "trees.Trees.Height_m"
+)
+
+cat("Mapping defined. Edit above to configure for your CSV.\n\n")
+cat("CSV Columns:\n")
+print(names(df))
+
+cat("\nCurrent Mapping:\n")
+if (length(mapping) > 0) {
+  for (csv_col in names(mapping)) {
+    cat(sprintf("  '%s' -> %s\n", csv_col, mapping[[csv_col]]))
+  }
+} else {
+  cat("  (empty - edit the cell above)\n")
+}
+```
+
+---
+
+# Step 8: Inspect CSV Values (LOOKUP)
+
+Use this cell to examine specific columns before deciding on mapping:
+
+```{r lookup-column}
+# Change this to inspect any column
+column_to_inspect <- "species_short"
+
+if (column_to_inspect %in% names(df)) {
+  unique_values <- unique(df[[column_to_inspect]])
+  cat(sprintf("Sample values from '%s' (%d unique):\n\n",
+              column_to_inspect, length(unique_values)))
+
+  # Show first 10 unique values
+  for (val in head(unique_values, 10)) {
+    cat(sprintf("  - %s\n", val))
+  }
+
+  if (length(unique_values) > 10) {
+    cat(sprintf("  ... and %d more\n", length(unique_values) - 10))
+  }
+} else {
+  cat(sprintf("Column '%s' not found in CSV\n", column_to_inspect))
+  cat(sprintf("Available columns: %s\n", paste(names(df), collapse = ", ")))
+}
+```
+
+---
+
+# Step 9: Save Mapping as JSON
+
+```{r save-mapping}
+# Create mapping directory if it doesn't exist
+mapping_dir <- dirname(csv_path)
+mapping_filename <- sprintf("%s_mapping.json", tools::file_path_sans_ext(basename(csv_path)))
+mapping_path <- file.path(mapping_dir, mapping_filename)
+
+# Save mapping to JSON
+write_json(mapping, mapping_path, pretty = TRUE)
+
+cat(sprintf("✓ Mapping saved to: %s\n\n", mapping_path))
+
+# Display saved mapping
+cat("Saved mapping:\n")
+cat(readLines(mapping_path), sep = "\n")
+```
+
+---
+
+# Step 10: Process Coordinates
+
+```{r coordinate-processing}
+detect_coordinate_columns <- function(df, format_spec) {
+  "Detect lat/lon or x/y columns by flexible naming"
+  col_names <- tolower(names(df))
+
+  if (grepl("^lat_lon", format_spec, ignore.case = TRUE)) {
+    # Find latitude column
+    lat_patterns <- c("latitude", "lat", "gps_latitude", "gps_lat")
+    lat_col <- NULL
+    for (pattern in lat_patterns) {
+      idx <- which(col_names == pattern)
+      if (length(idx) > 0) {
+        lat_col <- names(df)[idx[1]]
+        break
+      }
+    }
+
+    # Find longitude column
+    lon_patterns <- c("longitude", "lon", "gps_longitude", "gps_lon")
+    lon_col <- NULL
+    for (pattern in lon_patterns) {
+      idx <- which(col_names == pattern)
+      if (length(idx) > 0) {
+        lon_col <- names(df)[idx[1]]
+        break
+      }
+    }
+
+    return(list(lat = lat_col, lon = lon_col))
+
+  } else if (grepl("^x_y", format_spec, ignore.case = TRUE)) {
+    # Find x/easting column
+    x_patterns <- c("x", "easting", "utm_x", "x_32632", "x_32633")
+    x_col <- NULL
+    for (pattern in x_patterns) {
+      idx <- which(col_names == pattern)
+      if (length(idx) > 0) {
+        x_col <- names(df)[idx[1]]
+        break
+      }
+    }
+
+    # Find y/northing column
+    y_patterns <- c("y", "northing", "utm_y", "y_32632", "y_32633")
+    y_col <- NULL
+    for (pattern in y_patterns) {
+      idx <- which(col_names == pattern)
+      if (length(idx) > 0) {
+        y_col <- names(df)[idx[1]]
+        break
+      }
+    }
+
+    return(list(x = x_col, y = y_col))
+  }
+
+  return(list())
+}
+
+# Process coordinate columns
+process_coordinates <- function(df, mapping) {
+  "Process coordinate columns and create Position geometry"
+
+  for (csv_col in names(mapping)) {
+    target <- mapping[[csv_col]]
+
+    if (is.null(target) || !is.character(target) || !grepl(":", target)) {
+      next
+    }
+
+    parts <- strsplit(target, ":")[[1]]
+    coord_type <- parts[1]
+    crs <- parts[2]
+
+    if (coord_type == "lat_lon") {
+      coords <- detect_coordinate_columns(df, target)
+
+      if (is.null(coords$lat) || is.null(coords$lon)) {
+        cat(sprintf("⚠️  Could not find lat/lon columns\n"))
+        next
+      }
+
+      cat(sprintf("📍 Processing %s: lat=%s, lon=%s, CRS=%s\n",
+                 csv_col, coords$lat, coords$lon, crs))
+
+      # Create WKT POINT geometry
+      df <- df %>%
+        mutate(Position = ifelse(
+          !is.na(!!sym(coords$lon)) & !is.na(!!sym(coords$lat)),
+          sprintf("POINT(%f %f)", !!sym(coords$lon), !!sym(coords$lat)),
+          NA_character_
+        ))
+
+      valid_count <- sum(!is.na(df$Position))
+      cat(sprintf("✓ Created %d Position geometries\n", valid_count))
+
+    } else if (coord_type == "x_y") {
+      coords <- detect_coordinate_columns(df, target)
+
+      if (is.null(coords$x) || is.null(coords$y)) {
+        cat(sprintf("⚠️  Could not find x/y columns\n"))
+        next
+      }
+
+      cat(sprintf("📍 Processing %s: x=%s, y=%s, CRS=%s\n",
+                 csv_col, coords$x, coords$y, crs))
+
+      # Create WKT POINT geometry (note: R transformation requires sf package)
+      if (crs != "EPSG:4326") {
+        cat(sprintf("ℹ️  Note: CRS transformation from %s to EPSG:4326 requires sf package\n", crs))
+        cat("   Install with: install.packages('sf')\n")
+      }
+
+      df <- df %>%
+        mutate(Position = ifelse(
+          !is.na(!!sym(coords$x)) & !is.na(!!sym(coords$y)),
+          sprintf("POINT(%f %f)", !!sym(coords$x), !!sym(coords$y)),
+          NA_character_
+        ))
+
+      valid_count <- sum(!is.na(df$Position))
+      cat(sprintf("✓ Created %d Position geometries\n", valid_count))
+    }
+  }
+
+  return(df)
+}
+
+# Apply coordinate processing
+df <- process_coordinates(df, mapping)
+```
+
+---
+
+# Step 11: Organize Data by Table
+
+```{r apply-mapping}
+apply_mapping <- function(df, mapping) {
+  "Organize data by target table"
+  table_dfs <- list()
+
+  for (csv_col in names(mapping)) {
+    target <- mapping[[csv_col]]
+
+    if (is.null(target) || grepl(":", target)) {
+      next  # Skip special formats
+    }
+
+    # Parse schema.table.column
+    parts <- strsplit(target, "\\.")[[1]]
+    if (length(parts) != 3) {
+      cat(sprintf("⚠️  Invalid mapping for '%s': %s\n", csv_col, target))
+      next
+    }
+
+    schema <- parts[1]
+    table <- parts[2]
+    column <- parts[3]
+    table_key <- sprintf("%s.%s", schema, table)
+
+    if (!(table_key %in% names(table_dfs))) {
+      table_dfs[[table_key]] <- tibble()
+    }
+
+    # Add column to table tibble
+    table_dfs[[table_key]][[column]] <- df[[csv_col]]
+  }
+
+  # Add Position column if it exists
+  if ("Position" %in% names(df)) {
+    if ("trees.Trees" %in% names(table_dfs)) {
+      table_dfs[["trees.Trees"]]$Position <- df$Position
+    } else if ("sensor.Sensors" %in% names(table_dfs)) {
+      table_dfs[["sensor.Sensors"]]$Position <- df$Position
+    } else if (length(table_dfs) > 0) {
+      first_table <- names(table_dfs)[1]
+      table_dfs[[first_table]]$Position <- df$Position
+    }
+  }
+
+  return(table_dfs)
+}
+
+# Apply mapping
+table_dfs <- apply_mapping(df, mapping)
+cat(sprintf("✓ Organized data into %d tables\n", length(table_dfs)))
+```
+
+---
+
+# Step 12: Preview Data
+
+```{r preview-data}
+cat("\n", strrep("=", 80), "\n")
+cat("DATA PREVIEW - How data will be inserted into each table\n")
+cat(strrep("=", 80), "\n\n")
+
+for (table_name in names(table_dfs)) {
+  table_df <- table_dfs[[table_name]]
+  cat(sprintf("📊 %s (%d rows, %d columns)\n",
+             table_name, nrow(table_df), ncol(table_df)))
+  cat(sprintf("   Columns: %s\n\n",
+             paste(names(table_df), collapse = ", ")))
+  cat("   First 2 rows:\n\n")
+  print(kable(head(table_df, 2), format = "html"))
+  cat("\n")
+}
+```
+
+---
+
+# Step 13: Insert Data (Optional)
+
+Uncomment and run this section to insert prepared data into the database.
+
+```{r insert-optional, eval=FALSE}
+# Template for inserting data
+insert_table_data <- function(conn, table_name, df) {
+  "Insert tibble/dataframe into specified table"
+
+  parts <- strsplit(table_name, "\\.")[[1]]
+  schema <- parts[1]
+  table <- parts[2]
+
+  tryCatch({
+    dbWriteTable(
+      conn,
+      c(schema, table),
+      df,
+      append = TRUE,
+      overwrite = FALSE
+    )
+    cat(sprintf("✓ Inserted %d rows into %s\n", nrow(df), table_name))
+  }, error = function(e) {
+    cat(sprintf("❌ Failed to insert into %s: %s\n", table_name, e$message))
+  })
+}
+
+# Insert all tables
+for (table_name in names(table_dfs)) {
+  table_df <- table_dfs[[table_name]]
+  if (nrow(table_df) > 0) {
+    insert_table_data(conn, table_name, table_df)
+  }
+}
+```
+
+---
+
+# Summary
+
+## ✓ What you've done:
+
+1. Connected to the Digital Forest Twin database
+2. Introspected available database schema
+3. Loaded reference data (Species, Locations, SensorTypes)
+4. Loaded your CSV file
+5. Defined column mappings
+6. Processed coordinates (lat/lon or x/y)
+7. Organized data by table
+8. Previewed data before insertion
+
+## Next Steps:
+
+1. Review the data preview above
+2. Mapping is saved to: `r mapping_path`
+3. Data is ready in the `table_dfs` list for insertion
+4. Uncomment and run Step 13 to insert into database
+5. Or use the data in any other way you need
+
+## Tips:
+
+- You can reuse saved mappings by loading the JSON file
+- Use the LOOKUP feature (Step 8) to inspect column values
+- Modify the mapping cell to change column assignments
+- Knit document sections individually to test each step
+
+---
+
+# Cleanup
+
+```{r cleanup}
+# Close database connection
+if (!is.null(conn)) {
+  dbDisconnect(conn)
+  cat("✓ Database connection closed\n")
+}
+```

@@ -1,16 +1,22 @@
-# Data Importer Scripts
+# Data Importer - Jupyter & R Markdown Notebooks
 
-Interactive database schema introspection and CSV column mapping tools. Available in Python and R.
+Step-by-step interactive notebooks for importing CSV data into the Digital Forest Twin database.
+
+Available as:
+- **Python**: Jupyter Notebook (`import_trees.ipynb`)
+- **R**: R Markdown (`import_trees.Rmd`)
 
 ## Overview
 
-These scripts help you import CSV data into the database by:
+These notebooks help you import CSV data into the database by:
 
 1. **Connecting to the database** and retrieving all table and column definitions
 2. **Loading your CSV file** and showing you the available columns
-3. **Creating an interactive mapping** between CSV columns and database tables/columns
-4. **Generating a mapping file** that you can reuse or edit
-5. **Preparing data as DataFrames/Tibbles** ready for insertion
+3. **Exploring reference data** (Species, Locations, SensorTypes) for mapping decisions
+4. **Creating an interactive mapping** between CSV columns and database tables/columns
+5. **Handling coordinates** automatically (lat/lon or x/y with CRS transformation)
+6. **Previewing data** organized by table before insertion
+7. **Inserting data** into the database (optional, manual step)
 
 ## Quick Start
 
@@ -22,34 +28,39 @@ conda env create -f environment.yml
 conda activate digital-twin
 ```
 
-### Python
+### Python - Jupyter Notebook
 
 ```bash
-# Run the importer
-python import_trees.py
+# Start Jupyter
+jupyter notebook
 
-# Follow the interactive prompts:
-# 1. Database schema will be displayed
-# 2. CSV file will be loaded (defaults to mathisle_250904.csv)
-# 3. You'll map each column interactively: schema.table.column
-# 4. Mapping is saved as JSON
-# 5. Data preview shown before insertion
+# Open import_trees.ipynb
+# Run cells sequentially from top to bottom
+# Modify CSV path and mapping as needed
 ```
 
-### R
+### R - R Markdown
 
 ```bash
-# Run the importer
-Rscript import_trees.R
+# Option 1: Open in RStudio
+# File → Open → import_trees.Rmd
+# Run cells sequentially or knit the document
 
-# Follow the interactive prompts (same workflow as Python)
+# Option 2: Render from command line
+Rscript -e "rmarkdown::render('import_trees.Rmd')"
 ```
 
-## Workflow
+## Notebook Workflow
 
-### Step 1: Database Introspection
+Run the notebook cells sequentially from top to bottom. Each cell is a self-contained step.
 
-The script connects to the database and displays:
+### Step 1: Setup - Load Dependencies
+
+Load required packages (pandas, RPostgres, psycopg2, etc.) and test database connection.
+
+### Step 2: Introspect Database Schema
+
+Query the database and display all available tables and columns:
 
 ```text
 📦 Schema: trees
@@ -60,86 +71,127 @@ The script connects to the database and displays:
      ...
 ```
 
-All available schemas, tables, and columns are listed for reference.
+### Step 3: Load Reference Data
 
-### Step 2: CSV Loading
-
-Your CSV file is loaded and previewed:
+Display Species, Locations, and SensorTypes tables to understand mapping options:
 
 ```text
-📄 CSV File: mathisle_250904.csv
-   Rows: 741
-   Columns: species_short, gps_latitude, gps_longitude, ...
-
-First 3 rows:
-[data preview]
-```
-
-### Step 3: Reference Data & Species Mapping
-
-The script displays reference tables to help with mapping:
-
-```text
-📚 REFERENCE DATA - Use these for mapping CSV values to database IDs
-
 📚 Species:
 SpeciesID  CommonName         ScientificName
     1      European Beech     Fagus sylvatica
     6      Douglas Fir        Pseudotsuga menziesii
-    ...
 
 📚 Locations:
 LocationID  LocationName
-    4       Ecosense_MixedPlot
     1       University Forest Plot A
-    ...
+    4       Ecosense_MixedPlot
 ```
 
-**How to handle species mapping:**
+### Step 4: Load CSV File
 
-Your CSV might have species as names (e.g., "Beech", "Douglas Fir"), but the database uses numeric IDs (1, 6, etc.).
+Load your CSV and display first few rows. Edit the `CSV_PATH` variable to change the file.
 
-### Option 1: Map directly to CommonName (recommended)
+### Step 5: Coordinate Mapping Guide
 
-- `csv_species_column` → `shared.Species.CommonName`
-- The actual CSV values ("Beech", "Douglas Fir") will be inserted as species names
-- Database will match them to IDs via foreign key
+Reference for handling lat/lon or x/y coordinates:
 
-### Option 2: Pre-map species in CSV
+- **Option 1**: `lat_lon:EPSG:4326` - Auto-detects and combines latitude/longitude
+- **Option 2**: `x_y:EPSG:32632` - Auto-detects and transforms x/y (UTM) to WGS84
+- **Option 3**: `SKIP` - Handle coordinates manually
 
-- Create a lookup: "Beech" → 1, "Douglas Fir" → 6
-- Edit your CSV before importing OR
-- Edit the mapping JSON to transform values
-- Then map to `SpeciesID` column directly
+### Step 6: Define Column Mapping
 
-### Option 3: Use LOOKUP during mapping
+Edit the `mapping` dictionary to specify where each CSV column goes:
 
-- Type `LOOKUP` when prompted for a column
-- See sample CSV values to understand encoding
-- Then decide on mapping strategy
+```python
+mapping = {
+    "species_short": "shared.Species.CommonName",
+    "gps_latitude": "lat_lon:EPSG:4326",
+    "gps_longitude": "SKIP",  # Handled by lat_lon mapping
+    "DBH": "trees.Trees.FieldNotes",
+    "height": "trees.Trees.Height_m",
+}
+```
 
-### Step 4: Interactive Mapping
+**Format:** `"csv_column": "schema.table.column"`
 
-For each CSV column, you specify where it goes in the database:
+**Special formats:**
+
+- `"SKIP"` - Ignore this column
+- `"lat_lon:EPSG:CODE"` - Auto-detect lat/lon, create Position geometry
+- `"x_y:EPSG:CODE"` - Auto-detect x/y, transform to WGS84, create Position geometry
+
+### Step 7: Use LOOKUP to Inspect Values
+
+Before deciding on mapping, use the LOOKUP cell to examine column values:
+
+```python
+column_to_inspect = "species_short"
+# Shows unique values in that column to help decide mapping
+```
+
+This helps you understand the data encoding (e.g., is it "Beech" or "1"?) before mapping.
+
+### Step 8: Save Mapping as JSON
+
+The mapping is automatically saved to `CSV_filename_mapping.json` for reuse.
+
+### Step 9: Process Coordinates
+
+Coordinate columns are automatically processed:
+
+- Detects lat/lon or x/y columns by flexible naming
+- Transforms CRS if needed (with pyproj)
+- Creates WKT POINT geometry in Position column
+
+### Step 10: Organize Data by Table
+
+Data is organized into separate tables based on mapping:
 
 ```text
-'species_short' maps to: shared.Species.CommonName
-✓ Mapped to shared.Species.CommonName
+📊 trees.Trees (741 rows, 3 columns)
+   Columns: SpeciesID, Position, FieldNotes
 
-'gps_latitude' maps to: trees.Trees.Position
-✓ Mapped to trees.Trees.Position
-
-...
+📊 shared.Species (0 rows, 0 columns)
 ```
 
-**Format:** `schema.table.column`
+### Step 11: Preview Data
 
-**Special values:**
+Review how data will be inserted before committing to database.
 
-- `SKIP` - Ignore this column
-- `LOOKUP` - See sample values from CSV to help decide mapping
+### Step 12: Insert Data (Optional)
 
-### Step 4: Mapping Storage
+Uncomment the insertion code to load data into the database, or use the data in another way.
+
+## Species Mapping Guide
+
+Your CSV might have species as text (e.g., "Beech"), but the database uses numeric IDs (1, 6).
+
+### Option 1: Map to CommonName (Recommended)
+
+```python
+"species_short": "shared.Species.CommonName"
+```
+
+- Insert the text values as-is
+- Database will resolve IDs via foreign key
+- Works if CSV values match database CommonName
+
+### Option 2: Pre-map in CSV
+
+```python
+# Edit your CSV: "Beech" → 1, "Douglas Fir" → 6
+"species_column": "trees.Trees.SpeciesID"
+```
+
+- Requires editing CSV before import
+- Use LOOKUP to verify values first
+
+### Option 3: Use LOOKUP to Decide
+
+Edit the LOOKUP cell to see sample values, then decide which option works best.
+
+## Mapping Storage
 
 The mapping is automatically saved as JSON:
 
