@@ -459,21 +459,12 @@ docker compose up -d
 
 **⚠️ WARNING: This will permanently delete all database data, volumes, and containers.**
 
-#### Method 1: Using reset.sh (Recommended)
-
 ```bash
 cd docker
 ./reset.sh
 ```
 
-The reset script will interactively confirm and:
-
-- Stop and remove all containers
-- Remove all volumes
-- Clean up the `volumes/db/data` directory
-- Reset `.env` from `.env.example`
-
-#### Method 2: Manual Reset
+Or use native Docker commands:
 
 ```bash
 cd docker
@@ -482,17 +473,9 @@ cd docker
 docker compose down -v --remove-orphans
 
 # Remove the persistent database data directory
-sudo rm -rf volumes/db/data
+rm -rf volumes/db/data
 
 # Restart fresh
-docker compose up -d
-```
-
-#### Method 3: Cleanup Script (Preserves .env)
-
-```bash
-cd docker
-./cleanup-volumes.sh
 docker compose up -d
 ```
 

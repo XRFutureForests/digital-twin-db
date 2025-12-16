@@ -3,8 +3,23 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  # Python dependencies
   - python=3.11.8
-  - supabase=2.26.0
   - pandas=2.2.0
-  - pyproj=3.6.1
   - python-dotenv=1.0.0
+  - psycopg2=2.9.9
+  - pip
+  # R dependencies
+  - r-base=4.3
+  - r-dbi
+  - r-rpostgres
+  - r-readr
+  - r-dplyr
+  - r-jsonlite
+  - r-dotenv
+  - r-r6
+  - r-devtools
+  - r-httr
+  # Python packages via pip
+  - pip:
+    - supabase==2.26.0
