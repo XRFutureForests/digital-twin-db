@@ -54,27 +54,35 @@ cat("✓ Dependencies loaded\n")
 
 ```{r database-config}
 # Read connection parameters from environment
-postgres_host <- Sys.getenv("POSTGRES_HOST", "localhost")
+postgres_host <- "localhost"  # Always localhost for local Docker
 postgres_user <- Sys.getenv("POSTGRES_USER", "postgres")
 postgres_password <- Sys.getenv("POSTGRES_PASSWORD")
 postgres_db <- Sys.getenv("POSTGRES_DB", "postgres")
 postgres_port <- as.integer(Sys.getenv("POSTGRES_PORT", "5432"))
 
+# Supavisor requires tenant ID in the username format: user.tenant_id
+pooler_tenant_id <- Sys.getenv("POOLER_TENANT_ID", "")
+if (pooler_tenant_id != "") {
+  postgres_user_pooler <- sprintf("%s.%s", postgres_user, pooler_tenant_id)
+} else {
+  postgres_user_pooler <- postgres_user
+}
+
 if (postgres_password == "") {
   cat("❌ POSTGRES_PASSWORD not found in docker/.env\n")
 } else {
   cat(sprintf("✓ Database config: %s@%s:%d/%s\n",
-              postgres_user, postgres_host, postgres_port, postgres_db))
+              postgres_user_pooler, postgres_host, postgres_port, postgres_db))
 }
 ```
 
 ```{r database-connect}
-# Create database connection
+# Create database connection (using Supavisor pooler username)
 tryCatch({
   conn <- dbConnect(
     RPostgres::Postgres(),
     host = postgres_host,
-    user = postgres_user,
+    user = postgres_user_pooler,
     password = postgres_password,
     dbname = postgres_db,
     port = postgres_port
