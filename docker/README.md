@@ -57,7 +57,7 @@ All services should show as "healthy" after about 30 seconds.
 |---------|-----|-------------|
 | **Studio UI** | <http://localhost:54323> | Username: `supabase`; Password: (from `.env`) |
 | **REST API** | <http://localhost:8000/rest/v1> | API Key: (from `.env` ANON_KEY) |
-| **PostgreSQL** | localhost:5432 | User: `postgres`; Password: (from `.env`) |
+| **PostgreSQL** | localhost:5432 | User: `postgres.{POOLER_TENANT_ID}`; Password: (from `.env`) |
 
 ### 4. Custom Database Initialization
 
@@ -133,14 +133,30 @@ docker compose logs -f kong
 ### Access Database Console
 
 ```bash
-# Via Docker
-docker exec -it supabase-db psql -U postgres
+# Via Docker (direct container access)
+docker exec -it dftdb-db psql -U postgres
 
 # Then run SQL:
 \dn                              # List schemas
 \dt shared.*                     # List tables in shared schema
 SELECT * FROM shared.species;    # Query data
 ```
+
+### Connecting from Host Machine
+
+The database is exposed through Supavisor connection pooler on port 5432. You must use the tenant ID format for the username:
+
+```bash
+# Connection format (replace with values from .env)
+psql 'postgres://postgres.digital-forest-twin-local:YOUR_PASSWORD@localhost:5432/postgres'
+
+# Or with environment variables
+source .env
+PGPASSWORD="$POSTGRES_PASSWORD" psql -h localhost -p 5432 \
+  -U "postgres.$POOLER_TENANT_ID" -d postgres
+```
+
+**Important**: When connecting through Supavisor (port 5432), the username must be `postgres.{POOLER_TENANT_ID}` (e.g., `postgres.digital-forest-twin-local`).
 
 ### Reset Everything
 

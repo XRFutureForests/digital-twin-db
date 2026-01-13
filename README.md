@@ -336,14 +336,25 @@ Connect with any PostgreSQL client (psql, DBeaver, pgAdmin, etc.):
 Host: localhost
 Port: 5432
 Database: postgres
-Username: postgres
+Username: postgres.digital-forest-twin-local  (format: postgres.{POOLER_TENANT_ID})
 Password: (from POSTGRES_PASSWORD in .env)
 ```
 
-**Using psql**:
+**Important**: Connections on port 5432 go through Supavisor connection pooler. The username must include the tenant ID suffix (e.g., `postgres.digital-forest-twin-local`). Check your `.env` for the `POOLER_TENANT_ID` value.
+
+**Using psql from host**:
 
 ```bash
-# Connect
+# Connect via Supavisor (from host machine)
+source docker/.env
+PGPASSWORD="$POSTGRES_PASSWORD" psql -h localhost -p 5432 \
+  -U "postgres.$POOLER_TENANT_ID" -d postgres
+```
+
+**Using psql inside container** (bypasses Supavisor):
+
+```bash
+# Connect directly inside container
 docker exec -it dftdb-db psql -U postgres
 
 # List schemas

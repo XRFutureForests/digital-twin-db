@@ -280,12 +280,14 @@ Before running imports:
    ```bash
    cd docker
    docker compose ps
+   # All services should show "healthy"
    ```
 
 2. **Environment variables in `docker/.env`:**
 
-   - `SUPABASE_URL` - Database URL (default: `http://localhost:8000`)
-   - `SERVICE_ROLE_KEY` - Admin API key (required)
+   - `POSTGRES_PASSWORD` - Database password (required)
+   - `POOLER_TENANT_ID` - Supavisor tenant ID (default: `digital-forest-twin-local`)
+   - `POSTGRES_PORT` - Database port (default: `5432`)
 
 3. **Reference data exists:**
 
@@ -296,6 +298,8 @@ Before running imports:
    # Check if locations exist
    docker exec -it dftdb-db psql -U postgres -c "SELECT * FROM shared.locations;"
    ```
+
+**Note**: The notebooks connect via Supavisor connection pooler on port 5432. The username format is `postgres.{POOLER_TENANT_ID}` (e.g., `postgres.digital-forest-twin-local`).
 
 ## Customization
 
@@ -334,12 +338,13 @@ Both are included in the conda environment.
 
 ## Troubleshooting
 
-### SERVICE_ROLE_KEY not found
+### POSTGRES_PASSWORD not found
 
 Check that `docker/.env` exists in the docker directory with:
 
 ```bash
-SERVICE_ROLE_KEY=your_key_here
+POSTGRES_PASSWORD=your_password_here
+POOLER_TENANT_ID=digital-forest-twin-local
 ```
 
 ### CSV file not found
@@ -361,9 +366,12 @@ Check the schema display output to ensure:
 
 Verify:
 
-1. Supabase services running: `docker compose -C docker ps`
-2. `SUPABASE_URL` in `docker/.env` is correct
-3. `SERVICE_ROLE_KEY` is valid
+1. All Docker services are healthy: `cd docker && docker compose ps`
+2. `POSTGRES_PASSWORD` in `docker/.env` is correct
+3. `POOLER_TENANT_ID` is set (default: `digital-forest-twin-local`)
+4. Supavisor pooler is running: `docker logs dftdb-pooler`
+
+**Common error**: "Tenant or user not found" - This means the username format is wrong. The notebooks should use `postgres.{POOLER_TENANT_ID}` format.
 
 ## Files
 
