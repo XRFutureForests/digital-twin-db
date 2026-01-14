@@ -1,0 +1,38 @@
+# Simplified Digital Forest Twin Database
+# Single PostgreSQL container with PostGIS and pre-loaded data
+#
+# Usage:
+#   Start:    docker compose -f docker-compose.simple.yml up -d
+#   Stop:     docker compose -f docker-compose.simple.yml down
+#   Reset:    docker compose -f docker-compose.simple.yml down -v && docker compose -f docker-compose.simple.yml up -d
+#   Logs:     docker compose -f docker-compose.simple.yml logs -f
+#   psql:     docker exec -it dftdb-postgres psql -U postgres
+
+name: digital_forest_twin_simple
+
+services:
+  db:
+    container_name: dftdb-postgres
+    image: postgis/postgis:15-3.4-alpine
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Database initialization scripts (run in alphabetical order)
+      - ./volumes/db/simple-init:/docker-entrypoint-initdb.d:ro
+      # Data persistence
+      - pgdata:/var/lib/postgresql/data
+      # CSV data files for import
+      - ../data:/data:ro
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-forest_twin}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-forest_twin}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

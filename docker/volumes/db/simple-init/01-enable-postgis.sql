@@ -1,6 +1,7 @@
 -- =============================================================================
--- ENABLE POSTGIS EXTENSION
+-- 01: ENABLE POSTGIS EXTENSION
 -- =============================================================================
+-- Digital Forest Twin - Simplified PostgreSQL Setup
 -- This must run before forest schema migrations that depend on PostGIS types
 -- =============================================================================
 
@@ -11,14 +12,11 @@ CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE EXTENSION IF NOT EXISTS postgis SCHEMA extensions CASCADE;
 CREATE EXTENSION IF NOT EXISTS postgis_topology SCHEMA extensions CASCADE;
 
--- Grant permissions to Supabase roles
-GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
-GRANT ALL ON ALL TABLES IN SCHEMA extensions TO anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA extensions TO anon, authenticated, service_role;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA extensions TO anon, authenticated, service_role;
+-- Add extensions to search path for all sessions
+ALTER DATABASE forest_twin SET search_path TO "$user", public, extensions;
 
--- Add extensions to search path
-ALTER DATABASE postgres SET search_path TO "$user", public, extensions;
+-- Also set for current session
+SET search_path TO "$user", public, extensions;
 
 -- Log success
 DO $$
