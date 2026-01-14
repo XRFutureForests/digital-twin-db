@@ -7,10 +7,10 @@ A PostgreSQL database with PostGIS for forest research, containing tree inventor
 ```bash
 # Start the database (data loads automatically from CSV files)
 cd docker
-docker compose -f docker-compose.simple.yml up -d
+docker compose up -d
 
 # Verify it's running
-docker compose -f docker-compose.simple.yml ps
+docker compose ps
 
 # Connect to the database
 docker exec -it dftdb-postgres psql -U postgres -d forest_twin
@@ -100,14 +100,14 @@ SELECT * FROM trees.v_tree_summary;
 
 ```bash
 # Stop database
-docker compose -f docker-compose.simple.yml down
+docker compose down
 
 # Reset database (delete all data)
-docker compose -f docker-compose.simple.yml down -v
-docker compose -f docker-compose.simple.yml up -d
+docker compose down -v
+docker compose up -d
 
 # View logs
-docker compose -f docker-compose.simple.yml logs -f
+docker compose logs -f
 
 # Backup database
 docker exec dftdb-postgres pg_dump -U postgres forest_twin > backup.sql
@@ -124,8 +124,8 @@ digital-twin/
 │   ├── ecosense_250911.csv  # EcoSense tree inventory
 │   └── mathisle_250904.csv  # Mathisleweiher tree inventory
 ├── docker/
-│   ├── docker-compose.simple.yml  # PostgreSQL container config
-│   ├── .env.simple                # Environment variables
+│   ├── docker-compose.yml   # PostgreSQL container config
+│   ├── .env                 # Environment variables
 │   └── volumes/db/simple-init/    # Database initialization scripts
 └── docs/                    # Documentation
     ├── database-schema.md   # Schema details
