@@ -1,5 +1,5 @@
+# Database data (created by Docker)
 volumes/db/data
-volumes/storage
-.env
-test.http
+
+# Override files
 docker-compose.override.yml

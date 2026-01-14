@@ -1,18 +1,15 @@
--- XR Future Forests Lab - Shared Schema Migration
--- This migration creates the shared schema with reference tables used across all domains
--- Dependencies: PostgreSQL with PostGIS extension
-
--- Enable required extensions
--- Note: These extensions are already available in the Supabase postgres image
--- CREATE EXTENSION IF NOT EXISTS postgis;
--- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
--- CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+-- =============================================================================
+-- 02: SHARED SCHEMA
+-- =============================================================================
+-- Digital Forest Twin - Simplified PostgreSQL Setup
+-- Reference tables used across all domains
+-- =============================================================================
 
 -- Create shared schema
 CREATE SCHEMA IF NOT EXISTS shared;
 
 -- Set search path
-SET search_path TO shared, public;
+SET search_path TO shared, public, extensions;
 
 -- =============================================================================
 -- LOCATION AND ENVIRONMENTAL CONTEXT TABLES
@@ -31,7 +28,6 @@ CREATE TABLE shared.SoilTypes (
 );
 
 COMMENT ON TABLE shared.SoilTypes IS 'USDA soil classification reference table';
-COMMENT ON COLUMN shared.SoilTypes.SoilTypeName IS 'USDA soil classification type';
 
 -- Climate Zones Reference Table
 CREATE TABLE shared.ClimateZones (
@@ -42,7 +38,6 @@ CREATE TABLE shared.ClimateZones (
 );
 
 COMMENT ON TABLE shared.ClimateZones IS 'Köppen climate classification zones';
-COMMENT ON COLUMN shared.ClimateZones.ClimateZoneName IS 'Köppen climate classification code (e.g., Cfb, Dfb, ET, EF, BWh)';
 
 -- Locations Table
 CREATE TABLE shared.Locations (
@@ -61,14 +56,10 @@ CREATE TABLE shared.Locations (
 );
 
 COMMENT ON TABLE shared.Locations IS 'Forest plot locations with spatial boundaries and environmental context';
-COMMENT ON COLUMN shared.Locations.Boundary IS 'PostGIS polygon defining plot boundaries in WGS84';
-COMMENT ON COLUMN shared.Locations.CenterPoint IS 'PostGIS point for plot center in WGS84';
 
 -- Create spatial indexes
 CREATE INDEX idx_locations_boundary ON shared.Locations USING GIST (Boundary);
 CREATE INDEX idx_locations_centerpoint ON shared.Locations USING GIST (CenterPoint);
-CREATE INDEX idx_locations_soil_type ON shared.Locations(SoilTypeID);
-CREATE INDEX idx_locations_climate_zone ON shared.Locations(ClimateZoneID);
 
 -- =============================================================================
 -- SPECIES REFERENCE TABLE
@@ -78,7 +69,6 @@ CREATE TABLE shared.Species (
     SpeciesID SERIAL PRIMARY KEY,
     CommonName VARCHAR(200),
     ScientificName VARCHAR(200) NOT NULL UNIQUE,
-    -- Growth characteristics as proper columns
     MaxHeight_m NUMERIC(6, 2),
     MaxDBH_cm NUMERIC(6, 2),
     TypicalLifespan_years INTEGER,
@@ -89,16 +79,9 @@ CREATE TABLE shared.Species (
 );
 
 COMMENT ON TABLE shared.Species IS 'Tree species reference with growth characteristics';
-COMMENT ON COLUMN shared.Species.MaxHeight_m IS 'Maximum typical height in meters';
-COMMENT ON COLUMN shared.Species.MaxDBH_cm IS 'Maximum typical diameter at breast height in centimeters';
-COMMENT ON COLUMN shared.Species.TypicalLifespan_years IS 'Typical lifespan in years';
-COMMENT ON COLUMN shared.Species.GrowthRate IS 'Relative growth rate (very_slow, slow, moderate, fast, very_fast)';
-COMMENT ON COLUMN shared.Species.ShadeTolerance IS 'Shade tolerance level (very_low, low, moderate, high, very_high)';
 
 CREATE INDEX idx_species_scientific_name ON shared.Species(ScientificName);
 CREATE INDEX idx_species_common_name ON shared.Species(CommonName);
-CREATE INDEX idx_species_growth_rate ON shared.Species(GrowthRate);
-CREATE INDEX idx_species_shade_tolerance ON shared.Species(ShadeTolerance);
 
 -- =============================================================================
 -- SCENARIOS AND VARIANT TYPES
@@ -112,9 +95,7 @@ CREATE TABLE shared.Scenarios (
     UpdatedAt TIMESTAMPTZ
 );
 
-COMMENT ON TABLE shared.Scenarios IS 'Simulation scenarios (e.g., Current_Conditions, Climate_Change_2050, Drought_Test)';
-
-CREATE INDEX idx_scenarios_name ON shared.Scenarios(ScenarioName);
+COMMENT ON TABLE shared.Scenarios IS 'Simulation scenarios';
 
 CREATE TABLE shared.VariantTypes (
     VariantTypeID SERIAL PRIMARY KEY,
@@ -125,12 +106,10 @@ CREATE TABLE shared.VariantTypes (
     ))
 );
 
-COMMENT ON TABLE shared.VariantTypes IS 'Types of data variants (original, processed, simulated, etc.)';
-
-CREATE INDEX idx_variant_types_name ON shared.VariantTypes(VariantTypeName);
+COMMENT ON TABLE shared.VariantTypes IS 'Types of data variants';
 
 -- =============================================================================
--- PROCESS MANAGEMENT AND ALGORITHM TRACKING
+-- PROCESS MANAGEMENT
 -- =============================================================================
 
 CREATE TABLE shared.Processes (
@@ -148,12 +127,7 @@ CREATE TABLE shared.Processes (
     UNIQUE (ProcessName, Version)
 );
 
-COMMENT ON TABLE shared.Processes IS 'Processing algorithms and methods with versioning and academic attribution';
-COMMENT ON COLUMN shared.Processes.ProcessName IS 'Process name (e.g., LiDAR_Segmentation, Tree_Detection, Growth_Simulation)';
-COMMENT ON COLUMN shared.Processes.AlgorithmName IS 'Algorithm used (e.g., RandomForest, DeepLearning, RulesBased)';
-
-CREATE INDEX idx_processes_name ON shared.Processes(ProcessName);
-CREATE INDEX idx_processes_category ON shared.Processes(Category);
+COMMENT ON TABLE shared.Processes IS 'Processing algorithms and methods';
 
 CREATE TABLE shared.ProcessParameters (
     ParameterID SERIAL PRIMARY KEY,
@@ -164,28 +138,17 @@ CREATE TABLE shared.ProcessParameters (
     CreatedAt TIMESTAMPTZ DEFAULT NOW()
 );
 
-COMMENT ON TABLE shared.ProcessParameters IS 'Process parameters used for variants (linked via junction tables)';
-COMMENT ON COLUMN shared.ProcessParameters.ParameterValue IS 'Parameter value as text (cast based on DataType)';
-
-CREATE INDEX idx_process_parameters_name ON shared.ProcessParameters(ParameterName);
-
 CREATE TABLE shared.ProcessMetrics (
     MetricID SERIAL PRIMARY KEY,
     ProcessID INTEGER NOT NULL REFERENCES shared.Processes(ProcessID) ON DELETE CASCADE,
     MetricName VARCHAR(200) NOT NULL,
     MetricValue NUMERIC(10, 6),
     Source TEXT,
-    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT chk_metric_name CHECK (MetricName IN ('accuracy', 'precision', 'recall', 'f1_score', 'rmse', 'mae', 'r_squared'))
+    CreatedAt TIMESTAMPTZ DEFAULT NOW()
 );
 
-COMMENT ON TABLE shared.ProcessMetrics IS 'Published performance metrics for processes';
-
-CREATE INDEX idx_process_metrics_process_id ON shared.ProcessMetrics(ProcessID);
-CREATE INDEX idx_process_metrics_name ON shared.ProcessMetrics(MetricName);
-
 -- =============================================================================
--- FIELD-LEVEL CHANGE TRACKING (AUDIT LOG)
+-- AUDIT LOG
 -- =============================================================================
 
 CREATE TABLE shared.AuditLog (
@@ -201,21 +164,15 @@ CREATE TABLE shared.AuditLog (
     UserAgent TEXT
 );
 
-COMMENT ON TABLE shared.AuditLog IS 'Field-level change tracking with user attribution (linked via junction tables)';
-COMMENT ON COLUMN shared.AuditLog.FieldName IS 'Name of the field that was changed';
-COMMENT ON COLUMN shared.AuditLog.OldValue IS 'Previous value (stored as JSON text)';
-COMMENT ON COLUMN shared.AuditLog.NewValue IS 'New value (stored as JSON text)';
+COMMENT ON TABLE shared.AuditLog IS 'Field-level change tracking';
 
 CREATE INDEX idx_audit_log_timestamp ON shared.AuditLog(Timestamp DESC);
-CREATE INDEX idx_audit_log_user_id ON shared.AuditLog(UserID);
-CREATE INDEX idx_audit_log_field_name ON shared.AuditLog(FieldName);
-CREATE INDEX idx_audit_log_change_type ON shared.AuditLog(ChangeType);
 
 -- =============================================================================
 -- SEED REFERENCE DATA
 -- =============================================================================
 
--- Insert common soil types
+-- Insert soil types
 INSERT INTO shared.SoilTypes (SoilTypeName, Description) VALUES
     ('Alfisol', 'Moderately leached soils with high native fertility'),
     ('Andisol', 'Soils formed in volcanic ash'),
@@ -230,7 +187,7 @@ INSERT INTO shared.SoilTypes (SoilTypeName, Description) VALUES
     ('Ultisol', 'Highly weathered, acidic forest soils'),
     ('Vertisol', 'Clay-rich soils that shrink and swell');
 
--- Insert common climate zones
+-- Insert climate zones
 INSERT INTO shared.ClimateZones (ClimateZoneName, Description) VALUES
     ('Af', 'Tropical rainforest'),
     ('Am', 'Tropical monsoon'),
@@ -251,29 +208,42 @@ INSERT INTO shared.ClimateZones (ClimateZoneName, Description) VALUES
     ('ET', 'Tundra'),
     ('EF', 'Ice cap');
 
--- Insert common variant types
+-- Insert variant types
 INSERT INTO shared.VariantTypes (VariantTypeName, Description) VALUES
     ('original', 'Original data from field measurements or sensors'),
     ('processed', 'Data processed by automated algorithms'),
     ('manual', 'Manually entered or corrected data'),
     ('simulated_growth', 'Data from growth simulation models'),
-    ('user_input', 'User-defined or modified data in XR environment'),
+    ('user_input', 'User-defined or modified data'),
     ('sensor_derived', 'Aggregated or derived from sensor readings'),
-    ('model_output', 'Output from external models (SILVA, climate models)');
+    ('model_output', 'Output from external models');
 
--- Insert common scenarios
+-- Insert scenarios
 INSERT INTO shared.Scenarios (ScenarioName, Description) VALUES
     ('Current_Conditions', 'Baseline scenario with current environmental conditions'),
-    ('Climate_Change_2050', 'Projected conditions for year 2050 based on IPCC scenarios'),
-    ('Climate_Change_2100', 'Projected conditions for year 2100 based on IPCC scenarios'),
+    ('Climate_Change_2050', 'Projected conditions for year 2050'),
+    ('Climate_Change_2100', 'Projected conditions for year 2100'),
     ('Drought_Test', 'Extreme drought stress scenario'),
     ('Heat_Wave', 'Extended heat wave scenario'),
     ('Increased_CO2', 'Elevated atmospheric CO2 concentration'),
     ('Management_Thinning', 'Forest management with selective thinning'),
     ('No_Management', 'Natural forest development without intervention');
 
--- Grant appropriate permissions (to be customized based on RLS policies)
-GRANT USAGE ON SCHEMA shared TO anon, authenticated, service_role;
-GRANT SELECT ON ALL TABLES IN SCHEMA shared TO anon, authenticated;
-GRANT ALL ON ALL TABLES IN SCHEMA shared TO service_role;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA shared TO authenticated, service_role;
+-- Insert species
+INSERT INTO shared.Species (CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance) VALUES
+    ('European Beech', 'Fagus sylvatica', 40, 150, 300, 'moderate', 'high'),
+    ('Beech', 'Fagus sylvatica', 40, 150, 300, 'moderate', 'high'),
+    ('Pedunculate Oak', 'Quercus robur', 35, 200, 500, 'slow', 'moderate'),
+    ('Oak', 'Quercus robur', 35, 200, 500, 'slow', 'moderate'),
+    ('Norway Spruce', 'Picea abies', 50, 150, 200, 'fast', 'high'),
+    ('Spruce', 'Picea abies', 50, 150, 200, 'fast', 'high'),
+    ('Silver Fir', 'Abies alba', 50, 200, 500, 'moderate', 'very_high'),
+    ('Scots Pine', 'Pinus sylvestris', 35, 100, 300, 'moderate', 'low'),
+    ('Douglas Fir', 'Pseudotsuga menziesii', 60, 180, 500, 'fast', 'moderate')
+ON CONFLICT (ScientificName) DO NOTHING;
+
+DO $$
+BEGIN
+    RAISE NOTICE '✅ Shared schema created with reference data';
+END
+$$;
