@@ -6,21 +6,21 @@ Simple PostgreSQL + PostGIS database for the Digital Forest Twin project.
 
 ```bash
 # Start database
-docker compose -f docker-compose.simple.yml up -d
+docker compose up -d
 
 # Check status
-docker compose -f docker-compose.simple.yml ps
+docker compose ps
 
 # View logs
-docker compose -f docker-compose.simple.yml logs -f
+docker compose logs -f
 ```
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `docker-compose.simple.yml` | PostgreSQL container configuration |
-| `.env.simple` | Environment variables (credentials) |
+| `docker-compose.yml` | PostgreSQL container configuration |
+| `.env` | Environment variables (credentials) |
 | `volumes/db/simple-init/` | SQL initialization scripts |
 
 ## Initialization Scripts
@@ -54,11 +54,11 @@ psql -h localhost -U postgres -d forest_twin
 
 ```bash
 # Stop
-docker compose -f docker-compose.simple.yml down
+docker compose down
 
 # Reset (delete all data)
-docker compose -f docker-compose.simple.yml down -v
-docker compose -f docker-compose.simple.yml up -d
+docker compose down -v
+docker compose up -d
 
 # Backup
 docker exec dftdb-postgres pg_dump -U postgres forest_twin > backup.sql
@@ -75,7 +75,7 @@ docker exec -i dftdb-postgres psql -U postgres -d forest_twin < backup.sql
 # Find what's using the port
 sudo lsof -i :5432
 
-# Use different port (edit .env.simple)
+# Use different port (edit .env)
 POSTGRES_PORT=5433
 ```
 
@@ -83,9 +83,9 @@ POSTGRES_PORT=5433
 
 ```bash
 # Check logs
-docker compose -f docker-compose.simple.yml logs db
+docker compose logs db
 
 # Reset everything
-docker compose -f docker-compose.simple.yml down -v
-docker compose -f docker-compose.simple.yml up -d
+docker compose down -v
+docker compose up -d
 ```

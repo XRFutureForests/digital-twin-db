@@ -5,12 +5,14 @@ This directory contains CSV files with tree inventory data that are automaticall
 ## Files
 
 ### `ecosense_250911.csv`
+
 - **Source**: EcoSense Mixed Plot
 - **Count**: ~1,500 trees
 - **Coordinates**: UTM Zone 32N (EPSG:32632) → automatically converted to WGS84
 - **Key Fields**: TreeID, QRCode, Species, Easting, Northing, DBH, Height
 
 ### `mathisle_250904.csv`
+
 - **Source**: Mathisleweiher Plot
 - **Count**: ~740 trees
 - **Coordinates**: GPS (WGS84) → Latitude, Longitude
@@ -19,6 +21,7 @@ This directory contains CSV files with tree inventory data that are automaticall
 ## Automatic Import
 
 Both CSV files are automatically imported when the database initializes. The import:
+
 1. Loads tree records into `trees.TreeInventory`
 2. Creates corresponding stems in `trees.Stems`
 3. Converts coordinates to PostGIS geometry (SRID 4326)
