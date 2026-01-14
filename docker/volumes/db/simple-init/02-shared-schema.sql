@@ -43,8 +43,8 @@ COMMENT ON TABLE shared.ClimateZones IS 'Köppen climate classification zones';
 CREATE TABLE shared.Locations (
     LocationID SERIAL PRIMARY KEY,
     LocationName VARCHAR(200) NOT NULL,
-    Boundary extensions.GEOMETRY(Polygon, 4326),
-    CenterPoint extensions.GEOMETRY(Point, 4326),
+    Boundary GEOMETRY(Polygon, 4326),
+    CenterPoint GEOMETRY(Point, 4326),
     Description TEXT,
     Elevation_m NUMERIC(8, 2),
     Slope_deg NUMERIC(5, 2) CHECK (Slope_deg >= 0 AND Slope_deg <= 90),

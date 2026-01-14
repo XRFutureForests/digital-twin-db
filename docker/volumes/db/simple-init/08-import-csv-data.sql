@@ -36,7 +36,7 @@ CREATE TEMP TABLE ecosense_staging (
 -- Load CSV data
 COPY ecosense_staging FROM '/data/ecosense_250911.csv' WITH (FORMAT csv, HEADER true);
 
--- Insert trees from ecosense data
+-- Insert trees from ecosense data (use DISTINCT to handle duplicates)
 INSERT INTO trees.Trees (
     LocationID,
     VariantTypeID,
@@ -50,7 +50,7 @@ INSERT INTO trees.Trees (
     FieldNotes,
     CreatedBy
 )
-SELECT
+SELECT DISTINCT ON (es.full_id)
     (SELECT LocationID FROM shared.Locations WHERE LocationName = 'EcoSense Mixed Plot'),
     (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'original'),
     COALESCE(
@@ -71,7 +71,8 @@ SELECT
     ),
     'csv_import_ecosense'
 FROM ecosense_staging es
-WHERE es.x_32632 IS NOT NULL AND es.y_32632 IS NOT NULL;
+WHERE es.x_32632 IS NOT NULL AND es.y_32632 IS NOT NULL
+ORDER BY es.full_id, es.row_num;
 
 -- Insert stems with DBH for each tree (ecosense data has diameter_m)
 INSERT INTO trees.Stems (
@@ -79,7 +80,7 @@ INSERT INTO trees.Stems (
     StemNumber,
     DBH_cm
 )
-SELECT
+SELECT DISTINCT ON (t.VariantID)
     t.VariantID,
     1,
     es.diameter_m * 100  -- Convert meters to cm
@@ -109,17 +110,17 @@ $$;
 -- row_id, species_short, date_time, qr_code, tree_id_fallback, gps_latitude, 
 -- gps_longitude, gps_height, DBH, TreeID, species_label
 
--- Create temporary staging table for mathisle data
+-- Create temporary staging table for mathisle data (all TEXT to handle NA values)
 CREATE TEMP TABLE mathisle_staging (
     row_id TEXT,
     species_short TEXT,
     date_time TEXT,
     qr_code TEXT,
     tree_id_fallback TEXT,
-    gps_latitude NUMERIC,
-    gps_longitude NUMERIC,
-    gps_height NUMERIC,
-    dbh NUMERIC,
+    gps_latitude TEXT,
+    gps_longitude TEXT,
+    gps_height TEXT,
+    dbh TEXT,
     tree_id TEXT,
     species_label TEXT
 );
@@ -127,7 +128,7 @@ CREATE TEMP TABLE mathisle_staging (
 -- Load CSV data
 COPY mathisle_staging FROM '/data/mathisle_250904.csv' WITH (FORMAT csv, HEADER true);
 
--- Insert trees from mathisle data
+-- Insert trees from mathisle data (use DISTINCT to handle duplicates)
 INSERT INTO trees.Trees (
     LocationID,
     VariantTypeID,
@@ -140,7 +141,7 @@ INSERT INTO trees.Trees (
     FieldNotes,
     CreatedBy
 )
-SELECT
+SELECT DISTINCT ON (COALESCE(ms.tree_id, ms.row_id))
     (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Mathisleweiher Plot'),
     (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'original'),
     CASE 
@@ -153,17 +154,18 @@ SELECT
     (SELECT TreeStatusID FROM trees.TreeStatus WHERE TreeStatusName = 'healthy'),
     COALESCE(ms.tree_id, ms.row_id),
     ms.qr_code,
-    -- Already in WGS84
-    ST_SetSRID(ST_MakePoint(ms.gps_longitude, ms.gps_latitude), 4326),
+    -- Already in WGS84 (cast TEXT to FLOAT, filtering out NA values)
+    ST_SetSRID(ST_MakePoint(ms.gps_longitude::FLOAT, ms.gps_latitude::FLOAT), 4326),
     -- Original with elevation
-    ST_SetSRID(ST_MakePoint(ms.gps_longitude, ms.gps_latitude, ms.gps_height), 4326),
+    ST_SetSRID(ST_MakePoint(ms.gps_longitude::FLOAT, ms.gps_latitude::FLOAT, NULLIF(ms.gps_height, 'NA')::FLOAT), 4326),
     ms.species_label,
     'csv_import_mathisle'
 FROM mathisle_staging ms
 WHERE ms.gps_latitude IS NOT NULL 
   AND ms.gps_longitude IS NOT NULL
-  AND ms.gps_latitude != 0
-  AND ms.gps_longitude != 0;
+  AND ms.gps_latitude NOT IN ('NA', '0', '')
+  AND ms.gps_longitude NOT IN ('NA', '0', '')
+ORDER BY COALESCE(ms.tree_id, ms.row_id);
 
 -- Insert stems with DBH for each tree
 INSERT INTO trees.Stems (
@@ -171,13 +173,13 @@ INSERT INTO trees.Stems (
     StemNumber,
     DBH_cm
 )
-SELECT
+SELECT DISTINCT ON (t.VariantID)
     t.VariantID,
     1,
-    ms.dbh * 100  -- Convert meters to cm
+    NULLIF(ms.dbh, 'NA')::FLOAT * 100  -- Convert meters to cm
 FROM mathisle_staging ms
 JOIN trees.Trees t ON t.TreeID = COALESCE(ms.tree_id, ms.row_id) AND t.CreatedBy = 'csv_import_mathisle'
-WHERE ms.dbh IS NOT NULL AND ms.dbh > 0;
+WHERE ms.dbh IS NOT NULL AND ms.dbh NOT IN ('NA', '0', '');
 
 DROP TABLE mathisle_staging;
 

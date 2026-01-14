@@ -22,7 +22,7 @@ CREATE TABLE pointclouds.PointClouds (
     VariantName VARCHAR(300) NOT NULL,
     ScanDate TIMESTAMPTZ,
     SensorModel VARCHAR(200),
-    ScanBounds extensions.GEOMETRY(Polygon, 4326),
+    ScanBounds GEOMETRY(Polygon, 4326),
     FilePath TEXT NOT NULL,
     PointCount BIGINT CHECK (PointCount >= 0),
     FileSizeMB NUMERIC(12, 2) CHECK (FileSizeMB >= 0),
