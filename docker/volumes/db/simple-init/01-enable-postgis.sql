@@ -8,9 +8,8 @@
 -- Create extensions schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS extensions;
 
--- Enable PostGIS extension
-CREATE EXTENSION IF NOT EXISTS postgis SCHEMA extensions CASCADE;
-CREATE EXTENSION IF NOT EXISTS postgis_topology SCHEMA extensions CASCADE;
+-- Enable PostGIS extension in public schema (simpler, avoids search path issues)
+CREATE EXTENSION IF NOT EXISTS postgis CASCADE;
 
 -- Add extensions to search path for all sessions
 ALTER DATABASE forest_twin SET search_path TO "$user", public, extensions;
