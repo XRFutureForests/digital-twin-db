@@ -144,12 +144,13 @@ INSERT INTO trees.Trees (
 SELECT DISTINCT ON (COALESCE(ms.tree_id, ms.row_id))
     (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Mathisleweiher Plot'),
     (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'original'),
-    CASE 
+    CASE
         WHEN ms.species_short = 'BE' THEN (SELECT SpeciesID FROM shared.Species WHERE CommonName = 'European Beech' LIMIT 1)
+        WHEN ms.species_short IN ('NS', 'SP') THEN (SELECT SpeciesID FROM shared.Species WHERE CommonName = 'Norway Spruce' LIMIT 1)
+        WHEN ms.species_short IN ('ESF', 'SF') THEN (SELECT SpeciesID FROM shared.Species WHERE CommonName = 'Silver Fir' LIMIT 1)
         WHEN ms.species_short = 'DF' THEN (SELECT SpeciesID FROM shared.Species WHERE CommonName = 'Douglas Fir' LIMIT 1)
-        WHEN ms.species_short = 'SF' THEN (SELECT SpeciesID FROM shared.Species WHERE CommonName = 'Silver Fir' LIMIT 1)
-        WHEN ms.species_short = 'SP' THEN (SELECT SpeciesID FROM shared.Species WHERE CommonName = 'Norway Spruce' LIMIT 1)
-        ELSE (SELECT SpeciesID FROM shared.Species WHERE CommonName = 'European Beech' LIMIT 1)
+        WHEN ms.species_short = 'ELA' THEN (SELECT SpeciesID FROM shared.Species WHERE CommonName = 'Scots Pine' LIMIT 1)  -- European Larch, closest match
+        ELSE (SELECT SpeciesID FROM shared.Species WHERE CommonName = 'European Beech' LIMIT 1)  -- Default for WCH, WST, NOM, SY, XBI, other
     END,
     (SELECT TreeStatusID FROM trees.TreeStatus WHERE TreeStatusName = 'healthy'),
     COALESCE(ms.tree_id, ms.row_id),
