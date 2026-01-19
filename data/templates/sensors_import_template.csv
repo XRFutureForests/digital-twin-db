@@ -1,0 +1,13 @@
+# DIGITAL FOREST TWIN - SENSOR IMPORT TEMPLATE
+# =============================================
+# Use this template to prepare sensor metadata for database import.
+# Sensors should be imported BEFORE trees if you want to link them.
+# See data/templates/README.md for detailed field descriptions.
+#
+# REQUIRED FIELDS: LocationID, SensorTypeID, SensorModel, Latitude, Longitude, SamplingInterval_seconds
+# All coordinates must be in WGS84 (EPSG:4326)
+#
+LocationID,SensorTypeID,SensorModel,SerialNumber,Latitude,Longitude,SamplingInterval_seconds,InstallationDate,Unit,IsActive,TreeLinkID,Notes
+4,13,EMS Dendro DR26,Beech_Mixed_5_Dendrometer,47.884878,8.088243,900,2024-01-15,mm,true,ecosense_8_15,"Dendrometer on Douglas Fir tree 8_15"
+4,13,EMS Dendro DR26,DouglasFir_Mixed_5_Dendrometer,47.884879,8.088244,900,2024-01-15,mm,true,ecosense_8_17,"Dendrometer on Douglas Fir tree 8_17"
+4,5,Decagon 5TM,DouglasFir_Mixed_5_edge_E_SoilMoisture,47.884880,8.088245,900,2024-01-15,%,true,ecosense_8_15,"Soil moisture sensor near tree 8_15"

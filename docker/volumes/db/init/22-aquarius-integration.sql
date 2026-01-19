@@ -11,30 +11,11 @@ ADD COLUMN IF NOT EXISTS ExternalMetadata JSONB DEFAULT '{}'::jsonb;
 COMMENT ON COLUMN sensor.Sensors.ExternalID IS 'Unique identifier from external system (e.g., Aquarius TimeSeriesIdentifier)';
 COMMENT ON COLUMN sensor.Sensors.ExternalMetadata IS 'Additional metadata from external system';
 
--- 2. Add missing Sensor Types
-INSERT INTO sensor.SensorTypes (SensorTypeName, Description, TypicalUnit, TypicalRangeMin, TypicalRangeMax)
-VALUES 
-    ('Stem_Radial_Variation', 'Dendrometer readings for stem radial variation', 'mV', 0, 5000)
-ON CONFLICT (SensorTypeName) DO NOTHING;
+-- NOTE: Sensor types (including Stem_Radial_Variation) are loaded from data/lookups/sensor_types.csv
+-- NOTE: Sensor-tree links table is created in 16-sensor-tree-links-schema.sql
 
--- 3. Create Sensor-Tree Link table
-CREATE TABLE IF NOT EXISTS sensor.SensorTreeLinks (
-    LinkID SERIAL PRIMARY KEY,
-    SensorID INTEGER NOT NULL REFERENCES sensor.Sensors(SensorID) ON DELETE CASCADE,
-    TreeVariantID INTEGER NOT NULL REFERENCES trees.Trees(VariantID) ON DELETE CASCADE,
-    Description TEXT,
-    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(SensorID, TreeVariantID)
-);
-
-COMMENT ON TABLE sensor.SensorTreeLinks IS 'Links sensors to specific tree variants';
-
--- 4. Create index for external ID lookups
+-- 2. Create index for external ID lookups
 CREATE INDEX IF NOT EXISTS idx_sensors_external_id ON sensor.Sensors(ExternalID);
-
--- 5. Grant permissions
-GRANT ALL ON sensor.SensorTreeLinks TO service_role;
-GRANT SELECT ON sensor.SensorTreeLinks TO authenticated, anon;
 
 -- 6. Create bulk upsert function for sensors (views don't support ON CONFLICT)
 -- Uses extensions.ST_GeomFromText since PostGIS is in extensions schema

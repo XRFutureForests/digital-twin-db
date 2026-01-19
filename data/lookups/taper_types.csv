@@ -1,0 +1,5 @@
+TaperTypeName,Description,TypicalTaperRatioMin,TypicalTaperRatioMax
+Cylinder,Minimal taper nearly constant diameter,0.90,1.00
+Cone,Linear taper from base to top,0.50,0.70
+Paraboloid,Curved taper faster at base,0.40,0.60
+Neiloid,Very rapid taper at base,0.20,0.50

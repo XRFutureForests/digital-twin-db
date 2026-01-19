@@ -20,13 +20,7 @@ CREATE TABLE trees.TreeStatus (
 
 COMMENT ON TABLE trees.TreeStatus IS 'Tree health and status classification';
 
-INSERT INTO trees.TreeStatus (TreeStatusName, Description) VALUES
-    ('healthy', 'Tree shows no signs of stress or disease'),
-    ('stressed', 'Tree shows signs of environmental or biotic stress'),
-    ('declining', 'Tree health is deteriorating'),
-    ('dead', 'Tree is no longer alive'),
-    ('harvested', 'Tree has been removed through management'),
-    ('missing', 'Tree cannot be located or identified');
+-- NOTE: TreeStatus data is loaded from data/lookups/tree_status.csv
 
 CREATE TABLE trees.TaperTypes (
     TaperTypeID SERIAL PRIMARY KEY,
@@ -40,11 +34,7 @@ CREATE TABLE trees.TaperTypes (
 COMMENT ON TABLE trees.TaperTypes IS 'Stem taper form classifications';
 COMMENT ON COLUMN trees.TaperTypes.TypicalTaperRatioMin IS 'Minimum typical taper ratio (diameter at top / diameter at bottom)';
 
-INSERT INTO trees.TaperTypes (TaperTypeName, Description, TypicalTaperRatioMin, TypicalTaperRatioMax) VALUES
-    ('Cylinder', 'Minimal taper, nearly constant diameter', 0.90, 1.00),
-    ('Cone', 'Linear taper from base to top', 0.50, 0.70),
-    ('Paraboloid', 'Curved taper, faster at base', 0.40, 0.60),
-    ('Neiloid', 'Very rapid taper at base', 0.20, 0.50);
+-- NOTE: TaperTypes data is loaded from data/lookups/taper_types.csv
 
 CREATE TABLE trees.StraightnessTypes (
     StraightnessTypeID SERIAL PRIMARY KEY,
@@ -57,11 +47,7 @@ CREATE TABLE trees.StraightnessTypes (
 
 COMMENT ON TABLE trees.StraightnessTypes IS 'Stem straightness classifications';
 
-INSERT INTO trees.StraightnessTypes (StraightnessName, Description, DeviationAngleMin, DeviationAngleMax) VALUES
-    ('Straight', 'Minimal deviation from vertical', 0, 5),
-    ('Slight_sweep', 'Minor curvature or lean', 5, 15),
-    ('Moderate_sweep', 'Noticeable curvature', 15, 30),
-    ('Severe_sweep', 'Significant curvature or lean', 30, 90);
+-- NOTE: StraightnessTypes data is loaded from data/lookups/straightness_types.csv
 
 CREATE TABLE trees.BranchingPatterns (
     BranchingPatternID SERIAL PRIMARY KEY,
@@ -71,12 +57,7 @@ CREATE TABLE trees.BranchingPatterns (
 
 COMMENT ON TABLE trees.BranchingPatterns IS 'Branch arrangement patterns on stems';
 
-INSERT INTO trees.BranchingPatterns (BranchingPatternName, Description) VALUES
-    ('Alternate', 'Branches arranged alternately along stem'),
-    ('Opposite', 'Branches arranged in pairs at nodes'),
-    ('Whorled', 'Multiple branches arising from same node'),
-    ('Spiral', 'Branches arranged in spiral pattern'),
-    ('Random', 'No clear branching pattern');
+-- NOTE: BranchingPatterns data is loaded from data/lookups/branching_patterns.csv
 
 CREATE TABLE trees.BarkCharacteristics (
     BarkCharacteristicID SERIAL PRIMARY KEY,
@@ -87,12 +68,7 @@ CREATE TABLE trees.BarkCharacteristics (
 
 COMMENT ON TABLE trees.BarkCharacteristics IS 'Bark texture and appearance classifications';
 
-INSERT INTO trees.BarkCharacteristics (BarkCharacteristicName, Description, TypicalSpecies) VALUES
-    ('Smooth', 'Smooth bark with minimal texture', 'Fagus (Beech), Betula (Birch)'),
-    ('Furrowed', 'Deep vertical furrows and ridges', 'Quercus (Oak), Fraxinus (Ash)'),
-    ('Plated', 'Bark separates into distinct plates', 'Pinus (Pine), Liquidambar (Sweetgum)'),
-    ('Exfoliating', 'Bark peels or flakes in sheets', 'Platanus (Sycamore), Acer (Maple)'),
-    ('Scaly', 'Small, scale-like bark pieces', 'Cedrus (Cedar), Sequoia (Redwood)');
+-- NOTE: BarkCharacteristics data is loaded from data/lookups/bark_characteristics.csv
 
 -- Create indexes on reference tables
 CREATE INDEX idx_tree_status_name ON trees.TreeStatus(TreeStatusName);
