@@ -6,7 +6,7 @@ This directory contains CSV templates for importing data into the Digital Forest
 
 1. **Read the preparation guide**: [DATA_PREPARATION_GUIDE.md](DATA_PREPARATION_GUIDE.md)
 2. **Prepare your CSV** to match the template format below
-3. **Run the import notebook**: `scripts/import_trees_simple.ipynb` or `.Rmd`
+3. **Run the import notebook**: `scripts/import/import_trees_simple.ipynb` or `.Rmd`
 
 ## Template Files
 
