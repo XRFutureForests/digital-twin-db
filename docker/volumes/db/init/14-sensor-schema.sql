@@ -23,20 +23,10 @@ CREATE TABLE sensor.SensorTypes (
 
 COMMENT ON TABLE sensor.SensorTypes IS 'Environmental sensor type classifications';
 
-INSERT INTO sensor.SensorTypes (SensorTypeName, Description, TypicalUnit, TypicalRangeMin, TypicalRangeMax) VALUES
-    ('Temperature', 'Air or soil temperature sensor', '°C', -50, 60),
-    ('Humidity', 'Relative humidity sensor', '%', 0, 100),
-    ('CO2', 'Carbon dioxide concentration sensor', 'ppm', 200, 2000),
-    ('Light', 'Light intensity or PAR sensor', 'lux', 0, 200000),
-    ('Soil_Moisture', 'Soil volumetric water content', '%', 0, 100),
-    ('Wind_Speed', 'Wind speed anemometer', 'm/s', 0, 50),
-    ('Wind_Direction', 'Wind direction vane', 'degrees', 0, 360),
-    ('Precipitation', 'Rain gauge', 'mm', 0, 500),
-    ('Barometric_Pressure', 'Atmospheric pressure', 'hPa', 900, 1100),
-    ('Solar_Radiation', 'Solar irradiance', 'W/m²', 0, 1500),
-    ('Soil_Temperature', 'Subsurface soil temperature', '°C', -20, 40),
-    ('Leaf_Wetness', 'Leaf surface moisture', 'units', 0, 15),
-    ('Sap_Flow', 'Tree sap flow rate', 'g/h', 0, 10000);
+-- =============================================================================
+-- NOTE: Sensor type data is now loaded from CSV files in data/lookups/
+-- by 18-load-lookup-tables.sql
+-- =============================================================================
 
 CREATE INDEX idx_sensor_types_name ON sensor.SensorTypes(SensorTypeName);
 

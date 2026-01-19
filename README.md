@@ -88,6 +88,24 @@ This repository implements the data tier for digital forest twin projects using 
 - **Edge Functions** - Serverless business logic (Deno/TypeScript)
 - **Supabase Studio** - Visual database management interface
 
+### Three-Layer Architecture
+
+The database initialization follows a clean separation of concerns:
+
+| Layer | Files | Purpose |
+|-------|-------|---------|
+| **1. Structure** | `10-16` | Database schemas, tables, indexes, constraints |
+| **2. Functions** | `20-24` | Security policies, audit functions, API views |
+| **3. Lookup Data** | `30-31` | Reference data loaded from CSV files |
+
+**User data** (trees, sensors, readings) is NOT loaded during initialization—that's a separate user-triggered import step using the scripts in `scripts/`.
+
+This separation allows you to:
+
+- **Edit lookup data** (species, locations) without touching SQL
+- **Refresh lookups** without rebuilding the database
+- **Keep user data** separate from reference data
+
 ---
 
 ## Database Structure
@@ -421,6 +439,25 @@ docker compose logs -f
 - Use Supabase Studio UI for manual entry
 - Use REST API for programmatic insertion
 - Write SQL migrations in `docker/volumes/db/init/`
+
+**Update lookup tables** (species, locations, sensor types):
+
+1. Edit CSV files in `data/lookups/`
+2. Refresh without rebuilding:
+
+```bash
+cd docker
+./refresh-lookups.sh              # Refresh all lookup tables
+./refresh-lookups.sh species      # Refresh specific table
+./refresh-lookups.sh --list       # List available tables
+```
+
+Or via SQL:
+
+```sql
+SELECT * FROM shared.refresh_all_lookups();
+SELECT * FROM shared.refresh_lookup('species');
+```
 
 **Update database schema**:
 

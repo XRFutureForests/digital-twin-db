@@ -47,7 +47,7 @@ COMMENT ON COLUMN shared.ClimateZones.ClimateZoneName IS 'Köppen climate classi
 -- Locations Table
 CREATE TABLE shared.Locations (
     LocationID SERIAL PRIMARY KEY,
-    LocationName VARCHAR(200) NOT NULL,
+    LocationName VARCHAR(200) NOT NULL UNIQUE,
     Boundary extensions.GEOMETRY(Polygon, 4326),
     CenterPoint extensions.GEOMETRY(Point, 4326),
     Description TEXT,
@@ -57,7 +57,9 @@ CREATE TABLE shared.Locations (
     SoilTypeID INTEGER REFERENCES shared.SoilTypes(SoilTypeID),
     ClimateZoneID INTEGER REFERENCES shared.ClimateZones(ClimateZoneID),
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
-    UpdatedAt TIMESTAMPTZ
+    UpdatedAt TIMESTAMPTZ,
+    CreatedBy VARCHAR(200),
+    UpdatedBy VARCHAR(200)
 );
 
 COMMENT ON TABLE shared.Locations IS 'Forest plot locations with spatial boundaries and environmental context';
@@ -212,65 +214,9 @@ CREATE INDEX idx_audit_log_field_name ON shared.AuditLog(FieldName);
 CREATE INDEX idx_audit_log_change_type ON shared.AuditLog(ChangeType);
 
 -- =============================================================================
--- SEED REFERENCE DATA
+-- NOTE: Lookup data (SoilTypes, ClimateZones, VariantTypes, Scenarios, Species)
+-- is now loaded from CSV files in data/lookups/ by 18-load-lookup-tables.sql
 -- =============================================================================
-
--- Insert common soil types
-INSERT INTO shared.SoilTypes (SoilTypeName, Description) VALUES
-    ('Alfisol', 'Moderately leached soils with high native fertility'),
-    ('Andisol', 'Soils formed in volcanic ash'),
-    ('Aridisol', 'Desert soils with low organic matter'),
-    ('Entisol', 'Young soils with little profile development'),
-    ('Gelisol', 'Permafrost-affected soils'),
-    ('Histosol', 'Organic soils (peat, muck)'),
-    ('Inceptisol', 'Young soils with minimal horizon development'),
-    ('Mollisol', 'Grassland soils with thick, dark surface layer'),
-    ('Oxisol', 'Highly weathered tropical soils'),
-    ('Spodosol', 'Acidic forest soils with organic accumulation'),
-    ('Ultisol', 'Highly weathered, acidic forest soils'),
-    ('Vertisol', 'Clay-rich soils that shrink and swell');
-
--- Insert common climate zones
-INSERT INTO shared.ClimateZones (ClimateZoneName, Description) VALUES
-    ('Af', 'Tropical rainforest'),
-    ('Am', 'Tropical monsoon'),
-    ('Aw', 'Tropical savanna'),
-    ('BWh', 'Hot desert'),
-    ('BWk', 'Cold desert'),
-    ('BSh', 'Hot semi-arid'),
-    ('BSk', 'Cold semi-arid'),
-    ('Csa', 'Hot-summer Mediterranean'),
-    ('Csb', 'Warm-summer Mediterranean'),
-    ('Cfa', 'Humid subtropical'),
-    ('Cfb', 'Oceanic'),
-    ('Cfc', 'Subpolar oceanic'),
-    ('Dfa', 'Hot-summer humid continental'),
-    ('Dfb', 'Warm-summer humid continental'),
-    ('Dfc', 'Subarctic'),
-    ('Dfd', 'Extremely cold subarctic'),
-    ('ET', 'Tundra'),
-    ('EF', 'Ice cap');
-
--- Insert common variant types
-INSERT INTO shared.VariantTypes (VariantTypeName, Description) VALUES
-    ('original', 'Original data from field measurements or sensors'),
-    ('processed', 'Data processed by automated algorithms'),
-    ('manual', 'Manually entered or corrected data'),
-    ('simulated_growth', 'Data from growth simulation models'),
-    ('user_input', 'User-defined or modified data in XR environment'),
-    ('sensor_derived', 'Aggregated or derived from sensor readings'),
-    ('model_output', 'Output from external models (SILVA, climate models)');
-
--- Insert common scenarios
-INSERT INTO shared.Scenarios (ScenarioName, Description) VALUES
-    ('Current_Conditions', 'Baseline scenario with current environmental conditions'),
-    ('Climate_Change_2050', 'Projected conditions for year 2050 based on IPCC scenarios'),
-    ('Climate_Change_2100', 'Projected conditions for year 2100 based on IPCC scenarios'),
-    ('Drought_Test', 'Extreme drought stress scenario'),
-    ('Heat_Wave', 'Extended heat wave scenario'),
-    ('Increased_CO2', 'Elevated atmospheric CO2 concentration'),
-    ('Management_Thinning', 'Forest management with selective thinning'),
-    ('No_Management', 'Natural forest development without intervention');
 
 -- Grant appropriate permissions (to be customized based on RLS policies)
 GRANT USAGE ON SCHEMA shared TO anon, authenticated, service_role;

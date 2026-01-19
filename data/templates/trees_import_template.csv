@@ -1,0 +1,28 @@
+# DIGITAL FOREST TWIN - TREE IMPORT TEMPLATE
+# ===========================================
+# Use this template to prepare tree inventory data for database import.
+# See data/templates/README.md for detailed field descriptions.
+#
+# REQUIRED FIELDS: LocationID, SpeciesID, Latitude, Longitude
+# RECOMMENDED: DBH_cm, Height_m, TreeStatusID
+# All coordinates must be in WGS84 (EPSG:4326)
+# Unit conversions: DBH in cm, Height in m
+#
+# DATABASE STRUCTURE:
+# - trees.Trees: Location, species, crown, health, age, position
+# - trees.Stems: DBH and stem-specific measurements (linked to tree)
+# Import creates one stem (StemNumber=1) for single-stem trees.
+#
+# LOOKUP TABLE IDs:
+# - LocationID: From shared.Locations (1=Mathisle, etc.)
+# - SpeciesID: From shared.Species (1=Fagus sylvatica, 6=Pseudotsuga menziesii, etc.)
+# - TreeStatusID: From trees.TreeStatus (1=healthy, 2=stressed, 3=declining, 4=dead, 5=harvested, 6=missing)
+# - TaperTypeID: From trees.TaperTypes (1=Cylinder, 2=Cone, 3=Paraboloid, 4=Neiloid)
+# - StraightnessTypeID: From trees.StraightnessTypes (1=Straight, 2=Slight_sweep, 3=Moderate_sweep, 4=Severe_sweep)
+# - BranchingPatternID: From trees.BranchingPatterns (1=Alternate, 2=Opposite, 3=Whorled, 4=Spiral, 5=Random)
+# - BarkCharacteristicID: From trees.BarkCharacteristics (1=Smooth, 2=Furrowed, 3=Plated, 4=Exfoliating, 5=Scaly)
+# - VariantTypeID: From shared.VariantTypes (1=BaseState, 2=Derived, 3=Simulated, 4=Manual)
+#
+LocationID,SpeciesID,VariantTypeID,Latitude,Longitude,DBH_cm,Height_m,TreeStatusID,CrownWidth_m,CrownBaseHeight_m,Age_years,HealthScore,TaperTypeID,StraightnessTypeID,BranchingPatternID,BarkCharacteristicID,FieldNotes,MeasurementDate
+1,1,1,47.884878,8.088243,21.96,25.5,1,4.5,8.0,85,0.95,3,1,1,2,"TreeID: 367 | Plot: Mathisle | Original DBH: 0.21963m",2025-03-05
+1,6,1,47.123456,8.654321,54.43,32.7,1,6.2,12.5,45,0.90,3,2,1,3,"TreeID: 8_15 | Plot: 8 | EcoSense sensor tree",2024-11-26

@@ -1,0 +1,8 @@
+VariantTypeName,Description
+original,Original data from field measurements or sensors
+processed,Data processed by automated algorithms
+manual,Manually entered or corrected data
+simulated_growth,Data from growth simulation models
+user_input,User-defined or modified data in XR environment
+sensor_derived,Aggregated or derived from sensor readings
+model_output,Output from external models (SILVA or climate models)

@@ -1,0 +1,7 @@
+TreeStatusName,Description
+healthy,Tree shows no signs of stress or disease
+stressed,Tree shows signs of environmental or biotic stress
+declining,Tree health is deteriorating
+dead,Tree is no longer alive
+harvested,Tree has been removed through management
+missing,Tree cannot be located or identified
