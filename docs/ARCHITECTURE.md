@@ -295,7 +295,7 @@ PostgreSQL policies enforce access control at database layer:
 ### Importing Data
 
 **Interactive Jupyter Notebooks:**
-Located in `scripts/import_trees.ipynb` (Python) and `scripts/import_trees.Rmd` (R)
+Located in `scripts/import/import_trees.ipynb` (Python) and `scripts/import/import_trees.Rmd` (R)
 
 ```bash
 # Setup

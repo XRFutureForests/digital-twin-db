@@ -108,7 +108,7 @@ Mathisle forest plot tree inventory.
 ### Quick Start
 
 1. Prepare your CSV following [DATA_PREPARATION_GUIDE.md](templates/DATA_PREPARATION_GUIDE.md)
-2. Open `scripts/import_trees_simple.ipynb`
+2. Open `scripts/import/import_trees_simple.ipynb`
 3. Set `CSV_FILE` path and `DRY_RUN = True`
 4. Run all cells to validate
 5. Set `DRY_RUN = False` and run again to import

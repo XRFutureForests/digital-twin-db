@@ -196,7 +196,9 @@ def process_mathisle(input_file: Path) -> pd.DataFrame:
         print(f"  Skipping {invalid_count} rows with missing required data")
 
     output = output[valid_mask].copy()
+    output = output.reset_index(drop=True)
     output["SpeciesID"] = output["SpeciesID"].astype(int)
+    output["LocationID"] = output["LocationID"].astype(int)
 
     print(f"  Output rows: {len(output)}")
     return output
@@ -308,7 +310,9 @@ def process_ecosense(input_file: Path) -> pd.DataFrame:
         print(f"  Skipping {invalid_count} rows with missing required data")
 
     output = output[valid_mask].copy()
+    output = output.reset_index(drop=True)
     output["SpeciesID"] = output["SpeciesID"].astype(int)
+    output["LocationID"] = output["LocationID"].astype(int)
 
     print(f"  Output rows: {len(output)}")
     return output
@@ -413,5 +417,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
     main()

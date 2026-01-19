@@ -324,7 +324,7 @@ print(f"Prepared {len(result)} trees for import")
 
 Once your CSV matches the template format:
 
-1. Open `scripts/import_trees_simple.ipynb` or `scripts/import_trees_simple.Rmd`
+1. Open `scripts/import/import_trees_simple.ipynb` or `scripts/import/import_trees_simple.Rmd`
 2. Set `CSV_FILE` to your prepared CSV path
 3. Set `DRY_RUN = True` for testing
 4. Run all cells to validate
