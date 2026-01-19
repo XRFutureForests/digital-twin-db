@@ -28,7 +28,7 @@ except ImportError:
 
 
 # === Configuration ===
-BASE_DIR = Path(__file__).parent.parent
+BASE_DIR = Path(__file__).parent.parent.parent  # Goes to project root
 DATA_DIR = BASE_DIR / "data"
 OUTPUT_DIR = DATA_DIR / "imports"
 
@@ -197,8 +197,10 @@ def process_mathisle(input_file: Path) -> pd.DataFrame:
 
     output = output[valid_mask].copy()
     output = output.reset_index(drop=True)
-    output["SpeciesID"] = output["SpeciesID"].astype(int)
-    output["LocationID"] = output["LocationID"].astype(int)
+
+    # Convert to int using Int64 to handle any remaining edge cases
+    output["SpeciesID"] = output["SpeciesID"].astype("Int64")
+    output["LocationID"] = output["LocationID"].astype("Int64")
 
     print(f"  Output rows: {len(output)}")
     return output
@@ -311,8 +313,10 @@ def process_ecosense(input_file: Path) -> pd.DataFrame:
 
     output = output[valid_mask].copy()
     output = output.reset_index(drop=True)
-    output["SpeciesID"] = output["SpeciesID"].astype(int)
-    output["LocationID"] = output["LocationID"].astype(int)
+
+    # Convert to int using Int64 to handle any remaining edge cases
+    output["SpeciesID"] = output["SpeciesID"].astype("Int64")
+    output["LocationID"] = output["LocationID"].astype("Int64")
 
     print(f"  Output rows: {len(output)}")
     return output
