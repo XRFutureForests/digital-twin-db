@@ -9,18 +9,19 @@ This script:
 4. Inserts readings into the database
 """
 
+import json
 import os
 import sys
-import json
-import requests
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
+
 import psycopg2
-from psycopg2.extras import execute_values
+import requests
 from dotenv import load_dotenv
+from psycopg2.extras import execute_values
 
 # Load environment
-env_path = Path(__file__).parent.parent / "docker" / ".env"
+env_path = Path(__file__).parent.parent.parent / "docker" / ".env"
 load_dotenv(env_path)
 
 # Aquarius configuration
@@ -47,12 +48,13 @@ CREATED_BY = "import_sensor_data_script"
 
 # Parameter to SensorType mapping
 PARAM_MAPPING = {
-    'Sapflow': 'Sap_Flow',
-    'StemRadialVar_Volt': 'Stem_Radial_Variation',
-    'BarPressure': 'Barometric_Pressure',
-    'SoilMoisture': 'Soil_Moisture',
-    'SoilTemp': 'Soil_Temperature',
+    "Sapflow": "Sap_Flow",
+    "StemRadialVar_Volt": "Stem_Radial_Variation",
+    "BarPressure": "Barometric_Pressure",
+    "SoilMoisture": "Soil_Moisture",
+    "SoilTemp": "Soil_Temperature",
 }
+
 
 def get_db_connection():
     """Create database connection"""
@@ -63,6 +65,7 @@ def get_db_connection():
         database=POSTGRES_DATABASE,
         port=POSTGRES_PORT,
     )
+
 
 def create_aquarius_session():
     """Create authenticated session with Aquarius"""
@@ -98,6 +101,7 @@ def create_aquarius_session():
 
     return session, base_url
 
+
 def fetch_time_series(session, base_url):
     """Fetch time series descriptions from Aquarius"""
     url = f"{base_url}/GetTimeSeriesDescriptionList"
@@ -108,19 +112,21 @@ def fetch_time_series(session, base_url):
     response.raise_for_status()
     data = response.json()
 
-    descriptions = data.get('TimeSeriesDescriptions', [])
+    descriptions = data.get("TimeSeriesDescriptions", [])
     print(f"✓ Found {len(descriptions)} total time series")
 
     # Filter for Ecosense sensors with supported parameters
     ecosense_ts = [
-        ts for ts in descriptions
-        if ts.get('LocationIdentifier', '').startswith('Ecosense_')
-        and ts.get('Parameter') in PARAM_MAPPING
+        ts
+        for ts in descriptions
+        if ts.get("LocationIdentifier", "").startswith("Ecosense_")
+        and ts.get("Parameter") in PARAM_MAPPING
     ]
 
     print(f"✓ Found {len(ecosense_ts)} relevant Ecosense sensors")
 
     return ecosense_ts
+
 
 def get_sensor_type_map():
     """Load sensor type ID mapping"""
@@ -133,6 +139,7 @@ def get_sensor_type_map():
     conn.close()
     return sensor_type_map
 
+
 def get_location_map():
     """Load location ID mapping"""
     conn = get_db_connection()
@@ -143,6 +150,7 @@ def get_location_map():
 
     conn.close()
     return location_map
+
 
 def upsert_sensors(time_series, sensor_type_map, location_map):
     """Insert or update sensors"""
@@ -155,30 +163,34 @@ def upsert_sensors(time_series, sensor_type_map, location_map):
     updated_count = 0
 
     for ts in time_series:
-        mapped_type = PARAM_MAPPING[ts['Parameter']]
+        mapped_type = PARAM_MAPPING[ts["Parameter"]]
         sensor_type_id = sensor_type_map.get(mapped_type)
 
         if not sensor_type_id:
             print(f"⚠️  Sensor type not found: {mapped_type}")
             continue
 
-        location_name = ts['LocationIdentifier']
+        location_name = ts["LocationIdentifier"]
         location_id = location_map.get(location_name)
 
         # Create location if it doesn't exist
         if not location_id:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO shared.Locations (LocationName, CenterPoint)
                 VALUES (%s, ST_GeomFromText('POINT(0 0)', 4326))
                 RETURNING LocationID
-            """, (location_name,))
+            """,
+                (location_name,),
+            )
 
             location_id = cur.fetchone()[0]
             location_map[location_name] = location_id
             conn.commit()
 
         # Upsert sensor
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO sensor.Sensors (
                 LocationID, SensorTypeID, SensorModel, SerialNumber,
                 Position, SamplingInterval_Seconds, Unit, ExternalID,
@@ -197,22 +209,26 @@ def upsert_sensors(time_series, sensor_type_map, location_map):
                 UpdatedBy = EXCLUDED.CreatedBy,
                 UpdatedAt = NOW()
             RETURNING (xmax = 0) AS inserted
-        """, (
-            location_id,
-            sensor_type_id,
-            'Ecosense Node',
-            ts.get('Label'),
-            900,  # 15 minutes
-            ts.get('Unit'),
-            ts['UniqueId'],
-            json.dumps({
-                'LocationIdentifier': ts['LocationIdentifier'],
-                'Parameter': ts['Parameter'],
-                'Label': ts.get('Label'),
-            }),
-            True,
-            CREATED_BY
-        ))
+        """,
+            (
+                location_id,
+                sensor_type_id,
+                "Ecosense Node",
+                ts.get("Label"),
+                900,  # 15 minutes
+                ts.get("Unit"),
+                ts["UniqueId"],
+                json.dumps(
+                    {
+                        "LocationIdentifier": ts["LocationIdentifier"],
+                        "Parameter": ts["Parameter"],
+                        "Label": ts.get("Label"),
+                    }
+                ),
+                True,
+                CREATED_BY,
+            ),
+        )
 
         was_inserted = cur.fetchone()[0]
         if was_inserted:
@@ -226,6 +242,7 @@ def upsert_sensors(time_series, sensor_type_map, location_map):
     print(f"✓ Created {created_count} new sensors")
     print(f"✓ Updated {updated_count} existing sensors")
 
+
 def fetch_sensor_data(session, base_url, time_series, days_back):
     """Fetch sensor readings from Aquarius using authenticated session"""
     print(f"\nFetching sensor readings for last {days_back} days of available data...")
@@ -234,7 +251,9 @@ def fetch_sensor_data(session, base_url, time_series, days_back):
     end_time = datetime(2024, 11, 7, 22, 45, 0)
     start_time = end_time - timedelta(days=days_back)
 
-    print(f"Date range: {start_time.strftime('%Y-%m-%d')} to {end_time.strftime('%Y-%m-%d')}")
+    print(
+        f"Date range: {start_time.strftime('%Y-%m-%d')} to {end_time.strftime('%Y-%m-%d')}"
+    )
 
     all_readings = []
     sensor_id_map = {}
@@ -243,12 +262,15 @@ def fetch_sensor_data(session, base_url, time_series, days_back):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    external_ids = [ts['UniqueId'] for ts in time_series]
-    cur.execute("""
+    external_ids = [ts["UniqueId"] for ts in time_series]
+    cur.execute(
+        """
         SELECT SensorID, ExternalID
         FROM sensor.Sensors
         WHERE ExternalID = ANY(%s)
-    """, (external_ids,))
+    """,
+        (external_ids,),
+    )
 
     sensor_id_map = {ext_id: sensor_id for sensor_id, ext_id in cur.fetchall()}
     conn.close()
@@ -262,14 +284,16 @@ def fetch_sensor_data(session, base_url, time_series, days_back):
     error_count = 0
 
     for i, ts in enumerate(time_series, 1):
-        unique_id = ts['UniqueId']
+        unique_id = ts["UniqueId"]
         sensor_id = sensor_id_map.get(unique_id)
 
         if not sensor_id:
             continue
 
         if i % 50 == 0:
-            print(f"  Processing sensor {i}/{len(time_series)} (success: {success_count}, errors: {error_count})...")
+            print(
+                f"  Processing sensor {i}/{len(time_series)} (success: {success_count}, errors: {error_count})..."
+            )
 
         try:
             # Format timestamps with milliseconds
@@ -277,9 +301,9 @@ def fetch_sensor_data(session, base_url, time_series, days_back):
             end_str = end_time.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
             params = {
-                'TimeSeriesUniqueId': unique_id,
-                'QueryFrom': start_str,
-                'QueryTo': end_str,
+                "TimeSeriesUniqueId": unique_id,
+                "QueryFrom": start_str,
+                "QueryTo": end_str,
             }
 
             response = session.get(url, params=params, timeout=60)
@@ -287,23 +311,27 @@ def fetch_sensor_data(session, base_url, time_series, days_back):
             if response.status_code != 200:
                 error_count += 1
                 if error_count <= 5:  # Only show first 5 errors
-                    print(f"⚠️  Failed to fetch data for {unique_id}: HTTP {response.status_code}")
+                    print(
+                        f"⚠️  Failed to fetch data for {unique_id}: HTTP {response.status_code}"
+                    )
                 continue
 
             data = response.json()
-            points = data.get('Points', [])
+            points = data.get("Points", [])
 
             if len(points) > 0:
                 success_count += 1
                 for point in points:
-                    value_dict = point.get('Value', {})
-                    if 'Numeric' in value_dict and value_dict['Numeric'] is not None:
-                        all_readings.append({
-                            'sensorid': sensor_id,
-                            'timestamp': point['Timestamp'],
-                            'value': float(value_dict['Numeric']),
-                            'quality': 'good',
-                        })
+                    value_dict = point.get("Value", {})
+                    if "Numeric" in value_dict and value_dict["Numeric"] is not None:
+                        all_readings.append(
+                            {
+                                "sensorid": sensor_id,
+                                "timestamp": point["Timestamp"],
+                                "value": float(value_dict["Numeric"]),
+                                "quality": "good",
+                            }
+                        )
 
         except Exception as e:
             error_count += 1
@@ -311,9 +339,12 @@ def fetch_sensor_data(session, base_url, time_series, days_back):
                 print(f"⚠️  Error fetching {unique_id}: {e}")
             continue
 
-    print(f"\n✓ Fetch complete: {success_count} sensors with data, {error_count} errors")
+    print(
+        f"\n✓ Fetch complete: {success_count} sensors with data, {error_count} errors"
+    )
     print(f"✓ Fetched {len(all_readings)} total readings")
     return all_readings
+
 
 def insert_readings(readings):
     """Insert sensor readings into database"""
@@ -331,11 +362,10 @@ def insert_readings(readings):
     inserted_count = 0
 
     for i in range(0, len(readings), BATCH_SIZE):
-        batch = readings[i:i + BATCH_SIZE]
+        batch = readings[i : i + BATCH_SIZE]
 
         values = [
-            (r['sensorid'], r['timestamp'], r['value'], r['quality'])
-            for r in batch
+            (r["sensorid"], r["timestamp"], r["value"], r["quality"]) for r in batch
         ]
 
         execute_values(
@@ -345,7 +375,7 @@ def insert_readings(readings):
             VALUES %s
             ON CONFLICT (SensorID, Timestamp) DO NOTHING
             """,
-            values
+            values,
         )
 
         inserted_count += cur.rowcount
@@ -358,6 +388,7 @@ def insert_readings(readings):
     print(f"✓ Inserted {inserted_count} new readings (skipped duplicates)")
 
     return inserted_count
+
 
 def main():
     """Main import workflow"""
@@ -401,13 +432,16 @@ def main():
 
         print("\nQuery imported data:")
         print(f"  SELECT * FROM sensor.Sensors WHERE CreatedBy = '{CREATED_BY}';")
-        print(f"  SELECT COUNT(*) FROM sensor.SensorReadings WHERE SensorID IN (SELECT SensorID FROM sensor.Sensors WHERE CreatedBy = '{CREATED_BY}');")
+        print(
+            f"  SELECT COUNT(*) FROM sensor.SensorReadings WHERE SensorID IN (SELECT SensorID FROM sensor.Sensors WHERE CreatedBy = '{CREATED_BY}');"
+        )
 
         return 0
 
     except Exception as e:
         print(f"\n❌ Import failed: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
     finally:
@@ -418,5 +452,7 @@ def main():
         except:
             pass
 
+
 if __name__ == "__main__":
+    sys.exit(main())
     sys.exit(main())

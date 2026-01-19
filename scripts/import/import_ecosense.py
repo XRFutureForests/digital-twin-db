@@ -8,24 +8,26 @@ This script imports tree data from ecosense_250911.csv:
 - Stores metadata (plot_id, tree_id, etc.) in FieldNotes as JSON
 """
 
+import json
 import os
 import sys
-import json
 from pathlib import Path
+
 import pandas as pd
 import psycopg2
-from psycopg2.extras import execute_values
 from dotenv import load_dotenv
+from psycopg2.extras import execute_values
 
 try:
     from pyproj import Transformer
+
     HAS_PYPROJ = True
 except ImportError:
     print("❌ pyproj not installed. Install with: pip install pyproj")
     sys.exit(1)
 
 # Load environment
-env_path = Path(__file__).parent.parent / "docker" / ".env"
+env_path = Path(__file__).parent.parent.parent / "docker" / ".env"
 load_dotenv(env_path)
 
 # Database configuration
@@ -42,10 +44,11 @@ else:
     POSTGRES_USER_POOLER = POSTGRES_USER
 
 # Constants
-CSV_PATH = Path(__file__).parent.parent / "data" / "ecosense_250911.csv"
+CSV_PATH = Path(__file__).parent.parent.parent / "data" / "ecosense_250911.csv"
 CREATED_BY = "import_ecosense_script"
 LOCATION_ID = 4  # Ecosense_MixedPlot
 VARIANT_TYPE_ID = 1  # original
+
 
 def get_db_connection():
     """Create database connection"""
@@ -56,6 +59,7 @@ def get_db_connection():
         database=POSTGRES_DATABASE,
         port=POSTGRES_PORT,
     )
+
 
 def get_species_mapping():
     """Load species mapping from database"""
@@ -72,15 +76,15 @@ def get_species_mapping():
 
     # Add common variations and abbreviations
     species_aliases = {
-        'beech': species_map.get('european beech'),
-        'be': species_map.get('european beech'),
-        'douglas fir': species_map.get('douglas fir'),
-        'df': species_map.get('douglas fir'),
-        'spruce': species_map.get('norway spruce'),
-        'sp': species_map.get('norway spruce'),
-        'oak': species_map.get('pedunculate oak'),
-        'fir': species_map.get('silver fir'),
-        'sf': species_map.get('silver fir'),
+        "beech": species_map.get("european beech"),
+        "be": species_map.get("european beech"),
+        "douglas fir": species_map.get("douglas fir"),
+        "df": species_map.get("douglas fir"),
+        "spruce": species_map.get("norway spruce"),
+        "sp": species_map.get("norway spruce"),
+        "oak": species_map.get("pedunculate oak"),
+        "fir": species_map.get("silver fir"),
+        "sf": species_map.get("silver fir"),
     }
 
     # Merge aliases into map
@@ -89,6 +93,7 @@ def get_species_mapping():
     conn.close()
     return species_map
 
+
 def transform_coordinates(df):
     """Transform UTM coordinates to WGS84 and create Position WKT"""
     print("📍 Transforming coordinates from EPSG:32632 to EPSG:4326...")
@@ -96,16 +101,17 @@ def transform_coordinates(df):
     transformer = Transformer.from_crs("EPSG:32632", "EPSG:4326", always_xy=True)
 
     def transform_row(row):
-        if pd.notna(row['x_32632']) and pd.notna(row['y_32632']):
-            lon, lat = transformer.transform(row['x_32632'], row['y_32632'])
+        if pd.notna(row["x_32632"]) and pd.notna(row["y_32632"]):
+            lon, lat = transformer.transform(row["x_32632"], row["y_32632"])
             return f"POINT({lon} {lat})"
         return None
 
-    df['Position'] = df.apply(transform_row, axis=1)
-    valid_count = df['Position'].notna().sum()
+    df["Position"] = df.apply(transform_row, axis=1)
+    valid_count = df["Position"].notna().sum()
     print(f"✓ Created {valid_count} Position geometries")
 
     return df
+
 
 def prepare_tree_data(df, species_map):
     """Prepare tree data for insertion"""
@@ -115,37 +121,52 @@ def prepare_tree_data(df, species_map):
     for idx, row in df.iterrows():
         # Map species
         species_id = None
-        if pd.notna(row['species']):
-            species_name = str(row['species']).lower()
+        if pd.notna(row["species"]):
+            species_name = str(row["species"]).lower()
             species_id = species_map.get(species_name)
             if not species_id:
-                print(f"⚠️  Unknown species '{row['species']}' in row {idx}, skipping species mapping")
+                print(
+                    f"⚠️  Unknown species '{row['species']}' in row {idx}, skipping species mapping"
+                )
 
         # Create metadata for FieldNotes
         field_notes = {
-            'plot_id': int(row['plot_id']) if pd.notna(row['plot_id']) else None,
-            'tree_id': int(row['tree_id']) if pd.notna(row['tree_id']) else None,
-            'full_id': str(row['full_id']) if pd.notna(row['full_id']) else None,
-            'qr_code_id': str(row['qr_code_id']) if pd.notna(row['qr_code_id']) else None,
-            'elevation': float(row['elevation']) if pd.notna(row['elevation']) else None,
-            'sensor_tree': bool(row['sensor_tree']) if pd.notna(row['sensor_tree']) else False,
+            "plot_id": int(row["plot_id"]) if pd.notna(row["plot_id"]) else None,
+            "tree_id": int(row["tree_id"]) if pd.notna(row["tree_id"]) else None,
+            "full_id": str(row["full_id"]) if pd.notna(row["full_id"]) else None,
+            "qr_code_id": (
+                str(row["qr_code_id"]) if pd.notna(row["qr_code_id"]) else None
+            ),
+            "elevation": (
+                float(row["elevation"]) if pd.notna(row["elevation"]) else None
+            ),
+            "sensor_tree": (
+                bool(row["sensor_tree"]) if pd.notna(row["sensor_tree"]) else False
+            ),
         }
 
         tree = {
-            'locationid': LOCATION_ID,
-            'varianttypeid': VARIANT_TYPE_ID,
-            'speciesid': species_id,
-            'height_m': float(row['tls_treeheight']) if pd.notna(row['tls_treeheight']) else None,
-            'position': row['Position'],
-            'fieldnotes': json.dumps(field_notes),
-            'createdby': CREATED_BY,
-            'diameter_m': float(row['diameter_m']) if pd.notna(row['diameter_m']) else None,  # Store for stems
+            "locationid": LOCATION_ID,
+            "varianttypeid": VARIANT_TYPE_ID,
+            "speciesid": species_id,
+            "height_m": (
+                float(row["tls_treeheight"])
+                if pd.notna(row["tls_treeheight"])
+                else None
+            ),
+            "position": row["Position"],
+            "fieldnotes": json.dumps(field_notes),
+            "createdby": CREATED_BY,
+            "diameter_m": (
+                float(row["diameter_m"]) if pd.notna(row["diameter_m"]) else None
+            ),  # Store for stems
         }
 
         trees.append(tree)
 
     print(f"✓ Prepared {len(trees)} tree records")
     return trees
+
 
 def insert_trees(trees):
     """Insert trees into database and return variant IDs"""
@@ -163,13 +184,13 @@ def insert_trees(trees):
 
     values = [
         (
-            tree['locationid'],
-            tree['varianttypeid'],
-            tree['speciesid'],
-            tree['height_m'],
-            tree['position'],
-            tree['fieldnotes'],
-            tree['createdby'],
+            tree["locationid"],
+            tree["varianttypeid"],
+            tree["speciesid"],
+            tree["height_m"],
+            tree["position"],
+            tree["fieldnotes"],
+            tree["createdby"],
         )
         for tree in trees
     ]
@@ -180,19 +201,20 @@ def insert_trees(trees):
         insert_query,
         values,
         template="(%s, %s, %s, %s, ST_GeomFromText(%s, 4326), %s, %s)",
-        fetch=True
+        fetch=True,
     )
 
     conn.commit()
 
     # Store variant IDs back in trees
     for i, (variant_id,) in enumerate(variant_ids):
-        trees[i]['variant_id'] = variant_id
+        trees[i]["variant_id"] = variant_id
 
     conn.close()
     print(f"✓ Inserted {len(trees)} trees")
 
     return trees
+
 
 def insert_stems(trees):
     """Insert stem DBH measurements for trees"""
@@ -204,10 +226,10 @@ def insert_stems(trees):
     # Prepare stems data
     stems = []
     for tree in trees:
-        if tree['diameter_m'] is not None:
+        if tree["diameter_m"] is not None:
             # Convert meters to centimeters
-            dbh_cm = tree['diameter_m'] * 100
-            stems.append((tree['variant_id'], 1, dbh_cm))  # stemnumber=1
+            dbh_cm = tree["diameter_m"] * 100
+            stems.append((tree["variant_id"], 1, dbh_cm))  # stemnumber=1
 
     if not stems:
         print("⚠️  No diameter measurements to insert")
@@ -225,6 +247,7 @@ def insert_stems(trees):
     conn.close()
 
     print(f"✓ Inserted {len(stems)} stem measurements")
+
 
 def main():
     """Main import workflow"""
@@ -254,7 +277,7 @@ def main():
     trees = prepare_tree_data(df, species_map)
 
     # Filter out trees without valid Position (required field)
-    trees_with_position = [t for t in trees if t['position'] is not None]
+    trees_with_position = [t for t in trees if t["position"] is not None]
     trees_without_position = len(trees) - len(trees_with_position)
 
     if trees_without_position > 0:
@@ -275,10 +298,15 @@ def main():
     print("=" * 80)
     print(f"Imported {len(trees)} trees from ecosense data")
     print(f"All trees assigned to Location: Ecosense_MixedPlot (ID: {LOCATION_ID})")
-    print(f"Metadata stored in FieldNotes: plot_id, tree_id, full_id, qr_code_id, elevation, sensor_tree")
+    print(
+        f"Metadata stored in FieldNotes: plot_id, tree_id, full_id, qr_code_id, elevation, sensor_tree"
+    )
     print("\nQuery imported data:")
     print(f"  SELECT * FROM trees.Trees WHERE CreatedBy = '{CREATED_BY}';")
-    print(f"  SELECT * FROM trees.Stems WHERE TreeVariantID IN (SELECT VariantID FROM trees.Trees WHERE CreatedBy = '{CREATED_BY}');")
+    print(
+        f"  SELECT * FROM trees.Stems WHERE TreeVariantID IN (SELECT VariantID FROM trees.Trees WHERE CreatedBy = '{CREATED_BY}');"
+    )
+
 
 if __name__ == "__main__":
     try:
@@ -286,5 +314,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Import failed: {e}")
         import traceback
+
         traceback.print_exc()
+        sys.exit(1)
         sys.exit(1)
