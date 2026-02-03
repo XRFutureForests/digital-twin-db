@@ -1,13 +1,13 @@
-CommonName,ScientificName,MaxHeight_m,MaxDBH_cm,TypicalLifespan_years,GrowthRate,ShadeTolerance
-European Beech,Fagus sylvatica,40,150,300,moderate,high
-Pedunculate Oak,Quercus robur,35,200,500,slow,moderate
-Norway Spruce,Picea abies,50,150,200,fast,high
-Silver Fir,Abies alba,50,200,500,moderate,very_high
-Scots Pine,Pinus sylvestris,35,100,300,moderate,low
-Douglas Fir,Pseudotsuga menziesii,60,180,500,fast,moderate
-European Larch,Larix decidua,40,100,300,fast,low
-Norway Maple,Acer platanoides,25,100,200,moderate,moderate
-Sycamore Maple,Acer pseudoplatanus,35,120,400,moderate,moderate
-Wild Cherry,Prunus avium,25,80,100,fast,low
-Wild Service Tree,Sorbus torminalis,25,60,200,slow,moderate
-Birch,Betula spp.,25,60,80,fast,low
+CommonName,ScientificName,MaxHeight_m,MaxDBH_cm,TypicalLifespan_years,GrowthRate,ShadeTolerance,IsDeciduous
+European Beech,Fagus sylvatica,40,150,300,moderate,high,true
+Pedunculate Oak,Quercus robur,35,200,500,slow,moderate,true
+Norway Spruce,Picea abies,50,150,200,fast,high,false
+Silver Fir,Abies alba,50,200,500,moderate,very_high,false
+Scots Pine,Pinus sylvestris,35,100,300,moderate,low,false
+Douglas Fir,Pseudotsuga menziesii,60,180,500,fast,moderate,false
+European Larch,Larix decidua,40,100,300,fast,low,true
+Norway Maple,Acer platanoides,25,100,200,moderate,moderate,true
+Sycamore Maple,Acer pseudoplatanus,35,120,400,moderate,moderate,true
+Wild Cherry,Prunus avium,25,80,100,fast,low,true
+Wild Service Tree,Sorbus torminalis,25,60,200,slow,moderate,true
+Birch,Betula spp.,25,60,80,fast,low,true

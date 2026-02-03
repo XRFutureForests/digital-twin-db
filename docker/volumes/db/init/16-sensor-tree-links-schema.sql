@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS sensor.sensor_tree_links (
     sensor_id INTEGER NOT NULL,
     tree_variant_id INTEGER NOT NULL,
     description TEXT,
+    start_date DATE,
+    end_date DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(sensor_id, tree_variant_id),
     FOREIGN KEY (sensor_id) REFERENCES sensor.sensors(sensorid) ON DELETE CASCADE,

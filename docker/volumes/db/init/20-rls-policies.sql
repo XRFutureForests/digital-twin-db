@@ -67,6 +67,25 @@ CREATE POLICY "Reference tables are viewable by everyone"
     ON shared.VariantTypes FOR SELECT
     USING (true);
 
+-- Campaigns: Public read, authenticated write
+ALTER TABLE shared.Campaigns ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Campaigns are viewable by everyone"
+    ON shared.Campaigns FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can manage campaigns"
+    ON shared.Campaigns FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Service role can manage all campaigns"
+    ON shared.Campaigns FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
 -- Processes and ProcessParameters: Public read, authenticated write
 ALTER TABLE shared.Processes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shared.ProcessParameters ENABLE ROW LEVEL SECURITY;
@@ -388,6 +407,210 @@ CREATE POLICY "Service role can manage all environments"
     WITH CHECK (true);
 
 -- =============================================================================
+-- SHARED SCHEMA - NEW TABLES RLS
+-- =============================================================================
+
+-- Plots: Public read, authenticated write
+ALTER TABLE shared.Plots ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Plots are viewable by everyone"
+    ON shared.Plots FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can manage plots"
+    ON shared.Plots FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Service role can manage all plots"
+    ON shared.Plots FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- ManagementEvents: Public read, authenticated write
+ALTER TABLE shared.ManagementEvents ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Management events are viewable by everyone"
+    ON shared.ManagementEvents FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can manage management events"
+    ON shared.ManagementEvents FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Service role can manage all management events"
+    ON shared.ManagementEvents FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- DisturbanceEvents: Public read, authenticated write
+ALTER TABLE shared.DisturbanceEvents ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Disturbance events are viewable by everyone"
+    ON shared.DisturbanceEvents FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can manage disturbance events"
+    ON shared.DisturbanceEvents FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Service role can manage all disturbance events"
+    ON shared.DisturbanceEvents FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- DisturbanceEvents_Trees junction: Public read, authenticated write
+ALTER TABLE shared.DisturbanceEvents_Trees ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Disturbance tree links are viewable by everyone"
+    ON shared.DisturbanceEvents_Trees FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can manage disturbance tree links"
+    ON shared.DisturbanceEvents_Trees FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Service role can manage all disturbance tree links"
+    ON shared.DisturbanceEvents_Trees FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- =============================================================================
+-- POINTCLOUDS SCHEMA - NEW TABLES RLS
+-- =============================================================================
+
+-- ScannerTypes: Read-only for most users
+ALTER TABLE pointclouds.ScannerTypes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Scanner types are viewable by everyone"
+    ON pointclouds.ScannerTypes FOR SELECT
+    USING (true);
+
+CREATE POLICY "Service role can manage scanner types"
+    ON pointclouds.ScannerTypes FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- Scanners: Public read, authenticated write
+ALTER TABLE pointclouds.Scanners ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Scanners are viewable by everyone"
+    ON pointclouds.Scanners FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can manage scanners"
+    ON pointclouds.Scanners FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Service role can manage all scanners"
+    ON pointclouds.Scanners FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- =============================================================================
+-- TREES SCHEMA - NEW TABLES RLS
+-- =============================================================================
+
+-- PhenologyObservations: Public read, authenticated write
+ALTER TABLE trees.PhenologyObservations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Phenology observations are viewable by everyone"
+    ON trees.PhenologyObservations FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can manage phenology observations"
+    ON trees.PhenologyObservations FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Service role can manage all phenology observations"
+    ON trees.PhenologyObservations FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- Deadwood: Public read, authenticated write
+ALTER TABLE trees.Deadwood ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Deadwood records are viewable by everyone"
+    ON trees.Deadwood FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can manage deadwood records"
+    ON trees.Deadwood FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Service role can manage all deadwood records"
+    ON trees.Deadwood FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- GroundVegetation: Public read, authenticated write
+ALTER TABLE trees.GroundVegetation ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Ground vegetation records are viewable by everyone"
+    ON trees.GroundVegetation FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can manage ground vegetation"
+    ON trees.GroundVegetation FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Service role can manage all ground vegetation"
+    ON trees.GroundVegetation FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- =============================================================================
+-- IMAGERY SCHEMA RLS
+-- =============================================================================
+
+ALTER TABLE imagery.Images ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Images are viewable by everyone"
+    ON imagery.Images FOR SELECT
+    USING (true);
+
+CREATE POLICY "Authenticated users can create images"
+    ON imagery.Images FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+CREATE POLICY "Users can update their own images"
+    ON imagery.Images FOR UPDATE
+    TO authenticated
+    USING (CreatedBy = auth.uid()::TEXT OR CreatedBy IS NULL)
+    WITH CHECK (CreatedBy = auth.uid()::TEXT OR CreatedBy IS NULL);
+
+CREATE POLICY "Service role can manage all images"
+    ON imagery.Images FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- =============================================================================
 -- HELPER FUNCTIONS FOR RLS
 -- =============================================================================
 
@@ -488,6 +711,16 @@ CREATE TRIGGER trigger_environments_updated_by
     FOR EACH ROW
     EXECUTE FUNCTION shared.set_updated_by();
 
+CREATE TRIGGER trigger_campaigns_created_by
+    BEFORE INSERT ON shared.Campaigns
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.set_created_by();
+
+CREATE TRIGGER trigger_campaigns_updated_by
+    BEFORE UPDATE ON shared.Campaigns
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.set_updated_by();
+
 CREATE TRIGGER trigger_locations_created_by
     BEFORE INSERT ON shared.Locations
     FOR EACH ROW
@@ -495,6 +728,50 @@ CREATE TRIGGER trigger_locations_created_by
 
 CREATE TRIGGER trigger_locations_updated_by
     BEFORE UPDATE ON shared.Locations
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.set_updated_by();
+
+-- Plots triggers
+CREATE TRIGGER trigger_plots_created_by
+    BEFORE INSERT ON shared.Plots
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.set_created_by();
+
+CREATE TRIGGER trigger_plots_updated_by
+    BEFORE UPDATE ON shared.Plots
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.set_updated_by();
+
+-- ManagementEvents triggers
+CREATE TRIGGER trigger_mgmt_events_created_by
+    BEFORE INSERT ON shared.ManagementEvents
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.set_created_by();
+
+CREATE TRIGGER trigger_mgmt_events_updated_by
+    BEFORE UPDATE ON shared.ManagementEvents
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.set_updated_by();
+
+-- DisturbanceEvents triggers
+CREATE TRIGGER trigger_dist_events_created_by
+    BEFORE INSERT ON shared.DisturbanceEvents
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.set_created_by();
+
+CREATE TRIGGER trigger_dist_events_updated_by
+    BEFORE UPDATE ON shared.DisturbanceEvents
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.set_updated_by();
+
+-- Images triggers
+CREATE TRIGGER trigger_images_created_by
+    BEFORE INSERT ON imagery.Images
+    FOR EACH ROW
+    EXECUTE FUNCTION shared.set_created_by();
+
+CREATE TRIGGER trigger_images_updated_by
+    BEFORE UPDATE ON imagery.Images
     FOR EACH ROW
     EXECUTE FUNCTION shared.set_updated_by();
 

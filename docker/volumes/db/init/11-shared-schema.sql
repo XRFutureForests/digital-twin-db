@@ -86,6 +86,7 @@ CREATE TABLE shared.Species (
     TypicalLifespan_years INTEGER,
     GrowthRate VARCHAR(20) CHECK (GrowthRate IN ('very_slow', 'slow', 'moderate', 'fast', 'very_fast')),
     ShadeTolerance VARCHAR(20) CHECK (ShadeTolerance IN ('very_low', 'low', 'moderate', 'high', 'very_high')),
+    IsDeciduous BOOLEAN,
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ
 );
@@ -96,6 +97,7 @@ COMMENT ON COLUMN shared.Species.MaxDBH_cm IS 'Maximum typical diameter at breas
 COMMENT ON COLUMN shared.Species.TypicalLifespan_years IS 'Typical lifespan in years';
 COMMENT ON COLUMN shared.Species.GrowthRate IS 'Relative growth rate (very_slow, slow, moderate, fast, very_fast)';
 COMMENT ON COLUMN shared.Species.ShadeTolerance IS 'Shade tolerance level (very_low, low, moderate, high, very_high)';
+COMMENT ON COLUMN shared.Species.IsDeciduous IS 'Whether species is deciduous (true) or evergreen (false), NULL if unknown';
 
 CREATE INDEX idx_species_scientific_name ON shared.Species(ScientificName);
 CREATE INDEX idx_species_common_name ON shared.Species(CommonName);
@@ -130,6 +132,140 @@ CREATE TABLE shared.VariantTypes (
 COMMENT ON TABLE shared.VariantTypes IS 'Types of data variants (original, processed, simulated, etc.)';
 
 CREATE INDEX idx_variant_types_name ON shared.VariantTypes(VariantTypeName);
+
+-- =============================================================================
+-- CAMPAIGNS (INVENTORY EVENTS AND DATA COLLECTION)
+-- =============================================================================
+
+CREATE TABLE shared.Campaigns (
+    CampaignID SERIAL PRIMARY KEY,
+    CampaignName VARCHAR(200) NOT NULL UNIQUE,
+    CampaignType VARCHAR(50) NOT NULL CHECK (CampaignType IN (
+        'lidar_flight', 'field_inventory', 'sensor_deployment', 'drone_survey', 'manual_update'
+    )),
+    LocationID INTEGER REFERENCES shared.Locations(LocationID) ON DELETE SET NULL,
+    StartDate DATE NOT NULL,
+    EndDate DATE,
+    Description TEXT,
+    Methodology TEXT,
+    Equipment TEXT,
+    Personnel TEXT,
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    UpdatedAt TIMESTAMPTZ,
+    CreatedBy VARCHAR(200),
+    UpdatedBy VARCHAR(200),
+    CONSTRAINT chk_campaign_dates CHECK (EndDate IS NULL OR EndDate >= StartDate)
+);
+
+COMMENT ON TABLE shared.Campaigns IS 'Data collection campaigns (LiDAR flights, field inventories, sensor deployments)';
+COMMENT ON COLUMN shared.Campaigns.CampaignType IS 'Type of data collection campaign';
+COMMENT ON COLUMN shared.Campaigns.Methodology IS 'Description of data collection methodology used';
+COMMENT ON COLUMN shared.Campaigns.Equipment IS 'Equipment used (e.g., scanner model, measurement tools)';
+
+CREATE INDEX idx_campaigns_name ON shared.Campaigns(CampaignName);
+CREATE INDEX idx_campaigns_type ON shared.Campaigns(CampaignType);
+CREATE INDEX idx_campaigns_location ON shared.Campaigns(LocationID);
+CREATE INDEX idx_campaigns_start_date ON shared.Campaigns(StartDate DESC);
+
+-- =============================================================================
+-- PLOTS (SUB-DIVISIONS WITHIN LOCATIONS)
+-- =============================================================================
+
+CREATE TABLE shared.Plots (
+    PlotID SERIAL PRIMARY KEY,
+    LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
+    PlotName VARCHAR(200) NOT NULL,
+    PlotNumber INTEGER,
+    Area_m2 NUMERIC(12, 2) CHECK (Area_m2 > 0),
+    Boundary extensions.GEOMETRY(Polygon, 4326),
+    CenterPoint extensions.GEOMETRY(Point, 4326),
+    Description TEXT,
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    UpdatedAt TIMESTAMPTZ,
+    CreatedBy VARCHAR(200),
+    UpdatedBy VARCHAR(200),
+    UNIQUE (LocationID, PlotName)
+);
+
+COMMENT ON TABLE shared.Plots IS 'Sub-plot divisions within locations for detailed research grids';
+COMMENT ON COLUMN shared.Plots.PlotName IS 'Plot identifier, unique within a location';
+COMMENT ON COLUMN shared.Plots.PlotNumber IS 'Numeric plot identifier for ordering';
+COMMENT ON COLUMN shared.Plots.Area_m2 IS 'Plot area in square meters';
+COMMENT ON COLUMN shared.Plots.Boundary IS 'PostGIS polygon defining plot boundaries in WGS84';
+
+CREATE INDEX idx_plots_location ON shared.Plots(LocationID);
+CREATE INDEX idx_plots_boundary ON shared.Plots USING GIST (Boundary);
+CREATE INDEX idx_plots_centerpoint ON shared.Plots USING GIST (CenterPoint);
+
+-- =============================================================================
+-- MANAGEMENT EVENTS (FOREST MANAGEMENT ACTIVITIES)
+-- =============================================================================
+
+CREATE TABLE shared.ManagementEvents (
+    EventID SERIAL PRIMARY KEY,
+    LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
+    PlotID INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
+    EventType VARCHAR(50) NOT NULL CHECK (EventType IN (
+        'thinning', 'planting', 'harvesting', 'pruning', 'fertilization',
+        'prescribed_burn', 'salvage_logging', 'site_preparation', 'other'
+    )),
+    EventDate DATE NOT NULL,
+    EndDate DATE,
+    Description TEXT,
+    AffectedArea_m2 NUMERIC(12, 2) CHECK (AffectedArea_m2 > 0),
+    PerformedBy VARCHAR(200),
+    Notes TEXT,
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    UpdatedAt TIMESTAMPTZ,
+    CreatedBy VARCHAR(200),
+    UpdatedBy VARCHAR(200),
+    CONSTRAINT chk_mgmt_event_dates CHECK (EndDate IS NULL OR EndDate >= EventDate)
+);
+
+COMMENT ON TABLE shared.ManagementEvents IS 'Forest management activities (thinning, planting, harvesting, etc.)';
+COMMENT ON COLUMN shared.ManagementEvents.EventType IS 'Type of management activity';
+COMMENT ON COLUMN shared.ManagementEvents.AffectedArea_m2 IS 'Area affected by the management activity in m²';
+
+CREATE INDEX idx_mgmt_events_location ON shared.ManagementEvents(LocationID);
+CREATE INDEX idx_mgmt_events_plot ON shared.ManagementEvents(PlotID);
+CREATE INDEX idx_mgmt_events_type ON shared.ManagementEvents(EventType);
+CREATE INDEX idx_mgmt_events_date ON shared.ManagementEvents(EventDate DESC);
+
+-- =============================================================================
+-- DISTURBANCE EVENTS (NATURAL DISTURBANCES)
+-- =============================================================================
+
+CREATE TABLE shared.DisturbanceEvents (
+    EventID SERIAL PRIMARY KEY,
+    LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
+    PlotID INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
+    DisturbanceType VARCHAR(50) NOT NULL CHECK (DisturbanceType IN (
+        'storm', 'fire', 'insect', 'drought', 'disease', 'flood',
+        'frost', 'snow_damage', 'landslide', 'other'
+    )),
+    EventDate DATE NOT NULL,
+    EndDate DATE,
+    Severity VARCHAR(20) CHECK (Severity IN ('low', 'moderate', 'high', 'severe')),
+    AffectedArea_m2 NUMERIC(12, 2) CHECK (AffectedArea_m2 > 0),
+    Description TEXT,
+    Notes TEXT,
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    UpdatedAt TIMESTAMPTZ,
+    CreatedBy VARCHAR(200),
+    UpdatedBy VARCHAR(200),
+    CONSTRAINT chk_dist_event_dates CHECK (EndDate IS NULL OR EndDate >= EventDate)
+);
+
+COMMENT ON TABLE shared.DisturbanceEvents IS 'Natural disturbance events affecting forest areas (storms, fire, insects, etc.)';
+COMMENT ON COLUMN shared.DisturbanceEvents.DisturbanceType IS 'Type of natural disturbance';
+COMMENT ON COLUMN shared.DisturbanceEvents.Severity IS 'Disturbance severity level';
+COMMENT ON COLUMN shared.DisturbanceEvents.AffectedArea_m2 IS 'Estimated area affected in m²';
+
+CREATE INDEX idx_dist_events_location ON shared.DisturbanceEvents(LocationID);
+CREATE INDEX idx_dist_events_plot ON shared.DisturbanceEvents(PlotID);
+CREATE INDEX idx_dist_events_type ON shared.DisturbanceEvents(DisturbanceType);
+CREATE INDEX idx_dist_events_date ON shared.DisturbanceEvents(EventDate DESC);
+CREATE INDEX idx_dist_events_severity ON shared.DisturbanceEvents(Severity);
 
 -- =============================================================================
 -- PROCESS MANAGEMENT AND ALGORITHM TRACKING

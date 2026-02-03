@@ -11,7 +11,6 @@ scripts/
 │   ├── refresh_lookups.py          # Refresh lookup tables from CSV
 │   └── reset_database.py           # Full database reset
 ├── import/                   # Data import & sync scripts
-│   ├── create_import_files.py      # Transform raw CSV to import format
 │   ├── import_ecosense.py          # Import ecosense tree data
 │   ├── import_sensor_data.py       # Import sensor data from Aquarius
 │   ├── link_sensors_to_trees.py    # Link sensors to trees
@@ -43,17 +42,7 @@ scripts/
 
 ## Import Scripts
 
-All import scripts are in `scripts/import/`.
-
-### Prepare Import Files
-
-Transform raw CSV data (ecosense, mathisle) into the standardized import format:
-
-```bash
-python scripts/import/create_import_files.py
-```
-
-Output files are saved to `data/imports/`.
+All import scripts are in `scripts/import/`. Before importing, prepare your data following the [DATA_PREPARATION_GUIDE.md](../data/templates/DATA_PREPARATION_GUIDE.md) and the templates in `data/templates/`.
 
 ### Import Tree Data
 

@@ -88,13 +88,14 @@ CREATE TEMP TABLE temp_species (
     MaxDBH_cm NUMERIC(6, 2),
     TypicalLifespan_years INTEGER,
     GrowthRate VARCHAR(20),
-    ShadeTolerance VARCHAR(20)
+    ShadeTolerance VARCHAR(20),
+    IsDeciduous BOOLEAN
 );
 
 \copy temp_species FROM '/var/lib/postgresql/lookups/species.csv' WITH (FORMAT csv, HEADER true);
 
-INSERT INTO shared.Species (CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance)
-SELECT CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance 
+INSERT INTO shared.Species (CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance, IsDeciduous)
+SELECT CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance, IsDeciduous
 FROM temp_species
 ON CONFLICT (ScientificName) DO UPDATE SET
     CommonName = EXCLUDED.CommonName,
@@ -102,7 +103,8 @@ ON CONFLICT (ScientificName) DO UPDATE SET
     MaxDBH_cm = EXCLUDED.MaxDBH_cm,
     TypicalLifespan_years = EXCLUDED.TypicalLifespan_years,
     GrowthRate = EXCLUDED.GrowthRate,
-    ShadeTolerance = EXCLUDED.ShadeTolerance;
+    ShadeTolerance = EXCLUDED.ShadeTolerance,
+    IsDeciduous = EXCLUDED.IsDeciduous;
 
 DROP TABLE temp_species;
 
