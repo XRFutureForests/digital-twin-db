@@ -123,7 +123,7 @@ CREATE TABLE shared.VariantTypes (
     VariantTypeName VARCHAR(100) NOT NULL UNIQUE,
     Description TEXT,
     CONSTRAINT chk_variant_type_name CHECK (VariantTypeName IN (
-        'original', 'processed', 'manual', 'simulated_growth', 'user_input', 'sensor_derived', 'model_output'
+        'original', 'processed', 'manual', 'simulated_growth', 'user_input', 'sensor_derived', 'model_output', 'repeat_measurement'
     ))
 );
 

@@ -6,3 +6,4 @@ simulated_growth,Data from growth simulation models
 user_input,User-defined or modified data in XR environment
 sensor_derived,Aggregated or derived from sensor readings
 model_output,Output from external models (SILVA or climate models)
+repeat_measurement,Repeat measurement from subsequent inventory campaigns

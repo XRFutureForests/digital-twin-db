@@ -31,7 +31,7 @@ Central location for lookup tables and audit functionality used across all domai
 | `SoilTypes` | Soil classification and properties |
 | `ClimateZones` | Climate zone definitions |
 | `Scenarios` | Named data variants for analysis scenarios |
-| `VariantTypes` | Classification for variant patterns (original, processed, etc.) |
+| `VariantTypes` | Classification for variant patterns (original, processed, repeat_measurement, etc.) |
 | `Processes` | Audit trail - tracks all data modifications |
 | `ProcessParameters` | Parameters associated with processing jobs |
 | `ProcessMetrics` | Metrics from processing operations |
