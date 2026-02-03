@@ -9,7 +9,8 @@ scripts/
 ├── README.md
 ├── admin/                    # Administrative scripts
 │   ├── refresh_lookups.py          # Refresh lookup tables from CSV
-│   └── reset_database.py           # Full database reset
+│   ├── reset_database.py           # Full database reset
+│   └── validate_species_gbif.py    # Validate species names via GBIF
 ├── import/                   # Data import & sync scripts
 │   ├── import_ecosense.py          # Import ecosense tree data
 │   ├── import_sensor_data.py       # Import sensor data from Aquarius
@@ -119,3 +120,25 @@ python scripts/admin/refresh_lookups.py species
 # List available tables
 python scripts/admin/refresh_lookups.py --list
 ```
+
+### Validate Species Names (GBIF)
+
+Validate species names against the GBIF taxonomic backbone to ensure standardization:
+
+```bash
+# Validate all species in data/lookups/species.csv
+python scripts/admin/validate_species_gbif.py
+
+# Show detailed GBIF API responses
+python scripts/admin/validate_species_gbif.py --verbose
+
+# Generate corrections CSV (data/lookups/species_gbif_validation.csv)
+python scripts/admin/validate_species_gbif.py --fix
+```
+
+The script checks for:
+
+- **Valid names** - exact match in GBIF backbone
+- **Synonyms** - names that should use accepted alternatives
+- **Misspellings** - fuzzy matches suggesting corrections
+- **Unknown** - species not found in GBIF
