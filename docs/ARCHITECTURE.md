@@ -18,7 +18,7 @@ The Digital Forest Twin is a PostgreSQL-based database infrastructure for forest
 
 ### Schema Organization
 
-The database is organized into 5 custom schemas, each handling a specific domain:
+The database is organized into 6 custom schemas, each handling a specific domain:
 
 #### 1. **shared** - Reference & Audit Data
 
@@ -26,15 +26,20 @@ Central location for lookup tables and audit functionality used across all domai
 
 | Table | Purpose |
 |-------|---------|
-| `Species` | Tree species definitions (name, scientific name, growth characteristics) |
+| `Species` | Tree species definitions (name, scientific name, growth characteristics, IsDeciduous flag) |
 | `Locations` | Forest plot metadata with PostGIS geometry boundaries |
 | `SoilTypes` | Soil classification and properties |
 | `ClimateZones` | Climate zone definitions |
 | `Scenarios` | Named data variants for analysis scenarios |
 | `VariantTypes` | Classification for variant patterns (original, processed, repeat_measurement, etc.) |
+| `Campaigns` | Data collection events (LiDAR flights, field inventories) with methodology |
 | `Processes` | Audit trail - tracks all data modifications |
 | `ProcessParameters` | Parameters associated with processing jobs |
 | `ProcessMetrics` | Metrics from processing operations |
+| `Plots` | Sub-plot divisions within locations |
+| `ManagementEvents` | Forest management activities |
+| `DisturbanceEvents` | Natural disturbance events |
+| `DisturbanceEvents_Trees` | Junction: disturbance-tree damage links |
 
 **Audit Junction Tables:**
 
@@ -49,13 +54,22 @@ Handles point cloud scan data and processing variants.
 | Table | Purpose |
 |-------|---------|
 | `PointClouds` | LiDAR scan metadata with S3 paths, quality metrics |
+| `ScannerTypes` | LiDAR scanner type classifications |
+| `Scanners` | Individual scanner hardware instances |
 
 **Key Fields:**
 
 - `LocationID` - Links to specific forest plot
-- `S3Path` - Object storage reference
-- `ProcessingVariants` - Track different processing attempts
-- `VariantID` - Variant tracking for temporal lineage
+- `CampaignID` - Data collection campaign
+- `ScannerID` - Physical scanner hardware used
+- `FilePath` - S3 URI to point cloud file
+- `SensorModel` - LiDAR scanner model
+- `SourceCRS` - EPSG code of original CRS
+- `PlatformType` - terrestrial, aerial, mobile, UAV
+- `FlightAltitude_m`, `FlightSpeed_ms`, `ScanAngle_deg`, `Overlap_percent` - Flight/scan parameters
+- `PointDensity_per_m2` - Average point density
+- `ProcessingStatus` - Track processing state (pending, processing, completed, failed)
+- `VariantID` / `ParentVariantID` - Variant tracking for temporal lineage
 
 #### 3. **trees** - Tree Measurements & Growth Models
 
@@ -70,14 +84,26 @@ Individual tree data with support for multi-stem trees and growth simulations.
 | `StraightnessTypes` | Trunk straightness classifications |
 | `BranchingPatterns` | Crown structure patterns |
 | `BarkCharacteristics` | Bark feature classifications |
+| `PhenologyObservations` | Seasonal development phase observations |
+| `Deadwood` | Dead wood inventory |
+| `GroundVegetation` | Ground vegetation surveys |
 
 **Key Fields (Trees):**
 
+- `TreeEntityID` - Persistent UUID identifying the physical tree across all variants
 - `LocationID` - Forest plot location
+- `PlotID` - Sub-plot within the location
+- `CampaignID` - Data collection campaign this measurement belongs to
+- `SourceCRS` - EPSG code of original CRS
 - `Position` - WGS84 point geometry (tree position)
 - `PositionOriginal` - Original coordinate system with elevation
 - `SpeciesID` - Links to Species lookup
-- `Height_m`, `Volume_m3`, `DBH_cm` - Measurements
+- `MeasurementDate` - Actual date of field measurement
+- `DataSourceType` - How data was collected (lidar, field, photogrammetry, estimated, simulated)
+- `Height_m`, `Volume_m3` - Measurements
+- `CrownOffsetX_m`, `CrownOffsetY_m` - Crown asymmetry from trunk position
+- `SpeciesConfidence`, `PositionConfidence`, `HeightConfidence` - Quality scores (0-1)
+- `StatusChangeDate` - Date when tree status changed (e.g., mortality)
 - `VariantID` - Version control for tree data
 - `CreatedBy`, `CreatedAt` - Audit trail
 
@@ -95,9 +121,12 @@ Sensor hardware configuration and time-series environmental data.
 **Key Fields (Sensors):**
 
 - `LocationID` - Forest plot where sensor is installed
+- `CampaignID` - Deployment campaign
 - `Position` - WGS84 point geometry (sensor location)
 - `PositionOriginal` - Original CRS coordinates before transformation
+- `SourceCRS` - EPSG code of original CRS
 - `SensorTypeID` - Links to SensorTypes
+- `InstallationHeight_m` - Height above ground
 - `SerialNumber`, `ExternalID` - Hardware identification
 - `InstallationDate`, `DecommissionDate` - Lifecycle tracking
 - `IsActive` - Current status
@@ -113,7 +142,8 @@ Sensor hardware configuration and time-series environmental data.
 
 **Key Fields (SensorTreeLinks):**
 
-- `SensorID`, `TreeID` - Direct relationship between sensor and tree
+- `sensor_id`, `tree_variant_id` - Direct relationship between sensor and tree variant
+- `StartDate`, `EndDate` - Monitoring period
 - Enables growth monitoring and environmental correlation analysis
 
 #### 5. **environments** - Environmental Conditions
@@ -123,6 +153,14 @@ Processed environmental data from sensor networks or simulations.
 | Table | Purpose |
 |-------|---------|
 | `Environments` | Processed environmental conditions linked to locations |
+
+#### 6. **imagery** - Aerial & Ground Imagery
+
+Aerial and ground-based imagery with spatial metadata.
+
+| Table | Purpose |
+|-------|---------|
+| `Images` | Aerial and ground-based imagery with spatial metadata |
 
 ### Design Patterns
 
@@ -272,7 +310,7 @@ curl -X POST "http://localhost:8000/rest/v1/locations" \
 Set in `docker/.env` via `PGRST_DB_SCHEMAS`:
 
 ```
-shared,pointclouds,trees,sensor,environments
+shared,pointclouds,trees,sensor,environments,imagery
 ```
 
 ### Authentication
@@ -364,7 +402,7 @@ SELECT ST_Distance(
 ) AS distance_m;
 
 # Points within radius (1km)
-SELECT treeid, height_m FROM trees.trees
+SELECT variantid, height_m FROM trees.trees
 WHERE ST_DWithin(
   position::geography,
   'POINT(8.088 47.885)'::geography,
@@ -413,19 +451,20 @@ Migrations run automatically when database starts. Located in `docker/volumes/db
 | File | Purpose |
 |------|---------|
 | `10-enable-postgis.sql` | PostGIS extension setup |
-| `11-shared-schema.sql` | Reference tables |
+| `11-shared-schema.sql` | Reference tables (locations, species, campaigns, etc.) |
 | `12-pointclouds-schema.sql` | Point cloud tables |
 | `13-trees-schema.sql` | Tree measurement tables |
 | `14-sensor-schema.sql` | Sensor infrastructure |
 | `15-environments-schema.sql` | Environmental conditions |
-| `16-rls-policies.sql` | Security policies |
-| `17-audit-functions.sql` | Change tracking |
-| `18a-seed-lookup-data.sql` | Species/climate data |
-| `18b-seed-sample-locations.sql` | Test locations |
-| `21-aquarius-integration.sql` | Aquarius API support |
-| `22-link-sensors-to-trees.sql` | Sensor-tree relationships |
+| `16-sensor-tree-links-schema.sql` | Sensor-tree relationships |
+| `17-imagery-schema.sql` | Aerial & ground imagery |
+| `20-rls-policies.sql` | Security policies and triggers |
+| `21-audit-functions.sql` | Change tracking |
+| `22-aquarius-integration.sql` | Aquarius API support |
 | `23-processing-jobs.sql` | Workflow tracking |
-| `24-public-api-views.sql` | Simplified API views |
+| `24-public-api-views.sql` | Public API views with CRUD triggers |
+| `30-load-lookup-tables.sql` | Reference data from CSVs |
+| `31-refresh-lookup-functions.sql` | Lookup table refresh functions |
 
 ## Common Operations
 

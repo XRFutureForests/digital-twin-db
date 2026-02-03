@@ -393,13 +393,14 @@ services:
       - ./volumes/db/init/10-enable-postgis.sql:/docker-entrypoint-initdb.d/migrations/10-enable-postgis.sql:Z
       - ./volumes/db/init/11-shared-schema.sql:/docker-entrypoint-initdb.d/migrations/11-shared-schema.sql:Z
       
-      # Layer 1: Domain Schemas (12-16)
+      # Layer 1: Domain Schemas (12-17)
       - ./volumes/db/init/12-pointclouds-schema.sql:/docker-entrypoint-initdb.d/migrations/12-pointclouds-schema.sql:Z
       - ./volumes/db/init/13-trees-schema.sql:/docker-entrypoint-initdb.d/migrations/13-trees-schema.sql:Z
       - ./volumes/db/init/14-sensor-schema.sql:/docker-entrypoint-initdb.d/migrations/14-sensor-schema.sql:Z
       - ./volumes/db/init/15-environments-schema.sql:/docker-entrypoint-initdb.d/migrations/15-environments-schema.sql:Z
       - ./volumes/db/init/16-sensor-tree-links-schema.sql:/docker-entrypoint-initdb.d/migrations/16-sensor-tree-links-schema.sql:Z
-      
+      - ./volumes/db/init/17-imagery-schema.sql:/docker-entrypoint-initdb.d/migrations/17-imagery-schema.sql:Z
+
       # Layer 2: Security & Row-Level Policies (20)
       - ./volumes/db/init/20-rls-policies.sql:/docker-entrypoint-initdb.d/migrations/20-rls-policies.sql:Z
       

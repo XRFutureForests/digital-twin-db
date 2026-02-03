@@ -83,9 +83,12 @@ CREATE INDEX idx_bark_characteristics_name ON trees.BarkCharacteristics(BarkChar
 
 CREATE TABLE trees.Trees (
     VariantID SERIAL PRIMARY KEY,
+    TreeEntityID UUID DEFAULT gen_random_uuid(),
     ParentVariantID INTEGER REFERENCES trees.Trees(VariantID) ON DELETE SET NULL,
     PointCloudVariantID INTEGER REFERENCES pointclouds.PointClouds(VariantID) ON DELETE SET NULL,
+    CampaignID INTEGER REFERENCES shared.Campaigns(CampaignID) ON DELETE SET NULL,
     LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
+    PlotID INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
     ScenarioID INTEGER REFERENCES shared.Scenarios(ScenarioID) ON DELETE SET NULL,
     VariantTypeID INTEGER NOT NULL REFERENCES shared.VariantTypes(VariantTypeID),
     ProcessID INTEGER REFERENCES shared.Processes(ProcessID) ON DELETE SET NULL,
@@ -93,13 +96,20 @@ CREATE TABLE trees.Trees (
     TreeStatusID INTEGER REFERENCES trees.TreeStatus(TreeStatusID),
     BranchingPatternID INTEGER REFERENCES trees.BranchingPatterns(BranchingPatternID),
     BarkCharacteristicID INTEGER REFERENCES trees.BarkCharacteristics(BarkCharacteristicID),
+    -- Measurement metadata
+    MeasurementDate DATE,
+    DataSourceType VARCHAR(50) CHECK (DataSourceType IN ('lidar', 'field', 'photogrammetry', 'estimated', 'simulated')),
+    -- Tree measurements
     Height_m NUMERIC(6, 2) CHECK (Height_m > 0 AND Height_m <= 200),
     CrownWidth_m NUMERIC(6, 2) CHECK (CrownWidth_m >= 0 AND CrownWidth_m <= 100),
     CrownBaseHeight_m NUMERIC(6, 2) CHECK (CrownBaseHeight_m >= 0),
     CrownBoundary extensions.GEOMETRY(Polygon, 4326),
+    CrownOffsetX_m NUMERIC(5, 2),
+    CrownOffsetY_m NUMERIC(5, 2),
     Volume_m3 NUMERIC(10, 3) CHECK (Volume_m3 >= 0),
     Position extensions.GEOMETRY(Point, 4326) NOT NULL,
     PositionOriginal extensions.GEOMETRY,
+    SourceCRS INTEGER,
     LeanAngle_deg NUMERIC(5, 2) CHECK (LeanAngle_deg >= 0 AND LeanAngle_deg <= 90),
     LeanDirection_azimuth INTEGER CHECK (LeanDirection_azimuth >= 0 AND LeanDirection_azimuth < 360),
     TimeDelta_yrs NUMERIC(8, 2),
@@ -107,6 +117,12 @@ CREATE TABLE trees.Trees (
     HealthScore NUMERIC(3, 2) CHECK (HealthScore >= 0 AND HealthScore <= 1),
     Biomass_kg NUMERIC(12, 2) CHECK (Biomass_kg >= 0),
     CarbonContent_kg NUMERIC(12, 2) CHECK (CarbonContent_kg >= 0),
+    -- Confidence and quality
+    SpeciesConfidence NUMERIC(3, 2) CHECK (SpeciesConfidence >= 0 AND SpeciesConfidence <= 1),
+    PositionConfidence NUMERIC(3, 2) CHECK (PositionConfidence >= 0 AND PositionConfidence <= 1),
+    HeightConfidence NUMERIC(3, 2) CHECK (HeightConfidence >= 0 AND HeightConfidence <= 1),
+    -- Status tracking
+    StatusChangeDate DATE,
     FieldNotes TEXT,
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ,
@@ -117,13 +133,25 @@ CREATE TABLE trees.Trees (
 
 COMMENT ON TABLE trees.Trees IS 'Tree measurement and simulation variants with spatial positions';
 COMMENT ON COLUMN trees.Trees.VariantID IS 'Unique identifier for this tree variant';
+COMMENT ON COLUMN trees.Trees.TreeEntityID IS 'Persistent UUID identifying the physical tree across all variants';
 COMMENT ON COLUMN trees.Trees.ParentVariantID IS 'Parent variant for tracking growth or modifications';
 COMMENT ON COLUMN trees.Trees.PointCloudVariantID IS 'Source point cloud variant if tree was detected from LiDAR';
+COMMENT ON COLUMN trees.Trees.CampaignID IS 'Data collection campaign this measurement belongs to';
+COMMENT ON COLUMN trees.Trees.MeasurementDate IS 'Actual date of field measurement (may differ from CreatedAt)';
+COMMENT ON COLUMN trees.Trees.DataSourceType IS 'How the data was collected (lidar, field, photogrammetry, estimated, simulated)';
 COMMENT ON COLUMN trees.Trees.Position IS 'PostGIS point for tree location in WGS84';
 COMMENT ON COLUMN trees.Trees.PositionOriginal IS 'Original coordinates in source CRS before WGS84 transformation';
 COMMENT ON COLUMN trees.Trees.CrownBoundary IS 'PostGIS polygon defining crown extent';
+COMMENT ON COLUMN trees.Trees.CrownOffsetX_m IS 'Crown center offset from trunk position (X/East-West in meters)';
+COMMENT ON COLUMN trees.Trees.CrownOffsetY_m IS 'Crown center offset from trunk position (Y/North-South in meters)';
 COMMENT ON COLUMN trees.Trees.TimeDelta_yrs IS 'Time elapsed since parent variant (for growth simulations)';
 COMMENT ON COLUMN trees.Trees.HealthScore IS 'Tree health assessment score (0=dead, 1=optimal)';
+COMMENT ON COLUMN trees.Trees.SpeciesConfidence IS 'Confidence in species identification (0-1)';
+COMMENT ON COLUMN trees.Trees.PositionConfidence IS 'Confidence in position accuracy (0-1)';
+COMMENT ON COLUMN trees.Trees.HeightConfidence IS 'Confidence in height measurement (0-1)';
+COMMENT ON COLUMN trees.Trees.StatusChangeDate IS 'Date when tree status changed (e.g., mortality date)';
+COMMENT ON COLUMN trees.Trees.PlotID IS 'Sub-plot within the location where tree is located';
+COMMENT ON COLUMN trees.Trees.SourceCRS IS 'EPSG code of original coordinate reference system for PositionOriginal';
 
 -- Create indexes
 CREATE INDEX idx_trees_parent_variant ON trees.Trees(ParentVariantID);
@@ -139,6 +167,11 @@ CREATE INDEX idx_trees_crown_boundary ON trees.Trees USING GIST (CrownBoundary);
 CREATE INDEX idx_trees_height ON trees.Trees(Height_m);
 CREATE INDEX idx_trees_created_at ON trees.Trees(CreatedAt DESC);
 CREATE INDEX idx_trees_created_by ON trees.Trees(CreatedBy);
+CREATE INDEX idx_trees_tree_entity ON trees.Trees(TreeEntityID);
+CREATE INDEX idx_trees_campaign ON trees.Trees(CampaignID);
+CREATE INDEX idx_trees_measurement_date ON trees.Trees(MeasurementDate DESC);
+CREATE INDEX idx_trees_data_source ON trees.Trees(DataSourceType);
+CREATE INDEX idx_trees_plot ON trees.Trees(PlotID);
 
 -- =============================================================================
 -- STEMS TABLE (MULTI-STEM SUPPORT)
@@ -290,6 +323,116 @@ LEFT JOIN trees.Stems st ON t.VariantID = st.TreeVariantID
 GROUP BY t.VariantID, s.SpeciesID;
 
 COMMENT ON VIEW trees.trees_with_metrics IS 'Trees with computed metrics (basal area, crown volume, stem count)';
+
+-- =============================================================================
+-- PHENOLOGY OBSERVATIONS
+-- =============================================================================
+
+CREATE TABLE trees.PhenologyObservations (
+    ObservationID SERIAL PRIMARY KEY,
+    TreeVariantID INTEGER NOT NULL REFERENCES trees.Trees(VariantID) ON DELETE CASCADE,
+    ObservationDate DATE NOT NULL,
+    PhenophaseType VARCHAR(50) NOT NULL CHECK (PhenophaseType IN (
+        'bud_break', 'leaf_out', 'flowering', 'fruit_set',
+        'leaf_color', 'leaf_fall', 'dormancy'
+    )),
+    PhenophaseStatus VARCHAR(50) CHECK (PhenophaseStatus IN (
+        'not_started', 'beginning', 'intermediate', 'peak', 'ending', 'completed'
+    )),
+    Intensity_percent NUMERIC(5, 2) CHECK (Intensity_percent >= 0 AND Intensity_percent <= 100),
+    Observer VARCHAR(200),
+    Notes TEXT,
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    CreatedBy VARCHAR(200)
+);
+
+COMMENT ON TABLE trees.PhenologyObservations IS 'Tree phenology observations tracking seasonal development phases';
+COMMENT ON COLUMN trees.PhenologyObservations.PhenophaseType IS 'Type of phenological phase being observed';
+COMMENT ON COLUMN trees.PhenologyObservations.PhenophaseStatus IS 'Current status of the phenophase';
+COMMENT ON COLUMN trees.PhenologyObservations.Intensity_percent IS 'Intensity of the phenophase (0-100%)';
+
+CREATE INDEX idx_phenology_tree ON trees.PhenologyObservations(TreeVariantID);
+CREATE INDEX idx_phenology_date ON trees.PhenologyObservations(ObservationDate DESC);
+CREATE INDEX idx_phenology_type ON trees.PhenologyObservations(PhenophaseType);
+
+-- =============================================================================
+-- DEADWOOD INVENTORY
+-- =============================================================================
+
+CREATE TABLE trees.Deadwood (
+    DeadwoodID SERIAL PRIMARY KEY,
+    LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
+    PlotID INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
+    TreeVariantID INTEGER REFERENCES trees.Trees(VariantID) ON DELETE SET NULL,
+    SpeciesID INTEGER REFERENCES shared.Species(SpeciesID) ON DELETE SET NULL,
+    WoodType VARCHAR(50) NOT NULL CHECK (WoodType IN ('standing', 'fallen', 'stump', 'branch')),
+    Length_m NUMERIC(6, 2) CHECK (Length_m > 0),
+    Diameter_cm NUMERIC(6, 2) CHECK (Diameter_cm > 0),
+    DecayClass INTEGER CHECK (DecayClass >= 1 AND DecayClass <= 5),
+    Volume_m3 NUMERIC(10, 3) CHECK (Volume_m3 >= 0),
+    Position extensions.GEOMETRY(Point, 4326),
+    MeasurementDate DATE,
+    Notes TEXT,
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    CreatedBy VARCHAR(200)
+);
+
+COMMENT ON TABLE trees.Deadwood IS 'Dead wood inventory including standing dead, fallen logs, stumps, and branches';
+COMMENT ON COLUMN trees.Deadwood.WoodType IS 'Type of dead wood: standing, fallen, stump, or branch';
+COMMENT ON COLUMN trees.Deadwood.DecayClass IS 'Decay stage from 1 (fresh) to 5 (fully decomposed)';
+COMMENT ON COLUMN trees.Deadwood.TreeVariantID IS 'Optional link to known dead tree variant';
+
+CREATE INDEX idx_deadwood_location ON trees.Deadwood(LocationID);
+CREATE INDEX idx_deadwood_plot ON trees.Deadwood(PlotID);
+CREATE INDEX idx_deadwood_tree ON trees.Deadwood(TreeVariantID);
+CREATE INDEX idx_deadwood_species ON trees.Deadwood(SpeciesID);
+CREATE INDEX idx_deadwood_type ON trees.Deadwood(WoodType);
+CREATE INDEX idx_deadwood_position ON trees.Deadwood USING GIST (Position);
+
+-- =============================================================================
+-- GROUND VEGETATION SURVEYS
+-- =============================================================================
+
+CREATE TABLE trees.GroundVegetation (
+    VegetationID SERIAL PRIMARY KEY,
+    LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
+    PlotID INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
+    SpeciesName VARCHAR(200),
+    CoverPercent NUMERIC(5, 2) CHECK (CoverPercent >= 0 AND CoverPercent <= 100),
+    Height_cm NUMERIC(6, 2) CHECK (Height_cm >= 0),
+    Layer VARCHAR(50) CHECK (Layer IN ('herb', 'shrub', 'moss', 'litter', 'fern', 'grass')),
+    MeasurementDate DATE,
+    Notes TEXT,
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    CreatedBy VARCHAR(200)
+);
+
+COMMENT ON TABLE trees.GroundVegetation IS 'Ground vegetation survey records by plot and layer';
+COMMENT ON COLUMN trees.GroundVegetation.CoverPercent IS 'Estimated cover percentage (0-100)';
+COMMENT ON COLUMN trees.GroundVegetation.Layer IS 'Vegetation layer: herb, shrub, moss, litter, fern, grass';
+
+CREATE INDEX idx_groundveg_location ON trees.GroundVegetation(LocationID);
+CREATE INDEX idx_groundveg_plot ON trees.GroundVegetation(PlotID);
+CREATE INDEX idx_groundveg_layer ON trees.GroundVegetation(Layer);
+CREATE INDEX idx_groundveg_date ON trees.GroundVegetation(MeasurementDate DESC);
+
+-- =============================================================================
+-- DISTURBANCE EVENTS - TREES JUNCTION TABLE
+-- =============================================================================
+
+CREATE TABLE shared.DisturbanceEvents_Trees (
+    EventID INTEGER NOT NULL REFERENCES shared.DisturbanceEvents(EventID) ON DELETE CASCADE,
+    TreeVariantID INTEGER NOT NULL REFERENCES trees.Trees(VariantID) ON DELETE CASCADE,
+    DamageLevel VARCHAR(50) CHECK (DamageLevel IN ('none', 'light', 'moderate', 'severe', 'destroyed')),
+    Notes TEXT,
+    PRIMARY KEY (EventID, TreeVariantID)
+);
+
+COMMENT ON TABLE shared.DisturbanceEvents_Trees IS 'Links disturbance events to affected individual trees with damage assessment';
+COMMENT ON COLUMN shared.DisturbanceEvents_Trees.DamageLevel IS 'Level of damage to individual tree';
+
+CREATE INDEX idx_dist_trees_event ON shared.DisturbanceEvents_Trees(EventID);
+CREATE INDEX idx_dist_trees_tree ON shared.DisturbanceEvents_Trees(TreeVariantID);
 
 -- Grant appropriate permissions
 GRANT USAGE ON SCHEMA trees TO anon, authenticated, service_role;

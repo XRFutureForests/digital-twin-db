@@ -149,6 +149,8 @@ def prepare_tree_data(df, species_map):
             "locationid": LOCATION_ID,
             "varianttypeid": VARIANT_TYPE_ID,
             "speciesid": species_id,
+            "datasourcetype": "field",
+            "sourcecrs": 32632,  # Original data is UTM 32N (EPSG:32632)
             "height_m": (
                 float(row["tls_treeheight"])
                 if pd.notna(row["tls_treeheight"])
@@ -177,7 +179,7 @@ def insert_trees(trees):
 
     # Prepare INSERT statement
     insert_query = """
-        INSERT INTO trees.Trees (LocationID, VariantTypeID, SpeciesID, Height_m, Position, FieldNotes, CreatedBy)
+        INSERT INTO trees.Trees (LocationID, VariantTypeID, SpeciesID, DataSourceType, SourceCRS, Height_m, Position, FieldNotes, CreatedBy)
         VALUES %s
         RETURNING VariantID
     """
@@ -187,6 +189,8 @@ def insert_trees(trees):
             tree["locationid"],
             tree["varianttypeid"],
             tree["speciesid"],
+            tree["datasourcetype"],
+            tree["sourcecrs"],
             tree["height_m"],
             tree["position"],
             tree["fieldnotes"],
@@ -200,7 +204,7 @@ def insert_trees(trees):
         cur,
         insert_query,
         values,
-        template="(%s, %s, %s, %s, ST_GeomFromText(%s, 4326), %s, %s)",
+        template="(%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326), %s, %s)",
         fetch=True,
     )
 

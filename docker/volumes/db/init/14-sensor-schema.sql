@@ -38,11 +38,14 @@ CREATE TABLE sensor.Sensors (
     SensorID SERIAL PRIMARY KEY,
     LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
     SensorTypeID INTEGER NOT NULL REFERENCES sensor.SensorTypes(SensorTypeID),
+    CampaignID INTEGER REFERENCES shared.Campaigns(CampaignID) ON DELETE SET NULL,
     SensorModel VARCHAR(200) NOT NULL,
     SerialNumber VARCHAR(100),
     Position extensions.GEOMETRY(Point, 4326) NOT NULL,
     PositionOriginal extensions.GEOMETRY,
+    SourceCRS INTEGER,
     InstallationDate TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    InstallationHeight_m NUMERIC(5, 2) CHECK (InstallationHeight_m >= 0),
     DecommissionDate TIMESTAMPTZ,
     CalibrationDate TIMESTAMPTZ,
     NextCalibrationDate TIMESTAMPTZ,
@@ -68,6 +71,9 @@ COMMENT ON COLUMN sensor.Sensors.Position IS 'PostGIS point for sensor location 
 COMMENT ON COLUMN sensor.Sensors.PositionOriginal IS 'Original coordinates in source CRS before WGS84 transformation';
 COMMENT ON COLUMN sensor.Sensors.SamplingInterval_seconds IS 'Frequency of sensor measurements in seconds';
 COMMENT ON COLUMN sensor.Sensors.IsActive IS 'Whether sensor is currently collecting data';
+COMMENT ON COLUMN sensor.Sensors.CampaignID IS 'Deployment campaign this sensor was installed during';
+COMMENT ON COLUMN sensor.Sensors.SourceCRS IS 'EPSG code of original coordinate reference system for PositionOriginal';
+COMMENT ON COLUMN sensor.Sensors.InstallationHeight_m IS 'Height of sensor installation above ground in meters';
 
 -- Create indexes
 CREATE INDEX idx_sensors_location ON sensor.Sensors(LocationID);
@@ -77,6 +83,7 @@ CREATE INDEX idx_sensors_is_active ON sensor.Sensors(IsActive);
 CREATE INDEX idx_sensors_installation_date ON sensor.Sensors(InstallationDate DESC);
 CREATE INDEX idx_sensors_serial_number ON sensor.Sensors(SerialNumber);
 CREATE INDEX idx_sensors_created_by ON sensor.Sensors(CreatedBy);
+CREATE INDEX idx_sensors_campaign ON sensor.Sensors(CampaignID);
 
 -- =============================================================================
 -- SENSOR READINGS TABLE (TIME-SERIES DATA)

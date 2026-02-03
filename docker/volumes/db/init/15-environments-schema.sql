@@ -24,7 +24,7 @@ CREATE TABLE environments.Environments (
     AvgTemperature_C NUMERIC(6, 2) CHECK (AvgTemperature_C >= -50 AND AvgTemperature_C <= 60),
     AvgHumidity_percent NUMERIC(5, 2) CHECK (AvgHumidity_percent >= 0 AND AvgHumidity_percent <= 100),
     TotalPrecipitation_mm NUMERIC(8, 2) CHECK (TotalPrecipitation_mm >= 0),
-    AvgGlobalRadiation NUMERIC(8, 2) CHECK (AvgGlobalRadiation >= 0),
+    AvgGlobalRadiation_W_m2 NUMERIC(8, 2) CHECK (AvgGlobalRadiation_W_m2 >= 0),
     AvgCO2_ppm NUMERIC(7, 2) CHECK (AvgCO2_ppm >= 200 AND AvgCO2_ppm <= 2000),
     AvgWindSpeed_ms NUMERIC(6, 2) CHECK (AvgWindSpeed_ms >= 0 AND AvgWindSpeed_ms <= 100),
     DominantWindDirection_deg NUMERIC(5, 2) CHECK (DominantWindDirection_deg >= 0 AND DominantWindDirection_deg < 360),
@@ -49,7 +49,7 @@ COMMENT ON COLUMN environments.Environments.VariantID IS 'Unique identifier for 
 COMMENT ON COLUMN environments.Environments.ParentVariantID IS 'Parent variant for tracking environmental modifications';
 COMMENT ON COLUMN environments.Environments.StartDate IS 'Start of environmental measurement period';
 COMMENT ON COLUMN environments.Environments.EndDate IS 'End of environmental measurement period (NULL for ongoing)';
-COMMENT ON COLUMN environments.Environments.AvgGlobalRadiation IS 'Average global radiation in W/m²';
+COMMENT ON COLUMN environments.Environments.AvgGlobalRadiation_W_m2 IS 'Average global radiation in W/m²';
 COMMENT ON COLUMN environments.Environments.StressFactor IS 'Environmental stress index (0=optimal, 1=severe stress)';
 
 -- Create indexes

@@ -9,6 +9,45 @@ CREATE SCHEMA IF NOT EXISTS pointclouds;
 SET search_path TO pointclouds, shared, public;
 
 -- =============================================================================
+-- SCANNER TYPES REFERENCE TABLE
+-- =============================================================================
+
+CREATE TABLE pointclouds.ScannerTypes (
+    ScannerTypeID SERIAL PRIMARY KEY,
+    ScannerTypeName VARCHAR(100) NOT NULL UNIQUE,
+    Manufacturer VARCHAR(200),
+    Description TEXT
+);
+
+COMMENT ON TABLE pointclouds.ScannerTypes IS 'LiDAR scanner type classifications and manufacturers';
+COMMENT ON COLUMN pointclouds.ScannerTypes.ScannerTypeName IS 'Scanner type name (e.g., Terrestrial_TLS, Aerial_ALS, Mobile_MLS, UAV_ULS)';
+
+CREATE INDEX idx_scanner_types_name ON pointclouds.ScannerTypes(ScannerTypeName);
+
+-- =============================================================================
+-- SCANNERS TABLE (INDIVIDUAL SCANNER HARDWARE)
+-- =============================================================================
+
+CREATE TABLE pointclouds.Scanners (
+    ScannerID SERIAL PRIMARY KEY,
+    ScannerTypeID INTEGER NOT NULL REFERENCES pointclouds.ScannerTypes(ScannerTypeID),
+    SerialNumber VARCHAR(100) UNIQUE,
+    AcquisitionDate DATE,
+    CalibrationDate DATE,
+    Notes TEXT,
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    UpdatedAt TIMESTAMPTZ
+);
+
+COMMENT ON TABLE pointclouds.Scanners IS 'Individual LiDAR scanner hardware instances';
+COMMENT ON COLUMN pointclouds.Scanners.SerialNumber IS 'Unique hardware serial number';
+COMMENT ON COLUMN pointclouds.Scanners.AcquisitionDate IS 'Date scanner was acquired';
+COMMENT ON COLUMN pointclouds.Scanners.CalibrationDate IS 'Last calibration date';
+
+CREATE INDEX idx_scanners_type ON pointclouds.Scanners(ScannerTypeID);
+CREATE INDEX idx_scanners_serial ON pointclouds.Scanners(SerialNumber);
+
+-- =============================================================================
 -- POINT CLOUDS TABLE (UNIFIED VARIANT-BASED APPROACH)
 -- =============================================================================
 
@@ -19,12 +58,21 @@ CREATE TABLE pointclouds.PointClouds (
     ScenarioID INTEGER REFERENCES shared.Scenarios(ScenarioID) ON DELETE SET NULL,
     VariantTypeID INTEGER NOT NULL REFERENCES shared.VariantTypes(VariantTypeID),
     ProcessID INTEGER REFERENCES shared.Processes(ProcessID) ON DELETE SET NULL,
+    CampaignID INTEGER REFERENCES shared.Campaigns(CampaignID) ON DELETE SET NULL,
+    ScannerID INTEGER REFERENCES pointclouds.Scanners(ScannerID) ON DELETE SET NULL,
     VariantName VARCHAR(300) NOT NULL,
     ScanDate TIMESTAMPTZ,
     SensorModel VARCHAR(200),
+    SourceCRS INTEGER,
+    PlatformType VARCHAR(50) CHECK (PlatformType IN ('terrestrial', 'aerial', 'mobile', 'UAV')),
     ScanBounds extensions.GEOMETRY(Polygon, 4326),
     FilePath TEXT NOT NULL,
+    FlightAltitude_m NUMERIC(8, 2) CHECK (FlightAltitude_m > 0),
+    FlightSpeed_ms NUMERIC(6, 2) CHECK (FlightSpeed_ms >= 0),
+    ScanAngle_deg NUMERIC(5, 2) CHECK (ScanAngle_deg >= 0 AND ScanAngle_deg <= 360),
+    Overlap_percent NUMERIC(5, 2) CHECK (Overlap_percent >= 0 AND Overlap_percent <= 100),
     PointCount BIGINT CHECK (PointCount >= 0),
+    PointDensity_per_m2 NUMERIC(10, 2) CHECK (PointDensity_per_m2 >= 0),
     FileSizeMB NUMERIC(12, 2) CHECK (FileSizeMB >= 0),
     ProcessingStatus VARCHAR(50) CHECK (ProcessingStatus IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
     ProcessingProgress NUMERIC(5, 2) CHECK (ProcessingProgress >= 0 AND ProcessingProgress <= 100),
@@ -44,6 +92,15 @@ COMMENT ON COLUMN pointclouds.PointClouds.FilePath IS 'S3 URI to point cloud fil
 COMMENT ON COLUMN pointclouds.PointClouds.ScanBounds IS 'PostGIS polygon defining point cloud coverage area in WGS84';
 COMMENT ON COLUMN pointclouds.PointClouds.ProcessingStatus IS 'NULL for original scans, status for processed variants';
 COMMENT ON COLUMN pointclouds.PointClouds.ProcessingProgress IS 'Processing completion percentage (0-100)';
+COMMENT ON COLUMN pointclouds.PointClouds.CampaignID IS 'Data collection campaign this scan belongs to';
+COMMENT ON COLUMN pointclouds.PointClouds.ScannerID IS 'Physical scanner hardware used for this scan';
+COMMENT ON COLUMN pointclouds.PointClouds.SourceCRS IS 'EPSG code of original coordinate reference system';
+COMMENT ON COLUMN pointclouds.PointClouds.PlatformType IS 'Scanning platform: terrestrial, aerial, mobile, UAV';
+COMMENT ON COLUMN pointclouds.PointClouds.FlightAltitude_m IS 'Flight altitude above ground in meters (for aerial/UAV)';
+COMMENT ON COLUMN pointclouds.PointClouds.FlightSpeed_ms IS 'Platform speed during scanning in m/s';
+COMMENT ON COLUMN pointclouds.PointClouds.ScanAngle_deg IS 'Scanner field of view angle in degrees';
+COMMENT ON COLUMN pointclouds.PointClouds.Overlap_percent IS 'Swath overlap percentage (for aerial scans)';
+COMMENT ON COLUMN pointclouds.PointClouds.PointDensity_per_m2 IS 'Average point density in points per square meter';
 
 -- Create indexes
 CREATE INDEX idx_pointclouds_parent_variant ON pointclouds.PointClouds(ParentVariantID);
@@ -56,6 +113,9 @@ CREATE INDEX idx_pointclouds_processing_status ON pointclouds.PointClouds(Proces
 CREATE INDEX idx_pointclouds_created_at ON pointclouds.PointClouds(CreatedAt DESC);
 CREATE INDEX idx_pointclouds_scan_bounds ON pointclouds.PointClouds USING GIST (ScanBounds);
 CREATE INDEX idx_pointclouds_created_by ON pointclouds.PointClouds(CreatedBy);
+CREATE INDEX idx_pointclouds_campaign ON pointclouds.PointClouds(CampaignID);
+CREATE INDEX idx_pointclouds_scanner ON pointclouds.PointClouds(ScannerID);
+CREATE INDEX idx_pointclouds_platform_type ON pointclouds.PointClouds(PlatformType);
 
 -- =============================================================================
 -- JUNCTION TABLE: PROCESS PARAMETERS FOR POINT CLOUDS

@@ -22,41 +22,90 @@ This separation ensures:
 
 ### Trees Import Template
 
-Your prepared CSV must have these columns:
+Your prepared CSV must have these 22 columns. The import creates one record in `trees.Trees` and one stem (StemNumber=1) in `trees.Stems` for single-stem trees.
 
-| Column | Required | Type | Description |
-|--------|----------|------|-------------|
-| `LocationID` | Yes | Integer | Foreign key to `shared.Locations` |
-| `SpeciesID` | No | Integer | Foreign key to `shared.Species` (NULL = unknown) |
-| `Latitude` | Yes | Decimal | WGS84 latitude (e.g., 47.995) |
-| `Longitude` | Yes | Decimal | WGS84 longitude (e.g., 7.855) |
-| `DBH_cm` | No | Decimal | Diameter at breast height in centimeters |
-| `Height_m` | No | Decimal | Tree height in meters |
-| `CrownDiameter_m` | No | Decimal | Crown diameter in meters |
-| `ExternalID` | No | String | Your original ID for reference |
-| `Notes` | No | String | Any additional notes |
+**Required fields:**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `LocationID` | Integer | Foreign key to `shared.Locations` |
+| `Latitude` | Decimal | WGS84 latitude (e.g., 47.995) |
+| `Longitude` | Decimal | WGS84 longitude (e.g., 7.855) |
+
+**Recommended fields:**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `SpeciesID` | Integer | Foreign key to `shared.Species` (NULL = unknown) |
+| `DBH_cm` | Decimal | Diameter at breast height in centimeters |
+| `Height_m` | Decimal | Tree height in meters |
+| `MeasurementDate` | Date | Date of field measurement (YYYY-MM-DD) |
+
+**Optional fields:**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `PlotID` | Integer | Foreign key to `shared.Plots` (sub-plot within location) |
+| `CampaignID` | Integer | Foreign key to `shared.Campaigns` (data collection campaign) |
+| `VariantTypeID` | Integer | Foreign key to `shared.VariantTypes` (1=original, 2=processed, 3=manual, 8=repeat_measurement) |
+| `DataSourceType` | String | How data was collected: `lidar`, `field`, `photogrammetry`, `estimated`, `simulated` |
+| `SourceCRS` | Integer | EPSG code of original coordinate system before WGS84 transformation (e.g., `32632` for UTM 32N). For data provenance tracking |
+| `TreeStatusID` | Integer | Foreign key to `trees.TreeStatus` (1=healthy, 2=stressed, 3=declining, 4=dead, 5=harvested, 6=missing) |
+| `CrownWidth_m` | Decimal | Crown width in meters |
+| `CrownBaseHeight_m` | Decimal | Height to base of live crown in meters |
+| `Age_years` | Integer | Estimated tree age in years |
+| `HealthScore` | Decimal | Health assessment score (0.0 = dead, 1.0 = optimal) |
+| `TaperTypeID` | Integer | Foreign key to `trees.TaperTypes` (1=Cylinder, 2=Cone, 3=Paraboloid, 4=Neiloid) |
+| `StraightnessTypeID` | Integer | Foreign key to `trees.StraightnessTypes` (1=Straight, 2=Slight_sweep, 3=Moderate_sweep, 4=Severe_sweep) |
+| `BranchingPatternID` | Integer | Foreign key to `trees.BranchingPatterns` (1=Alternate, 2=Opposite, 3=Whorled, 4=Spiral, 5=Random) |
+| `BarkCharacteristicID` | Integer | Foreign key to `trees.BarkCharacteristics` (1=Smooth, 2=Furrowed, 3=Plated, 4=Exfoliating, 5=Scaly) |
+| `FieldNotes` | String | Free-text field notes (e.g., original IDs, plot info, observations) |
 
 **Example:**
 
 ```csv
-LocationID,SpeciesID,Latitude,Longitude,DBH_cm,Height_m,CrownDiameter_m,ExternalID,Notes
-4,1,47.88512,8.08834,45.2,28.5,12.3,TREE001,Healthy specimen
-4,6,47.88523,8.08856,32.1,22.0,,TREE002,Young tree
-4,,47.88534,8.08878,28.0,18.5,,TREE003,Species unknown
+LocationID,PlotID,CampaignID,SpeciesID,VariantTypeID,DataSourceType,Latitude,Longitude,SourceCRS,DBH_cm,Height_m,TreeStatusID,CrownWidth_m,CrownBaseHeight_m,Age_years,HealthScore,TaperTypeID,StraightnessTypeID,BranchingPatternID,BarkCharacteristicID,FieldNotes,MeasurementDate
+4,,,1,1,field,47.88512,8.08834,,45.2,28.5,1,12.3,8.0,85,0.95,3,1,1,2,"Healthy specimen",2025-03-05
+4,,,6,1,field,47.88523,8.08856,32632,32.1,22.0,1,,,45,,,,,,Young tree,2025-03-05
+4,,,,,,47.88534,8.08878,,28.0,18.5,,,,,,,,,,Species unknown,
 ```
 
 ### Sensors Import Template
 
-| Column | Required | Type | Description |
-|--------|----------|------|-------------|
-| `LocationID` | Yes | Integer | Foreign key to `shared.Locations` |
-| `SensorTypeID` | Yes | Integer | Foreign key to `sensor.SensorTypes` |
-| `SensorModel` | Yes | String | Model/make of sensor |
-| `SerialNumber` | No | String | Device serial number |
-| `Latitude` | Yes | Decimal | WGS84 latitude |
-| `Longitude` | Yes | Decimal | WGS84 longitude |
-| `SamplingInterval_seconds` | Yes | Integer | Measurement frequency |
-| `TreeLinkID` | No | String | ExternalID of linked tree |
+Your prepared CSV must have these 15 columns.
+
+**Required fields:**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `LocationID` | Integer | Foreign key to `shared.Locations` |
+| `SensorTypeID` | Integer | Foreign key to `sensor.SensorTypes` |
+| `SensorModel` | String | Model/make of sensor |
+| `Latitude` | Decimal | WGS84 latitude |
+| `Longitude` | Decimal | WGS84 longitude |
+| `SamplingInterval_seconds` | Integer | Measurement frequency in seconds |
+
+**Optional fields:**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `CampaignID` | Integer | Foreign key to `shared.Campaigns` (data collection campaign) |
+| `SerialNumber` | String | Device serial number |
+| `SourceCRS` | Integer | EPSG code of original coordinate system before WGS84 transformation (e.g., `32632` for UTM 32N) |
+| `InstallationHeight_m` | Decimal | Sensor height above ground in meters (e.g., 1.3 for breast height dendrometers) |
+| `InstallationDate` | Date | Date the sensor was installed (YYYY-MM-DD) |
+| `Unit` | String | Measurement unit (e.g., `mm`, `%`, `C`) |
+| `IsActive` | Boolean | Whether the sensor is currently active (`true`/`false`) |
+| `TreeLinkID` | String | Identifier to link sensor to a specific tree |
+| `Notes` | String | Any additional notes |
+
+**Example:**
+
+```csv
+LocationID,CampaignID,SensorTypeID,SensorModel,SerialNumber,Latitude,Longitude,SourceCRS,InstallationHeight_m,SamplingInterval_seconds,InstallationDate,Unit,IsActive,TreeLinkID,Notes
+4,,13,EMS Dendro DR26,Beech_Mixed_5_Dendrometer,47.884878,8.088243,,1.3,900,2024-01-15,mm,true,ecosense_8_15,"Dendrometer on tree 8_15 at breast height"
+4,,5,Decagon 5TM,SoilMoisture_E,47.884880,8.088245,,0.1,900,2024-01-15,%,true,ecosense_8_15,"Soil moisture sensor 10cm depth"
+```
 
 ---
 
@@ -79,10 +128,14 @@ Map your source columns to template columns:
 |-------------|---|-----------------|-------|
 | `x_32632` | → | `Longitude` | Needs coordinate transformation |
 | `y_32632` | → | `Latitude` | Needs coordinate transformation |
+| (source CRS) | → | `SourceCRS` | Set to `32632` if source is UTM 32N |
 | `species` | → | `SpeciesID` | Needs species lookup |
 | `diameter_m` | → | `DBH_cm` | Multiply by 100 |
 | `height` | → | `Height_m` | Direct copy |
-| `tree_id` | → | `ExternalID` | Direct copy |
+| `crown_width` | → | `CrownWidth_m` | Direct copy |
+| `tree_id` | → | `FieldNotes` | Include as "TreeID: xxx" in notes |
+| `collection_method` | → | `DataSourceType` | Map to: lidar, field, photogrammetry, estimated, simulated |
+| `date` | → | `MeasurementDate` | Format as YYYY-MM-DD |
 
 ### Step 3: Look Up Location ID
 
@@ -228,9 +281,6 @@ df[(df['Height_m'] <= 0) | (df['Height_m'] > 80)]
 **Duplicate records:**
 
 ```python
-# Check for duplicate external IDs
-df[df['ExternalID'].duplicated()]
-
 # Check for trees at exactly the same position
 df[df.duplicated(subset=['Latitude', 'Longitude'])]
 ```
@@ -244,14 +294,26 @@ df[pd.to_numeric(df['DBH_cm'], errors='coerce').isna() & df['DBH_cm'].notna()]
 
 ### Step 8: Export to Template Format
 
-Create the final CSV with exactly the template columns:
+Create the final CSV with exactly the template columns (in order):
 
 ```python
 import pandas as pd
 
-# Select and rename columns to match template
-output = df[['LocationID', 'SpeciesID', 'Latitude', 'Longitude', 
-             'DBH_cm', 'Height_m', 'CrownDiameter_m', 'ExternalID', 'Notes']]
+# Define template column order
+TREE_TEMPLATE_COLUMNS = [
+    'LocationID', 'PlotID', 'CampaignID', 'SpeciesID', 'VariantTypeID',
+    'DataSourceType', 'Latitude', 'Longitude', 'SourceCRS', 'DBH_cm',
+    'Height_m', 'TreeStatusID', 'CrownWidth_m', 'CrownBaseHeight_m',
+    'Age_years', 'HealthScore', 'TaperTypeID', 'StraightnessTypeID',
+    'BranchingPatternID', 'BarkCharacteristicID', 'FieldNotes', 'MeasurementDate'
+]
+
+# Add any missing columns as empty, then reorder
+for col in TREE_TEMPLATE_COLUMNS:
+    if col not in df.columns:
+        df[col] = None
+
+output = df[TREE_TEMPLATE_COLUMNS]
 
 # Save with UTF-8 encoding
 output.to_csv('my_trees_prepared.csv', index=False, encoding='utf-8')
@@ -294,23 +356,36 @@ for _, row in df.iterrows():
     # Skip invalid rows
     if pd.isna(row['x_32632']) or pd.isna(row['y_32632']):
         continue
-    
+
     # Transform coordinates
     lon, lat = transformer.transform(row['x_32632'], row['y_32632'])
-    
+
     # Map species
     species_id = SPECIES_MAP.get(row.get('species', '').strip())
-    
+
     result.append({
         'LocationID': 4,  # Mathisle
+        'PlotID': None,
+        'CampaignID': None,
         'SpeciesID': species_id,
+        'VariantTypeID': 1,  # original
+        'DataSourceType': 'field',
         'Latitude': round(lat, 6),
         'Longitude': round(lon, 6),
+        'SourceCRS': 32632,  # Original data was UTM 32N
         'DBH_cm': round(row['diameter_m'] * 100, 1) if pd.notna(row.get('diameter_m')) else None,
         'Height_m': row.get('height'),
-        'CrownDiameter_m': None,
-        'ExternalID': row.get('tree_id'),
-        'Notes': None,
+        'TreeStatusID': None,
+        'CrownWidth_m': None,
+        'CrownBaseHeight_m': None,
+        'Age_years': None,
+        'HealthScore': None,
+        'TaperTypeID': None,
+        'StraightnessTypeID': None,
+        'BranchingPatternID': None,
+        'BarkCharacteristicID': None,
+        'FieldNotes': f"TreeID: {row.get('tree_id')} | Source CRS: EPSG:32632",
+        'MeasurementDate': '2025-09-11',
     })
 
 # Export
@@ -322,13 +397,20 @@ print(f"Prepared {len(result)} trees for import")
 
 ## Running the Import
 
-Once your CSV matches the template format:
+Once your CSV matches the template format, use the import scripts in `scripts/import/`:
 
-1. Open `scripts/import/import_trees_simple.ipynb` or `scripts/import/import_trees_simple.Rmd`
-2. Set `CSV_FILE` to your prepared CSV path
-3. Set `DRY_RUN = True` for testing
-4. Run all cells to validate
-5. If validation passes, set `DRY_RUN = False` and run again
+```bash
+# Activate environment
+conda activate digital-twin
+
+# Import trees (replace with your prepared CSV path)
+python scripts/import/import_trees.py data/imports/my_trees_prepared.csv
+
+# Import sensors
+python scripts/import/import_sensors.py data/imports/my_sensors_prepared.csv
+```
+
+See [scripts/README.md](../../scripts/README.md) for detailed import script documentation.
 
 ---
 
@@ -354,6 +436,10 @@ If your data contains species, locations, or sensor types not in the lookup tabl
    ```sql
    SELECT SpeciesID, CommonName FROM shared.Species;
    SELECT LocationID, LocationName FROM shared.Locations;
+   SELECT PlotID, PlotName, LocationID FROM shared.Plots;
+   SELECT CampaignID, CampaignName FROM shared.Campaigns;
+   SELECT TreeStatusID, TreeStatusName FROM trees.TreeStatus;
+   SELECT VariantTypeID, VariantTypeName FROM shared.VariantTypes;
    ```
 
 See [data/lookups/README.md](../lookups/README.md) for detailed instructions.
@@ -364,8 +450,8 @@ See [data/lookups/README.md](../lookups/README.md) for detailed instructions.
 
 ### "Foreign key violation" errors
 
-- The SpeciesID or LocationID doesn't exist in the database
-- Solution: Add the missing value to the lookup CSV and rebuild
+- A foreign key ID (LocationID, SpeciesID, PlotID, CampaignID, TreeStatusID, etc.) doesn't exist in the database
+- Solution: Add the missing value to the appropriate lookup CSV and rebuild, or query the database for valid IDs
 
 ### Coordinates appear in wrong location
 
