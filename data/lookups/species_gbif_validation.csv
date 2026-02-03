@@ -1,0 +1,13 @@
+CommonName,OriginalScientificName,Status,GBIFAcceptedName,GBIFKey,Confidence,MatchType,TaxonomicStatus,Kingdom,Family,Issues
+European Beech,Fagus sylvatica,valid,Fagus sylvatica,2882316,100,EXACT,ACCEPTED,Plantae,Fagaceae,
+Pedunculate Oak,Quercus robur,valid,Quercus robur,2878688,99,EXACT,ACCEPTED,Plantae,Fagaceae,
+Norway Spruce,Picea abies,valid,Picea abies,5284884,99,EXACT,ACCEPTED,Plantae,Pinaceae,
+Silver Fir,Abies alba,valid,Abies alba,2685484,99,EXACT,ACCEPTED,Plantae,Pinaceae,
+Scots Pine,Pinus sylvestris,valid,Pinus sylvestris,5285637,99,EXACT,ACCEPTED,Plantae,Pinaceae,
+Douglas Fir,Pseudotsuga menziesii,valid,Pseudotsuga menziesii,2685796,100,EXACT,ACCEPTED,Plantae,Pinaceae,
+European Larch,Larix decidua,valid,Larix decidua,2686212,100,EXACT,ACCEPTED,Plantae,Pinaceae,
+Norway Maple,Acer platanoides,valid,Acer platanoides,3189846,100,EXACT,ACCEPTED,Plantae,Sapindaceae,
+Sycamore Maple,Acer pseudoplatanus,valid,Acer pseudoplatanus,3189870,99,EXACT,ACCEPTED,Plantae,Sapindaceae,
+Wild Cherry,Prunus avium,valid,Prunus avium,3020791,99,EXACT,ACCEPTED,Plantae,Rosaceae,
+Wild Service Tree,Sorbus torminalis,synonym,Torminalis glaberrima,3012567,99,EXACT,SYNONYM,Plantae,Rosaceae,Name is a synonym. Accepted name: Torminalis glaberrima
+Birch,Betula spp.,partial,Betula,2875008,95,HIGHERRANK,ACCEPTED,Plantae,Betulaceae,Only matched to higher rank: GENUS
