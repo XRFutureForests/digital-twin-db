@@ -46,7 +46,7 @@ else:
 # Constants
 CSV_PATH = Path(__file__).parent.parent.parent / "data" / "ecosense_250911.csv"
 CREATED_BY = "import_ecosense_script"
-LOCATION_ID = 4  # Ecosense_MixedPlot
+LOCATION_ID = 5  # Ecosense_MixedPlot
 VARIANT_TYPE_ID = 1  # original
 
 
@@ -85,6 +85,8 @@ def get_species_mapping():
         "oak": species_map.get("pedunculate oak"),
         "fir": species_map.get("silver fir"),
         "sf": species_map.get("silver fir"),
+        "larch": species_map.get("european larch"),
+        "la": species_map.get("european larch"),
     }
 
     # Merge aliases into map
