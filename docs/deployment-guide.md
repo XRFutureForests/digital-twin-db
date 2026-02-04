@@ -16,7 +16,7 @@ This guide provides step-by-step instructions for deploying the Supabase-based d
 
 The Supabase stack replaces the previous FastAPI + nginx + Redis architecture with:
 
-- **PostgreSQL + PostGIS**: Spatial database with 5 forest-specific schemas
+- **PostgreSQL + PostGIS**: Spatial database with 6 forest-specific schemas
 - **PostgREST**: Auto-generated REST API from database schema
 - **Kong**: API gateway for routing and authentication
 - **GoTrue**: Built-in authentication service
@@ -57,7 +57,11 @@ cd digital-twin
 
 ### 2. Configure Environment Variables
 
+The `.env` file in `docker/` comes pre-configured for local development. To customize:
+
 ```bash
+cd docker
+
 # Copy environment template
 cp .env.example .env
 
@@ -65,30 +69,25 @@ cp .env.example .env
 nano .env  # or vim, code, etc.
 ```
 
-**Required Variables**:
+**Key Variables** (in `docker/.env`):
 
 ```bash
 # Database
 POSTGRES_PASSWORD=your_secure_password_here
 
 # JWT Secret (generate with: openssl rand -base64 32)
-SUPABASE_JWT_SECRET=your_jwt_secret_here
+JWT_SECRET=your_jwt_secret_here
 
-# API Keys (generate with: openssl rand -base64 32)
-SUPABASE_ANON_KEY=your_anon_key_here
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
-
-# S3 Configuration
-S3_ENDPOINT=https://s3.amazonaws.com
-S3_REGION=us-east-1
-S3_BUCKET_NAME=xr-forests-pointclouds
-S3_ACCESS_KEY_ID=your_s3_access_key
-S3_SECRET_ACCESS_KEY=your_s3_secret_key
+# API Keys (JWT tokens - see Supabase docs for generation)
+ANON_KEY=your_anon_key_here
+SERVICE_ROLE_KEY=your_service_role_key_here
 ```
 
 ### 3. Start Supabase Stack
 
 ```bash
+cd docker
+
 # Start all services in detached mode
 docker compose up -d
 
@@ -124,30 +123,23 @@ Services should be running at:
 
 ### 6. Import Data (Optional)
 
-The database initializes with minimal reference data (species, locations). To import tree inventory and sensor data:
+The database initializes with reference data (species, locations, etc.) but no user data. To import tree inventory and sensor data:
 
 ```bash
-cd scripts
-
 # Setup environment (one-time)
+cd scripts
 conda env create -f environment.yml
 conda activate digital-twin
 
-# Start Jupyter notebook for interactive import
-jupyter notebook
-# Open import_trees.ipynb and follow the step-by-step workflow
+# Import tree data from EcoSense
+python scripts/import/import_ecosense.py
 
-# Or use R Markdown version
-# Open import_trees.Rmd in RStudio
+# Import sensor data from Aquarius API
+python scripts/import/import_sensor_data.py
+
+# Link sensors to nearby trees
+python scripts/import/link_sensors_to_trees.py
 ```
-
-The notebooks provide an interactive workflow to:
-
-- Explore your CSV data
-- Map columns to database fields
-- Handle coordinate transformations (any CRS → WGS84)
-- Preview data before insertion
-- Track changes with CreatedBy field
 
 See `scripts/README.md` for full import documentation.
 
@@ -192,7 +184,7 @@ newgrp docker
 # Clone on server
 cd /opt
 sudo git clone https://github.com/your-org/digital-twin.git
-cd digital-twin
+cd digital-twin/docker
 
 # Create production .env
 sudo cp .env.example .env
@@ -205,21 +197,14 @@ sudo nano .env
 # Production API URL (your domain)
 API_EXTERNAL_URL=https://api.your-domain.com
 
-# Strong passwords and keys
-POSTGRES_PASSWORD=$(openssl rand -base64 32)
-SUPABASE_JWT_SECRET=$(openssl rand -base64 32)
-SUPABASE_ANON_KEY=$(openssl rand -base64 32)
-SUPABASE_SERVICE_ROLE_KEY=$(openssl rand -base64 32)
+# Strong passwords and keys (generate with: openssl rand -base64 32)
+POSTGRES_PASSWORD=<strong_random_password>
+JWT_SECRET=<strong_random_secret>
 
-# Production S3
-S3_ENDPOINT=https://s3.amazonaws.com
-S3_REGION=us-east-1
-S3_BUCKET_NAME=your-production-bucket
-S3_ACCESS_KEY_ID=your_production_key
-S3_SECRET_ACCESS_KEY=your_production_secret
-
-# Environment
-ENVIRONMENT=production
+# API Keys must be valid JWT tokens signed with JWT_SECRET
+# See Supabase docs for generating ANON_KEY and SERVICE_ROLE_KEY
+ANON_KEY=<generated_jwt_token>
+SERVICE_ROLE_KEY=<generated_jwt_token>
 ```
 
 ### 3. Configure SSL/TLS
@@ -295,7 +280,7 @@ sudo nano /opt/backup-database.sh
 #!/bin/bash
 BACKUP_DIR="/backup/database"
 DATE=$(date +%Y%m%d_%H%M%S)
-CONTAINER="xr_forests_db"
+CONTAINER="dftdb-db"
 
 mkdir -p $BACKUP_DIR
 
@@ -357,27 +342,23 @@ done
 ### Required Environment Variables
 
 | Variable | Description | Example |
-|----------|-------------|---------|
+| -------- | ----------- | ------- |
 | `POSTGRES_PASSWORD` | PostgreSQL root password | `your_secure_password` |
-| `SUPABASE_JWT_SECRET` | JWT signing secret | `32+ character random string` |
-| `SUPABASE_ANON_KEY` | Public API key | `32+ character random string` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Admin API key | `32+ character random string` |
-| `S3_BUCKET_NAME` | S3 bucket for point clouds | `xr-forests-pointclouds` |
-| `S3_ACCESS_KEY_ID` | S3 access key | Your S3 credentials |
-| `S3_SECRET_ACCESS_KEY` | S3 secret key | Your S3 credentials |
+| `JWT_SECRET` | JWT signing secret | `32+ character random string` |
+| `ANON_KEY` | Public API key (JWT token) | JWT signed with `JWT_SECRET` |
+| `SERVICE_ROLE_KEY` | Admin API key (JWT token) | JWT signed with `JWT_SECRET` |
 | `API_EXTERNAL_URL` | Public API URL | `https://api.your-domain.com` |
 
 ### Optional Environment Variables
 
 | Variable | Description | Default |
-|----------|-------------|--------|
+| -------- | ----------- | ------- |
 | `POSTGRES_PORT` | PostgreSQL port | `5432` |
 | `KONG_HTTP_PORT` | API gateway HTTP port | `8000` |
 | `STUDIO_PORT` | Studio UI port | `54323` |
-| `S3_REGION` | AWS region | `us-east-1` |
-| `S3_ENDPOINT` | S3 endpoint URL | `https://s3.amazonaws.com` |
-| `JWT_EXPIRY` | JWT expiration (seconds) | `3600` |
-| `LOG_LEVEL` | Logging level | `info` |
+| `AQUARIUS_HOSTNAME` | Aquarius API host | _(none)_ |
+| `AQUARIUS_USERNAME` | Aquarius API username | _(none)_ |
+| `AQUARIUS_PASSWORD` | Aquarius API password | _(none)_ |
 
 ## Database Migrations
 
@@ -385,41 +366,39 @@ done
 
 Migrations run automatically on first database startup from `docker/volumes/db/init/`:
 
-1. `10-enable-postgis.sql` - Enable PostGIS extension
-2. `11-shared-schema.sql` - Core reference tables (species, locations)
-3. `12-pointclouds-schema.sql` - LiDAR point cloud structure
-4. `13-trees-schema.sql` - Tree measurements with dual geometry
-5. `14-sensor-schema.sql` - Environmental sensors with dual geometry
-6. `15-environments-schema.sql` - Environmental conditions
-7. `16-rls-policies.sql` - Row-level security policies
-8. `17-audit-functions.sql` - Audit logging functions
-9. `18a-seed-lookup-data.sql` - Species lookup data
-10. `18b-seed-sample-locations.sql` - Sample locations for testing
-11. `21-aquarius-integration.sql` - Aquarius time series API integration
-12. `22-link-sensors-to-trees.sql` - Associate sensors with trees
-13. `23-processing-jobs.sql` - External workflow job tracking
+| File | Purpose |
+| ---- | ------- |
+| `10-enable-postgis.sql` | PostGIS extension setup |
+| `11-shared-schema.sql` | Reference tables (locations, species, campaigns, etc.) |
+| `12-pointclouds-schema.sql` | Point cloud tables |
+| `13-trees-schema.sql` | Tree measurement tables |
+| `14-sensor-schema.sql` | Sensor infrastructure |
+| `15-environments-schema.sql` | Environmental conditions |
+| `16-sensor-tree-links-schema.sql` | Sensor-tree relationships |
+| `17-imagery-schema.sql` | Aerial & ground imagery |
+| `20-rls-policies.sql` | Security policies and triggers |
+| `21-audit-functions.sql` | Change tracking |
+| `22-aquarius-integration.sql` | Aquarius API support |
+| `23-processing-jobs.sql` | Workflow tracking |
+| `24-public-api-views.sql` | Public API views with CRUD triggers |
+| `30-load-lookup-tables.sql` | Reference data from CSVs |
+| `31-refresh-lookup-functions.sql` | Lookup table refresh functions |
 
 ### Creating New Migrations
 
 ```bash
 # Create new migration file
-touch docker/volumes/db/init/24-your_migration_name.sql
+nano docker/volumes/db/init/25-your_migration_name.sql
 
-# Add SQL commands
-nano supabase/migrations/009_your_migration_name.sql
-
-# Restart database to apply
-docker compose restart db
+# Apply manually to running database
+docker exec -i dftdb-db psql -U postgres < docker/volumes/db/init/25-your_migration_name.sql
 ```
 
 ### Manual Migration Execution
 
 ```bash
 # Connect to database
-docker exec -it xr_forests_db psql -U postgres
-
-# Run SQL commands
-\i /docker-entrypoint-initdb.d/009_your_migration_name.sql
+docker exec -it dftdb-db psql -U postgres
 
 # Verify changes
 \dt shared.*
@@ -450,13 +429,13 @@ free -h
 
 ```bash
 # Check database health
-docker exec xr_forests_db pg_isready -U postgres
+docker exec dftdb-db pg_isready -U postgres
 
 # View database logs
 docker compose logs db
 
 # Test connection
-docker exec -it xr_forests_db psql -U postgres -c "SELECT version();"
+docker exec -it dftdb-db psql -U postgres -c "SELECT version();"
 ```
 
 ### API Returns 500 Errors
@@ -466,10 +445,10 @@ docker exec -it xr_forests_db psql -U postgres -c "SELECT version();"
 docker compose logs rest
 
 # Verify database schemas
-docker exec -it xr_forests_db psql -U postgres -c "\dn"
+docker exec -it dftdb-db psql -U postgres -c "\dn"
 
 # Check RLS policies
-docker exec -it xr_forests_db psql -U postgres -c "
+docker exec -it dftdb-db psql -U postgres -c "
   SELECT schemaname, tablename, policyname
   FROM pg_policies
   WHERE schemaname IN ('shared', 'pointclouds', 'trees', 'sensor', 'environments');
@@ -486,7 +465,7 @@ docker compose logs functions
 aws s3 ls s3://your-bucket-name --region us-east-1
 
 # Check environment variables
-docker exec xr_forests_functions env | grep S3
+docker exec dftdb-edge-functions env | grep S3
 ```
 
 ### Studio Won't Load
@@ -496,10 +475,10 @@ docker exec xr_forests_functions env | grep S3
 docker compose logs studio
 
 # Verify Studio can reach database
-docker exec xr_forests_studio curl http://meta:8080
+docker exec dftdb-studio curl http://meta:8080
 
 # Check network connectivity
-docker network inspect xr_forests_network
+docker network inspect docker_default
 ```
 
 ### Performance Issues
@@ -542,10 +521,10 @@ docker compose ps
 
 ```bash
 # Backup database
-docker exec xr_forests_db pg_dump -U postgres postgres > backup.sql
+docker exec dftdb-db pg_dump -U postgres postgres > backup.sql
 
 # Backup volumes
-docker run --rm -v xr_forests_db_data:/data -v $(pwd):/backup \
+docker run --rm -v docker_db-config:/data -v $(pwd):/backup \
   ubuntu tar czf /backup/db_data_backup.tar.gz /data
 ```
 
@@ -553,19 +532,19 @@ docker run --rm -v xr_forests_db_data:/data -v $(pwd):/backup \
 
 ```bash
 # Restore database
-docker exec -i xr_forests_db psql -U postgres < backup.sql
+docker exec -i dftdb-db psql -U postgres < backup.sql
 
 # Restore volumes
-docker run --rm -v xr_forests_db_data:/data -v $(pwd):/backup \
+docker run --rm -v docker_db-config:/data -v $(pwd):/backup \
   ubuntu tar xzf /backup/db_data_backup.tar.gz -C /
 ```
 
 ## Next Steps
 
-- [S3 Integration Guide](./s3-integration.md) - Configure point cloud storage
-- [API Reference](./api-reference.md) - Learn PostgREST query syntax
-- [RLS Policies](./rls-policies.md) - Understand security model
-- [Development Guide](./development.md) - Local development workflow
+- [Architecture Overview](./ARCHITECTURE.md) - Full system architecture and data patterns
+- [API Quick Reference](./api-quick-reference.md) - Common API commands and examples
+- [Database Schema](./database-schema.md) - Detailed schema documentation
+- [Troubleshooting](./troubleshooting.md) - Common issues and solutions
 
 ## Support
 

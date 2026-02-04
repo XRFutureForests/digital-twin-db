@@ -28,7 +28,7 @@ docker compose ps
 All services should show as "healthy". The database is automatically initialized with:
 
 - PostGIS extension enabled
-- 5 custom forest schemas (shared, pointclouds, trees, sensor, environments)
+- 6 custom forest schemas (shared, pointclouds, trees, sensor, environments, imagery)
 - Reference data (species, soil types, climate zones)
 - Row-level security policies
 - **Empty tables** - No test data is automatically loaded
@@ -110,7 +110,7 @@ This separation allows you to:
 
 ## Database Structure
 
-The database organizes forest research data into 5 specialized schemas:
+The database organizes forest research data into 6 specialized schemas:
 
 ### 1. **shared** - Reference Data
 
@@ -118,15 +118,19 @@ Core reference tables used across all schemas:
 
 - **Species** - Tree species definitions (Beech, Oak, Spruce, etc.)
 - **Locations** - Forest plot coordinates and metadata
-- **SoilTypes** - Soil classification system
-- **ClimateZones** - Climate zone definitions
-- **Processes** - Audit trail for all database changes
+- **Plots** - Sub-plot divisions within locations
+- **Campaigns** - Data collection events (LiDAR flights, field inventories)
+- **SoilTypes**, **ClimateZones** - Environmental classification
+- **Scenarios**, **VariantTypes** - Analysis variant management
+- **ManagementEvents**, **DisturbanceEvents** - Forest event tracking
+- **Processes**, **AuditLog** - Change tracking and audit trail
 
 ### 2. **pointclouds** - LiDAR Data
 
 Point cloud scan management:
 
 - **PointClouds** - Scan metadata with S3 file paths
+- **ScannerTypes**, **Scanners** - Scanner hardware tracking
 - Supports multiple processing variants (raw, filtered, classified)
 - Tracks processing status and quality metrics
 
@@ -134,9 +138,12 @@ Point cloud scan management:
 
 Individual tree data with multi-stem support:
 
-- **Trees** - Tree measurements and attributes
+- **Trees** - Tree measurements and attributes with persistent TreeEntityID
 - **Stems** - Multi-stem measurements for trees with multiple main stems
-- **TreeStatus**, **TaperTypes**, **StraightnessTypes** - Classification tables for tree characteristics
+- **PhenologyObservations** - Seasonal development phase tracking
+- **Deadwood** - Dead wood inventory with decay classification
+- **GroundVegetation** - Ground vegetation surveys
+- **TreeStatus**, **TaperTypes**, **StraightnessTypes**, **BranchingPatterns**, **BarkCharacteristics** - Classification tables
 
 ### 4. **sensor** - Environmental Monitoring
 
@@ -144,13 +151,18 @@ IoT sensor data collection:
 
 - **Sensors** - Sensor installations and configurations
 - **SensorReadings** - Time-series environmental data
+- **SensorTreeLinks** - Relationships between sensors and individual trees
 
 ### 5. **environments** - Environmental Conditions
 
 Processed environmental data:
 
-- **EnvironmentalConditions** - Temperature, humidity, soil moisture
+- **Environments** - Temperature, humidity, soil moisture, nutrients
 - Derived from sensors, manual input, or model outputs
+
+### 6. **imagery** - Aerial & Ground Imagery
+
+- **Images** - Aerial and ground-based imagery with spatial metadata and camera parameters
 
 All tables include:
 
@@ -162,7 +174,7 @@ All tables include:
 
 ## Importing Data
 
-The database initializes with empty tables. Import data using the interactive Jupyter notebooks.
+The database initializes with empty tables. Import data using the Python scripts in `scripts/import/`.
 
 ### Installation
 
@@ -172,42 +184,26 @@ conda env create -f environment.yml
 conda activate digital-twin
 ```
 
-### Basic Usage
-
-**Using Jupyter Notebook (Python):**
+### Import Scripts
 
 ```bash
-jupyter notebook
-# Open import_trees.ipynb and follow the step-by-step workflow
+# Import tree data from EcoSense
+python scripts/import/import_ecosense.py
+
+# Import sensor data from Aquarius API
+python scripts/import/import_sensor_data.py
+
+# Link sensors to nearby trees (run after importing both)
+python scripts/import/link_sensors_to_trees.py
+
+# Sync latest sensor readings from Aquarius (default: last 30 days)
+python scripts/import/sync_aquarius.py
+
+# Find sensors with recent data in Aquarius
+python scripts/import/find_active_sensors.py
 ```
 
-**Using R Markdown:**
-
-```bash
-# Open import_trees.Rmd in RStudio or render with:
-Rscript -e "rmarkdown::render('import_trees.Rmd')"
-```
-
-### How It Works
-
-The notebooks provide an interactive workflow that:
-
-- Displays database schema and available columns
-- Loads your CSV and shows preview
-- Explores reference data (species, locations, sensor types)
-- Creates interactive column mapping with LOOKUP support
-- Handles coordinate transformations (lat/lon or x/y with CRS)
-- Previews data organized by table before insertion
-- Saves mapping as JSON for reuse
-
-**Key Features:**
-
-- **Interactive column mapping** - Visual workflow to map CSV columns to database fields
-- **LOOKUP support** - Inspect CSV values before deciding on mappings
-- **Automatic lookups** - Species, locations, sensor types matched by name
-- **Coordinate transformation** - Handles lat/lon or x/y with automatic CRS detection and transformation
-- **Audit trail** - All imports tracked with `CreatedBy` field
-- **Reusable mappings** - Save and load column mappings as JSON
+Prepare your data following the [DATA_PREPARATION_GUIDE.md](data/templates/DATA_PREPARATION_GUIDE.md) and the templates in `data/templates/`.
 
 For detailed usage guide, see [`scripts/README.md`](scripts/README.md)
 
@@ -446,10 +442,14 @@ docker compose logs -f
 2. Refresh without rebuilding:
 
 ```bash
-cd docker
-./refresh-lookups.sh              # Refresh all lookup tables
-./refresh-lookups.sh species      # Refresh specific table
-./refresh-lookups.sh --list       # List available tables
+# Refresh all lookup tables
+python scripts/admin/refresh_lookups.py
+
+# Refresh specific table
+python scripts/admin/refresh_lookups.py species
+
+# List available tables
+python scripts/admin/refresh_lookups.py --list
 ```
 
 Or via SQL:
@@ -507,8 +507,10 @@ docker compose up -d
 **⚠️ WARNING: This will permanently delete all database data, volumes, and containers.**
 
 ```bash
-cd docker
-./reset.sh
+python scripts/admin/reset_database.py
+
+# Skip confirmation prompt
+python scripts/admin/reset_database.py --force
 ```
 
 Or use native Docker commands:
@@ -568,7 +570,7 @@ sudo lsof -i :8000
 # Stop the conflicting service or change ports in docker-compose.yml
 ```
 
-For more troubleshooting, see [docker/TROUBLESHOOTING.md](docker/TROUBLESHOOTING.md).
+For more troubleshooting, see [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ---
 

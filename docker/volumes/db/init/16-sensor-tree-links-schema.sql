@@ -3,7 +3,7 @@
 -- 
 -- NOTE: This file only creates the schema/function. 
 -- Linking is executed by the user AFTER importing tree and sensor data.
--- See scripts/link-sensors-to-trees.py for usage.
+-- See scripts/import/link_sensors_to_trees.py for usage.
 
 SET search_path TO sensor, trees, shared, public;
 

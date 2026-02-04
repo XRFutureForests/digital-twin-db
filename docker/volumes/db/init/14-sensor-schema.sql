@@ -25,7 +25,7 @@ COMMENT ON TABLE sensor.SensorTypes IS 'Environmental sensor type classification
 
 -- =============================================================================
 -- NOTE: Sensor type data is now loaded from CSV files in data/lookups/
--- by 18-load-lookup-tables.sql
+-- by 30-load-lookup-tables.sql
 -- =============================================================================
 
 CREATE INDEX idx_sensor_types_name ON sensor.SensorTypes(SensorTypeName);
@@ -114,8 +114,7 @@ CREATE INDEX idx_sensor_readings_sensor_timestamp ON sensor.SensorReadings(Senso
 CREATE INDEX idx_sensor_readings_quality ON sensor.SensorReadings(Quality);
 CREATE INDEX idx_sensor_readings_scenario ON sensor.SensorReadings(ScenarioID);
 
--- Regular index for recent readings (partial index with NOW() not allowed)
-CREATE INDEX idx_sensor_readings_recent ON sensor.SensorReadings(SensorID, Timestamp DESC);
+-- Note: idx_sensor_readings_sensor_timestamp already covers recent reading queries
 
 -- =============================================================================
 -- HELPER FUNCTIONS
