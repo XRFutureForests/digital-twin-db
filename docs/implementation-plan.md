@@ -13,6 +13,7 @@ This document outlines the implementation roadmap for enhancing the XR Future Fo
 ### Scope
 
 **In Scope:**
+
 - Core calculation functions (height, biomass, carbon, wood quality)
 - External growth/management model integration (plugin architecture)
 - 3D Tiles export for Unreal Engine
@@ -20,6 +21,7 @@ This document outlines the implementation roadmap for enhancing the XR Future Fo
 - GBIF species taxonomy alignment
 
 **Out of Scope (deferred):**
+
 - Semantic layer (RDF/OWL ontologies)
 - OGC SensorThings API implementation
 
@@ -1064,11 +1066,13 @@ async def validate_all_species():
 ## Deployment Checklist
 
 ### Prerequisites
+
 - [ ] PostgreSQL 15+ with PostGIS
 - [ ] Existing XR Future Forests Lab database
 - [ ] Backup of production data
 
 ### Phase 1 Deployment
+
 - [ ] Run species parameters migration
 - [ ] Deploy calculate_height function
 - [ ] Deploy calculate_biomass function
@@ -1078,6 +1082,7 @@ async def validate_all_species():
 - [ ] Test calculations with sample trees
 
 ### Phase 2 Deployment
+
 - [ ] Create external_models table
 - [ ] Create simulation_requests table
 - [ ] Create management_requests table
@@ -1087,6 +1092,7 @@ async def validate_all_species():
 - [ ] Test export/import cycle
 
 ### Phase 3 Deployment
+
 - [ ] Deploy export_3d_tiles_json function
 - [ ] Install py3dtiles and dependencies
 - [ ] Deploy Python export script
@@ -1094,12 +1100,14 @@ async def validate_all_species():
 - [ ] Document model requirements for each species
 
 ### Phase 4 Deployment
+
 - [ ] Create climate_data table
 - [ ] Deploy climate functions
 - [ ] Load historical climate data
 - [ ] Test climate summaries
 
 ### Phase 5 Deployment
+
 - [ ] Update species with GBIF columns
 - [ ] Run GBIF validation script
 - [ ] Verify alignment status
@@ -1154,16 +1162,19 @@ END $$;
 ## References
 
 ### Literature
+
 - Sasaki, K. & Abe, Y. (2025). 4-layer Forest Digital Twin Architecture
 - Ambarwari, A. (2024). CityGML for Individual Trees
 - IPCC Guidelines for National Greenhouse Gas Inventories
 
 ### Standards
+
 - ISO 23247: Digital Twin Framework
 - OGC 3D Tiles 1.1 Specification
 - Darwin Core Terms
 
 ### External Models
+
 - [SILVA](https://www.ufz.de/silva) - UFZ Leipzig
 - [iLand](https://iland-model.org) - BOKU Vienna
 - [BWINPro](https://www.nw-fva.de) - NW-FVA
