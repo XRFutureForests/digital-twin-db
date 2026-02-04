@@ -351,7 +351,7 @@ CREATE INDEX idx_audit_log_change_type ON shared.AuditLog(ChangeType);
 
 -- =============================================================================
 -- NOTE: Lookup data (SoilTypes, ClimateZones, VariantTypes, Scenarios, Species)
--- is now loaded from CSV files in data/lookups/ by 18-load-lookup-tables.sql
+-- is now loaded from CSV files in data/lookups/ by 30-load-lookup-tables.sql
 -- =============================================================================
 
 -- Grant appropriate permissions (to be customized based on RLS policies)

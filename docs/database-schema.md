@@ -251,7 +251,7 @@ erDiagram
 
     VariantTypes {
         integer VariantTypeID PK
-        varchar VariantTypeName "original, processed, manual, simulated_growth, user_input, repeat_measurement"
+        varchar VariantTypeName "original, processed, manual, simulated_growth, user_input, sensor_derived, model_output, repeat_measurement"
         text Description "Description of variant type"
     }
 ```

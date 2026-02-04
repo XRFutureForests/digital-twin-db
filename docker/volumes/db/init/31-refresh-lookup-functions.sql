@@ -37,14 +37,15 @@ BEGIN
                 MaxDBH_cm NUMERIC(6, 2),
                 TypicalLifespan_years INTEGER,
                 GrowthRate VARCHAR(20),
-                ShadeTolerance VARCHAR(20)
+                ShadeTolerance VARCHAR(20),
+                IsDeciduous BOOLEAN
             ) ON COMMIT DROP;
             TRUNCATE _temp_species;
-            
+
             EXECUTE format('COPY _temp_species FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'species.csv');
-            
-            INSERT INTO shared.Species (CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance)
-            SELECT CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance 
+
+            INSERT INTO shared.Species (CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance, IsDeciduous)
+            SELECT CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance, IsDeciduous
             FROM _temp_species
             ON CONFLICT (ScientificName) DO UPDATE SET
                 CommonName = EXCLUDED.CommonName,
@@ -52,7 +53,8 @@ BEGIN
                 MaxDBH_cm = EXCLUDED.MaxDBH_cm,
                 TypicalLifespan_years = EXCLUDED.TypicalLifespan_years,
                 GrowthRate = EXCLUDED.GrowthRate,
-                ShadeTolerance = EXCLUDED.ShadeTolerance;
+                ShadeTolerance = EXCLUDED.ShadeTolerance,
+                IsDeciduous = EXCLUDED.IsDeciduous;
             
             SELECT COUNT(*) INTO v_rows_after FROM shared.species;
             
@@ -179,8 +181,128 @@ BEGIN
             SELECT COUNT(*) INTO v_rows_after FROM shared.climatezones;
             p_table_name := 'climate_zones';
             
+        WHEN 'variant_types', 'varianttypes' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM shared.varianttypes;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_variant_types (
+                VariantTypeName VARCHAR(100),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_variant_types;
+
+            EXECUTE format('COPY _temp_variant_types FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'variant_types.csv');
+
+            INSERT INTO shared.VariantTypes (VariantTypeName, Description)
+            SELECT VariantTypeName, Description FROM _temp_variant_types
+            ON CONFLICT (VariantTypeName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM shared.varianttypes;
+            p_table_name := 'variant_types';
+
+        WHEN 'scenarios' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM shared.scenarios;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_scenarios (
+                ScenarioName VARCHAR(200),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_scenarios;
+
+            EXECUTE format('COPY _temp_scenarios FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'scenarios.csv');
+
+            INSERT INTO shared.Scenarios (ScenarioName, Description)
+            SELECT ScenarioName, Description FROM _temp_scenarios
+            ON CONFLICT (ScenarioName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM shared.scenarios;
+
+        WHEN 'taper_types', 'tapertypes' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.tapertypes;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_taper_types (
+                TaperTypeName VARCHAR(100),
+                Description TEXT,
+                TypicalTaperRatioMin NUMERIC(4, 3),
+                TypicalTaperRatioMax NUMERIC(4, 3)
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_taper_types;
+
+            EXECUTE format('COPY _temp_taper_types FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'taper_types.csv');
+
+            INSERT INTO trees.TaperTypes (TaperTypeName, Description, TypicalTaperRatioMin, TypicalTaperRatioMax)
+            SELECT TaperTypeName, Description, TypicalTaperRatioMin, TypicalTaperRatioMax FROM _temp_taper_types
+            ON CONFLICT (TaperTypeName) DO UPDATE SET
+                Description = EXCLUDED.Description,
+                TypicalTaperRatioMin = EXCLUDED.TypicalTaperRatioMin,
+                TypicalTaperRatioMax = EXCLUDED.TypicalTaperRatioMax;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.tapertypes;
+            p_table_name := 'taper_types';
+
+        WHEN 'straightness_types', 'straightnesstypes' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.straightnesstypes;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_straightness_types (
+                StraightnessName VARCHAR(100),
+                Description TEXT,
+                DeviationAngleMin NUMERIC(5, 2),
+                DeviationAngleMax NUMERIC(5, 2)
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_straightness_types;
+
+            EXECUTE format('COPY _temp_straightness_types FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'straightness_types.csv');
+
+            INSERT INTO trees.StraightnessTypes (StraightnessName, Description, DeviationAngleMin, DeviationAngleMax)
+            SELECT StraightnessName, Description, DeviationAngleMin, DeviationAngleMax FROM _temp_straightness_types
+            ON CONFLICT (StraightnessName) DO UPDATE SET
+                Description = EXCLUDED.Description,
+                DeviationAngleMin = EXCLUDED.DeviationAngleMin,
+                DeviationAngleMax = EXCLUDED.DeviationAngleMax;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.straightnesstypes;
+            p_table_name := 'straightness_types';
+
+        WHEN 'branching_patterns', 'branchingpatterns' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.branchingpatterns;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_branching_patterns (
+                BranchingPatternName VARCHAR(100),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_branching_patterns;
+
+            EXECUTE format('COPY _temp_branching_patterns FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'branching_patterns.csv');
+
+            INSERT INTO trees.BranchingPatterns (BranchingPatternName, Description)
+            SELECT BranchingPatternName, Description FROM _temp_branching_patterns
+            ON CONFLICT (BranchingPatternName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.branchingpatterns;
+            p_table_name := 'branching_patterns';
+
+        WHEN 'bark_characteristics', 'barkcharacteristics' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.barkcharacteristics;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_bark_characteristics (
+                BarkCharacteristicName VARCHAR(100),
+                Description TEXT,
+                TypicalSpecies TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_bark_characteristics;
+
+            EXECUTE format('COPY _temp_bark_characteristics FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'bark_characteristics.csv');
+
+            INSERT INTO trees.BarkCharacteristics (BarkCharacteristicName, Description, TypicalSpecies)
+            SELECT BarkCharacteristicName, Description, TypicalSpecies FROM _temp_bark_characteristics
+            ON CONFLICT (BarkCharacteristicName) DO UPDATE SET
+                Description = EXCLUDED.Description,
+                TypicalSpecies = EXCLUDED.TypicalSpecies;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.barkcharacteristics;
+            p_table_name := 'bark_characteristics';
+
         ELSE
-            RETURN QUERY SELECT p_table_name, 0, 0, 'ERROR: Unknown table. Use: species, locations, sensor_types, tree_status, soil_types, climate_zones';
+            RETURN QUERY SELECT p_table_name, 0, 0, 'ERROR: Unknown table. Use: species, locations, sensor_types, tree_status, soil_types, climate_zones, variant_types, scenarios, taper_types, straightness_types, branching_patterns, bark_characteristics';
             RETURN;
     END CASE;
     
@@ -200,10 +322,16 @@ BEGIN
     -- Refresh in dependency order
     RETURN QUERY SELECT * FROM shared.refresh_lookup('soil_types');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('climate_zones');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('variant_types');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('scenarios');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('species');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('locations');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('sensor_types');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('tree_status');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('taper_types');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('straightness_types');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('branching_patterns');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('bark_characteristics');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -231,6 +359,8 @@ BEGIN
     RAISE NOTICE '';
     RAISE NOTICE 'Supported tables:';
     RAISE NOTICE '  species, locations, sensor_types, tree_status,';
-    RAISE NOTICE '  soil_types, climate_zones';
+    RAISE NOTICE '  soil_types, climate_zones, variant_types, scenarios,';
+    RAISE NOTICE '  taper_types, straightness_types, branching_patterns,';
+    RAISE NOTICE '  bark_characteristics';
     RAISE NOTICE '=======================================================';
 END $$;

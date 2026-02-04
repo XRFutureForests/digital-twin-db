@@ -136,7 +136,7 @@ Sensor hardware configuration and time-series environmental data.
 
 - `SensorID` - Links to Sensors table
 - `Timestamp` - Measurement time
-- `Value`, `Unit` - Actual measurement data
+- `Value` - Actual measurement data (unit inherited from parent Sensor)
 - `Quality` - Data quality flag (good, suspect, bad, missing, calibration)
 - `BatteryVoltage`, `SignalStrength` - Hardware diagnostics
 
@@ -203,12 +203,14 @@ Every variant table includes:
 - `UpdatedBy` - Last modifier
 - `UpdatedAt` - Last modification time
 
-Linked to `Processes` table for full change history:
+Linked to `AuditLog` junction tables for full change history:
 
 ```sql
-SELECT * FROM shared.Processes
-WHERE TableName = 'Trees'
-ORDER BY CreatedAt DESC;
+-- View audit history for a specific tree
+SELECT al.* FROM shared.auditlog al
+JOIN shared.auditlog_trees at ON al.auditlogid = at.auditlogid
+WHERE at.variantid = 123
+ORDER BY al.changedat DESC;
 ```
 
 #### External System Integration
@@ -324,7 +326,7 @@ Two API keys (in `docker/.env`):
 
 PostgreSQL policies enforce access control at database layer:
 
-- Implemented in `16-rls-policies.sql`
+- Implemented in `20-rls-policies.sql`
 - All API requests respect RLS regardless of client
 - Prevents unauthorized data access
 
@@ -332,8 +334,8 @@ PostgreSQL policies enforce access control at database layer:
 
 ### Importing Data
 
-**Interactive Jupyter Notebooks:**
-Located in `scripts/import/import_trees.ipynb` (Python) and `scripts/import/import_trees.Rmd` (R)
+**Python Import Scripts:**
+Located in `scripts/import/`:
 
 ```bash
 # Setup
@@ -341,22 +343,24 @@ cd scripts
 conda env create -f environment.yml
 conda activate digital-twin
 
-# Start Jupyter notebook
-jupyter notebook
-# Open import_trees.ipynb and follow the step-by-step workflow
+# Import tree data from EcoSense
+python scripts/import/import_ecosense.py
 
-# Or use R Markdown in RStudio
-# Open import_trees.Rmd
+# Import sensor data from Aquarius API
+python scripts/import/import_sensor_data.py
+
+# Link sensors to nearby trees
+python scripts/import/link_sensors_to_trees.py
+
+# Sync latest sensor readings
+python scripts/import/sync_aquarius.py
 ```
 
 **Features:**
 
-- Interactive column mapping with LOOKUP support
 - Automatic coordinate transformation (any CRS → WGS84)
 - Species name/code matching via database lookups
 - Location lookup and validation
-- Preview data before insertion
-- Save/load column mappings as JSON
 - Audit trail via CreatedBy field
 
 ### Querying Data
@@ -383,10 +387,10 @@ FROM trees.trees t
 JOIN shared.species s ON t.speciesid = s.speciesid
 WHERE s.commonname ILIKE '%Beech%';
 
-# Check audit trail
-SELECT * FROM shared.processes
-WHERE tablename = 'Trees'
-ORDER BY createdat DESC
+# Check audit trail for trees
+SELECT al.* FROM shared.auditlog al
+JOIN shared.auditlog_trees at ON al.auditlogid = at.auditlogid
+ORDER BY al.changedat DESC
 LIMIT 10;
 ```
 
@@ -497,10 +501,11 @@ SELECT * FROM shared.species;
 ### Resetting Database
 
 ```bash
-cd docker
-./reset.sh                    # Full reset (removes all data)
+# Full reset via Python script (removes all data)
+python scripts/admin/reset_database.py
 
 # Or manually:
+cd docker
 docker compose down -v --remove-orphans
 sudo rm -rf volumes/db/data
 docker compose up -d
@@ -513,9 +518,9 @@ docker compose up -d
 docker exec -it dftdb-db psql -U postgres -c \
   "SELECT createdby, COUNT(*) FROM trees.trees GROUP BY createdby;"
 
-# Check recent changes
+# Check recent audit entries
 docker exec -it dftdb-db psql -U postgres -c \
-  "SELECT tablename, COUNT(*) FROM shared.processes GROUP BY tablename;"
+  "SELECT fieldname, COUNT(*) FROM shared.auditlog GROUP BY fieldname ORDER BY count DESC;"
 ```
 
 ## Next Steps
