@@ -43,7 +43,7 @@ else:
     POSTGRES_USER_POOLER = POSTGRES_USER
 
 # Constants
-DAYS_BACK = 21  # Import last 3 weeks
+DAYS_BACK = 30  # Import last month
 CREATED_BY = "import_sensor_data_script"
 
 # Parameter to SensorType mapping
