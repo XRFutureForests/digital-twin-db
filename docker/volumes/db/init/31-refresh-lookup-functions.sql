@@ -301,8 +301,189 @@ BEGIN
             SELECT COUNT(*) INTO v_rows_after FROM trees.barkcharacteristics;
             p_table_name := 'bark_characteristics';
 
+        -- =====================================================================
+        -- TREE MORPHOLOGY TABLES (from tree_anatomy.pdf)
+        -- =====================================================================
+
+        WHEN 'height_classes', 'phanerophyte_height_classes', 'phanerophyteheightclasses' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.phanerophyteheightclasses;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_height_classes (
+                HeightClassName VARCHAR(50),
+                Description TEXT,
+                MinHeight_m NUMERIC(6, 2),
+                MaxHeight_m NUMERIC(6, 2)
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_height_classes;
+
+            EXECUTE format('COPY _temp_height_classes FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'phanerophyte_height_classes.csv');
+
+            INSERT INTO trees.PhanerophyteHeightClasses (HeightClassName, Description, MinHeight_m, MaxHeight_m)
+            SELECT HeightClassName, Description, MinHeight_m, MaxHeight_m FROM _temp_height_classes
+            ON CONFLICT (HeightClassName) DO UPDATE SET
+                Description = EXCLUDED.Description,
+                MinHeight_m = EXCLUDED.MinHeight_m,
+                MaxHeight_m = EXCLUDED.MaxHeight_m;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.phanerophyteheightclasses;
+            p_table_name := 'height_classes';
+
+        WHEN 'crown_architectures', 'crownarchitectures' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.crownarchitectures;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_crown_arch (
+                CrownArchitectureName VARCHAR(50),
+                Description TEXT,
+                TypicalExamples TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_crown_arch;
+
+            EXECUTE format('COPY _temp_crown_arch FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'crown_architectures.csv');
+
+            INSERT INTO trees.CrownArchitectures (CrownArchitectureName, Description, TypicalExamples)
+            SELECT CrownArchitectureName, Description, TypicalExamples FROM _temp_crown_arch
+            ON CONFLICT (CrownArchitectureName) DO UPDATE SET
+                Description = EXCLUDED.Description,
+                TypicalExamples = EXCLUDED.TypicalExamples;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.crownarchitectures;
+            p_table_name := 'crown_architectures';
+
+        WHEN 'branch_elongation_habits', 'branchelongationhabits', 'elongation_habits' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.branchelongationhabits;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_elongation (
+                ElongationHabitName VARCHAR(50),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_elongation;
+
+            EXECUTE format('COPY _temp_elongation FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'branch_elongation_habits.csv');
+
+            INSERT INTO trees.BranchElongationHabits (ElongationHabitName, Description)
+            SELECT ElongationHabitName, Description FROM _temp_elongation
+            ON CONFLICT (ElongationHabitName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.branchelongationhabits;
+            p_table_name := 'branch_elongation_habits';
+
+        WHEN 'growth_orientations', 'growthorientations' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.growthorientations;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_orientation (
+                GrowthOrientationName VARCHAR(50),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_orientation;
+
+            EXECUTE format('COPY _temp_orientation FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'growth_orientations.csv');
+
+            INSERT INTO trees.GrowthOrientations (GrowthOrientationName, Description)
+            SELECT GrowthOrientationName, Description FROM _temp_orientation
+            ON CONFLICT (GrowthOrientationName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.growthorientations;
+            p_table_name := 'growth_orientations';
+
+        WHEN 'shoot_elongation_types', 'shootelongationtypes' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.shootelongationtypes;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_shoot (
+                ShootElongationTypeName VARCHAR(50),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_shoot;
+
+            EXECUTE format('COPY _temp_shoot FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'shoot_elongation_types.csv');
+
+            INSERT INTO trees.ShootElongationTypes (ShootElongationTypeName, Description)
+            SELECT ShootElongationTypeName, Description FROM _temp_shoot
+            ON CONFLICT (ShootElongationTypeName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.shootelongationtypes;
+            p_table_name := 'shoot_elongation_types';
+
+        WHEN 'crown_shapes', 'crownshapes' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.crownshapes;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_shapes (
+                CrownShapeName VARCHAR(50),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_shapes;
+
+            EXECUTE format('COPY _temp_shapes FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'crown_shapes.csv');
+
+            INSERT INTO trees.CrownShapes (CrownShapeName, Description)
+            SELECT CrownShapeName, Description FROM _temp_shapes
+            ON CONFLICT (CrownShapeName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.crownshapes;
+            p_table_name := 'crown_shapes';
+
+        WHEN 'geometric_crown_solids', 'geometriccrownsolids', 'geometric_solids' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.geometriccrownsolids;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_solids (
+                GeometricSolidName VARCHAR(50),
+                Description TEXT,
+                RelativeLateralArea NUMERIC(4, 2),
+                RelativeVolume NUMERIC(4, 2),
+                RelativeDrag NUMERIC(4, 2)
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_solids;
+
+            EXECUTE format('COPY _temp_solids FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'geometric_crown_solids.csv');
+
+            INSERT INTO trees.GeometricCrownSolids (GeometricSolidName, Description, RelativeLateralArea, RelativeVolume, RelativeDrag)
+            SELECT GeometricSolidName, Description, RelativeLateralArea, RelativeVolume, RelativeDrag FROM _temp_solids
+            ON CONFLICT (GeometricSolidName) DO UPDATE SET
+                Description = EXCLUDED.Description,
+                RelativeLateralArea = EXCLUDED.RelativeLateralArea,
+                RelativeVolume = EXCLUDED.RelativeVolume,
+                RelativeDrag = EXCLUDED.RelativeDrag;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.geometriccrownsolids;
+            p_table_name := 'geometric_crown_solids';
+
+        WHEN 'axis_structures', 'axisstructures' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.axisstructures;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_axis (
+                AxisStructureName VARCHAR(50),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_axis;
+
+            EXECUTE format('COPY _temp_axis FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'axis_structures.csv');
+
+            INSERT INTO trees.AxisStructures (AxisStructureName, Description)
+            SELECT AxisStructureName, Description FROM _temp_axis
+            ON CONFLICT (AxisStructureName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.axisstructures;
+            p_table_name := 'axis_structures';
+
+        WHEN 'growth_forms', 'growthforms' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.growthforms;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_forms (
+                GrowthFormName VARCHAR(50),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_forms;
+
+            EXECUTE format('COPY _temp_forms FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'growth_forms.csv');
+
+            INSERT INTO trees.GrowthForms (GrowthFormName, Description)
+            SELECT GrowthFormName, Description FROM _temp_forms
+            ON CONFLICT (GrowthFormName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.growthforms;
+            p_table_name := 'growth_forms';
+
         ELSE
-            RETURN QUERY SELECT p_table_name, 0, 0, 'ERROR: Unknown table. Use: species, locations, sensor_types, tree_status, soil_types, climate_zones, variant_types, scenarios, taper_types, straightness_types, branching_patterns, bark_characteristics';
+            RETURN QUERY SELECT p_table_name, 0, 0, 'ERROR: Unknown table. Use: species, locations, sensor_types, tree_status, soil_types, climate_zones, variant_types, scenarios, taper_types, straightness_types, branching_patterns, bark_characteristics, height_classes, crown_architectures, branch_elongation_habits, growth_orientations, shoot_elongation_types, crown_shapes, geometric_crown_solids, axis_structures, growth_forms';
             RETURN;
     END CASE;
     
@@ -332,6 +513,16 @@ BEGIN
     RETURN QUERY SELECT * FROM shared.refresh_lookup('straightness_types');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('branching_patterns');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('bark_characteristics');
+    -- Tree Morphology tables (from tree_anatomy.pdf)
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('height_classes');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_architectures');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('branch_elongation_habits');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('growth_orientations');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('shoot_elongation_types');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_shapes');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('geometric_crown_solids');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('axis_structures');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('growth_forms');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -362,5 +553,10 @@ BEGIN
     RAISE NOTICE '  soil_types, climate_zones, variant_types, scenarios,';
     RAISE NOTICE '  taper_types, straightness_types, branching_patterns,';
     RAISE NOTICE '  bark_characteristics';
+    RAISE NOTICE '';
+    RAISE NOTICE 'Tree Morphology (from tree_anatomy.pdf):';
+    RAISE NOTICE '  height_classes, crown_architectures, branch_elongation_habits,';
+    RAISE NOTICE '  growth_orientations, shoot_elongation_types, crown_shapes,';
+    RAISE NOTICE '  geometric_crown_solids, axis_structures, growth_forms';
     RAISE NOTICE '=======================================================';
 END $$;

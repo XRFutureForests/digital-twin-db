@@ -75,6 +75,20 @@ SELECT * FROM shared.refresh_lookup('sensor_types');
 | `branching_patterns.csv` | `trees.BranchingPatterns` | Crown branching patterns |
 | `bark_characteristics.csv` | `trees.BarkCharacteristics` | Bark surface characteristics |
 
+### Tree Morphology (from tree_anatomy.pdf by Dr. Kim D. Coder, UGA)
+
+| File | Target Table | Description |
+|------|--------------|-------------|
+| `phanerophyte_height_classes.csv` | `trees.PhanerophyteHeightClasses` | Tree height classification (mega/meso/micro) |
+| `crown_architectures.csv` | `trees.CrownArchitectures` | Crown architecture (excurrent, decurrent, etc.) |
+| `branch_elongation_habits.csv` | `trees.BranchElongationHabits` | Branch elongation patterns (acrotony, etc.) |
+| `growth_orientations.csv` | `trees.GrowthOrientations` | Shoot growth orientation (orthotropic/plagiotrophic) |
+| `shoot_elongation_types.csv` | `trees.ShootElongationTypes` | Shoot elongation (long/short/spur) |
+| `crown_shapes.csv` | `trees.CrownShapes` | Visual crown shape descriptions |
+| `geometric_crown_solids.csv` | `trees.GeometricCrownSolids` | Geometric crown models with area/volume/drag |
+| `axis_structures.csv` | `trees.AxisStructures` | Main axis structure (single leader/polycormic) |
+| `growth_forms.csv` | `trees.GrowthForms` | General growth form classifications |
+
 ## Adding New Species
 
 Edit `species.csv` and add a new row:
