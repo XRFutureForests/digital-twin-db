@@ -268,6 +268,165 @@ ON CONFLICT (LocationName) DO UPDATE SET
 DROP TABLE temp_locations;
 
 -- =============================================================================
+-- LOAD PHANEROPHYTE HEIGHT CLASSES (Tree Morphology)
+-- =============================================================================
+CREATE TEMP TABLE temp_height_classes (
+    HeightClassName VARCHAR(50),
+    Description TEXT,
+    MinHeight_m NUMERIC(6, 2),
+    MaxHeight_m NUMERIC(6, 2)
+);
+
+\copy temp_height_classes FROM '/var/lib/postgresql/lookups/phanerophyte_height_classes.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.PhanerophyteHeightClasses (HeightClassName, Description, MinHeight_m, MaxHeight_m)
+SELECT HeightClassName, Description, MinHeight_m, MaxHeight_m FROM temp_height_classes
+ON CONFLICT (HeightClassName) DO UPDATE SET 
+    Description = EXCLUDED.Description,
+    MinHeight_m = EXCLUDED.MinHeight_m,
+    MaxHeight_m = EXCLUDED.MaxHeight_m;
+
+DROP TABLE temp_height_classes;
+
+-- =============================================================================
+-- LOAD CROWN ARCHITECTURES
+-- =============================================================================
+CREATE TEMP TABLE temp_crown_architectures (
+    CrownArchitectureName VARCHAR(50),
+    Description TEXT,
+    TypicalExamples TEXT
+);
+
+\copy temp_crown_architectures FROM '/var/lib/postgresql/lookups/crown_architectures.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.CrownArchitectures (CrownArchitectureName, Description, TypicalExamples)
+SELECT CrownArchitectureName, Description, TypicalExamples FROM temp_crown_architectures
+ON CONFLICT (CrownArchitectureName) DO UPDATE SET 
+    Description = EXCLUDED.Description,
+    TypicalExamples = EXCLUDED.TypicalExamples;
+
+DROP TABLE temp_crown_architectures;
+
+-- =============================================================================
+-- LOAD BRANCH ELONGATION HABITS
+-- =============================================================================
+CREATE TEMP TABLE temp_elongation_habits (
+    ElongationHabitName VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_elongation_habits FROM '/var/lib/postgresql/lookups/branch_elongation_habits.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.BranchElongationHabits (ElongationHabitName, Description)
+SELECT ElongationHabitName, Description FROM temp_elongation_habits
+ON CONFLICT (ElongationHabitName) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_elongation_habits;
+
+-- =============================================================================
+-- LOAD GROWTH ORIENTATIONS
+-- =============================================================================
+CREATE TEMP TABLE temp_growth_orientations (
+    GrowthOrientationName VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_growth_orientations FROM '/var/lib/postgresql/lookups/growth_orientations.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.GrowthOrientations (GrowthOrientationName, Description)
+SELECT GrowthOrientationName, Description FROM temp_growth_orientations
+ON CONFLICT (GrowthOrientationName) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_growth_orientations;
+
+-- =============================================================================
+-- LOAD SHOOT ELONGATION TYPES
+-- =============================================================================
+CREATE TEMP TABLE temp_shoot_elongation (
+    ShootElongationTypeName VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_shoot_elongation FROM '/var/lib/postgresql/lookups/shoot_elongation_types.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.ShootElongationTypes (ShootElongationTypeName, Description)
+SELECT ShootElongationTypeName, Description FROM temp_shoot_elongation
+ON CONFLICT (ShootElongationTypeName) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_shoot_elongation;
+
+-- =============================================================================
+-- LOAD CROWN SHAPES
+-- =============================================================================
+CREATE TEMP TABLE temp_crown_shapes (
+    CrownShapeName VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_crown_shapes FROM '/var/lib/postgresql/lookups/crown_shapes.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.CrownShapes (CrownShapeName, Description)
+SELECT CrownShapeName, Description FROM temp_crown_shapes
+ON CONFLICT (CrownShapeName) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_crown_shapes;
+
+-- =============================================================================
+-- LOAD GEOMETRIC CROWN SOLIDS
+-- =============================================================================
+CREATE TEMP TABLE temp_geometric_solids (
+    GeometricSolidName VARCHAR(50),
+    Description TEXT,
+    RelativeLateralArea NUMERIC(4, 2),
+    RelativeVolume NUMERIC(4, 2),
+    RelativeDrag NUMERIC(4, 2)
+);
+
+\copy temp_geometric_solids FROM '/var/lib/postgresql/lookups/geometric_crown_solids.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.GeometricCrownSolids (GeometricSolidName, Description, RelativeLateralArea, RelativeVolume, RelativeDrag)
+SELECT GeometricSolidName, Description, RelativeLateralArea, RelativeVolume, RelativeDrag FROM temp_geometric_solids
+ON CONFLICT (GeometricSolidName) DO UPDATE SET 
+    Description = EXCLUDED.Description,
+    RelativeLateralArea = EXCLUDED.RelativeLateralArea,
+    RelativeVolume = EXCLUDED.RelativeVolume,
+    RelativeDrag = EXCLUDED.RelativeDrag;
+
+DROP TABLE temp_geometric_solids;
+
+-- =============================================================================
+-- LOAD AXIS STRUCTURES
+-- =============================================================================
+CREATE TEMP TABLE temp_axis_structures (
+    AxisStructureName VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_axis_structures FROM '/var/lib/postgresql/lookups/axis_structures.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.AxisStructures (AxisStructureName, Description)
+SELECT AxisStructureName, Description FROM temp_axis_structures
+ON CONFLICT (AxisStructureName) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_axis_structures;
+
+-- =============================================================================
+-- LOAD GROWTH FORMS
+-- =============================================================================
+CREATE TEMP TABLE temp_growth_forms (
+    GrowthFormName VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_growth_forms FROM '/var/lib/postgresql/lookups/growth_forms.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.GrowthForms (GrowthFormName, Description)
+SELECT GrowthFormName, Description FROM temp_growth_forms
+ON CONFLICT (GrowthFormName) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_growth_forms;
+
+-- =============================================================================
 -- SUMMARY
 -- =============================================================================
 DO $$
@@ -284,6 +443,15 @@ DECLARE
     straightness_count INTEGER;
     branching_count INTEGER;
     bark_count INTEGER;
+    height_class_count INTEGER;
+    crown_arch_count INTEGER;
+    elongation_count INTEGER;
+    growth_orient_count INTEGER;
+    shoot_elong_count INTEGER;
+    crown_shape_count INTEGER;
+    geo_solid_count INTEGER;
+    axis_struct_count INTEGER;
+    growth_form_count INTEGER;
 BEGIN
     SELECT COUNT(*) INTO soil_count FROM shared.SoilTypes;
     SELECT COUNT(*) INTO climate_count FROM shared.ClimateZones;
@@ -297,6 +465,15 @@ BEGIN
     SELECT COUNT(*) INTO straightness_count FROM trees.StraightnessTypes;
     SELECT COUNT(*) INTO branching_count FROM trees.BranchingPatterns;
     SELECT COUNT(*) INTO bark_count FROM trees.BarkCharacteristics;
+    SELECT COUNT(*) INTO height_class_count FROM trees.PhanerophyteHeightClasses;
+    SELECT COUNT(*) INTO crown_arch_count FROM trees.CrownArchitectures;
+    SELECT COUNT(*) INTO elongation_count FROM trees.BranchElongationHabits;
+    SELECT COUNT(*) INTO growth_orient_count FROM trees.GrowthOrientations;
+    SELECT COUNT(*) INTO shoot_elong_count FROM trees.ShootElongationTypes;
+    SELECT COUNT(*) INTO crown_shape_count FROM trees.CrownShapes;
+    SELECT COUNT(*) INTO geo_solid_count FROM trees.GeometricCrownSolids;
+    SELECT COUNT(*) INTO axis_struct_count FROM trees.AxisStructures;
+    SELECT COUNT(*) INTO growth_form_count FROM trees.GrowthForms;
     
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Lookup Tables Loaded from CSV';
@@ -316,6 +493,16 @@ BEGIN
     RAISE NOTICE '  Straightness:     % rows', straightness_count;
     RAISE NOTICE '  Branching:        % rows', branching_count;
     RAISE NOTICE '  Bark Types:       % rows', bark_count;
+    RAISE NOTICE 'Tree Morphology (from tree_anatomy.pdf):';
+    RAISE NOTICE '  Height Classes:   % rows', height_class_count;
+    RAISE NOTICE '  Crown Arch:       % rows', crown_arch_count;
+    RAISE NOTICE '  Elongation:       % rows', elongation_count;
+    RAISE NOTICE '  Growth Orient:    % rows', growth_orient_count;
+    RAISE NOTICE '  Shoot Elong:      % rows', shoot_elong_count;
+    RAISE NOTICE '  Crown Shapes:     % rows', crown_shape_count;
+    RAISE NOTICE '  Geo Solids:       % rows', geo_solid_count;
+    RAISE NOTICE '  Axis Struct:      % rows', axis_struct_count;
+    RAISE NOTICE '  Growth Forms:     % rows', growth_form_count;
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Edit CSV files in data/lookups/ and rebuild to update';
     RAISE NOTICE '=======================================================';
