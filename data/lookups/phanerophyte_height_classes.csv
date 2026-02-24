@@ -1,0 +1,4 @@
+HeightClassName,Description,MinHeight_m,MaxHeight_m
+Megaphanerophyte,Tree forms exceeding 30m in height,30.0,
+Mesophanerophyte,Tree forms between 8m and 30m tall,8.0,30.0
+Microphanerophyte,Tree forms between 2m and 8m tall,2.0,8.0
