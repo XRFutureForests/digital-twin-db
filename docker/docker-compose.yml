@@ -417,6 +417,7 @@ services:
       - ../data/lookups:/var/lib/postgresql/lookups:ro,Z
       - ./volumes/db/init/30-load-lookup-tables.sql:/docker-entrypoint-initdb.d/migrations/30-load-lookup-tables.sql:Z
       - ./volumes/db/init/31-refresh-lookup-functions.sql:/docker-entrypoint-initdb.d/migrations/31-refresh-lookup-functions.sql:Z
+      - ./volumes/db/init/32-tree-morphology-schema.sql:/docker-entrypoint-initdb.d/migrations/32-tree-morphology-schema.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:
