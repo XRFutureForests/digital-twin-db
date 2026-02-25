@@ -108,9 +108,17 @@ def transform_coordinates(df):
             return f"POINT({lon} {lat})"
         return None
 
+    def original_position(row):
+        if pd.notna(row["x_32632"]) and pd.notna(row["y_32632"]):
+            return f"POINT({row['x_32632']} {row['y_32632']})"
+        return None
+
     df["Position"] = df.apply(transform_row, axis=1)
+    df["PositionOriginal"] = df.apply(original_position, axis=1)
     valid_count = df["Position"].notna().sum()
-    print(f"✓ Created {valid_count} Position geometries")
+    print(
+        f"✓ Created {valid_count} Position geometries (with original UTM coordinates)"
+    )
 
     return df
 
@@ -159,6 +167,7 @@ def prepare_tree_data(df, species_map):
                 else None
             ),
             "position": row["Position"],
+            "position_original": row.get("PositionOriginal"),
             "fieldnotes": json.dumps(field_notes),
             "createdby": CREATED_BY,
             "diameter_m": (
@@ -181,7 +190,7 @@ def insert_trees(trees):
 
     # Prepare INSERT statement
     insert_query = """
-        INSERT INTO trees.Trees (LocationID, VariantTypeID, SpeciesID, DataSourceType, SourceCRS, Height_m, Position, FieldNotes, CreatedBy)
+        INSERT INTO trees.Trees (LocationID, VariantTypeID, SpeciesID, DataSourceType, SourceCRS, Height_m, Position, PositionOriginal, FieldNotes, CreatedBy)
         VALUES %s
         RETURNING VariantID
     """
@@ -195,6 +204,7 @@ def insert_trees(trees):
             tree["sourcecrs"],
             tree["height_m"],
             tree["position"],
+            tree["position_original"],
             tree["fieldnotes"],
             tree["createdby"],
         )
@@ -206,7 +216,7 @@ def insert_trees(trees):
         cur,
         insert_query,
         values,
-        template="(%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326), %s, %s)",
+        template="(%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326), ST_GeomFromText(%s, 32632), %s, %s)",
         fetch=True,
     )
 
