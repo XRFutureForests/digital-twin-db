@@ -195,6 +195,14 @@ def insert_trees(trees):
         RETURNING VariantID
     """
 
+    def _clean(val):
+        """Convert NaN/None to Python None for psycopg2"""
+        if val is None:
+            return None
+        if isinstance(val, float) and pd.isna(val):
+            return None
+        return val
+
     values = [
         (
             tree["locationid"],
@@ -293,7 +301,8 @@ def main():
     trees = prepare_tree_data(df, species_map)
 
     # Filter out trees without valid Position (required field)
-    trees_with_position = [t for t in trees if t["position"] is not None]
+    # Note: pandas converts None to NaN in DataFrames, so check with pd.notna()
+    trees_with_position = [t for t in trees if pd.notna(t["position"])]
     trees_without_position = len(trees) - len(trees_with_position)
 
     if trees_without_position > 0:
