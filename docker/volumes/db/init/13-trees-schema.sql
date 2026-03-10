@@ -123,6 +123,7 @@ CREATE TABLE trees.Trees (
     HeightConfidence NUMERIC(3, 2) CHECK (HeightConfidence >= 0 AND HeightConfidence <= 1),
     -- Status tracking
     StatusChangeDate DATE,
+    TreeNumber INTEGER,
     FieldNotes TEXT,
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ,
@@ -151,6 +152,7 @@ COMMENT ON COLUMN trees.Trees.PositionConfidence IS 'Confidence in position accu
 COMMENT ON COLUMN trees.Trees.HeightConfidence IS 'Confidence in height measurement (0-1)';
 COMMENT ON COLUMN trees.Trees.StatusChangeDate IS 'Date when tree status changed (e.g., mortality date)';
 COMMENT ON COLUMN trees.Trees.PlotID IS 'Sub-plot within the location where tree is located';
+COMMENT ON COLUMN trees.Trees.TreeNumber IS 'Local tree identifier within the location/plot (e.g., 62 in ecosense plot 4, or 367 in mathisle)';
 COMMENT ON COLUMN trees.Trees.SourceCRS IS 'EPSG code of original coordinate reference system for PositionOriginal';
 
 -- Create indexes
@@ -172,6 +174,7 @@ CREATE INDEX idx_trees_campaign ON trees.Trees(CampaignID);
 CREATE INDEX idx_trees_measurement_date ON trees.Trees(MeasurementDate DESC);
 CREATE INDEX idx_trees_data_source ON trees.Trees(DataSourceType);
 CREATE INDEX idx_trees_plot ON trees.Trees(PlotID);
+CREATE INDEX idx_trees_tree_number ON trees.Trees(TreeNumber);
 
 -- =============================================================================
 -- STEMS TABLE (MULTI-STEM SUPPORT)
