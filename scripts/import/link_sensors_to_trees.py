@@ -4,14 +4,13 @@ Link sensors to trees based on label patterns
 
 This script:
 1. Analyzes sensor labels to extract tree identifiers
-2. Matches sensors to trees using location and tree_id patterns
+2. Matches sensors to trees using location and TreeNumber
 3. Creates SensorTreeLinks records in the database
 
 Sensor label pattern: {Species}_{PlotType}_{TreeNumber}_{SensorType}
-Example: "Beech_Mixed_10_Dendrometer" → plot=Mixed, tree_id=10
+Example: "Beech_Mixed_10_Dendrometer" → plot=Mixed, tree_number=10
 """
 
-import json
 import os
 import re
 import sys
@@ -129,8 +128,8 @@ def get_sensors_with_locations():
 
 
 def get_trees_with_metadata():
-    """Fetch trees with FieldNotes metadata"""
-    print("🌲 Fetching trees with metadata...")
+    """Fetch trees with TreeNumber and PlotID from structured columns"""
+    print("🌲 Fetching trees with TreeNumber...")
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -141,60 +140,39 @@ def get_trees_with_metadata():
             t.variantid,
             t.locationid,
             l.locationname,
+            t.treenumber,
+            t.plotid,
             t.fieldnotes
         FROM trees.trees t
         JOIN shared.locations l ON t.locationid = l.locationid
-        WHERE t.createdby IN ('import_ecosense_script', 'import_ecosense_csv')
-        AND t.fieldnotes IS NOT NULL
+        WHERE t.treenumber IS NOT NULL
     """
     )
 
     trees = []
     for row in cur.fetchall():
-        variant_id, location_id, location_name, field_notes_str = row
+        variant_id, location_id, location_name, tree_number, plot_id, field_notes = row
 
-        tree_id = None
-        plot_id = None
         sensor_tree = False
+        if field_notes:
+            sensor_tree = "sensor tree" in field_notes.lower()
 
-        # Try JSON parse first
-        try:
-            field_notes = json.loads(field_notes_str)
-            tree_id = field_notes.get("tree_id")
-            plot_id = field_notes.get("plot_id")
-            sensor_tree = field_notes.get("sensor_tree", False)
-        except (json.JSONDecodeError, TypeError):
-            # Parse pipe-delimited format: "TreeID: 4_62 | Plot: 4 | EcoSense sensor tree | ..."
-            tree_match = re.search(r"TreeID:\s*(\d+)_(\d+)", field_notes_str)
-            if tree_match:
-                plot_id = int(tree_match.group(1))
-                tree_id = int(tree_match.group(2))
-            else:
-                # Try single number format: "TreeID: 367"
-                tree_match = re.search(r"TreeID:\s*(\d+)", field_notes_str)
-                if tree_match:
-                    tree_id = int(tree_match.group(1))
-
-            # Check for sensor_tree flag
-            sensor_tree = "sensor tree" in field_notes_str.lower()
-
-        if tree_id is not None:
-            trees.append(
-                {
-                    "variant_id": variant_id,
-                    "location_id": location_id,
-                    "location_name": location_name,
-                    "tree_id": str(tree_id),
-                    "sensor_tree": sensor_tree,
-                    "plot_id": plot_id,
-                }
-            )
+        trees.append(
+            {
+                "variant_id": variant_id,
+                "location_id": location_id,
+                "location_name": location_name,
+                "tree_id": str(tree_number),
+                "sensor_tree": sensor_tree,
+                "plot_id": plot_id,
+            }
+        )
 
     conn.close()
 
-    print(f"✓ Found {len(trees)} trees with metadata")
+    print(f"✓ Found {len(trees)} trees with TreeNumber")
     sensor_trees = sum(1 for t in trees if t["sensor_tree"])
-    print(f"✓ {sensor_trees} trees flagged as sensor_tree: true")
+    print(f"✓ {sensor_trees} trees flagged as sensor trees")
 
     return trees
 
@@ -382,7 +360,7 @@ def main():
         )
         print(
             """
-  SELECT s.serialnumber as SensorLabel, t.variantid, t.fieldnotes->>'tree_id' as TreeID
+  SELECT s.serialnumber as SensorLabel, t.variantid, t.treenumber
   FROM sensor.sensor_tree_links stl
   JOIN sensor.sensors s ON stl.sensor_id = s.sensorid
   JOIN trees.trees t ON stl.tree_variant_id = t.variantid
@@ -402,8 +380,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
-    sys.exit(main())
-    sys.exit(main())
-    sys.exit(main())
     sys.exit(main())
