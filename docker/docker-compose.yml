@@ -400,6 +400,7 @@ services:
       - ./volumes/db/init/15-environments-schema.sql:/docker-entrypoint-initdb.d/migrations/15-environments-schema.sql:Z
       - ./volumes/db/init/16-sensor-tree-links-schema.sql:/docker-entrypoint-initdb.d/migrations/16-sensor-tree-links-schema.sql:Z
       - ./volumes/db/init/17-imagery-schema.sql:/docker-entrypoint-initdb.d/migrations/17-imagery-schema.sql:Z
+      - ./volumes/db/init/18-tree-morphology-schema.sql:/docker-entrypoint-initdb.d/migrations/18-tree-morphology-schema.sql:Z
 
       # Layer 2: Security & Row-Level Policies (20)
       - ./volumes/db/init/20-rls-policies.sql:/docker-entrypoint-initdb.d/migrations/20-rls-policies.sql:Z
@@ -417,7 +418,6 @@ services:
       - ../data/lookups:/var/lib/postgresql/lookups:ro,Z
       - ./volumes/db/init/30-load-lookup-tables.sql:/docker-entrypoint-initdb.d/migrations/30-load-lookup-tables.sql:Z
       - ./volumes/db/init/31-refresh-lookup-functions.sql:/docker-entrypoint-initdb.d/migrations/31-refresh-lookup-functions.sql:Z
-      - ./volumes/db/init/32-tree-morphology-schema.sql:/docker-entrypoint-initdb.d/migrations/32-tree-morphology-schema.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:

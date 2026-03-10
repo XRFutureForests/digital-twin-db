@@ -268,6 +268,32 @@ ON CONFLICT (LocationName) DO UPDATE SET
 DROP TABLE temp_locations;
 
 -- =============================================================================
+-- LOAD PLOTS
+-- =============================================================================
+-- Create plots for each research location.
+-- PlotNumber corresponds to the local plot identifier used in field campaigns.
+
+-- EcoSense plots 1-18 at the EcoSense location
+INSERT INTO shared.Plots (LocationID, PlotName, PlotNumber, CreatedBy)
+SELECT 
+    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'EcoSense'),
+    'EcoSense Plot ' || n,
+    n,
+    'init'
+FROM generate_series(1, 18) AS n
+ON CONFLICT (LocationID, PlotName) DO NOTHING;
+
+-- Mathisle single plot
+INSERT INTO shared.Plots (LocationID, PlotName, PlotNumber, CreatedBy)
+VALUES (
+    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'MathIsle'),
+    'Mathisle',
+    1,
+    'init'
+)
+ON CONFLICT (LocationID, PlotName) DO NOTHING;
+
+-- =============================================================================
 -- LOAD PHANEROPHYTE HEIGHT CLASSES (Tree Morphology)
 -- =============================================================================
 CREATE TEMP TABLE temp_height_classes (
