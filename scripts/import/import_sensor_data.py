@@ -245,10 +245,9 @@ def upsert_sensors(time_series, sensor_type_map, location_map):
 
 def fetch_sensor_data(session, base_url, time_series, days_back):
     """Fetch sensor readings from Aquarius using authenticated session"""
-    print(f"\nFetching sensor readings for last {days_back} days of available data...")
+    print(f"\nFetching sensor readings for last {days_back} days...")
 
-    # Use the actual data end time from sensors (Nov 2024)
-    end_time = datetime(2024, 11, 7, 22, 45, 0)
+    end_time = datetime.utcnow()
     start_time = end_time - timedelta(days=days_back)
 
     print(
