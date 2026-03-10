@@ -16,13 +16,17 @@ This separation ensures:
 - Easier debugging when issues arise
 - Consistent data quality
 
+> **Important:** Any useful data embedded in raw field notes (tree IDs, plot numbers, etc.)
+> should be manually extracted and placed into the appropriate structured columns (`TreeNumber`,
+> `PlotID`, etc.) in the CSV **before** import. The import script does not parse FieldNotes.
+
 ---
 
 ## Template Formats
 
 ### Trees Import Template
 
-Your prepared CSV must have these 22 columns. The import creates one record in `trees.Trees` and one stem (StemNumber=1) in `trees.Stems` for single-stem trees.
+Your prepared CSV must have these 23 columns. The import creates one record in `trees.Trees` and one stem (StemNumber=1) in `trees.Stems` for single-stem trees.
 
 **Required fields:**
 
@@ -36,6 +40,8 @@ Your prepared CSV must have these 22 columns. The import creates one record in `
 
 | Column | Type | Description |
 |--------|------|-------------|
+| `PlotID` | Integer | Foreign key to `shared.Plots` (sub-plot within location) |
+| `TreeNumber` | Integer | Local tree identifier within the plot/location (e.g., tree 62 in plot 4) |
 | `SpeciesID` | Integer | Foreign key to `shared.Species` (NULL = unknown) |
 | `DBH_cm` | Decimal | Diameter at breast height in centimeters |
 | `Height_m` | Decimal | Tree height in meters |
@@ -45,7 +51,6 @@ Your prepared CSV must have these 22 columns. The import creates one record in `
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `PlotID` | Integer | Foreign key to `shared.Plots` (sub-plot within location) |
 | `CampaignID` | Integer | Foreign key to `shared.Campaigns` (data collection campaign) |
 | `VariantTypeID` | Integer | Foreign key to `shared.VariantTypes` (1=original, 2=processed, 3=manual, 8=repeat_measurement) |
 | `DataSourceType` | String | How data was collected: `lidar`, `field`, `photogrammetry`, `estimated`, `simulated` |
@@ -64,10 +69,10 @@ Your prepared CSV must have these 22 columns. The import creates one record in `
 **Example:**
 
 ```csv
-LocationID,PlotID,CampaignID,SpeciesID,VariantTypeID,DataSourceType,Latitude,Longitude,SourceCRS,DBH_cm,Height_m,TreeStatusID,CrownWidth_m,CrownBaseHeight_m,Age_years,HealthScore,TaperTypeID,StraightnessTypeID,BranchingPatternID,BarkCharacteristicID,FieldNotes,MeasurementDate
-4,,,1,1,field,47.88512,8.08834,,45.2,28.5,1,12.3,8.0,85,0.95,3,1,1,2,"Healthy specimen",2025-03-05
-4,,,6,1,field,47.88523,8.08856,32632,32.1,22.0,1,,,45,,,,,,Young tree,2025-03-05
-4,,,,,,47.88534,8.08878,,28.0,18.5,,,,,,,,,,Species unknown,
+LocationID,PlotID,TreeNumber,CampaignID,SpeciesID,VariantTypeID,DataSourceType,Latitude,Longitude,SourceCRS,DBH_cm,Height_m,TreeStatusID,CrownWidth_m,CrownBaseHeight_m,Age_years,HealthScore,TaperTypeID,StraightnessTypeID,BranchingPatternID,BarkCharacteristicID,FieldNotes,MeasurementDate
+4,19,42,,1,1,field,47.88512,8.08834,,45.2,28.5,1,12.3,8.0,85,0.95,3,1,1,2,"Healthy specimen",2025-03-05
+4,19,43,,6,1,field,47.88523,8.08856,32632,32.1,22.0,1,,,45,,,,,,Young tree,2025-03-05
+4,19,,,,,47.88534,8.08878,,28.0,18.5,,,,,,,,,,Species unknown,
 ```
 
 ### Sensors Import Template
@@ -133,7 +138,8 @@ Map your source columns to template columns:
 | `diameter_m` | → | `DBH_cm` | Multiply by 100 |
 | `height` | → | `Height_m` | Direct copy |
 | `crown_width` | → | `CrownWidth_m` | Direct copy |
-| `tree_id` | → | `FieldNotes` | Include as "TreeID: xxx" in notes |
+| `tree_id` | → | `TreeNumber` | Local tree identifier within the plot |
+| `plot_id` | → | `PlotID` | Look up in shared.Plots (or create new plot) |
 | `collection_method` | → | `DataSourceType` | Map to: lidar, field, photogrammetry, estimated, simulated |
 | `date` | → | `MeasurementDate` | Format as YYYY-MM-DD |
 
@@ -301,7 +307,7 @@ import pandas as pd
 
 # Define template column order
 TREE_TEMPLATE_COLUMNS = [
-    'LocationID', 'PlotID', 'CampaignID', 'SpeciesID', 'VariantTypeID',
+    'LocationID', 'PlotID', 'TreeNumber', 'CampaignID', 'SpeciesID', 'VariantTypeID',
     'DataSourceType', 'Latitude', 'Longitude', 'SourceCRS', 'DBH_cm',
     'Height_m', 'TreeStatusID', 'CrownWidth_m', 'CrownBaseHeight_m',
     'Age_years', 'HealthScore', 'TaperTypeID', 'StraightnessTypeID',
@@ -365,7 +371,8 @@ for _, row in df.iterrows():
 
     result.append({
         'LocationID': 4,  # Mathisle
-        'PlotID': None,
+        'PlotID': 19,     # Mathisle plot
+        'TreeNumber': int(row.get('tree_id')) if pd.notna(row.get('tree_id')) else None,
         'CampaignID': None,
         'SpeciesID': species_id,
         'VariantTypeID': 1,  # original
@@ -384,7 +391,7 @@ for _, row in df.iterrows():
         'StraightnessTypeID': None,
         'BranchingPatternID': None,
         'BarkCharacteristicID': None,
-        'FieldNotes': f"TreeID: {row.get('tree_id')} | Source CRS: EPSG:32632",
+        'FieldNotes': f"Source CRS: EPSG:32632",
         'MeasurementDate': '2025-09-11',
     })
 
@@ -436,10 +443,9 @@ If your data contains species, locations, or sensor types not in the lookup tabl
    ```sql
    SELECT SpeciesID, CommonName FROM shared.Species;
    SELECT LocationID, LocationName FROM shared.Locations;
-   SELECT PlotID, PlotName, LocationID FROM shared.Plots;
-   SELECT CampaignID, CampaignName FROM shared.Campaigns;
-   SELECT TreeStatusID, TreeStatusName FROM trees.TreeStatus;
-   SELECT VariantTypeID, VariantTypeName FROM shared.VariantTypes;
+
+SELECT PlotID, PlotName, PlotNumber, LocationID FROM shared.Plots;
+
    ```
 
 See [data/lookups/README.md](../lookups/README.md) for detailed instructions.

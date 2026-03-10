@@ -12,11 +12,15 @@ scripts/
 │   ├── reset_database.py           # Full database reset
 │   └── validate_species_gbif.py    # Validate species names via GBIF
 ├── import/                   # Data import & sync scripts
-│   ├── import_ecosense.py          # Import ecosense tree data
+│   ├── import_trees.py             # Unified tree import from template CSV
 │   ├── import_sensor_data.py       # Import sensor data from Aquarius
 │   ├── link_sensors_to_trees.py    # Link sensors to trees
 │   ├── sync_aquarius.py            # Sync sensor data via edge function
-│   └── find_active_sensors.py      # Find sensors with recent data
+│   ├── sync_aquarius_direct.py     # Direct Aquarius sync (host-side)
+│   ├── find_active_sensors.py      # Find sensors with recent data
+│   └── archive/                    # Superseded scripts
+│       ├── import_ecosense.py      # (replaced by import_trees.py)
+│       └── import_mathisle.py      # (replaced by import_trees.py)
 └── utils/                    # Utility and debug scripts
     ├── check_db_schema.py          # Inspect database schema
     ├── test_aquarius.py            # Test Aquarius API connection
@@ -47,9 +51,15 @@ All import scripts are in `scripts/import/`. Before importing, prepare your data
 
 ### Import Tree Data
 
+Import trees from any CSV following the standard template format (see `data/templates/`):
+
 ```bash
-# Import ecosense tree data
-python scripts/import/import_ecosense.py
+# Import from a prepared CSV (validates, then inserts)
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
+python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
+
+# Dry run — validate only, no data inserted
+python scripts/import/import_trees.py data/imports/my_data.csv --dry-run
 ```
 
 ### Import Sensor Data
