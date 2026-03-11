@@ -25,6 +25,27 @@ AVAILABLE_TABLES = {
     "tree_status": ("tree_status.csv", "Tree health status values"),
     "soil_types": ("soil_types.csv", "USDA soil classification"),
     "climate_zones": ("climate_zones.csv", "Köppen climate zones"),
+    "scenarios": ("scenarios.csv", "Simulation scenarios"),
+    "variant_types": ("variant_types.csv", "Tree variant types"),
+    "taper_types": ("taper_types.csv", "Stem taper form types"),
+    "straightness_types": ("straightness_types.csv", "Stem straightness categories"),
+    "branching_patterns": ("branching_patterns.csv", "Branch arrangement patterns"),
+    "bark_characteristics": ("bark_characteristics.csv", "Bark texture types"),
+    "height_classes": ("phanerophyte_height_classes.csv", "Raunkiær height classes"),
+    "crown_architectures": ("crown_architectures.csv", "Crown architecture models"),
+    "branch_elongation_habits": (
+        "branch_elongation_habits.csv",
+        "Branch elongation habits",
+    ),
+    "growth_orientations": ("growth_orientations.csv", "Growth orientation types"),
+    "shoot_elongation_types": ("shoot_elongation_types.csv", "Shoot elongation types"),
+    "crown_shapes": ("crown_shapes.csv", "Crown shape classifications"),
+    "geometric_crown_solids": (
+        "geometric_crown_solids.csv",
+        "Geometric crown solid models",
+    ),
+    "axis_structures": ("axis_structures.csv", "Tree axis structure models"),
+    "growth_forms": ("growth_forms.csv", "Tree growth form types"),
 }
 
 

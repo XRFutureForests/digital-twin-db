@@ -45,7 +45,7 @@ console.log('ecosense-ingest function started')
 // rather than loading entire dataset into memory before insertion.
 // Adjust READINGS_BATCH_SIZE down if memory-constrained, up if memory available.
 const READINGS_BATCH_SIZE = 5000
-const API_CONCURRENCY_LIMIT = 10
+const API_CONCURRENCY_LIMIT = 5
 
 serve(async (req: Request) => {
     // Validate authentication

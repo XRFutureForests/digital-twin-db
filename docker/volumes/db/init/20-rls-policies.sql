@@ -289,6 +289,53 @@ CREATE POLICY "Tree reference tables are viewable by everyone"
     ON trees.BarkCharacteristics FOR SELECT
     USING (true);
 
+-- Morphology lookup tables (read-only)
+ALTER TABLE trees.PhanerophyteHeightClasses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trees.CrownArchitectures ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trees.BranchElongationHabits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trees.GrowthOrientations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trees.ShootElongationTypes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trees.CrownShapes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trees.GeometricCrownSolids ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trees.AxisStructures ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trees.GrowthForms ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.PhanerophyteHeightClasses FOR SELECT
+    USING (true);
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.CrownArchitectures FOR SELECT
+    USING (true);
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.BranchElongationHabits FOR SELECT
+    USING (true);
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.GrowthOrientations FOR SELECT
+    USING (true);
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.ShootElongationTypes FOR SELECT
+    USING (true);
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.CrownShapes FOR SELECT
+    USING (true);
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.GeometricCrownSolids FOR SELECT
+    USING (true);
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.AxisStructures FOR SELECT
+    USING (true);
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.GrowthForms FOR SELECT
+    USING (true);
+
 -- Trees: Public read, authenticated write
 ALTER TABLE trees.Trees ENABLE ROW LEVEL SECURITY;
 
