@@ -316,6 +316,10 @@ services:
       AQUARIUS_USERNAME: ${AQUARIUS_USERNAME}
       AQUARIUS_PASSWORD: ${AQUARIUS_PASSWORD}
     command: [ "start", "--main-service", "/home/deno/functions/main" ]
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
   analytics:
     container_name: dftdb-analytics

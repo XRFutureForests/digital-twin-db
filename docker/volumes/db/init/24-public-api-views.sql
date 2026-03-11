@@ -130,6 +130,55 @@ SELECT * FROM imagery.images;
 COMMENT ON VIEW public.images IS 'Public API view for imagery table';
 
 -- =============================================================================
+-- TREES SCHEMA: MORPHOLOGY LOOKUP VIEWS
+-- =============================================================================
+
+CREATE OR REPLACE VIEW public.phanerophyteheightclasses AS
+SELECT * FROM trees.phanerophyteheightclasses;
+
+COMMENT ON VIEW public.phanerophyteheightclasses IS 'Public API view for phanerophyte height classes lookup table';
+
+CREATE OR REPLACE VIEW public.crownarchitectures AS
+SELECT * FROM trees.crownarchitectures;
+
+COMMENT ON VIEW public.crownarchitectures IS 'Public API view for crown architectures lookup table';
+
+CREATE OR REPLACE VIEW public.branchelongationhabits AS
+SELECT * FROM trees.branchelongationhabits;
+
+COMMENT ON VIEW public.branchelongationhabits IS 'Public API view for branch elongation habits lookup table';
+
+CREATE OR REPLACE VIEW public.growthorientations AS
+SELECT * FROM trees.growthorientations;
+
+COMMENT ON VIEW public.growthorientations IS 'Public API view for growth orientations lookup table';
+
+CREATE OR REPLACE VIEW public.shootelongationtypes AS
+SELECT * FROM trees.shootelongationtypes;
+
+COMMENT ON VIEW public.shootelongationtypes IS 'Public API view for shoot elongation types lookup table';
+
+CREATE OR REPLACE VIEW public.crownshapes AS
+SELECT * FROM trees.crownshapes;
+
+COMMENT ON VIEW public.crownshapes IS 'Public API view for crown shapes lookup table';
+
+CREATE OR REPLACE VIEW public.geometriccrownsolids AS
+SELECT * FROM trees.geometriccrownsolids;
+
+COMMENT ON VIEW public.geometriccrownsolids IS 'Public API view for geometric crown solids lookup table';
+
+CREATE OR REPLACE VIEW public.axisstructures AS
+SELECT * FROM trees.axisstructures;
+
+COMMENT ON VIEW public.axisstructures IS 'Public API view for axis structures lookup table';
+
+CREATE OR REPLACE VIEW public.growthforms AS
+SELECT * FROM trees.growthforms;
+
+COMMENT ON VIEW public.growthforms IS 'Public API view for growth forms lookup table';
+
+-- =============================================================================
 -- GRANT PERMISSIONS
 -- =============================================================================
 
@@ -151,6 +200,15 @@ GRANT SELECT ON public.phenologyobservations TO anon, authenticated;
 GRANT SELECT ON public.deadwood TO anon, authenticated;
 GRANT SELECT ON public.groundvegetation TO anon, authenticated;
 GRANT SELECT ON public.images TO anon, authenticated;
+GRANT SELECT ON public.phanerophyteheightclasses TO anon, authenticated;
+GRANT SELECT ON public.crownarchitectures TO anon, authenticated;
+GRANT SELECT ON public.branchelongationhabits TO anon, authenticated;
+GRANT SELECT ON public.growthorientations TO anon, authenticated;
+GRANT SELECT ON public.shootelongationtypes TO anon, authenticated;
+GRANT SELECT ON public.crownshapes TO anon, authenticated;
+GRANT SELECT ON public.geometriccrownsolids TO anon, authenticated;
+GRANT SELECT ON public.axisstructures TO anon, authenticated;
+GRANT SELECT ON public.growthforms TO anon, authenticated;
 
 -- Grant INSERT/UPDATE/DELETE to authenticated users on data tables
 GRANT INSERT, UPDATE, DELETE ON public.campaigns TO authenticated;
@@ -186,6 +244,15 @@ GRANT ALL ON public.phenologyobservations TO service_role;
 GRANT ALL ON public.deadwood TO service_role;
 GRANT ALL ON public.groundvegetation TO service_role;
 GRANT ALL ON public.images TO service_role;
+GRANT ALL ON public.phanerophyteheightclasses TO service_role;
+GRANT ALL ON public.crownarchitectures TO service_role;
+GRANT ALL ON public.branchelongationhabits TO service_role;
+GRANT ALL ON public.growthorientations TO service_role;
+GRANT ALL ON public.shootelongationtypes TO service_role;
+GRANT ALL ON public.crownshapes TO service_role;
+GRANT ALL ON public.geometriccrownsolids TO service_role;
+GRANT ALL ON public.axisstructures TO service_role;
+GRANT ALL ON public.growthforms TO service_role;
 
 -- =============================================================================
 -- INSTEAD OF TRIGGERS FOR INSERTABLE/UPDATABLE VIEWS

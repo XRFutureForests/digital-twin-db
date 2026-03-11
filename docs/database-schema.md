@@ -73,6 +73,15 @@ graph LR
         TPH[PhenologyObservations]
         TDW[Deadwood]
         TGV[GroundVegetation]
+        TPHC[PhanerophyteHeightClasses]
+        TCA[CrownArchitectures]
+        TBEH[BranchElongationHabits]
+        TGO[GrowthOrientations]
+        TSET[ShootElongationTypes]
+        TCS[CrownShapes]
+        TGCS[GeometricCrownSolids]
+        TAS[AxisStructures]
+        TGF[GrowthForms]
     end
 
     subgraph sensor ["Sensor Schema"]
@@ -677,6 +686,71 @@ erDiagram
 
     Trees ||--o{ Stems : "has_stems"
     Trees }o--|| Trees : "parent_variant"
+```
+
+### Tree Morphology Lookup Tables
+
+```mermaid
+erDiagram
+    PhanerophyteHeightClasses {
+        integer HeightClassID PK
+        varchar ClassName "Nano, Micro, Meso, Macro, Mega"
+        float MinHeight_m
+        float MaxHeight_m
+    }
+
+    CrownArchitectures {
+        integer CrownArchitectureID PK
+        varchar ArchitectureName
+        text Description
+    }
+
+    BranchElongationHabits {
+        integer BranchElongationHabitID PK
+        varchar HabitName
+        text Description
+    }
+
+    GrowthOrientations {
+        integer GrowthOrientationID PK
+        varchar OrientationName
+        text Description
+    }
+
+    ShootElongationTypes {
+        integer ShootElongationTypeID PK
+        varchar ElongationName
+        text Description
+    }
+
+    CrownShapes {
+        integer CrownShapeID PK
+        varchar ShapeName
+        text Description
+    }
+
+    GeometricCrownSolids {
+        integer GeometricCrownSolidID PK
+        varchar SolidName
+        text Description
+    }
+
+    AxisStructures {
+        integer AxisStructureID PK
+        varchar StructureName
+        text Description
+    }
+
+    GrowthForms {
+        integer GrowthFormID PK
+        varchar FormName
+        text Description
+    }
+
+    Trees }o--o| PhanerophyteHeightClasses : "height_class"
+    Trees }o--o| CrownArchitectures : "crown_architecture"
+    Trees }o--o| CrownShapes : "crown_shape"
+    Trees }o--o| GrowthForms : "growth_form"
 ```
 
 **Note**: The trees schema uses a variant-based approach for temporal tracking rather than a separate TreeSimulations table. Growth simulations are represented as new tree variants with ParentVariantID linkage.

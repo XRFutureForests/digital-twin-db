@@ -376,6 +376,7 @@ Migrations run automatically on first database startup from `docker/volumes/db/i
 | `15-environments-schema.sql` | Environmental conditions |
 | `16-sensor-tree-links-schema.sql` | Sensor-tree relationships |
 | `17-imagery-schema.sql` | Aerial & ground imagery |
+| `18-tree-morphology-schema.sql` | Tree morphology lookup tables and FK columns |
 | `20-rls-policies.sql` | Security policies and triggers |
 | `21-audit-functions.sql` | Change tracking |
 | `22-aquarius-integration.sql` | Aquarius API support |
