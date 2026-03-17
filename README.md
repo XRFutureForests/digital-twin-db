@@ -174,38 +174,81 @@ All tables include:
 
 ## Importing Data
 
-The database initializes with empty tables. Import data using the Python scripts in `scripts/import/`.
+The database initializes with schema and reference data only — all tree, sensor, and measurement tables are empty. Use the Python scripts in `scripts/import/` to load your data.
 
-### Installation
+### Prerequisites
 
 ```bash
-cd scripts
+# Install and activate the conda environment (one-time)
 conda env create -f environment.yml
 conda activate digital-twin
+
+# Make sure the database is running
+cd docker && docker compose ps
 ```
 
-### Import Scripts
+### Recommended Import Order
+
+Import data in this sequence so that foreign-key relationships resolve correctly:
+
+| Step | Command | What it does |
+|------|---------|--------------|
+| 1 | `python scripts/import/import_trees.py <csv_file>` | Imports tree measurements from a prepared CSV |
+| 2 | `python scripts/import/import_sensor_data.py` | Imports sensor metadata from the Aquarius API |
+| 3 | `python scripts/import/link_sensors_to_trees.py` | Links sensors to nearby trees by proximity |
+
+### Import Tree Data
+
+The tree importer accepts any CSV that follows the [template format](data/templates/trees_import_template.csv). Two ready-made import files are included:
 
 ```bash
-# Import tree data from EcoSense
-python scripts/import/import_ecosense.py
+# Import EcoSense trees (1504 trees, mixed-species plot)
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
 
-# Import sensor data from Aquarius API
+# Import Mathisle trees (730 trees)
+python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
+
+# Validate without inserting (dry run)
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv --dry-run
+```
+
+**Preparing your own data?** Follow the step-by-step [Data Preparation Guide](data/templates/DATA_PREPARATION_GUIDE.md) — it covers column mapping, coordinate transformation, unit conversion, and species lookup, with worked examples in Python and R.
+
+### Import & Sync Sensor Data
+
+Sensor data comes from the Aquarius API (requires university VPN):
+
+```bash
+# Import sensor metadata and initial readings
 python scripts/import/import_sensor_data.py
 
-# Link sensors to nearby trees (run after importing both)
+# Link sensors to nearby trees (run after importing both trees and sensors)
 python scripts/import/link_sensors_to_trees.py
 
-# Sync latest sensor readings from Aquarius (default: last 30 days)
+# Sync latest readings from Aquarius (default: last 30 days)
 python scripts/import/sync_aquarius.py
 
-# Find sensors with recent data in Aquarius
+# Sync a custom time range
+python scripts/import/sync_aquarius.py 7
+
+# List sensors with recent data in Aquarius
 python scripts/import/find_active_sensors.py
 ```
 
-Prepare your data following the [DATA_PREPARATION_GUIDE.md](data/templates/DATA_PREPARATION_GUIDE.md) and the templates in `data/templates/`.
+### Managing Reference Data
 
-For detailed usage guide, see [`scripts/README.md`](scripts/README.md)
+Lookup tables (species, locations, soil types, etc.) are loaded from CSVs in `data/lookups/`. To update them:
+
+1. Edit the CSV in `data/lookups/`
+2. Refresh without rebuilding:
+
+```bash
+python scripts/admin/refresh_lookups.py          # all tables
+python scripts/admin/refresh_lookups.py species   # single table
+python scripts/admin/refresh_lookups.py --list    # list available tables
+```
+
+See [`data/README.md`](data/README.md) for the full lookup table reference and [`scripts/README.md`](scripts/README.md) for all available scripts including utilities and admin tools.
 
 ---
 
@@ -388,22 +431,21 @@ SELECT * FROM shared.species;
 
 ## Documentation
 
-### Getting Started
+All documentation lives in the `docs/` directory. Start with **[docs/README.md](docs/README.md)** for a complete index.
 
-- **[docs/README.md](docs/README.md)** - Complete documentation index
-- **[docs/supabase-introduction.md](docs/supabase-introduction.md)** - Learn what Supabase is and how it works
-- **[docs/troubleshooting.md](docs/troubleshooting.md)** - Common issues and solutions
-
-### Technical Documentation
-
-- **[Database Schema](docs/database-schema.md)** - Schema specifications and design
-- **[Database ERD](docs/database-erd.dbml)** - Entity relationship diagram (DBML format)
-- **[Database Diagram](docs/database-diagram.drawio)** - Visual schema diagram (editable)
-- **[Deployment Guide](docs/deployment-guide.md)** - Production deployment instructions
-
-### Reference Guides
-
-- **[API Quick Reference](docs/api-quick-reference.md)** - Common commands, URLs, and examples
+| Topic | Document | Description |
+|-------|----------|-------------|
+| **Getting Started** | [Supabase Introduction](docs/supabase-introduction.md) | What Supabase is and how it works |
+| **Data Import** | [Data Preparation Guide](data/templates/DATA_PREPARATION_GUIDE.md) | Preparing CSVs for the tree importer |
+| | [Data Directory Guide](data/README.md) | Lookup tables, templates, and raw data reference |
+| | [Scripts Guide](scripts/README.md) | All import, admin, and utility scripts with examples |
+| **Architecture** | [Architecture Overview](docs/ARCHITECTURE.md) | System design, schemas, and data flow |
+| | [Database Schema](docs/database-schema.md) | Full schema specifications and design rationale |
+| | [Database ERD](docs/database-erd.dbml) | Entity relationship diagram (DBML format) |
+| | [Database Overview](docs/database-overview.md) | High-level database structure summary |
+| **Operations** | [API Quick Reference](docs/api-quick-reference.md) | URLs, credentials, REST examples, Docker commands |
+| | [Deployment Guide](docs/deployment-guide.md) | Production deployment instructions |
+| | [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
 
 ---
 
@@ -430,29 +472,15 @@ docker compose logs -f
 
 ### Working with Data
 
-**Add sample data**:
+**Import data** — See [Importing Data](#importing-data) above for the full guide.
 
-- Use Supabase Studio UI for manual entry
-- Use REST API for programmatic insertion
+**Add data manually**:
+
+- Use Supabase Studio UI (<http://localhost:54323>) for manual entry
+- Use REST API for programmatic insertion (see [How to Use](#how-to-use))
 - Write SQL migrations in `docker/volumes/db/init/`
 
-**Update lookup tables** (species, locations, sensor types):
-
-1. Edit CSV files in `data/lookups/`
-2. Refresh without rebuilding:
-
-```bash
-# Refresh all lookup tables
-python scripts/admin/refresh_lookups.py
-
-# Refresh specific table
-python scripts/admin/refresh_lookups.py species
-
-# List available tables
-python scripts/admin/refresh_lookups.py --list
-```
-
-Or via SQL:
+**Update lookup tables** — See [Managing Reference Data](#managing-reference-data) above, or use SQL directly:
 
 ```sql
 SELECT * FROM shared.refresh_all_lookups();

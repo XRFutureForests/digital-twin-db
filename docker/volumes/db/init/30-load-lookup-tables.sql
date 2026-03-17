@@ -273,10 +273,10 @@ DROP TABLE temp_locations;
 -- Create plots for each research location.
 -- PlotNumber corresponds to the local plot identifier used in field campaigns.
 
--- EcoSense plots 1-18 at the EcoSense location
+-- EcoSense plots 1-18 at the Ecosense_MixedPlot location
 INSERT INTO shared.Plots (LocationID, PlotName, PlotNumber, CreatedBy)
 SELECT 
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'EcoSense'),
+    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Ecosense_MixedPlot'),
     'EcoSense Plot ' || n,
     n,
     'init'
@@ -286,7 +286,7 @@ ON CONFLICT (LocationID, PlotName) DO NOTHING;
 -- Mathisle single plot
 INSERT INTO shared.Plots (LocationID, PlotName, PlotNumber, CreatedBy)
 VALUES (
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'MathIsle'),
+    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Mathisle'),
     'Mathisle',
     1,
     'init'
