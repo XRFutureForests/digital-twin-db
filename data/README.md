@@ -154,9 +154,9 @@ Mathisle forest plot tree inventory.
 ### Import Scripts
 
 ```bash
-# Import EcoSense trees directly from raw CSV
-conda activate dtm-to-unreal
-python scripts/import/import_ecosense.py
+# Import tree data from prepared CSV (see data/templates/ for format)
+conda activate digital-twin
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
 
 # Import sensor data from Aquarius API
 python scripts/import/import_sensor_data.py

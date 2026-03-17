@@ -343,8 +343,8 @@ cd scripts
 conda env create -f environment.yml
 conda activate digital-twin
 
-# Import tree data from EcoSense
-python scripts/import/import_ecosense.py
+# Import tree data from prepared CSV
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
 
 # Import sensor data from Aquarius API
 python scripts/import/import_sensor_data.py
