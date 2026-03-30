@@ -65,7 +65,8 @@ services:
       - ${KONG_HTTPS_PORT}:8443/tcp
     volumes:
       # https://github.com/supabase/supabase/issues/12661
-      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
+      # Mount directory instead of file to avoid WSL bind-mount hash path issue on reboot
+      - ./volumes/api:/home/kong/api:ro,z
     depends_on:
       analytics:
         condition: service_healthy
@@ -82,7 +83,7 @@ services:
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
     # https://unix.stackexchange.com/a/294837
-    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+    entrypoint: bash -c 'eval "echo \"$$(cat ~/api/kong.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
 
   mail:
     container_name: dftdb-mail
@@ -366,62 +367,19 @@ services:
       # Comment out everything below this point if you are using an external Postgres database
   db:
     container_name: dftdb-db
-    image: supabase/postgres:15.8.1.085
+    # Built from Dockerfile.db which bakes all SQL init scripts into the image,
+    # avoiding WSL bind-mount hash path failures on reboot (file mounts get stale
+    # /run/desktop/mnt/host/wsl/... paths; directory mounts use direct paths).
+    build:
+      context: .
+      dockerfile: Dockerfile.db
     restart: unless-stopped
     volumes:
-      # Changes required for internal supabase infrastructure (MUST run before migrations)
-      - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/init-scripts/96-_supabase.sql:Z
-      - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/init-scripts/97-logs.sql:Z
-      - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/init-scripts/98-pooler.sql:Z
-      - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/init-scripts/98a-realtime.sql:Z
-      # Must be superuser to create event trigger (creates supabase_functions_admin role)
-      - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/99-webhooks.sql:Z
-      # Initialize the database settings with JWT_SECRET and JWT_EXP
-      - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99a-jwt.sql:Z
-      # Must be superuser to alter reserved role (runs AFTER webhooks creates the role)
-      - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99z-roles.sql:Z
-      # PGDATA directory is persisted between restarts
+      # PGDATA directory is persisted between restarts (directory mount — stable on WSL reboot)
       - ./volumes/db/data:/var/lib/postgresql/data:Z
-      # ==========================================================================
-      # CUSTOM FOREST DATABASE INITIALIZATION
-      # Layered architecture:
-      #   10-19: Infrastructure & Domain Schemas (database structure)
-      #   20-29: Security, Functions, API Views (cross-cutting concerns)
-      #   30-39: Lookup Data Loading (reference data from CSV files)
-      # 
-      # User data (trees, sensors) is NOT loaded during init - that's a separate
-      # user-triggered import step. See scripts/ for import utilities.
-      # ==========================================================================
-      
-      # Layer 1: Infrastructure & Extensions (10-11)
-      - ./volumes/db/init/10-enable-postgis.sql:/docker-entrypoint-initdb.d/migrations/10-enable-postgis.sql:Z
-      - ./volumes/db/init/11-shared-schema.sql:/docker-entrypoint-initdb.d/migrations/11-shared-schema.sql:Z
-      
-      # Layer 1: Domain Schemas (12-17)
-      - ./volumes/db/init/12-pointclouds-schema.sql:/docker-entrypoint-initdb.d/migrations/12-pointclouds-schema.sql:Z
-      - ./volumes/db/init/13-trees-schema.sql:/docker-entrypoint-initdb.d/migrations/13-trees-schema.sql:Z
-      - ./volumes/db/init/14-sensor-schema.sql:/docker-entrypoint-initdb.d/migrations/14-sensor-schema.sql:Z
-      - ./volumes/db/init/15-environments-schema.sql:/docker-entrypoint-initdb.d/migrations/15-environments-schema.sql:Z
-      - ./volumes/db/init/16-sensor-tree-links-schema.sql:/docker-entrypoint-initdb.d/migrations/16-sensor-tree-links-schema.sql:Z
-      - ./volumes/db/init/17-imagery-schema.sql:/docker-entrypoint-initdb.d/migrations/17-imagery-schema.sql:Z
-      - ./volumes/db/init/18-tree-morphology-schema.sql:/docker-entrypoint-initdb.d/migrations/18-tree-morphology-schema.sql:Z
-
-      # Layer 2: Security & Row-Level Policies (20)
-      - ./volumes/db/init/20-rls-policies.sql:/docker-entrypoint-initdb.d/migrations/20-rls-policies.sql:Z
-      
-      # Layer 2: Functions & Integrations (21-22)
-      - ./volumes/db/init/21-audit-functions.sql:/docker-entrypoint-initdb.d/migrations/21-audit-functions.sql:Z
-      - ./volumes/db/init/22-aquarius-integration.sql:/docker-entrypoint-initdb.d/migrations/22-aquarius-integration.sql:Z
-      
-      # Layer 2: Processing & API (23-24)
-      - ./volumes/db/init/23-processing-jobs.sql:/docker-entrypoint-initdb.d/migrations/23-processing-jobs.sql:Z
-      - ./volumes/db/init/24-public-api-views.sql:/docker-entrypoint-initdb.d/migrations/24-public-api-views.sql:Z
-      
-      # Layer 3: Lookup Tables (loaded from CSV files)
+      # Lookup CSV files for reference data (directory mount — stable on WSL reboot)
       # Source of truth: data/lookups/ directory
       - ../data/lookups:/var/lib/postgresql/lookups:ro,Z
-      - ./volumes/db/init/30-load-lookup-tables.sql:/docker-entrypoint-initdb.d/migrations/30-load-lookup-tables.sql:Z
-      - ./volumes/db/init/31-refresh-lookup-functions.sql:/docker-entrypoint-initdb.d/migrations/31-refresh-lookup-functions.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:
@@ -456,7 +414,8 @@ services:
     image: timberio/vector:0.28.1-alpine
     restart: unless-stopped
     volumes:
-      - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
+      # Mount directory instead of file to avoid WSL bind-mount hash path issue on reboot
+      - ./volumes/logs:/etc/vector:ro,z
       - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro,z
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://vector:9001/health" ]
@@ -478,7 +437,8 @@ services:
       - ${POSTGRES_PORT}:5432
       - ${POOLER_PROXY_PORT_TRANSACTION}:6543
     volumes:
-      - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z
+      # Mount directory instead of file to avoid WSL bind-mount hash path issue on reboot
+      - ./volumes/pooler:/etc/pooler:ro,z
     healthcheck:
       test: [ "CMD", "curl", "-sSfL", "--head", "-o", "/dev/null", "http://127.0.0.1:4000/api/health" ]
       interval: 10s

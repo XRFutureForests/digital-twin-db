@@ -1,0 +1,13 @@
+FROM supabase/postgres:15.8.1.085
+
+# Supabase internal infrastructure scripts
+COPY volumes/db/_supabase.sql /docker-entrypoint-initdb.d/init-scripts/96-_supabase.sql
+COPY volumes/db/logs.sql      /docker-entrypoint-initdb.d/init-scripts/97-logs.sql
+COPY volumes/db/pooler.sql    /docker-entrypoint-initdb.d/init-scripts/98-pooler.sql
+COPY volumes/db/realtime.sql  /docker-entrypoint-initdb.d/init-scripts/98a-realtime.sql
+COPY volumes/db/webhooks.sql  /docker-entrypoint-initdb.d/init-scripts/99-webhooks.sql
+COPY volumes/db/jwt.sql       /docker-entrypoint-initdb.d/init-scripts/99a-jwt.sql
+COPY volumes/db/roles.sql     /docker-entrypoint-initdb.d/init-scripts/99z-roles.sql
+
+# Custom forest database migrations (run in numeric order)
+COPY volumes/db/init/ /docker-entrypoint-initdb.d/migrations/
