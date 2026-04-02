@@ -371,15 +371,13 @@ services:
     # avoiding WSL bind-mount hash path failures on reboot (file mounts get stale
     # /run/desktop/mnt/host/wsl/... paths; directory mounts use direct paths).
     build:
-      context: .
-      dockerfile: Dockerfile.db
+      context: ..
+      dockerfile: docker/Dockerfile.db
     restart: unless-stopped
     volumes:
-      # PGDATA directory is persisted between restarts (directory mount — stable on WSL reboot)
-      - ./volumes/db/data:/var/lib/postgresql/data:Z
-      # Lookup CSV files for reference data (directory mount — stable on WSL reboot)
-      # Source of truth: data/lookups/ directory
-      - ../data/lookups:/var/lib/postgresql/lookups:ro,Z
+      # PGDATA persisted in a named Docker volume — fully managed by Docker,
+      # no WSL bind-mount path resolution needed, survives reboot cleanly
+      - db-data:/var/lib/postgresql/data
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:
@@ -471,3 +469,4 @@ services:
 
 volumes:
   db-config:
+  db-data:

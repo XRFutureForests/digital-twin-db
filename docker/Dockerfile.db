@@ -1,13 +1,16 @@
 FROM supabase/postgres:15.8.1.085
 
 # Supabase internal infrastructure scripts
-COPY volumes/db/_supabase.sql /docker-entrypoint-initdb.d/init-scripts/96-_supabase.sql
-COPY volumes/db/logs.sql      /docker-entrypoint-initdb.d/init-scripts/97-logs.sql
-COPY volumes/db/pooler.sql    /docker-entrypoint-initdb.d/init-scripts/98-pooler.sql
-COPY volumes/db/realtime.sql  /docker-entrypoint-initdb.d/init-scripts/98a-realtime.sql
-COPY volumes/db/webhooks.sql  /docker-entrypoint-initdb.d/init-scripts/99-webhooks.sql
-COPY volumes/db/jwt.sql       /docker-entrypoint-initdb.d/init-scripts/99a-jwt.sql
-COPY volumes/db/roles.sql     /docker-entrypoint-initdb.d/init-scripts/99z-roles.sql
+COPY docker/volumes/db/_supabase.sql /docker-entrypoint-initdb.d/init-scripts/96-_supabase.sql
+COPY docker/volumes/db/logs.sql      /docker-entrypoint-initdb.d/init-scripts/97-logs.sql
+COPY docker/volumes/db/pooler.sql    /docker-entrypoint-initdb.d/init-scripts/98-pooler.sql
+COPY docker/volumes/db/realtime.sql  /docker-entrypoint-initdb.d/init-scripts/98a-realtime.sql
+COPY docker/volumes/db/webhooks.sql  /docker-entrypoint-initdb.d/init-scripts/99-webhooks.sql
+COPY docker/volumes/db/jwt.sql       /docker-entrypoint-initdb.d/init-scripts/99a-jwt.sql
+COPY docker/volumes/db/roles.sql     /docker-entrypoint-initdb.d/init-scripts/99z-roles.sql
 
 # Custom forest database migrations (run in numeric order)
-COPY volumes/db/init/ /docker-entrypoint-initdb.d/migrations/
+COPY docker/volumes/db/init/ /docker-entrypoint-initdb.d/migrations/
+
+# Lookup CSV files — used by 30-load-lookup-tables.sql during first-time DB init
+COPY data/lookups/ /var/lib/postgresql/lookups/
