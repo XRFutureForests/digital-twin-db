@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sanitized `docker/.env.example`: placeholder values replace previously
   committed real-looking secrets. Operators must rotate any secrets that were
   ever deployed from the old file.
+- Python version requirement from `3.11.8` to `3.12`.
+- `environment.yml`: Python version from `3.11.8` to `3.12`.
 
 ## [0.1.0] - 2025
 
