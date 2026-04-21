@@ -4,7 +4,7 @@ channels:
   - defaults
 dependencies:
   # Python dependencies
-  - python=3.11.8
+  - python=3.12
   - pandas=2.2.0
   - python-dotenv=1.0.0
   - psycopg2=2.9.9
