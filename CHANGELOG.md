@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - `.editorconfig` for cross-editor consistency.
 - `CONTRIBUTING.md` with contribution workflow.
 - `CHANGELOG.md` (this file).
 
 ### Changed
+
 - Sanitized `docker/.env.example`: placeholder values replace previously
   committed real-looking secrets. Operators must rotate any secrets that were
   ever deployed from the old file.
