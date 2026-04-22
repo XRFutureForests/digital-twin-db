@@ -13,6 +13,9 @@ XRFF-72  (fix DateTime timezone — quick win)
 
 XRFF-39  (fill missing tree heights — parallel, uses pylometree)
     └─► full inventory spawn without gaps
+
+XRFF-133 (add GBIF taxon key to shared.species)  ← parallel track
+    └─► XRFF-36 (inventory-driven growpy generation — requires GBIF keys synced)
 ```
 
 ---
