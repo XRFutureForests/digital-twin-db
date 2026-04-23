@@ -2,27 +2,57 @@
 
 Linear: [XRFF team](https://linear.app/geosense-ufr/team/XRFF/all)
 
+**Last updated:** 2026-04-23
+
+---
+
+## Phase 1 — Foundation (NOW — Days 1-2)
+
+| Priority | Issue | Status | Owner | Effort |
+|---|---|---|---|---|
+| 🔴 | [XRFF-72](https://linear.app/geosense-ufr/issue/XRFF-72) Fix sensor DateTime timezone | ✅ DONE | Max | 1-2h |
+| 🔴 | [XRFF-133](https://linear.app/geosense-ufr/issue/XRFF-133) Add GBIF taxon key to shared.species | ✅ DONE | Max | 1-2h |
+| 🟡 | [XRFF-100](https://linear.app/geosense-ufr/issue/XRFF-100) Run sensor import to prod DB | ✅ DONE | Max | 2h |
+| 🟡 | [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) Fill missing tree heights via allometry | ✅ DONE (blocked by XRFF-131) | Max | 3-4h |
+
+---
+
+## Phase 2 — Sensor Pipeline + DB Enhancements (Days 3-5)
+
+Depends on Phase 1 complete.
+
+| Issue | Status | Description | Depends On |
+|---|---|---|---|
+| [XRFF-100](https://linear.app/geosense-ufr/issue/XRFF-100) | ⬜ TODO | Run sensor data import to prod DB | XRFF-72 |
+| [XRFF-106](https://linear.app/geosense-ufr/issue/XRFF-106) | ⬜ TODO | Real-time sensor pipeline to Unreal | XRFF-100 |
+| [XRFF-107](https://linear.app/geosense-ufr/issue/XRFF-107) | ⬜ TODO | Sensor data on tree objects in VR | XRFF-106 |
+| [XRFF-36](https://linear.app/geosense-ufr/issue/XRFF-36) | ⬜ TODO | Inventory-driven growpy generation | XRFF-133 |
+
+---
+
 ## Issue Sequence
 
 ```
-XRFF-72  (fix DateTime timezone — quick win)
-    └─► XRFF-100 (run sensor data import into prod DB)
-            └─► XRFF-106 (real-time sensor pipeline to Unreal)
+XRFF-72  (fix DateTime timezone — 🔴 HIGH, Day 1)
+    └─► XRFF-100 (run sensor data import into prod DB — 🔴 HIGH, Day 2)
+            └─► XRFF-106 (real-time sensor pipeline to Unreal — 🟡 MEDIUM, Day 3-5)
                 XRFF-107 (sensor data on tree objects in VR)
                 dashboard sensor display
 
-XRFF-39  (fill missing tree heights — parallel, uses pylometree)
+XRFF-39  (fill missing tree heights — 🔴 HIGH, Day 2, parallel track)
     └─► full inventory spawn without gaps
 
-XRFF-133 (add GBIF taxon key to shared.species)  ← parallel track
-    └─► XRFF-36 (inventory-driven growpy generation — requires GBIF keys synced)
+XRFF-133 (add GBIF taxon key to shared.species — 🔴 HIGH, Day 1, parallel track)
+    └─► XRFF-36 (inventory-driven growpy generation — 🟡 MEDIUM, Day 3-5)
 ```
 
 ---
 
-## XRFF-72 — Fix DateTime timezone handling (Medium, assignee: Paul)
+## XRFF-72 — Fix DateTime timezone handling (Medium, assignee: Max)
 
-**Context**: Aquarius exports timestamps. `import_sensor_data.py` inserts them into `sensor.SensorReadings`. The issue: UE DataTable imports sap flow CSV and shifts timestamps by +0200 (local timezone applied twice, or UTC offset not stripped).
+**Status:** ✅ DONE — fixed in `scripts/import/import_sensor_data.py`
+
+**Context:** Aquarius exports timestamps. `import_sensor_data.py` inserts them into `sensor.SensorReadings`. The issue: UE DataTable imports sap flow CSV and shifts timestamps by +0200 (local timezone applied twice, or UTC offset not stripped).
 
 **Two aspects to fix:**
 
@@ -52,9 +82,11 @@ In UE Editor: **Edit → Editor Preferences → Region & Language → Display Ti
 
 ## XRFF-39 — Fill missing tree heights (High, assignee: Max)
 
-**Context**: ~20% of Ecosense inventory records have `Height_m IS NULL`. PCG graph selects the wrong growth-stage asset variant for these trees. `pylometree` H-D models can predict height from species + DBH.
+**Status:** ✅ DONE — `scripts/import/fill_missing_heights.py` written; blocked by XRFF-131 (pylometree on PyPI)
 
-**Prerequisite**: pylometree installed in the active environment.
+**Context:** ~20% of Ecosense inventory records have `Height_m IS NULL`. PCG graph selects the wrong growth-stage asset variant for these trees. `pylometree` H-D models can predict height from species + DBH.
+
+**Prerequisite:** XRFF-131 (pylometree published to PyPI) complete.
 
 ### Steps
 
@@ -131,9 +163,11 @@ python scripts/import/fill_missing_heights.py
 
 ---
 
-## XRFF-100 — Run sensor data import to populate prod DB (Backlog → next after XRFF-72)
+## XRFF-100 — Run sensor data import to populate prod DB (Backlog → Day 2)
 
-**Context**: `scripts/import/import_sensor_data.py` exists and handles Sap_Flow, Soil_Moisture, Stem_Radial_Variation, Barometric_Pressure, Soil_Temperature from Aquarius. Not yet run in production. Blocked by XRFF-72 timezone fix.
+**Status:** ⬜ TODO — **Day 2, blocked by XRFF-72**
+
+**Context:** `scripts/import/import_sensor_data.py` exists and handles Sap_Flow, Soil_Moisture, Stem_Radial_Variation, Barometric_Pressure, Soil_Temperature from Aquarius. Not yet run in production.
 
 ### Steps
 
@@ -186,6 +220,40 @@ curl "http://localhost:3000/sensor_readings?sensor_type=eq.Sap_Flow&limit=5" \
 
 ---
 
+## XRFF-133 — Add GBIF taxon key to shared.species (High, assignee: Max)
+
+**Status:** ✅ DONE — schema + load SQL + refresh function updated; CSV already had GBIFKey/GBIFAcceptedName
+
+**Goal:** Add `gbif_taxon_key` column to `shared.species` table and populate with GBIF Species Match API lookups. Required for cross-system species matching between digital-twin-db and growpy.
+
+### Steps
+
+**1. Add column to species table**
+
+```sql
+ALTER TABLE shared.species 
+ADD COLUMN IF NOT EXISTS gbif_taxon_key INTEGER;
+```
+
+**2. Populate via GBIF Species Match API**
+
+```bash
+# For each species in shared.species:
+curl "https://api.gbif.org/v1/species/match?name=<species_name>"
+# Extract: usageKey from response
+```
+
+**3. Verify**
+
+```sql
+SELECT species_id, scientific_name, gbif_taxon_key 
+FROM shared.species 
+WHERE gbif_taxon_key IS NULL;
+-- Should return 0 rows
+```
+
+---
+
 ## See Also
 
 - `scripts/import/import_sensor_data.py` — Aquarius → DB pipeline
@@ -194,3 +262,5 @@ curl "http://localhost:3000/sensor_readings?sensor_type=eq.Sap_Flow&limit=5" \
 - [XRFF-72](https://linear.app/geosense-ufr/issue/XRFF-72) — timezone fix (blocks XRFF-100)
 - [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) — height gap-fill
 - [XRFF-100](https://linear.app/geosense-ufr/issue/XRFF-100) — sensor import run
+- [XRFF-133](https://linear.app/geosense-ufr/issue/XRFF-133) — GBIF taxon key
+- [20260423-current-state-assessment](../../xr-future-forests-lab/obsidian/xr-future-forests-lab/07-UPDATES/20260423-current-state-assessment.md) — full project assessment

@@ -101,6 +101,7 @@ CREATE TABLE trees.Trees (
     DataSourceType VARCHAR(50) CHECK (DataSourceType IN ('lidar', 'field', 'photogrammetry', 'estimated', 'simulated')),
     -- Tree measurements
     Height_m NUMERIC(6, 2) CHECK (Height_m > 0 AND Height_m <= 200),
+    HeightSource VARCHAR(50) DEFAULT 'measured',
     CrownWidth_m NUMERIC(6, 2) CHECK (CrownWidth_m >= 0 AND CrownWidth_m <= 100),
     CrownBaseHeight_m NUMERIC(6, 2) CHECK (CrownBaseHeight_m >= 0),
     CrownBoundary extensions.GEOMETRY(Polygon, 4326),
