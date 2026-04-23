@@ -38,14 +38,16 @@ BEGIN
                 TypicalLifespan_years INTEGER,
                 GrowthRate VARCHAR(20),
                 ShadeTolerance VARCHAR(20),
-                IsDeciduous BOOLEAN
+                IsDeciduous BOOLEAN,
+                GBIFKey INTEGER,
+                GBIFAcceptedName VARCHAR(200)
             ) ON COMMIT DROP;
             TRUNCATE _temp_species;
 
             EXECUTE format('COPY _temp_species FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'species.csv');
 
-            INSERT INTO shared.Species (CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance, IsDeciduous)
-            SELECT CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance, IsDeciduous
+            INSERT INTO shared.Species (CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance, IsDeciduous, GBIFKey, GBIFAcceptedName)
+            SELECT CommonName, ScientificName, MaxHeight_m, MaxDBH_cm, TypicalLifespan_years, GrowthRate, ShadeTolerance, IsDeciduous, GBIFKey, GBIFAcceptedName
             FROM _temp_species
             ON CONFLICT (ScientificName) DO UPDATE SET
                 CommonName = EXCLUDED.CommonName,
@@ -54,7 +56,9 @@ BEGIN
                 TypicalLifespan_years = EXCLUDED.TypicalLifespan_years,
                 GrowthRate = EXCLUDED.GrowthRate,
                 ShadeTolerance = EXCLUDED.ShadeTolerance,
-                IsDeciduous = EXCLUDED.IsDeciduous;
+                IsDeciduous = EXCLUDED.IsDeciduous,
+                GBIFKey = EXCLUDED.GBIFKey,
+                GBIFAcceptedName = EXCLUDED.GBIFAcceptedName;
             
             SELECT COUNT(*) INTO v_rows_after FROM shared.species;
             

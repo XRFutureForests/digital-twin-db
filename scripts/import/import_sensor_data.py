@@ -12,8 +12,10 @@ This script:
 import json
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+import dateutil.parser
 
 import psycopg2
 import requests
@@ -30,17 +32,20 @@ AQUARIUS_USERNAME = os.getenv("AQUARIUS_USERNAME")
 AQUARIUS_PASSWORD = os.getenv("AQUARIUS_PASSWORD")
 
 # Database configuration
-POSTGRES_HOST = "localhost"
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_DATABASE = os.getenv("POSTGRES_DB", "postgres")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 POOLER_TENANT_ID = os.getenv("POOLER_TENANT_ID", "")
+POOLER_PORT = os.getenv("POOLER_PROXY_PORT_TRANSACTION", "6543")
 
 if POOLER_TENANT_ID:
     POSTGRES_USER_POOLER = f"{POSTGRES_USER}.{POOLER_TENANT_ID}"
+    POSTGRES_PORT_EFFECTIVE = POOLER_PORT
 else:
     POSTGRES_USER_POOLER = POSTGRES_USER
+    POSTGRES_PORT_EFFECTIVE = POSTGRES_PORT
 
 # Constants
 DAYS_BACK = 30  # Import last month
@@ -63,7 +68,7 @@ def get_db_connection():
         user=POSTGRES_USER_POOLER,
         password=POSTGRES_PASSWORD,
         database=POSTGRES_DATABASE,
-        port=POSTGRES_PORT,
+        port=POSTGRES_PORT_EFFECTIVE,
     )
 
 
@@ -323,10 +328,15 @@ def fetch_sensor_data(session, base_url, time_series, days_back):
                 for point in points:
                     value_dict = point.get("Value", {})
                     if "Numeric" in value_dict and value_dict["Numeric"] is not None:
+                        ts = dateutil.parser.parse(point["Timestamp"])
+                        if ts.tzinfo is None:
+                            ts = ts.replace(tzinfo=timezone.utc)
+                        else:
+                            ts = ts.astimezone(timezone.utc)
                         all_readings.append(
                             {
                                 "sensorid": sensor_id,
-                                "timestamp": point["Timestamp"],
+                                "timestamp": ts,
                                 "value": float(value_dict["Numeric"]),
                                 "quality": "good",
                             }
@@ -453,5 +463,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
     sys.exit(main())

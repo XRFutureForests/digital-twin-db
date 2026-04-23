@@ -87,6 +87,8 @@ CREATE TABLE shared.Species (
     GrowthRate VARCHAR(20) CHECK (GrowthRate IN ('very_slow', 'slow', 'moderate', 'fast', 'very_fast')),
     ShadeTolerance VARCHAR(20) CHECK (ShadeTolerance IN ('very_low', 'low', 'moderate', 'high', 'very_high')),
     IsDeciduous BOOLEAN,
+    GBIFKey INTEGER,
+    GBIFAcceptedName VARCHAR(200),
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ
 );

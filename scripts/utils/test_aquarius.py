@@ -11,7 +11,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment
-env_path = Path(__file__).parent.parent / "docker" / ".env"
+env_path = Path(__file__).parent.parent.parent / "docker" / ".env"
 load_dotenv(env_path)
 
 # Aquarius configuration
