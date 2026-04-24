@@ -6,198 +6,102 @@ Linear: [XRFF team](https://linear.app/geosense-ufr/team/XRFF/all)
 
 ---
 
-## Phase 1 — Foundation (NOW — Days 1-2)
+## Current State
 
-| Priority | Issue | Status | Owner | Effort |
-|---|---|---|---|---|
-| 🔴 | [XRFF-72](https://linear.app/geosense-ufr/issue/XRFF-72) Fix sensor DateTime timezone | ✅ DONE | Max | 1-2h |
-| 🔴 | [XRFF-133](https://linear.app/geosense-ufr/issue/XRFF-133) Add GBIF taxon key to shared.species | ✅ DONE | Max | 1-2h |
-| 🟡 | [XRFF-100](https://linear.app/geosense-ufr/issue/XRFF-100) Run sensor import to prod DB | ✅ DONE | Max | 2h |
-| 🟡 | [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) Fill missing tree heights via allometry | ✅ DONE (blocked by XRFF-131) | Max | 3-4h |
+🟢 **Foundation complete.** Sensor data in prod DB. Tree height gap-fill ready to run.
 
----
+### Completed (2026-04-23)
 
-## Phase 2 — Sensor Pipeline + DB Enhancements (Days 3-5)
+| Issue | Status | Notes |
+|---|---|---|
+| [XRFF-72](https://linear.app/geosense-ufr/issue/XRFF-72) Fix DateTime timezone | ✅ DONE | `import_sensor_data.py` + UE Editor UTC setting |
+| [XRFF-133](https://linear.app/geosense-ufr/issue/XRFF-133) Add GBIF taxon key | ✅ DONE | `GBIFKey INTEGER` + `GBIFAcceptedName` columns added |
+| [XRFF-100](https://linear.app/geosense-ufr/issue/XRFF-100) Run sensor import to prod | ✅ DONE | 372K+ readings imported (Soil_Moisture, Soil_Temp, Stem_Radial, Sap_Flow) |
 
-Depends on Phase 1 complete.
+### In Progress
 
-| Issue | Status | Description | Depends On |
-|---|---|---|---|
-| [XRFF-100](https://linear.app/geosense-ufr/issue/XRFF-100) | ⬜ TODO | Run sensor data import to prod DB | XRFF-72 |
-| [XRFF-106](https://linear.app/geosense-ufr/issue/XRFF-106) | ⬜ TODO | Real-time sensor pipeline to Unreal | XRFF-100 |
-| [XRFF-107](https://linear.app/geosense-ufr/issue/XRFF-107) | ⬜ TODO | Sensor data on tree objects in VR | XRFF-106 |
-| [XRFF-36](https://linear.app/geosense-ufr/issue/XRFF-36) | ⬜ TODO | Inventory-driven growpy generation | XRFF-133 |
+| Issue | Status | Notes |
+|---|---|---|
+| [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) Fill missing tree heights | ⬜ READY TO RUN | Script written, HeightSource column added, pylometree git dep works — **unblocked** |
+
+### Backlog
+
+| Issue | Status | Notes |
+|---|---|---|
+| [XRFF-106](https://linear.app/geosense-ufr/issue/XRFF-106) Real-time sensor pipeline to Unreal | ⬜ TODO | Depends on XRFF-100 complete |
+| [XRFF-107](https://linear.app/geosense-ufr/issue/XRFF-107) Sensor data on tree objects in VR | ⬜ TODO | Depends on XRFF-106 |
+| [XRFF-136](https://linear.app/geosense-ufr/issue/XRFF-136) Crown diameter + structural params | ⬜ TODO | Better catalog matching for UE tree selection |
 
 ---
 
 ## Issue Sequence
 
 ```
-XRFF-72  (fix DateTime timezone — 🔴 HIGH, Day 1)
-    └─► XRFF-100 (run sensor data import into prod DB — 🔴 HIGH, Day 2)
-            └─► XRFF-106 (real-time sensor pipeline to Unreal — 🟡 MEDIUM, Day 3-5)
-                XRFF-107 (sensor data on tree objects in VR)
-                dashboard sensor display
-
-XRFF-39  (fill missing tree heights — 🔴 HIGH, Day 2, parallel track)
+✅ XRFF-72 → ✅ XRFF-133 → ✅ XRFF-100
+                              │
+                              ├─► 🟢 XRFF-106 (real-time sensor pipeline to Unreal)
+                              │       └─► XRFF-107 (sensor data on tree objects in VR)
+                              │
+✅ XRFF-39 (READY TO RUN)
+    └─► fill_missing_heights.py + HeightSource column
     └─► full inventory spawn without gaps
 
-XRFF-133 (add GBIF taxon key to shared.species — 🔴 HIGH, Day 1, parallel track)
-    └─► XRFF-36 (inventory-driven growpy generation — 🟡 MEDIUM, Day 3-5)
+✅ XRFF-133 → XRFF-136 (crown diameter for better catalog matching)
 ```
-
----
-
-## XRFF-72 — Fix DateTime timezone handling (Medium, assignee: Max)
-
-**Status:** ✅ DONE — fixed in `scripts/import/import_sensor_data.py`
-
-**Context:** Aquarius exports timestamps. `import_sensor_data.py` inserts them into `sensor.SensorReadings`. The issue: UE DataTable imports sap flow CSV and shifts timestamps by +0200 (local timezone applied twice, or UTC offset not stripped).
-
-**Two aspects to fix:**
-
-### A) Python import script (digital-twin-db side)
-
-In `scripts/import/import_sensor_data.py`, when parsing Aquarius timestamps before DB insertion, ensure all datetimes are explicitly UTC:
-
-```python
-from datetime import timezone
-import dateutil.parser
-
-# When parsing Aquarius timestamps:
-ts = dateutil.parser.parse(raw_timestamp)
-if ts.tzinfo is None:
-    ts = ts.replace(tzinfo=timezone.utc)
-else:
-    ts = ts.astimezone(timezone.utc)
-```
-
-Verify: after import, run `SELECT MIN(timestamp), MAX(timestamp) FROM sensor.sensor_readings;` — timestamps should be in UTC (no +0200 offset).
-
-### B) UE DataTable import (Unreal side — Paul)
-
-In UE Editor: **Edit → Editor Preferences → Region & Language → Display Timezone → set to UTC**. Applies globally to all CSV DateTime imports. Without this, UE shifts imported timestamps by the local timezone offset.
 
 ---
 
 ## XRFF-39 — Fill missing tree heights (High, assignee: Max)
 
-**Status:** ✅ DONE — `scripts/import/fill_missing_heights.py` written; blocked by XRFF-131 (pylometree on PyPI)
+**Status:** ⬜ **READY TO RUN** — unblocked (pylometree git dep works, no PyPI needed)
 
-**Context:** ~20% of Ecosense inventory records have `Height_m IS NULL`. PCG graph selects the wrong growth-stage asset variant for these trees. `pylometree` H-D models can predict height from species + DBH.
+**Context:** ~20% of Ecosense inventory records have `Height_m IS NULL`. PCG graph selects wrong growth-stage asset variant. `pylometree` H-D models predict height from species + DBH.
 
-**Prerequisite:** XRFF-131 (pylometree published to PyPI) complete.
+### What's done
 
-### Steps
+- `scripts/import/fill_missing_heights.py` written
+- `HeightSource VARCHAR(50)` column added to `trees.Trees` schema (`13-trees-schema.sql`)
+- Script auto-runs `ALTER TABLE ... ADD COLUMN IF NOT EXISTS HeightSource` on existing DBs
+- pylometree available via git dep in growpy (XRFF-131 decision: skip PyPI)
 
-**1. Write `scripts/import/fill_missing_heights.py`**
-
-```python
-#!/usr/bin/env python3
-"""Fill NULL Height_m values in trees.Trees using pylometree H-D allometric models."""
-
-import psycopg2
-from pylometree.models.hd import fit_hd_model, predict_height
-from pylometree.yield_tables import get_yield_table
-
-# Connect to DB
-conn = psycopg2.connect(...)
-
-# Fetch trees with missing heights (include DBH + species for allometric prediction)
-cur = conn.cursor()
-cur.execute("""
-    SELECT t.VariantID, s.CommonName, st.DBH_cm
-    FROM trees.Trees t
-    JOIN trees.Species s ON t.SpeciesID = s.SpeciesID
-    JOIN trees.Stems st ON st.TreeVariantID = t.VariantID
-    WHERE t.Height_m IS NULL AND st.DBH_cm IS NOT NULL
-""")
-rows = cur.fetchall()
-
-# For each species, fit/load H-D model and predict
-# Group by species for efficiency
-species_models = {}
-updates = []
-
-for variant_id, species, dbh_cm in rows:
-    if species not in species_models:
-        yt = get_yield_table(species)
-        species_models[species] = fit_hd_model(yt)
-    
-    predicted_h = species_models[species].predict(dbh_cm)
-    updates.append((predicted_h, 'allometric_pylometree', variant_id))
-
-# Batch update
-cur.executemany("""
-    UPDATE trees.Trees 
-    SET Height_m = %s, HeightSource = %s
-    WHERE VariantID = %s
-""", updates)
-conn.commit()
-print(f"Updated {len(updates)} records")
-```
-
-**2. Add `HeightSource` column if not present**
-
-```sql
-ALTER TABLE trees.Trees 
-ADD COLUMN IF NOT EXISTS HeightSource VARCHAR(50) DEFAULT 'measured';
-```
-
-**3. Dry-run first**
+### Run it
 
 ```bash
+# Dry-run first
 python scripts/import/fill_missing_heights.py --dry-run
-```
 
-Review predicted values — spot-check a few species against known averages.
+# Review predicted values — spot-check species against known averages
 
-**4. Run and verify**
-
-```bash
+# Run
 python scripts/import/fill_missing_heights.py
-# Verify:
+
+# Verify
 # SELECT COUNT(*) FROM trees.Trees WHERE Height_m IS NULL;  -- should be 0
 # SELECT HeightSource, COUNT(*) FROM trees.Trees GROUP BY HeightSource;
 ```
 
 ---
 
-## XRFF-100 — Run sensor data import to populate prod DB (Backlog → Day 2)
+## XRFF-106 — Real-time sensor pipeline to Unreal (Medium, assignee: TBD)
 
-**Status:** ⬜ TODO — **Day 2, blocked by XRFF-72**
+**Status:** ⬜ TODO — **depends on XRFF-100 complete**
 
-**Context:** `scripts/import/import_sensor_data.py` exists and handles Sap_Flow, Soil_Moisture, Stem_Radial_Variation, Barometric_Pressure, Soil_Temperature from Aquarius. Not yet run in production.
+**Context:** Sensor data now in prod DB (`sensor.sensor_readings`). Need pipeline to stream readings to Unreal for VR visualization.
 
-### Steps
+### Open questions
 
-**1. Prerequisites**
+- Push (WebSocket/MQTT) vs pull (PostgREST polling) architecture?
+- Update frequency? (Soil_Moisture ~hourly, Sap_Flow ~every 15min)
+- UE side: DataTable refresh or direct DB connection?
 
-- VPN connected to University of Freiburg network (Aquarius requires this)
-- Docker stack running: `docker compose -f docker/docker-compose.yml up -d`
-- `.env` file has `AQUARIUS_HOSTNAME`, `AQUARIUS_USERNAME`, `AQUARIUS_PASSWORD`
+---
 
-**2. Test connectivity**
+## See Also
 
-```bash
-python scripts/utils/test_aquarius.py
-```
-
-**3. Run import**
-
-```bash
-python scripts/import/import_sensor_data.py
-# Or the wrapper:
-python scripts/import/sync_aquarius.py
-```
-
-**4. Verify data**
-
-```sql
-SELECT sensor_type, COUNT(*), MIN(timestamp), MAX(timestamp)
-FROM sensor.sensor_readings
-GROUP BY sensor_type;
-```
+- [XRFF-100](https://linear.app/geosense-ufr/issue/XRFF-100) — sensor import results (372K+ readings)
+- [XRFF-133](https://linear.app/geosense-ufr/issue/XRFF-133) — GBIF keys now in `shared.Species`
+- `docs/database-schema.md` — current schema
+- `docs/audit-and-implementation-plan.md` — full audit plan
 
 Expect: Sap_Flow, Soil_Moisture rows covering the last 30 days (DAYS_BACK = 30 in script).
 
