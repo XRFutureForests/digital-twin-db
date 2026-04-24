@@ -8,22 +8,16 @@ Linear: [XRFF team](https://linear.app/geosense-ufr/team/XRFF/all)
 
 ## Current State
 
-🟢 **Foundation complete.** Sensor data in prod DB. Tree height gap-fill in progress.
+🟢 **Foundation complete.** Sensor data + tree heights in prod DB. Real-time sensor pipeline next.
 
 ### Completed (2026-04-24)
 
 | Issue | Status | Notes |
 |---|---|---|
-| [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) Fill missing tree heights | ✅ IN PROGRESS | Environment updated, pylometree installed locally |
 | [XRFF-72](https://linear.app/geosense-ufr/issue/XRFF-72) Fix DateTime timezone | ✅ DONE | `import_sensor_data.py` + UE Editor UTC setting |
 | [XRFF-133](https://linear.app/geosense-ufr/issue/XRFF-133) Add GBIF taxon key | ✅ DONE | `GBIFKey INTEGER` + `GBIFAcceptedName` columns added |
 | [XRFF-100](https://linear.app/geosense-ufr/issue/XRFF-100) Run sensor import to prod | ✅ DONE | 372K+ readings imported (Soil_Moisture, Soil_Temp, Stem_Radial, Sap_Flow) |
-
-### In Progress
-
-| Issue | Status | Notes |
-|---|---|---|
-| [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) Fill missing tree heights | ⬜ RUNNING | Script ready, dependencies installed |
+| [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) Fill missing tree heights | ✅ DONE | 299/299 predicted via Chapman-Richards; 1 NULL remains (no species/DBH data) |
 
 ### Backlog
 
@@ -43,7 +37,7 @@ Linear: [XRFF team](https://linear.app/geosense-ufr/team/XRFF/all)
                               ├─► 🟢 XRFF-106 (real-time sensor pipeline to Unreal)
                               │       └─► XRFF-107 (sensor data on tree objects in VR)
                               │
-✅ XRFF-39 (READY TO RUN)
+✅ XRFF-39 (DONE — 299 heights filled)
     └─► fill_missing_heights.py + HeightSource column
     └─► full inventory spawn without gaps
 
@@ -54,7 +48,7 @@ Linear: [XRFF team](https://linear.app/geosense-ufr/team/XRFF/all)
 
 ## XRFF-39 — Fill missing tree heights (High, assignee: Max)
 
-**Status:** ⬜ **RUNNING** — dependencies installed, ready to execute
+**Status:** ✅ **DONE** — 299 trees filled, 1 skipped (no SpeciesID/DBH)
 
 **Context:** ~20% of Ecosense inventory records have `Height_m IS NULL`. PCG graph selects wrong growth-stage asset variant. `pylometree` H-D models predict height from species + DBH.
 
@@ -104,69 +98,3 @@ python scripts/import/fill_missing_heights.py
 - [XRFF-133](https://linear.app/geosense-ufr/issue/XRFF-133) — GBIF keys now in `shared.Species`
 - `docs/database-schema.md` — current schema
 - `docs/audit-and-implementation-plan.md` — full audit plan
-
-Expect: Sap_Flow, Soil_Moisture rows covering the last 30 days (DAYS_BACK = 30 in script).
-
-**5. Set up recurring sync**
-
-Once confirmed working, schedule via cron or extend `sync_aquarius.py` to run on a timer. Target: daily sync at 03:00 UTC.
-
-```cron
-0 3 * * * cd /path/to/digital-twin-db && python scripts/import/sync_aquarius.py >> logs/sync.log 2>&1
-```
-
-**6. Update PostgREST API view** (if not already exposed)
-
-Verify `sensor.sensor_readings` is accessible via PostgREST for Unreal Engine:
-
-```bash
-curl "http://localhost:3000/sensor_readings?sensor_type=eq.Sap_Flow&limit=5" \
-  -H "apikey: <anon-key>"
-```
-
----
-
-## XRFF-133 — Add GBIF taxon key to shared.species (High, assignee: Max)
-
-**Status:** ✅ DONE — schema + load SQL + refresh function updated; CSV already had GBIFKey/GBIFAcceptedName
-
-**Goal:** Add `gbif_taxon_key` column to `shared.species` table and populate with GBIF Species Match API lookups. Required for cross-system species matching between digital-twin-db and growpy.
-
-### Steps
-
-**1. Add column to species table**
-
-```sql
-ALTER TABLE shared.species 
-ADD COLUMN IF NOT EXISTS gbif_taxon_key INTEGER;
-```
-
-**2. Populate via GBIF Species Match API**
-
-```bash
-# For each species in shared.species:
-curl "https://api.gbif.org/v1/species/match?name=<species_name>"
-# Extract: usageKey from response
-```
-
-**3. Verify**
-
-```sql
-SELECT species_id, scientific_name, gbif_taxon_key 
-FROM shared.species 
-WHERE gbif_taxon_key IS NULL;
--- Should return 0 rows
-```
-
----
-
-## See Also
-
-- `scripts/import/import_sensor_data.py` — Aquarius → DB pipeline
-- `scripts/import/sync_aquarius.py` — wrapper with Docker checks
-- `scripts/utils/test_aquarius.py` — connectivity test
-- [XRFF-72](https://linear.app/geosense-ufr/issue/XRFF-72) — timezone fix (blocks XRFF-100)
-- [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) — height gap-fill
-- [XRFF-100](https://linear.app/geosense-ufr/issue/XRFF-100) — sensor import run
-- [XRFF-133](https://linear.app/geosense-ufr/issue/XRFF-133) — GBIF taxon key
-- [20260423-current-state-assessment](../../xr-future-forests-lab/obsidian/xr-future-forests-lab/07-UPDATES/20260423-current-state-assessment.md) — full project assessment

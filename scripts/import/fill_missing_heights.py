@@ -3,7 +3,7 @@
 Fill NULL Height_m values in trees.Trees using pylometree H-D allometric models.
 
 Requires:
-    pip install pylometree  (XRFF-131: pylometree published to PyPI)
+    pip install pylometree
 
 Usage:
     python fill_missing_heights.py            # apply updates
@@ -13,24 +13,24 @@ Usage:
 import argparse
 import os
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 import psycopg2
 from dotenv import load_dotenv
 
 try:
-    from pylometree.models.hd import fit_hd_model
-    from pylometree.yield_tables import get_yield_table
+    from pylometree import registry
 except ImportError:
     print("pylometree not installed. Run: pip install pylometree")
-    print("(Requires XRFF-131: pylometree published to PyPI)")
     sys.exit(1)
 
 env_path = Path(__file__).parent.parent.parent / "docker" / ".env"
 load_dotenv(env_path)
 
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
+# Override to localhost when running outside Docker
+if POSTGRES_HOST == "db":
+    POSTGRES_HOST = "localhost"
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_DATABASE = os.getenv("POSTGRES_DB", "postgres")
@@ -53,17 +53,29 @@ def get_db_connection():
 
 def ensure_height_source_column(conn):
     cur = conn.cursor()
-    cur.execute("""
-        ALTER TABLE trees.Trees
-        ADD COLUMN IF NOT EXISTS HeightSource VARCHAR(50) DEFAULT 'measured'
-    """)
-    conn.commit()
+    cur.execute(
+        """
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'trees' AND table_name = 'trees'
+          AND column_name = 'heightsource'
+    """
+    )
+    if cur.fetchone():
+        cur.close()
+        return
+    # Column missing — requires supabase_admin; add via init SQL or manually
     cur.close()
+    raise RuntimeError(
+        "HeightSource column missing from trees.Trees. "
+        "Run: docker exec dftdb-db psql -U supabase_admin -d postgres -c "
+        "\"ALTER TABLE trees.Trees ADD COLUMN IF NOT EXISTS HeightSource VARCHAR(50) DEFAULT 'measured'\""
+    )
 
 
 def fetch_trees_missing_height(conn):
     cur = conn.cursor()
-    cur.execute("""
+    cur.execute(
+        """
         SELECT t.VariantID, s.ScientificName, st.DBH_cm
         FROM trees.Trees t
         JOIN shared.Species s ON t.SpeciesID = s.SpeciesID
@@ -71,30 +83,33 @@ def fetch_trees_missing_height(conn):
         WHERE t.Height_m IS NULL
           AND st.DBH_cm IS NOT NULL
           AND st.StemNumber = 1
-    """)
+    """
+    )
     rows = cur.fetchall()
     cur.close()
     return rows
 
 
-def build_species_models(rows):
-    species_dbhs = defaultdict(list)
-    for _, scientific_name, dbh_cm in rows:
-        species_dbhs[scientific_name].append(dbh_cm)
-
-    models = {}
-    for scientific_name in species_dbhs:
-        try:
-            yt = get_yield_table(scientific_name)
-            models[scientific_name] = fit_hd_model(yt)
-        except Exception as e:
-            print(f"  Warning: no H-D model for '{scientific_name}': {e}")
-    return models
+def get_hd_model(scientific_name: str):
+    """Return species-specific H-D model from registry, else generic fallback."""
+    genus = scientific_name.split()[0].lower()
+    # prefer species match, then genus, then generic
+    for model_type in ("hd",):
+        candidates = registry.query(model_type=model_type, species=scientific_name)
+        if not candidates:
+            candidates = registry.query(model_type=model_type, species=genus)
+        if candidates:
+            return candidates[0]
+    return registry.get("chapman_richards_generic_hd")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Fill missing tree heights via allometry")
-    parser.add_argument("--dry-run", action="store_true", help="Preview without updating")
+    parser = argparse.ArgumentParser(
+        description="Fill missing tree heights via allometry"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview without updating"
+    )
     args = parser.parse_args()
 
     print("=" * 60)
@@ -113,20 +128,15 @@ def main():
         conn.close()
         return 0
 
-    print("\nFitting H-D models per species...")
-    models = build_species_models(rows)
-
+    print("\nPredicting heights via registry H-D models...")
     updates = []
     skipped = 0
 
     for variant_id, scientific_name, dbh_cm in rows:
-        model = models.get(scientific_name)
-        if model is None:
-            skipped += 1
-            continue
         try:
-            predicted_h = float(model.predict(dbh_cm))
-            updates.append((predicted_h, 'allometric_pylometree', variant_id))
+            model = get_hd_model(scientific_name)
+            predicted_h = float(model.predict(dsob=float(dbh_cm)))
+            updates.append((predicted_h, "allometric_pylometree", variant_id))
         except Exception as e:
             print(f"  Warning: prediction failed for VariantID={variant_id}: {e}")
             skipped += 1
@@ -142,7 +152,8 @@ def main():
         return 0
 
     cur = conn.cursor()
-    cur.executemany("""
+    cur.executemany(
+        """
         UPDATE trees.Trees
         SET Height_m = %s,
             HeightSource = %s,
@@ -150,7 +161,9 @@ def main():
             UpdatedAt = NOW(),
             UpdatedBy = 'fill_missing_heights'
         WHERE VariantID = %s
-    """, updates)
+    """,
+        updates,
+    )
     conn.commit()
     cur.close()
 
@@ -160,12 +173,14 @@ def main():
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM trees.Trees WHERE Height_m IS NULL")
     remaining = cur.fetchone()[0]
-    cur.execute("""
+    cur.execute(
+        """
         SELECT HeightSource, COUNT(*)
         FROM trees.Trees
         GROUP BY HeightSource
         ORDER BY HeightSource
-    """)
+    """
+    )
     source_counts = cur.fetchall()
     cur.close()
     conn.close()
