@@ -5,12 +5,12 @@ channels:
 dependencies:
   # Python dependencies
   - python=3.12
-  - pandas=2.2.0
-  - python-dotenv=1.0.0
-  - psycopg2=2.9.9
-  - sqlalchemy=2.0
+  - pandas>=2.2.0
+  - python-dotenv>=1.0.0
+  - psycopg2>=2.9.9
+  - sqlalchemy>=2.0
   - jupyter=1.0.0
-  - notebook=7.1.0
+  - notebook>=7.1.0
   - pip
   # R dependencies
   - r-base=4.3
@@ -29,5 +29,7 @@ dependencies:
   # Python packages via pip
   - pip:
       - pyproj>=3.4.0
-      - supabase==2.26.0
+      - supabase>=2.26.0
       - pygbif>=0.6.0 # GBIF API for species name validation
+      - pylometree @ git+https://github.com/geosense-ufr/pylometree.git
+      - openyieldtables # For real-world yield data calibration

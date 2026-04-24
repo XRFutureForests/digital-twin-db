@@ -2,18 +2,19 @@
 
 Linear: [XRFF team](https://linear.app/geosense-ufr/team/XRFF/all)
 
-**Last updated:** 2026-04-23
+**Last updated:** 2026-04-24
 
 ---
 
 ## Current State
 
-🟢 **Foundation complete.** Sensor data in prod DB. Tree height gap-fill ready to run.
+🟢 **Foundation complete.** Sensor data in prod DB. Tree height gap-fill in progress.
 
-### Completed (2026-04-23)
+### Completed (2026-04-24)
 
 | Issue | Status | Notes |
 |---|---|---|
+| [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) Fill missing tree heights | ✅ IN PROGRESS | Environment updated, pylometree installed locally |
 | [XRFF-72](https://linear.app/geosense-ufr/issue/XRFF-72) Fix DateTime timezone | ✅ DONE | `import_sensor_data.py` + UE Editor UTC setting |
 | [XRFF-133](https://linear.app/geosense-ufr/issue/XRFF-133) Add GBIF taxon key | ✅ DONE | `GBIFKey INTEGER` + `GBIFAcceptedName` columns added |
 | [XRFF-100](https://linear.app/geosense-ufr/issue/XRFF-100) Run sensor import to prod | ✅ DONE | 372K+ readings imported (Soil_Moisture, Soil_Temp, Stem_Radial, Sap_Flow) |
@@ -22,7 +23,7 @@ Linear: [XRFF team](https://linear.app/geosense-ufr/team/XRFF/all)
 
 | Issue | Status | Notes |
 |---|---|---|
-| [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) Fill missing tree heights | ⬜ READY TO RUN | Script written, HeightSource column added, pylometree git dep works — **unblocked** |
+| [XRFF-39](https://linear.app/geosense-ufr/issue/XRFF-39) Fill missing tree heights | ⬜ RUNNING | Script ready, dependencies installed |
 
 ### Backlog
 
@@ -53,7 +54,7 @@ Linear: [XRFF team](https://linear.app/geosense-ufr/team/XRFF/all)
 
 ## XRFF-39 — Fill missing tree heights (High, assignee: Max)
 
-**Status:** ⬜ **READY TO RUN** — unblocked (pylometree git dep works, no PyPI needed)
+**Status:** ⬜ **RUNNING** — dependencies installed, ready to execute
 
 **Context:** ~20% of Ecosense inventory records have `Height_m IS NULL`. PCG graph selects wrong growth-stage asset variant. `pylometree` H-D models predict height from species + DBH.
 
@@ -62,7 +63,8 @@ Linear: [XRFF team](https://linear.app/geosense-ufr/team/XRFF/all)
 - `scripts/import/fill_missing_heights.py` written
 - `HeightSource VARCHAR(50)` column added to `trees.Trees` schema (`13-trees-schema.sql`)
 - Script auto-runs `ALTER TABLE ... ADD COLUMN IF NOT EXISTS HeightSource` on existing DBs
-- pylometree available via git dep in growpy (XRFF-131 decision: skip PyPI)
+- pylometree installed locally from `/home/max/git/pylometree`
+- Environment updated in `environment.yml` with all dependencies
 
 ### Run it
 
