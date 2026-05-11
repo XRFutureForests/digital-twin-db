@@ -2,6 +2,36 @@
 
 Complete reference for the database architecture, services, and operations.
 
+## Canonical Documentation (New)
+
+| Document | What it covers |
+|---|---|
+| [project/requirements.md](project/requirements.md) | Functional requirements (FR-XXX-NNN) with MoSCoW |
+| [project/architecture.md](project/architecture.md) | arc42 system architecture with C4 diagrams |
+| [project/tech_stack.md](project/tech_stack.md) | Technology versions, service inventory |
+| [project/database_schema.md](project/database_schema.md) | Canonical schema (supersedes database-schema.md) |
+| [project/api_spec.md](project/api_spec.md) | PostgREST API spec (supersedes api-quick-reference.md) |
+| [project/infrastructure.md](project/infrastructure.md) | Docker services, ports, env vars |
+| [project/runbook.md](project/runbook.md) | Operations guide (supersedes deployment-guide.md) |
+| [principles.md](principles.md) | Development principles and anti-patterns |
+| [documentation_standards.md](documentation_standards.md) | Documentation rules |
+
+## Task Management
+
+| Document | What it covers |
+|---|---|
+| [tasks/README.md](tasks/README.md) | Task workflow, Linear XRFF team integration |
+| [tasks/kanban_board.md](tasks/kanban_board.md) | Live kanban board |
+
+## ADRs and Guides
+
+| Document | What it covers |
+|---|---|
+| [reference/README.md](reference/README.md) | Reference hub: ADRs, guides, manuals |
+| [reference/adrs/adr-001-postgresql-postgis.md](reference/adrs/adr-001-postgresql-postgis.md) | ADR: PostgreSQL+PostGIS selection |
+| [reference/adrs/adr-003-self-hosted-supabase.md](reference/adrs/adr-003-self-hosted-supabase.md) | ADR: Self-hosted Supabase rationale |
+| [reference/guides/01-postgrest-schema-exposure-pattern.md](reference/guides/01-postgrest-schema-exposure-pattern.md) | Guide: PostgREST schema exposure pattern |
+
 ## 📚 Documentation Index
 
 ### Core Documentation
