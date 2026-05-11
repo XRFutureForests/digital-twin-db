@@ -1,0 +1,600 @@
+# Database Schema: Digital Forest Twin Database
+
+**Document Version:** 1.0
+**Date:** 2026-05-11
+**Status:** Active
+
+<!-- DOC_KIND: reference -->
+<!-- DOC_ROLE: canonical -->
+<!-- READ_WHEN: Read when you need entities, relationships, constraints, column types, or migration-facing schema facts. -->
+<!-- SKIP_WHEN: Skip when you only need endpoint contracts or deployment steps. -->
+<!-- PRIMARY_SOURCES: docker/volumes/db/init/11-shared-schema.sql, docker/volumes/db/init/12-pointclouds-schema.sql, docker/volumes/db/init/13-trees-schema.sql, docker/volumes/db/init/14-sensor-schema.sql, docker/volumes/db/init/15-environments-schema.sql, docker/volumes/db/init/17-imagery-schema.sql, docker/volumes/db/init/18-tree-morphology-schema.sql -->
+
+<!-- SCOPE: Database schema (ER diagrams, table definitions, data dictionary, indexes, constraints, migrations, normalization) ONLY. -->
+<!-- DO NOT add here: API endpoints → api_spec.md, Tech stack versions → docs/ARCHITECTURE.md, Deployment → docs/deployment-guide.md, Docker setup → docs/docker/ -->
+
+## Quick Navigation
+
+- [Docs Hub](../README.md)
+- [Architecture](../ARCHITECTURE.md)
+- [API Spec](api_spec.md)
+- [Deployment Guide](../deployment-guide.md)
+- [Existing DB Overview](../database-overview.md)
+- [Existing DB ERD (DBML)](../database-erd.dbml)
+
+## Agent Entry
+
+| Signal | Value |
+|--------|-------|
+| Purpose | Documents entities, relationships, indexes, constraints, and migration-facing schema details. |
+| Read When | You need exact database structure, column types, integrity rules, or schema lineage. |
+| Skip When | You only need API contracts or operational commands. |
+| Canonical | Yes |
+| Next Docs | [Architecture](../ARCHITECTURE.md), [API Spec](api_spec.md), [DB Overview](../database-overview.md) |
+| Primary Sources | `docker/volumes/db/init/` SQL migration files (11–18, 20–24) |
+
+---
+
+## 1. Introduction
+
+### 1.1 Purpose
+
+This document specifies the database schema, entity relationships, and data dictionary for the Digital Forest Twin Database. The database stores field measurements, LiDAR scan data, sensor time-series, environmental conditions, and imagery for forest plot management and VR digital twin generation.
+
+### 1.2 Database System
+
+**PostgreSQL 15** with **PostGIS 3** (geometry types in the `extensions` schema, aliased as `extensions.GEOMETRY`). All spatial columns use WGS84 (EPSG:4326). The deployment runs via Docker — see `docker/docker-compose.yml`.
+
+### 1.3 Schema Organization
+
+The database is organized into **seven domain schemas** plus `public` (PostgREST-facing views):
+
+| Schema | Purpose | Primary Tables |
+|--------|---------|----------------|
+| `shared` | Reference and cross-domain data | Locations, Species, Scenarios, Campaigns, Plots, Processes, AuditLog, ManagementEvents, DisturbanceEvents |
+| `trees` | Tree measurements and variants | Trees, Stems, PhenologyObservations, Deadwood, GroundVegetation, morphology lookups |
+| `pointclouds` | LiDAR scan data and processing lineage | PointClouds, ScannerTypes, Scanners |
+| `sensor` | Environmental sensor hardware and time-series | SensorTypes, Sensors, SensorReadings, sensor_tree_links |
+| `environments` | Environmental condition variants | Environments |
+| `imagery` | Aerial and ground-based images | Images |
+| `public` | PostgREST API views (mirrors above schemas) | Views only — no data |
+
+### 1.4 Normalization
+
+Third Normal Form (3NF) throughout. Selective use of JSONB (`ExternalMetadata` on `sensor.Sensors`, `InputData`/`OutputData` on `shared.ProcessingJobs`) for semi-structured external system payloads. All spatial data uses PostGIS geometry columns rather than separate lat/lon columns.
+
+---
+
+## 2. Entity Relationship Diagram
+
+### 2.1 Core Domain ER Diagram
+
+```mermaid
+erDiagram
+    SHARED_LOCATIONS ||--o{ SHARED_PLOTS : "subdivided into"
+    SHARED_LOCATIONS ||--o{ TREES_TREES : "contains"
+    SHARED_LOCATIONS ||--o{ SENSOR_SENSORS : "hosts"
+    SHARED_LOCATIONS ||--o{ POINTCLOUDS_POINTCLOUDS : "covered by"
+    SHARED_LOCATIONS ||--o{ ENVIRONMENTS_ENVIRONMENTS : "described by"
+    SHARED_LOCATIONS ||--o{ IMAGERY_IMAGES : "documented by"
+    SHARED_LOCATIONS }o--|| SHARED_SOILTYPES : "classified as"
+    SHARED_LOCATIONS }o--|| SHARED_CLIMATEZONES : "climate"
+
+    SHARED_SPECIES ||--o{ TREES_TREES : "identified as"
+    SHARED_SCENARIOS ||--o{ TREES_TREES : "scenario"
+    SHARED_SCENARIOS ||--o{ SENSOR_SENSORREADINGS : "scenario"
+    SHARED_VARIANTTYPES ||--o{ TREES_TREES : "variant type"
+    SHARED_VARIANTTYPES ||--o{ POINTCLOUDS_POINTCLOUDS : "variant type"
+    SHARED_CAMPAIGNS ||--o{ TREES_TREES : "collected in"
+    SHARED_CAMPAIGNS ||--o{ SENSOR_SENSORS : "deployed in"
+    SHARED_CAMPAIGNS ||--o{ POINTCLOUDS_POINTCLOUDS : "acquired in"
+    SHARED_PROCESSES ||--o{ TREES_TREES : "processed by"
+    SHARED_PROCESSES ||--o{ POINTCLOUDS_POINTCLOUDS : "processed by"
+
+    TREES_TREES ||--o{ TREES_STEMS : "has stems"
+    TREES_TREES ||--o{ TREES_PHENOLOGYOBSERVATIONS : "observed in"
+    TREES_TREES ||--o{ TREES_DEADWOOD : "source of"
+    TREES_TREES }o--|| TREES_TREESTATUS : "status"
+    TREES_TREES }|--|| TREES_TREES : "parent variant"
+    TREES_TREES }o--|| POINTCLOUDS_POINTCLOUDS : "detected from"
+    TREES_TREES }o--|| SHARED_PLOTS : "located in"
+
+    SENSOR_SENSORS }o--|| SENSOR_SENSORTYPES : "type"
+    SENSOR_SENSORS ||--o{ SENSOR_SENSORREADINGS : "produces"
+    SENSOR_SENSORS ||--o{ SENSOR_TREE_LINKS : "linked to"
+    TREES_TREES ||--o{ SENSOR_TREE_LINKS : "monitored by"
+
+    POINTCLOUDS_POINTCLOUDS }|--|| POINTCLOUDS_POINTCLOUDS : "parent variant"
+    POINTCLOUDS_POINTCLOUDS }o--|| POINTCLOUDS_SCANNERS : "scanned with"
+
+    SHARED_LOCATIONS {
+        int LocationID PK
+        varchar LocationName
+        geometry Boundary
+        geometry CenterPoint
+        numeric Elevation_m
+        int SoilTypeID FK
+        int ClimateZoneID FK
+    }
+
+    TREES_TREES {
+        int VariantID PK
+        uuid TreeEntityID
+        int ParentVariantID FK
+        int LocationID FK
+        int SpeciesID FK
+        date MeasurementDate
+        varchar DataSourceType
+        numeric Height_m
+        geometry Position
+        geometry CrownBoundary
+    }
+
+    SENSOR_SENSORREADINGS {
+        bigint ReadingID PK
+        int SensorID FK
+        timestamptz Timestamp
+        numeric Value
+        varchar Quality
+    }
+
+    POINTCLOUDS_POINTCLOUDS {
+        int VariantID PK
+        int ParentVariantID FK
+        int LocationID FK
+        text FilePath
+        varchar PlatformType
+        geometry ScanBounds
+        varchar ProcessingStatus
+    }
+```
+
+### 2.2 Audit and Process ER Diagram
+
+```mermaid
+erDiagram
+    SHARED_AUDITLOG ||--o{ SHARED_AUDITLOG_TREES : "covers"
+    SHARED_AUDITLOG ||--o{ SHARED_AUDITLOG_POINTCLOUDS : "covers"
+    SHARED_AUDITLOG ||--o{ SHARED_AUDITLOG_ENVIRONMENTS : "covers"
+    SHARED_AUDITLOG ||--o{ SHARED_AUDITLOG_STEMS : "covers"
+    TREES_TREES ||--o{ SHARED_AUDITLOG_TREES : "audited via"
+    POINTCLOUDS_POINTCLOUDS ||--o{ SHARED_AUDITLOG_POINTCLOUDS : "audited via"
+
+    SHARED_PROCESSES ||--o{ SHARED_PROCESSMETRICS : "has metrics"
+    SHARED_PROCESSPARAMETERS ||--o{ SHARED_PROCESSPARAMETERS_TREES : "applied to"
+    SHARED_PROCESSPARAMETERS ||--o{ SHARED_PROCESSPARAMETERS_POINTCLOUDS : "applied to"
+    TREES_TREES ||--o{ SHARED_PROCESSPARAMETERS_TREES : "parameterized by"
+    POINTCLOUDS_POINTCLOUDS ||--o{ SHARED_PROCESSPARAMETERS_POINTCLOUDS : "parameterized by"
+```
+
+---
+
+## 3. Data Dictionary
+
+### 3.1 `shared.Locations`
+
+**Description:** Forest plot locations with spatial boundaries, elevation, soil, and climate context. Central reference table — all domain data links back to a Location.
+
+| Column | Type | Null | Default | Constraints | Description |
+|--------|------|------|---------|-------------|-------------|
+| `LocationID` | SERIAL | NO | auto | PRIMARY KEY | Unique location identifier |
+| `LocationName` | VARCHAR(200) | NO | — | UNIQUE | Human-readable location name |
+| `Boundary` | GEOMETRY(Polygon, 4326) | YES | NULL | GIST index | PostGIS polygon defining plot boundary in WGS84 |
+| `CenterPoint` | GEOMETRY(Point, 4326) | YES | NULL | GIST index | Plot center point in WGS84 |
+| `Description` | TEXT | YES | NULL | — | Free-text description |
+| `Elevation_m` | NUMERIC(8,2) | YES | NULL | — | Site elevation in meters |
+| `Slope_deg` | NUMERIC(5,2) | YES | NULL | 0–90 | Slope in degrees |
+| `Aspect` | VARCHAR(3) | YES | NULL | N/NE/E/SE/S/SW/W/NW | Cardinal aspect direction |
+| `SoilTypeID` | INTEGER | YES | NULL | FK → `shared.SoilTypes` | USDA soil classification |
+| `ClimateZoneID` | INTEGER | YES | NULL | FK → `shared.ClimateZones` | Köppen climate zone |
+| `CreatedAt` | TIMESTAMPTZ | NO | NOW() | — | Record creation timestamp |
+| `UpdatedAt` | TIMESTAMPTZ | YES | NULL | auto-updated by trigger | Last update timestamp |
+| `CreatedBy` / `UpdatedBy` | VARCHAR(200) | YES | NULL | — | User attribution |
+
+**Indexes:** `GIST(Boundary)`, `GIST(CenterPoint)`, `(SoilTypeID)`, `(ClimateZoneID)`
+
+---
+
+### 3.2 `shared.Species`
+
+**Description:** Tree species reference with growth characteristics and GBIF validation.
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `SpeciesID` | SERIAL | NO | PRIMARY KEY | — |
+| `ScientificName` | VARCHAR(200) | NO | UNIQUE | Binomial scientific name |
+| `CommonName` | VARCHAR(200) | YES | — | Common name |
+| `MaxHeight_m` | NUMERIC(6,2) | YES | — | Maximum typical height (m) |
+| `MaxDBH_cm` | NUMERIC(6,2) | YES | — | Maximum DBH (cm) |
+| `TypicalLifespan_years` | INTEGER | YES | — | Typical lifespan (years) |
+| `GrowthRate` | VARCHAR(20) | YES | very_slow / slow / moderate / fast / very_fast | Growth rate classification |
+| `ShadeTolerance` | VARCHAR(20) | YES | very_low / low / moderate / high / very_high | Shade tolerance level |
+| `IsDeciduous` | BOOLEAN | YES | — | Deciduous (true) or evergreen (false) |
+| `GBIFKey` | INTEGER | YES | — | GBIF taxon key for validation |
+| `GBIFAcceptedName` | VARCHAR(200) | YES | — | GBIF accepted scientific name |
+
+**Lookup data source:** `data/lookups/species.csv`
+
+---
+
+### 3.3 `shared.Campaigns`
+
+**Description:** Data collection campaigns grouping related field work (LiDAR flights, field inventories, sensor deployments).
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `CampaignID` | SERIAL | NO | PRIMARY KEY | — |
+| `CampaignName` | VARCHAR(200) | NO | UNIQUE | Unique campaign name |
+| `CampaignType` | VARCHAR(50) | NO | lidar_flight / field_inventory / sensor_deployment / drone_survey / manual_update | Campaign type |
+| `LocationID` | INTEGER | YES | FK → `shared.Locations` ON DELETE SET NULL | Associated location |
+| `StartDate` | DATE | NO | — | Campaign start date |
+| `EndDate` | DATE | YES | ≥ StartDate | Campaign end date |
+| `Methodology` | TEXT | YES | — | Data collection methodology |
+| `Equipment` | TEXT | YES | — | Equipment used |
+
+---
+
+### 3.4 `trees.Trees`
+
+**Description:** Tree measurement and simulation variants. Each row is one **variant** of a physical tree (identified by `TreeEntityID`). Multiple variants per tree entity track temporal changes, processing lineage, or scenario simulations.
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `VariantID` | SERIAL | NO | PRIMARY KEY | Unique variant identifier |
+| `TreeEntityID` | UUID | NO | DEFAULT gen_random_uuid() | Persistent ID for the physical tree across variants |
+| `ParentVariantID` | INTEGER | YES | FK → `trees.Trees` ON DELETE SET NULL | Parent in lineage chain |
+| `PointCloudVariantID` | INTEGER | YES | FK → `pointclouds.PointClouds` ON DELETE SET NULL | Source LiDAR scan |
+| `CampaignID` | INTEGER | YES | FK → `shared.Campaigns` | Data collection campaign |
+| `LocationID` | INTEGER | NO | FK → `shared.Locations` ON DELETE CASCADE | Plot location |
+| `PlotID` | INTEGER | YES | FK → `shared.Plots` ON DELETE SET NULL | Sub-plot within location |
+| `ScenarioID` | INTEGER | YES | FK → `shared.Scenarios` ON DELETE SET NULL | Simulation scenario |
+| `VariantTypeID` | INTEGER | NO | FK → `shared.VariantTypes` | original / processed / simulated_growth / etc. |
+| `SpeciesID` | INTEGER | YES | FK → `shared.Species` | Tree species |
+| `TreeStatusID` | INTEGER | YES | FK → `trees.TreeStatus` | healthy / stressed / declining / dead / harvested / missing |
+| `MeasurementDate` | DATE | YES | — | Field measurement date |
+| `DataSourceType` | VARCHAR(50) | YES | lidar / field / photogrammetry / estimated / simulated | How data was acquired |
+| `Height_m` | NUMERIC(6,2) | YES | 0–200 | Total tree height (m) |
+| `CrownWidth_m` | NUMERIC(6,2) | YES | 0–100 | Crown diameter (m) |
+| `CrownBaseHeight_m` | NUMERIC(6,2) | YES | ≤ Height_m | Height to crown base (m) |
+| `Volume_m3` | NUMERIC(10,3) | YES | ≥ 0 | Total tree volume (m³) |
+| `Position` | GEOMETRY(Point, 4326) | NO | NOT NULL, GIST index | Tree location in WGS84 |
+| `CrownBoundary` | GEOMETRY(Polygon, 4326) | YES | GIST index | Crown extent polygon |
+| `LeanAngle_deg` | NUMERIC(5,2) | YES | 0–90 | Stem lean angle (degrees) |
+| `LeanDirection_azimuth` | INTEGER | YES | 0–359 | Lean direction (azimuth) |
+| `Age_years` | INTEGER | YES | 0–5000 | Estimated tree age |
+| `HealthScore` | NUMERIC(3,2) | YES | 0–1 | Health score (0=dead, 1=optimal) |
+| `Biomass_kg` | NUMERIC(12,2) | YES | ≥ 0 | Above-ground biomass (kg) |
+| `CarbonContent_kg` | NUMERIC(12,2) | YES | ≥ 0 | Carbon content (kg) |
+| `SpeciesConfidence` | NUMERIC(3,2) | YES | 0–1 | Species ID confidence |
+| `PositionConfidence` | NUMERIC(3,2) | YES | 0–1 | Position accuracy confidence |
+| `HeightConfidence` | NUMERIC(3,2) | YES | 0–1 | Height measurement confidence |
+| `TreeNumber` | INTEGER | YES | — | Local tree ID within location/plot |
+
+**Key computed functions:** `trees.calculate_basal_area(dbh_cm)`, `trees.calculate_crown_volume(crown_width_m, crown_height_m)`
+
+---
+
+### 3.5 `trees.Stems`
+
+**Description:** Individual stem measurements for multi-stem trees. StemNumber=1 is the main stem.
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `StemID` | SERIAL | NO | PRIMARY KEY | — |
+| `TreeVariantID` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE | Parent tree variant |
+| `StemNumber` | INTEGER | NO | ≥ 1, UNIQUE with TreeVariantID | 1 = main stem |
+| `TaperTypeID` | INTEGER | YES | FK → `trees.TaperTypes` | Stem taper form |
+| `StraightnessTypeID` | INTEGER | YES | FK → `trees.StraightnessTypes` | Stem straightness |
+| `DBH_cm` | NUMERIC(6,2) | YES | 0–1000 | Diameter at breast height (1.3 m) in cm |
+| `TaperRatio` | NUMERIC(4,3) | YES | 0–1 | Top/bottom diameter ratio |
+| `Sweep_cm_per_m` | NUMERIC(5,2) | YES | ≥ 0 | Max horizontal deviation per meter |
+| `StemHeight_m` | NUMERIC(6,2) | YES | 0–200 | Stem height (m) |
+| `StemVolume_m3` | NUMERIC(10,3) | YES | ≥ 0 | Stem volume (m³) |
+| `BarkThickness_mm` | NUMERIC(5,2) | YES | 0–200 | Bark thickness (mm) |
+| `WoodDensity_kg_m3` | NUMERIC(6,2) | YES | 100–2000 | Wood density (kg/m³) |
+
+---
+
+### 3.6 `pointclouds.PointClouds`
+
+**Description:** LiDAR point cloud variants. Original scans and processed derivatives share the same table, linked via `ParentVariantID`. File content is stored in S3; `FilePath` holds the S3 URI.
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `VariantID` | SERIAL | NO | PRIMARY KEY | — |
+| `ParentVariantID` | INTEGER | YES | FK → `pointclouds.PointClouds` | Parent in processing lineage |
+| `LocationID` | INTEGER | NO | FK → `shared.Locations` ON DELETE CASCADE | — |
+| `CampaignID` | INTEGER | YES | FK → `shared.Campaigns` | Acquisition campaign |
+| `ScannerID` | INTEGER | YES | FK → `pointclouds.Scanners` | Hardware used |
+| `VariantTypeID` | INTEGER | NO | FK → `shared.VariantTypes` | original / processed / etc. |
+| `FilePath` | TEXT | NO | CHECK s3://bucket/path.{las,laz,ply} | S3 URI to point cloud file |
+| `PlatformType` | VARCHAR(50) | YES | terrestrial / aerial / mobile / UAV | Scanning platform |
+| `ScanBounds` | GEOMETRY(Polygon, 4326) | YES | GIST index | Coverage area in WGS84 |
+| `ScanDate` | TIMESTAMPTZ | YES | — | Date/time of scan |
+| `PointCount` | BIGINT | YES | ≥ 0 | Total number of points |
+| `PointDensity_per_m2` | NUMERIC(10,2) | YES | ≥ 0 | Points per m² |
+| `FlightAltitude_m` | NUMERIC(8,2) | YES | > 0 | Flight altitude (aerial/UAV) |
+| `ProcessingStatus` | VARCHAR(50) | YES | pending / processing / completed / failed / cancelled | NULL for original scans |
+| `ProcessingProgress` | NUMERIC(5,2) | YES | 0–100 | Processing completion % |
+| `SourceCRS` | INTEGER | YES | — | EPSG code of source CRS |
+
+**S3 helper functions:** `pointclouds.get_s3_bucket(filepath)`, `pointclouds.get_s3_key(filepath)`, `pointclouds.validate_s3_uri(filepath)`
+
+---
+
+### 3.7 `sensor.Sensors`
+
+**Description:** Physical sensor installations with hardware metadata, spatial position, and Aquarius integration support.
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `SensorID` | SERIAL | NO | PRIMARY KEY | — |
+| `LocationID` | INTEGER | NO | FK → `shared.Locations` ON DELETE CASCADE | — |
+| `SensorTypeID` | INTEGER | NO | FK → `sensor.SensorTypes` | Sensor classification |
+| `CampaignID` | INTEGER | YES | FK → `shared.Campaigns` | Deployment campaign |
+| `SensorModel` | VARCHAR(200) | NO | — | Hardware model name |
+| `SerialNumber` | VARCHAR(100) | YES | — | Hardware serial number |
+| `Position` | GEOMETRY(Point, 4326) | NO | NOT NULL, GIST index | Sensor location in WGS84 |
+| `InstallationDate` | TIMESTAMPTZ | NO | NOW() | Installation timestamp |
+| `InstallationHeight_m` | NUMERIC(5,2) | YES | ≥ 0 | Height above ground (m) |
+| `DecommissionDate` | TIMESTAMPTZ | YES | ≥ InstallationDate | Decommission timestamp |
+| `SamplingInterval_seconds` | INTEGER | NO | > 0 | Measurement frequency |
+| `Unit` | VARCHAR(50) | YES | — | Measurement unit |
+| `IsActive` | BOOLEAN | NO | TRUE | Currently collecting data |
+| `ExternalID` | VARCHAR(200) | YES | UNIQUE | Aquarius TimeSeriesIdentifier |
+| `ExternalMetadata` | JSONB | YES | DEFAULT `{}` | Additional Aquarius metadata |
+
+---
+
+### 3.8 `sensor.SensorReadings`
+
+**Description:** Time-series environmental measurements. High-volume table; composite index on `(SensorID, Timestamp DESC)` supports all typical queries. Unique constraint on `(SensorID, Timestamp)` enables idempotent bulk inserts.
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `ReadingID` | BIGSERIAL | NO | PRIMARY KEY | — |
+| `SensorID` | INTEGER | NO | FK → `sensor.Sensors` ON DELETE CASCADE | — |
+| `Timestamp` | TIMESTAMPTZ | NO | UNIQUE with SensorID | Measurement timestamp |
+| `Value` | NUMERIC(12,4) | NO | — | Measured value |
+| `Quality` | VARCHAR(50) | YES | good / suspect / bad / missing / calibration | Data quality flag |
+| `ScenarioID` | INTEGER | YES | FK → `shared.Scenarios` | NULL for real readings |
+| `BatteryVoltage` | NUMERIC(4,2) | YES | — | Battery voltage at reading time |
+| `SignalStrength` | NUMERIC(6,2) | YES | — | Wireless signal strength (dBm) |
+
+**Key indexes:** `(SensorID, Timestamp DESC)` composite (covers all time-series queries), `(Quality)`, `(ScenarioID)`
+
+**Helper functions:** `sensor.get_latest_reading(sensor_id)`, `sensor.aggregate_readings(sensor_id, start_time, end_time, interval_minutes)`, `sensor.check_sensor_health(sensor_id, hours_back)`
+
+---
+
+### 3.9 `environments.Environments`
+
+**Description:** Environmental condition variants — aggregated from sensor data or defined for simulation scenarios.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `VariantID` | SERIAL | PRIMARY KEY | — |
+| `LocationID` | INTEGER | FK → `shared.Locations` ON DELETE CASCADE | — |
+| `VariantTypeID` | INTEGER | FK → `shared.VariantTypes` | sensor_derived / model_output / etc. |
+| `AvgTemperature_C` | NUMERIC(6,2) | −50 to 60 | Average temperature (°C) |
+| `AvgHumidity_percent` | NUMERIC(5,2) | 0–100 | Average relative humidity (%) |
+| `TotalPrecipitation_mm` | NUMERIC(8,2) | ≥ 0 | Total precipitation (mm) |
+| `AvgGlobalRadiation_W_m2` | NUMERIC(8,2) | ≥ 0 | Average global radiation (W/m²) |
+| `AvgCO2_ppm` | NUMERIC(7,2) | 200–2000 | Average CO₂ concentration (ppm) |
+| `AvgSoilMoisture_percent` | NUMERIC(5,2) | 0–100 | Average soil moisture (%) |
+| `SoilPH` | NUMERIC(4,2) | 3–10 | Soil pH |
+| `StressFactor` | NUMERIC(3,2) | 0–1 | Environmental stress index (0=optimal, 1=severe) |
+| `StartDate` | TIMESTAMPTZ | — | Period start |
+| `EndDate` | TIMESTAMPTZ | ≥ StartDate | Period end (NULL = ongoing) |
+
+**Helper functions:** `environments.calculate_duration_days(start, end)`, `environments.is_active(start, end)`, `environments.create_from_sensor_data(location_id, start_time, end_time)`
+
+---
+
+### 3.10 `imagery.Images`
+
+**Description:** Aerial and ground-based imagery with spatial metadata and camera parameters.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `ImageID` | SERIAL | PRIMARY KEY | — |
+| `LocationID` | INTEGER | FK → `shared.Locations` ON DELETE CASCADE | — |
+| `PlotID` | INTEGER | FK → `shared.Plots` ON DELETE SET NULL | Sub-plot |
+| `CampaignID` | INTEGER | FK → `shared.Campaigns` ON DELETE SET NULL | — |
+| `FilePath` | TEXT | NOT NULL | Path or URI to image file |
+| `FileFormat` | VARCHAR(20) | jpg / png / tiff / raw / geotiff | Image format |
+| `Position` | GEOMETRY(Point, 4326) | GIST index | Camera capture position in WGS84 |
+| `Altitude_m` | NUMERIC(8,2) | — | Camera altitude above ground (m) |
+| `Heading_deg` | NUMERIC(5,2) | 0–359 | Camera heading (0=North, clockwise) |
+| `Pitch_deg` | NUMERIC(5,2) | −90 to 90 | Camera pitch |
+| `Roll_deg` | NUMERIC(5,2) | −180 to 180 | Camera roll |
+| `GroundSampleDistance_cm` | NUMERIC(8,4) | > 0 | GSD in cm/pixel |
+
+---
+
+### 3.11 `shared.AuditLog` (and junction tables)
+
+**Description:** Field-level change tracking. Each change is one row in `shared.AuditLog`, linked to the affected domain entity via a junction table.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `AuditID` | BIGSERIAL PK | — |
+| `FieldName` | VARCHAR(200) | Name of changed field |
+| `OldValue` | TEXT | Previous value (JSON text) |
+| `NewValue` | TEXT | New value (JSON text) |
+| `ChangeReason` | TEXT | Why the change was made |
+| `UserID` | VARCHAR(200) | User who made the change |
+| `Timestamp` | TIMESTAMPTZ | Change timestamp |
+| `ChangeType` | VARCHAR(50) | field_update / bulk_update / revert / insert / delete |
+| `IPAddress` | INET | Client IP |
+
+**Junction tables:** `shared.AuditLog_Trees`, `shared.AuditLog_PointClouds`, `shared.AuditLog_Environments`, `shared.AuditLog_Stems`
+
+---
+
+### 3.12 `shared.Processes` and `shared.ProcessParameters`
+
+**Description:** Algorithm/process registry with academic attribution and versioning. Parameters are stored separately and linked to variant records via junction tables.
+
+| Table | Key Columns | Description |
+|-------|------------|-------------|
+| `shared.Processes` | `(ProcessName, Version)` UNIQUE | Algorithm registry with citation and metrics |
+| `shared.ProcessParameters` | `ParameterName`, `ParameterValue`, `DataType` | Individual parameter name/value pairs |
+| `shared.ProcessMetrics` | `MetricName` in (accuracy/precision/recall/f1_score/rmse/mae/r_squared) | Published performance metrics |
+| `shared.ProcessingJobs` | `ExternalJobID` UNIQUE, `Status`, `InputData` JSONB, `OutputData` JSONB | External workflow tracking |
+
+**Parameter junction tables:** `shared.ProcessParameters_Trees`, `shared.ProcessParameters_PointClouds`, `shared.ProcessParameters_Environments`, `shared.ProcessParameters_Stems`
+
+---
+
+## 4. Database Constraints
+
+### 4.1 Key Foreign Key Patterns
+
+| Child Table | Column | Parent Table | On Delete |
+|------------|--------|-------------|-----------|
+| `shared.Plots` | `LocationID` | `shared.Locations` | CASCADE |
+| `trees.Trees` | `LocationID` | `shared.Locations` | CASCADE |
+| `trees.Trees` | `ParentVariantID` | `trees.Trees` | SET NULL |
+| `trees.Trees` | `PointCloudVariantID` | `pointclouds.PointClouds` | SET NULL |
+| `trees.Stems` | `TreeVariantID` | `trees.Trees` | CASCADE |
+| `sensor.Sensors` | `LocationID` | `shared.Locations` | CASCADE |
+| `sensor.SensorReadings` | `SensorID` | `sensor.Sensors` | CASCADE |
+| `sensor.sensor_tree_links` | `sensor_id` | `sensor.Sensors` | CASCADE |
+| `sensor.sensor_tree_links` | `tree_variant_id` | `trees.Trees` | CASCADE |
+| `pointclouds.PointClouds` | `LocationID` | `shared.Locations` | CASCADE |
+| `imagery.Images` | `LocationID` | `shared.Locations` | CASCADE |
+
+### 4.2 Key Check Constraints
+
+| Table | Constraint | Description |
+|-------|-----------|-------------|
+| `trees.Trees` | `DataSourceType IN (lidar, field, photogrammetry, estimated, simulated)` | Valid data source values |
+| `trees.Trees` | `Height_m > 0 AND Height_m <= 200` | Plausible tree height range |
+| `trees.Trees` | `CrownBaseHeight_m <= Height_m` | Physical constraint |
+| `pointclouds.PointClouds` | `FilePath ~ '^s3://...(las|laz|ply)$'` | S3 URI format validation |
+| `sensor.SensorReadings` | `Quality IN (good, suspect, bad, missing, calibration)` | Valid quality flags |
+| `sensor.SensorReadings` | UNIQUE `(SensorID, Timestamp)` | Idempotent bulk insert support |
+| `shared.Locations` | `Slope_deg BETWEEN 0 AND 90` | Valid slope range |
+| `shared.Campaigns` | `EndDate >= StartDate` | Valid date range |
+
+---
+
+## 5. Indexes Strategy
+
+### 5.1 Spatial Indexes (PostGIS GIST)
+
+All geometry columns use GIST indexes:
+
+| Table | Column | Purpose |
+|-------|--------|---------|
+| `shared.Locations` | `Boundary`, `CenterPoint` | Spatial queries on plot extent |
+| `shared.Plots` | `Boundary`, `CenterPoint` | Sub-plot spatial queries |
+| `trees.Trees` | `Position`, `CrownBoundary` | Tree position and crown overlap queries |
+| `sensor.Sensors` | `Position` | Sensor proximity queries |
+| `pointclouds.PointClouds` | `ScanBounds` | Point cloud coverage queries |
+| `imagery.Images` | `Position` | Camera position queries |
+| `trees.Deadwood` | `Position` | Deadwood position queries |
+
+### 5.2 Time-Series Indexes
+
+| Table | Index | Purpose |
+|-------|-------|---------|
+| `sensor.SensorReadings` | `(SensorID, Timestamp DESC)` composite | Primary time-series access pattern |
+| `sensor.SensorReadings` | `(Timestamp DESC)` | Cross-sensor time range queries |
+| `pointclouds.PointClouds` | `(ScanDate DESC)` | Latest scan retrieval |
+| `trees.Trees` | `(MeasurementDate DESC)` | Latest measurement retrieval |
+
+### 5.3 Lineage Indexes
+
+`ParentVariantID` is indexed on `trees.Trees`, `pointclouds.PointClouds`, and `environments.Environments` to support recursive lineage traversal.
+
+---
+
+## 6. Database Migrations
+
+### 6.1 Migration Tool
+
+Plain SQL migration files applied in numeric order by the PostgreSQL Docker initialization process. Files are in `docker/volumes/db/init/` and executed once on first container startup.
+
+### 6.2 Migration Files
+
+| File | Description |
+|------|-------------|
+| `10-enable-postgis.sql` | Enables PostGIS extension |
+| `11-shared-schema.sql` | shared schema: Locations, Species, Scenarios, Campaigns, Plots, ManagementEvents, DisturbanceEvents, Processes, AuditLog |
+| `12-pointclouds-schema.sql` | pointclouds schema: ScannerTypes, Scanners, PointClouds |
+| `13-trees-schema.sql` | trees schema: Trees, Stems, PhenologyObservations, Deadwood, GroundVegetation |
+| `14-sensor-schema.sql` | sensor schema: SensorTypes, Sensors, SensorReadings |
+| `15-environments-schema.sql` | environments schema: Environments |
+| `16-sensor-tree-links-schema.sql` | sensor.sensor_tree_links junction table |
+| `17-imagery-schema.sql` | imagery schema: Images |
+| `18-tree-morphology-schema.sql` | trees morphology lookups: PhanerophyteHeightClasses, CrownArchitectures, BranchElongationHabits, GrowthOrientations, ShootElongationTypes, CrownShapes, GeometricCrownSolids, AxisStructures, GrowthForms |
+| `20-rls-policies.sql` | Row Level Security policies for all tables |
+| `21-audit-functions.sql` | Audit trigger functions |
+| `22-aquarius-integration.sql` | Adds `ExternalID`/`ExternalMetadata` to Sensors; bulk upsert/insert RPC functions |
+| `23-processing-jobs.sql` | shared.ProcessingJobs for external workflow tracking |
+| `24-public-api-views.sql` | Public schema views exposing all domain tables to PostgREST |
+| `30-load-lookup-tables.sql` | Seeds lookup tables from `data/lookups/*.csv` |
+| `31-refresh-lookup-functions.sql` | Functions to refresh lookup data |
+
+### 6.3 Migration Strategy
+
+Migrations run automatically when the Docker container initializes for the first time. To reset the database and rerun all migrations:
+
+```shell
+python scripts/admin/reset_database.py
+```
+
+For schema changes: add a new numbered SQL file to `docker/volumes/db/init/`, then rebuild the container.
+
+---
+
+## 7. Data Types & Standards
+
+### 7.1 Key Data Types
+
+| Logical Type | PostgreSQL Type | Notes |
+|-------------|----------------|-------|
+| Identifiers | `SERIAL` / `BIGSERIAL` | Sequential integer PKs |
+| Persistent entity ID | `UUID` | `gen_random_uuid()` default — stable across variants |
+| Spatial geometry | `extensions.GEOMETRY(type, 4326)` | PostGIS; always WGS84 for stored data |
+| Timestamps | `TIMESTAMPTZ` | UTC with timezone |
+| Measurements | `NUMERIC(precision, scale)` | Exact numeric; no `FLOAT` for scientific data |
+| Sensor values | `NUMERIC(12,4)` | High-precision measurement value |
+| External metadata | `JSONB` | Semi-structured payloads from Aquarius API |
+| S3 file paths | `TEXT` with CHECK constraint | Must match `s3://bucket/path.(las|laz|ply)` pattern |
+
+### 7.2 Naming Conventions
+
+| Element | Convention | Example |
+|---------|-----------|---------|
+| Tables | PascalCase singular | `Trees`, `SensorReadings` |
+| Columns | PascalCase with unit suffix where applicable | `Height_m`, `DBH_cm`, `SamplingInterval_seconds` |
+| Primary keys | `{Table}ID` | `LocationID`, `SensorID` |
+| Foreign keys | Match parent PK name | `LocationID` referencing `shared.Locations.LocationID` |
+| Indexes | `idx_{table}_{column}` | `idx_trees_location`, `idx_sensor_readings_sensor_timestamp` |
+| GIST indexes | `idx_{table}_{column}` | `idx_trees_position`, `idx_locations_boundary` |
+| Schemas | lowercase | `shared`, `trees`, `sensor` |
+
+---
+
+## Maintenance
+
+**Last Updated:** 2026-05-11
+
+**Update Triggers:**
+- New migration file added to `docker/volumes/db/init/`
+- Schema changes to existing tables (columns, indexes, constraints)
+- New public schema view added (update `api_spec.md` in parallel)
+- RLS policy changes
+- New junction table for audit or process parameters
+
+**Verification:**
+- [ ] All domain schema tables documented with column definitions
+- [ ] ER diagram reflects current schema (check against `docker/volumes/db/init/` SQL files)
+- [ ] Foreign key table matches actual `ON DELETE` behavior in SQL
+- [ ] Migration file list matches files in `docker/volumes/db/init/`
+- [ ] Check constraints table accurate against `20-rls-policies.sql` and table DDL
+
+---
