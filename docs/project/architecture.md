@@ -45,7 +45,7 @@
 
 ### 1.1 Requirements Overview
 
-The Digital Forest Twin Database stores and exposes multi-temporal, multi-variant forest research data for the University of Freiburg FoWiTA project. Key requirements:
+The Digital Forest Twin Database stores and exposes multi-temporal, multi-variant forest research data for the University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung). Key requirements:
 
 - Spatially-aware storage of trees, LiDAR point clouds, sensors, and imagery using PostGIS
 - Variant-based lineage tracking to support multiple analysis scenarios and temporal versioning
@@ -67,7 +67,7 @@ The Digital Forest Twin Database stores and exposes multi-temporal, multi-varian
 
 | Stakeholder | Concern |
 |-------------|---------|
-| Forest Researchers (FoWiTA) | Data accuracy, query access, species/plot correctness |
+| Forest Researchers (XR Future Forests Lab) | Data accuracy, query access, species/plot correctness |
 | XR Future Forests Lab (Uni Freiburg) | System reliability, pipeline integration |
 | Downstream Consumers | Stable REST API contracts, public view availability |
 | Data Engineers | Import tooling, schema migrations, reset scripts |

@@ -1,6 +1,6 @@
 # Task Navigation
 
-<!-- SCOPE: Quick navigation to active tasks. Links point to Linear (provider=linear). -->
+<!-- SCOPE: Quick navigation to active tasks. Links point to Linear (provider=linear). Scoped to: digital-twin-db (Epic 1). -->
 <!-- DOC_KIND: how-to -->
 <!-- DOC_ROLE: working -->
 <!-- READ_WHEN: Read when you need the current board, provider setup, or epic/story/task navigation. -->
@@ -8,13 +8,14 @@
 <!-- PRIMARY_SOURCES: docs/tasks/README.md, Linear XRFF team -->
 <!-- DO NOT add here: task descriptions, implementation notes, workflow rules → tasks/README.md -->
 
-> **Last Updated**: 2026-05-11
+> **Last Updated**: 2026-05-13
 
 ## Quick Navigation
 
 - [Task Rules](./README.md)
 - [Reference Hub](../reference/README.md)
 - [Database Schema](../project/database_schema.md)
+- [Workspace Board](../../docs/tasks/kanban_board.md) — all epics across all repos
 
 ## Agent Entry
 
@@ -46,11 +47,17 @@
 - [Backlog](https://linear.app/geosense-ufr/team/XRFF/backlog)
 - [Active Sprint](https://linear.app/geosense-ufr/team/XRFF/active)
 
-### Common Configuration
+---
 
-| Variable | Value | Description |
-|----------|-------|-------------|
-| **Next Epic Number** | 1 | Next available Epic number |
+## Repo Scope
+
+This repo contributes to:
+
+| Epic # | Name | Initiative | URL |
+|--------|------|------------|-----|
+| Epic 1 | digital twin Ecosense (DB + API) | Scientific Infrastructure | [link](https://linear.app/geosense-ufr/project/digital-twin-ecosense-a4cd41171d45) |
+
+> For all epics across all repos, see the [workspace kanban board](../../docs/tasks/kanban_board.md).
 
 ---
 
@@ -58,14 +65,15 @@
 
 | Epic | Last Story | Next Story | Last Task | Next Task |
 |------|------------|------------|-----------|-----------|
-| Epic 0 | — | US001 | — | T001 |
-| Epic 1+ | — | US001 | — | T001 |
+| Epic 1 (digital twin Ecosense) | — | US001 | — | T001 |
 
 > Story numbering: US001+ per Epic. Task numbering: T001+ per Story.
 
 ---
 
 ## Work in Progress
+
+**Format:** Status → Epic → Story → Tasks hierarchy. Stories use 2-space indent. Tasks use 4-space indent.
 
 ### Backlog
 
@@ -118,7 +126,7 @@ No completed items tracked yet.
 - [ ] Board links resolve
 - [ ] Next counters reflect current state
 
-**Last Updated:** 2026-05-11
+**Last Updated:** 2026-05-13
 
 ---
 
@@ -126,3 +134,4 @@ No completed items tracked yet.
 
 - [tasks/README.md](./README.md) — Task system workflow and rules
 - [Reference Hub](../reference/README.md) — ADRs, guides, manuals
+- [Workspace Board](../../docs/tasks/kanban_board.md) — all repos overview

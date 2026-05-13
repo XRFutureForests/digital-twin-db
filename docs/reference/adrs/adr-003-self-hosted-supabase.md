@@ -30,7 +30,7 @@
 
 ## Context
 
-The project stores research data that must remain under institutional control (University of Freiburg data governance). The database contains LiDAR scans, sensor readings, and tree measurements from ongoing FoWiTA grant research. Data must not reside on third-party infrastructure without explicit DFG/EU grant compliance review. Local developer workstations need full offline operation for field data processing.
+The project stores research data that must remain under institutional control (University of Freiburg data governance). The database contains LiDAR scans, sensor readings, and tree measurements from ongoing Eva Mayr-Stihl Stiftung funded research. Data must not reside on third-party infrastructure without explicit DFG/EU grant compliance review. Local developer workstations need full offline operation for field data processing.
 
 ---
 

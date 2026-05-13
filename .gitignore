@@ -27,3 +27,6 @@ htmlcov/
 
 # Claude Code local
 .claude/
+
+# Test results (manual test outputs)
+tests/manual/results/

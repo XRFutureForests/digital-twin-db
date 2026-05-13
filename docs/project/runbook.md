@@ -48,7 +48,7 @@ This runbook provides step-by-step operational procedures for the Digital Forest
 
 ### 1.3 Key Contacts
 
-No contacts are defined in CODEOWNERS or package.json. See the University of Freiburg FoWiTA project for ownership information.
+No contacts are defined in CODEOWNERS or package.json. See the University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung) for ownership information.
 
 ---
 
