@@ -218,7 +218,7 @@ docker compose up -d
 
 ## 5. Production Operations
 
-This stack is currently deployed for local development only. For production deployment guidance see [`docs/deployment-guide.md`](../deployment-guide.md).
+This stack is currently deployed for local development only. For production deployment guidance see [`docs/project/deployment-guide.md`](deployment-guide.md).
 
 ### 5.1 Health Checks
 

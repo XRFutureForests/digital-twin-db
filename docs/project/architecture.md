@@ -13,7 +13,7 @@
 <!-- SKIP_WHEN: Skip when you only need operational steps or API/database lookup details. -->
 <!-- PRIMARY_SOURCES: docs/project/requirements.md, docs/project/tech_stack.md, docs/ARCHITECTURE.md -->
 
-<!-- DO NOT add here: Deployment procedures → docs/deployment-guide.md, Schema details → docs/database-schema.md, API specs → docs/api-quick-reference.md, Requirements → requirements.md, Tech stack versions → tech_stack.md -->
+<!-- DO NOT add here: Deployment procedures → docs/project/deployment-guide.md, Schema details → docs/database-schema.md, API specs → docs/api-quick-reference.md, Requirements → requirements.md, Tech stack versions → tech_stack.md -->
 
 <!-- NO_CODE_EXAMPLES: Architecture documentation describes DECISIONS and CONTRACTS, not implementations.
      FORBIDDEN: Import statements, function bodies, code blocks > 5 lines
@@ -26,7 +26,7 @@
 - [Tech Stack](tech_stack.md)
 - [Database Schema](../database-schema.md)
 - [Patterns Catalog](../architecture/patterns_catalog.md)
-- [Deployment Guide](../deployment-guide.md)
+- [Deployment Guide](deployment-guide.md)
 
 ## Agent Entry
 

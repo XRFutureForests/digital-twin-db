@@ -15,11 +15,11 @@ Self-hosted Supabase PostgreSQL database for digital forest twin research. 6 cus
 |------|------|
 | Architecture overview | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Database schema | [docs/database-schema.md](docs/database-schema.md) |
-| Deployment guide | [docs/deployment-guide.md](docs/deployment-guide.md) |
+| Deployment guide | [docs/project/deployment-guide.md](docs/project/deployment-guide.md) |
 | Documentation map | [docs/README.md](docs/README.md) |
 | Documentation standards | [docs/documentation_standards.md](docs/documentation_standards.md) |
 | Principles | [docs/principles.md](docs/principles.md) |
-| Troubleshooting | [docs/troubleshooting.md](docs/troubleshooting.md) |
+| Troubleshooting | [docs/project/troubleshooting.md](docs/project/troubleshooting.md) |
 
 ## Agent Entry
 
