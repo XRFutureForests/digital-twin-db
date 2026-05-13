@@ -11,14 +11,14 @@
 <!-- SKIP_WHEN: Skip when you only need business scope or runtime procedures. -->
 <!-- PRIMARY_SOURCES: docker/docker-compose.yml, docker/.env.example, environment.yml, docker/volumes/functions/deno.json -->
 
-<!-- DO NOT add here: API endpoints → docs/api-quick-reference.md, Database schema → docs/database-schema.md, Architecture patterns → architecture.md, Requirements → requirements.md, Deployment procedures → docs/deployment-guide.md -->
+<!-- DO NOT add here: API endpoints → docs/api-quick-reference.md, Database schema → docs/database-schema.md, Architecture patterns → architecture.md, Requirements → requirements.md, Deployment procedures → docs/project/deployment-guide.md -->
 
 ## Quick Navigation
 
 - [Docs Hub](../README.md)
 - [Requirements](requirements.md)
 - [Architecture](architecture.md)
-- [Deployment Guide](../deployment-guide.md)
+- [Deployment Guide](deployment-guide.md)
 
 ## Agent Entry
 
@@ -28,7 +28,7 @@
 | Read When | You need exact framework, library, runtime, or tool choices and their versions. |
 | Skip When | You only need workflow instructions or feature scope. |
 | Canonical | Yes |
-| Next Docs | [Architecture](architecture.md), [Deployment Guide](../deployment-guide.md) |
+| Next Docs | [Architecture](architecture.md), [Deployment Guide](deployment-guide.md) |
 | Primary Sources | `docker/docker-compose.yml`, `docker/.env.example`, `environment.yml` |
 
 ---
@@ -43,7 +43,7 @@ This document specifies the technology stack, service versions, client libraries
 
 **In Scope:** All Docker services, PostgreSQL extensions, Python/R client libraries, development tools, and naming conventions.
 
-**Out of Scope:** Infrastructure provisioning (see `docs/deployment-guide.md`), API contracts (see `docs/api-quick-reference.md`), database schema (see `docs/database-schema.md`).
+**Out of Scope:** Infrastructure provisioning (see `docs/project/deployment-guide.md`), API contracts (see `docs/api-quick-reference.md`), database schema (see `docs/database-schema.md`).
 
 ---
 

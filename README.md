@@ -442,10 +442,10 @@ All documentation lives in the `docs/` directory. Start with **[docs/README.md](
 | **Architecture** | [Architecture Overview](docs/ARCHITECTURE.md) | System design, schemas, and data flow |
 | | [Database Schema](docs/database-schema.md) | Full schema specifications and design rationale |
 | | [Database ERD](docs/database-erd.dbml) | Entity relationship diagram (DBML format) |
-| | [Database Overview](docs/database-overview.md) | High-level database structure summary |
+| | [Database Overview](docs/project/database-overview.md) | High-level database structure summary |
 | **Operations** | [API Quick Reference](docs/api-quick-reference.md) | URLs, credentials, REST examples, Docker commands |
-| | [Deployment Guide](docs/deployment-guide.md) | Production deployment instructions |
-| | [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
+| | [Deployment Guide](docs/project/deployment-guide.md) | Production deployment instructions |
+| | [Troubleshooting](docs/project/troubleshooting.md) | Common issues and solutions |
 
 ---
 
@@ -598,7 +598,7 @@ sudo lsof -i :8000
 # Stop the conflicting service or change ports in docker-compose.yml
 ```
 
-For more troubleshooting, see [docs/troubleshooting.md](docs/troubleshooting.md).
+For more troubleshooting, see [docs/project/troubleshooting.md](docs/project/troubleshooting.md).
 
 ---
 
@@ -622,7 +622,7 @@ Large LiDAR files (.las, .laz) can be stored in external S3 buckets rather than 
 - Direct downloads with temporary URLs
 
 **Configuration**:
-See the Edge Functions in `docker/volumes/functions/` and [Deployment Guide](docs/deployment-guide.md) for S3 setup instructions (only needed if using point clouds).
+See the Edge Functions in `docker/volumes/functions/` and [Deployment Guide](docs/project/deployment-guide.md) for S3 setup instructions (only needed if using point clouds).
 
 ---
 
@@ -645,7 +645,7 @@ This repository is designed for both local development and production deployment
 - Configure backups and monitoring
 - Disable public signup (`DISABLE_SIGNUP=true`)
 
-**See [docs/deployment-guide.md](docs/deployment-guide.md) and the official [Supabase Self-Hosting Guide](https://supabase.com/docs/guides/hosting/docker) for detailed production deployment instructions.**
+**See [docs/project/deployment-guide.md](docs/project/deployment-guide.md) and the official [Supabase Self-Hosting Guide](https://supabase.com/docs/guides/hosting/docker) for detailed production deployment instructions.**
 
 ---
 
@@ -657,7 +657,7 @@ All documentation is in the `docs/` directory, organized by topic. Start with [d
 
 ### Issues
 
-- Check [docs/troubleshooting.md](docs/troubleshooting.md) for common problems
+- Check [docs/project/troubleshooting.md](docs/project/troubleshooting.md) for common problems
 - Review existing GitHub issues
 - Create new issue with detailed description
 

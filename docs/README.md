@@ -41,7 +41,7 @@ Complete reference for the database architecture, services, and operations.
   - Service architecture and edge functions
   - Data interaction patterns and common operations
 
-- **[deployment-guide.md](deployment-guide.md)** - Setup and deployment instructions
+- **[deployment-guide.md](project/deployment-guide.md)** - Setup and deployment instructions
   - Local development environment
   - Production deployment
   - Configuration and security
@@ -70,7 +70,7 @@ Complete reference for the database architecture, services, and operations.
   - Docker and database commands
   - Quick lookup reference
 
-- **[troubleshooting.md](troubleshooting.md)** - Problem-solving guide
+- **[troubleshooting.md](project/troubleshooting.md)** - Problem-solving guide
   - Common issues and solutions
   - Docker debugging
   - Database troubleshooting
@@ -80,7 +80,7 @@ Complete reference for the database architecture, services, and operations.
 **Getting started?**
 
 1. Read [ARCHITECTURE.md](ARCHITECTURE.md) to understand the system
-2. Follow [deployment-guide.md](deployment-guide.md) to set up locally
+2. Follow [deployment-guide.md](project/deployment-guide.md) to set up locally
 3. Use [api-quick-reference.md](api-quick-reference.md) for day-to-day operations
 
 **Need technical details?**
@@ -91,7 +91,7 @@ Complete reference for the database architecture, services, and operations.
 
 **Troubleshooting an issue?**
 
-1. Check [troubleshooting.md](troubleshooting.md) first
+1. Check [troubleshooting.md](project/troubleshooting.md) first
 2. Review relevant section in [ARCHITECTURE.md](ARCHITECTURE.md)
 3. Check service logs: `docker compose logs -f`
 
@@ -188,7 +188,7 @@ When making changes to the database:
 3. **Update [database-schema.md](database-schema.md)** with field specifications
 4. **Update [database-erd.dbml](database-erd.dbml)** with schema relationships
 5. **Update [database-diagram.drawio](database-diagram.drawio)** if major structural changes
-6. **Add tips to [troubleshooting.md](troubleshooting.md)** for new common issues
+6. **Add tips to [troubleshooting.md](project/troubleshooting.md)** for new common issues
 
 ## 📋 Document Format Standards
 

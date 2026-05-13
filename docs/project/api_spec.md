@@ -12,7 +12,7 @@
 <!-- PRIMARY_SOURCES: docker/volumes/api/kong.yml, docker/volumes/db/init/24-public-api-views.sql, docker/volumes/db/init/22-aquarius-integration.sql, docker/docker-compose.yml -->
 
 <!-- SCOPE: API endpoints (methods, paths, parameters, responses), authentication mechanisms (JWT, API keys), error codes (HTTP status), PostgREST filtering, RPC functions ONLY. -->
-<!-- DO NOT add here: Database schema → database_schema.md, Tech stack versions → docs/ARCHITECTURE.md, Deployment → docs/deployment-guide.md, Docker setup → docs/docker/ -->
+<!-- DO NOT add here: Database schema → database_schema.md, Tech stack versions → docs/ARCHITECTURE.md, Deployment → docs/project/deployment-guide.md, Docker setup → docs/docker/ -->
 
 <!-- NO_CODE_EXAMPLES: API spec documents CONTRACTS (endpoints, schemas), not implementations.
      ALLOWED: JSON request/response schemas (this IS the API contract), endpoint tables, filter operator tables
@@ -24,7 +24,7 @@
 - [Docs Hub](../README.md)
 - [Architecture](../ARCHITECTURE.md)
 - [Database Schema](database_schema.md)
-- [Deployment Guide](../deployment-guide.md)
+- [Deployment Guide](deployment-guide.md)
 - [API Quick Reference](../api-quick-reference.md)
 
 ## Agent Entry

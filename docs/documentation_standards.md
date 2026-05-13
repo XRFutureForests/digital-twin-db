@@ -72,8 +72,8 @@
 | `docs/principles.md` | explanation | canonical | Governing principles and decision framework |
 | `docs/ARCHITECTURE.md` | explanation | canonical | System architecture and service topology |
 | `docs/database-schema.md` | reference | canonical | Schema definitions and entity relationships |
-| `docs/deployment-guide.md` | how-to | canonical | Step-by-step deployment instructions |
-| `docs/troubleshooting.md` | how-to | canonical | Common issues and resolution steps |
+| `docs/project/deployment-guide.md` | how-to | canonical | Step-by-step deployment instructions |
+| `docs/project/troubleshooting.md` | how-to | canonical | Common issues and resolution steps |
 
 ## Verification Checklist
 
