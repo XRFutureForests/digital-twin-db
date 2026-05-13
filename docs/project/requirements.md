@@ -39,7 +39,7 @@
 
 ### 1.1 Purpose
 
-This document specifies the functional requirements for the Digital Forest Twin Database — a self-hosted Supabase/PostgreSQL infrastructure for forest research data management at the University of Freiburg (FoWiTA project).
+This document specifies the functional requirements for the Digital Forest Twin Database — a self-hosted Supabase/PostgreSQL infrastructure for forest research data management at the University of Freiburg (Eva Mayr-Stihl Stiftung funded).
 
 ### 1.2 Scope
 
@@ -49,7 +49,7 @@ This document specifies the functional requirements for the Digital Forest Twin 
 
 ### 1.3 Intended Audience
 
-- Forest data scientists and researchers (Uni Freiburg FoWiTA)
+- Forest data scientists and researchers (Uni Freiburg XR Future Forests Lab)
 - Database administrators and DevOps engineers
 - Python and R client developers
 - System architects working on the broader XR Future Forests pipeline

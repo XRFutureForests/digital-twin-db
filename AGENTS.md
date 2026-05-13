@@ -1,6 +1,6 @@
 # Digital Forest Twin Database
 
-Self-hosted Supabase PostgreSQL database for digital forest twin research. 6 custom schemas (shared, pointclouds, trees, sensor, environments, imagery), PostGIS spatial extensions, REST API via PostgREST/Kong, auth via GoTrue. University of Freiburg FoWiTA project.
+Self-hosted Supabase PostgreSQL database for digital forest twin research. 6 custom schemas (shared, pointclouds, trees, sensor, environments, imagery), PostGIS spatial extensions, REST API via PostgREST/Kong, auth via GoTrue. University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung).
 
 <!-- SCOPE: Canonical machine-facing entry point with repo map, critical rules, command overview, and links to detailed documentation ONLY. -->
 <!-- DOC_KIND: index -->
