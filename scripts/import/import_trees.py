@@ -15,6 +15,7 @@ Examples:
 """
 
 import argparse
+import logging
 import os
 import sys
 from pathlib import Path
@@ -23,6 +24,10 @@ import pandas as pd
 import psycopg2
 from dotenv import load_dotenv
 from psycopg2.extras import execute_values
+
+# Allow importing from scripts/utils/ when running as a script
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.profiling import init_profiler  # noqa: E402
 
 # Load environment
 env_path = Path(__file__).parent.parent.parent / "docker" / ".env"
@@ -447,7 +452,19 @@ def main():
     parser.add_argument(
         "--dry-run", action="store_true", help="Validate only, do not insert data"
     )
+    parser.add_argument(
+        "--profile", action="store_true", help="Print per-stage timing report"
+    )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable debug logging"
+    )
     args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.WARNING,
+        format="%(levelname)s: %(message)s",
+    )
+    timer = init_profiler(enabled=args.profile)
 
     csv_path = Path(args.csv_file).resolve()
 
@@ -461,14 +478,16 @@ def main():
         sys.exit(1)
 
     print(f"\nLoading {csv_path.name}...")
-    df = pd.read_csv(csv_path, comment="#")
+    with timer.track("parse_csv"):
+        df = pd.read_csv(csv_path, comment="#")
 
     # Summary
     print_summary(df, csv_path)
 
     # Validate structure
     print("\nValidating CSV format...")
-    errors, warnings = validate_csv(df, csv_path)
+    with timer.track("validate"):
+        errors, warnings = validate_csv(df, csv_path)
 
     for w in warnings:
         print(f"  Warning: {w}")
@@ -507,7 +526,8 @@ def main():
     else:
         print("\nImporting trees...")
 
-    import_trees(df, dry_run=args.dry_run)
+    with timer.track("insert_rows"):
+        import_trees(df, dry_run=args.dry_run)
 
     # Final verification
     if not args.dry_run:
@@ -534,8 +554,17 @@ def main():
             print(f"  {loc_name}: {total_trees} trees, {total_stems} stems")
         conn.close()
 
-    print("\nDone.")
+    if args.profile:
+        total = timer.get_total_time()
+        row_count = len(df)
+        rows_per_sec = row_count / total if total > 0 else 0
+        print(
+            f"Rows: {row_count} | {rows_per_sec:.0f} rows/s",
+            file=sys.stderr,
+        )
+        timer.print_report()
 
+    print("\nDone.")
 
 if __name__ == "__main__":
     main()
