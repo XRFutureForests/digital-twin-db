@@ -1,6 +1,6 @@
 CommonName,ScientificName,MaxHeight_m,MaxDBH_cm,TypicalLifespan_years,GrowthRate,ShadeTolerance,IsDeciduous,GBIFKey,GBIFAcceptedName
 European Beech,Fagus sylvatica,40,150,300,moderate,high,true,2882316,Fagus sylvatica
-Pedunculate Oak,Quercus robur,35,200,500,slow,moderate,true,2878688,Quercus robur
+European Oak,Quercus robur,35,200,500,slow,moderate,true,2878688,Quercus robur
 Norway Spruce,Picea abies,50,150,200,fast,high,false,5284884,Picea abies
 Silver Fir,Abies alba,50,200,500,moderate,very_high,false,2685484,Abies alba
 Scots Pine,Pinus sylvestris,35,100,300,moderate,low,false,5285637,Pinus sylvestris
@@ -9,5 +9,7 @@ European Larch,Larix decidua,40,100,300,fast,low,true,2686212,Larix decidua
 Norway Maple,Acer platanoides,25,100,200,moderate,moderate,true,3189846,Acer platanoides
 Sycamore Maple,Acer pseudoplatanus,35,120,400,moderate,moderate,true,3189870,Acer pseudoplatanus
 Wild Cherry,Prunus avium,25,80,100,fast,low,true,3020791,Prunus avium
-Wild Service Tree,Sorbus torminalis,25,60,200,slow,moderate,true,3012567,Torminalis glaberrima
-Birch,Betula spp.,25,60,80,fast,low,true,,
+Wild Service Tree,Torminalis glaberrima,25,60,200,slow,moderate,true,3012567,Torminalis glaberrima
+Silver Birch,Betula pendula,25,60,80,fast,low,true,5334357,Betula pendula
+Common Ash,Fraxinus excelsior,35,150,250,fast,low,true,5385657,Fraxinus excelsior
+Small-leaved Linden,Tilia cordata,30,120,500,moderate,high,true,2436527,Tilia cordata
