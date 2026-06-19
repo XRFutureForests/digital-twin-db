@@ -1,6 +1,14 @@
 -- XR Future Forests Lab — Demo Forest Seed Data
 -- XRFF-241: Small 4-species inventory with 3 scenario variants + sensor readings
--- Runs after: 30-load-lookup-tables.sql, 31-refresh-lookup-functions.sql
+--
+-- OPTIONAL — not part of docker/volumes/db/init/. A fresh build must produce a
+-- clean, empty database ready for real forest data; this seed is applied manually
+-- when demo/test data is actually wanted:
+--
+--   docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/demo_forest_seed.sql
+--
+-- Requires the schema from 30-load-lookup-tables.sql / 31-refresh-lookup-functions.sql
+-- to already exist (i.e. run after a normal `docker compose up`).
 --
 -- Creates:
 --   • 1 field inventory campaign at Ecosense_MixedPlot
