@@ -21,6 +21,8 @@ scripts/
 │   └── archive/                    # Superseded scripts
 │       ├── import_ecosense.py      # (replaced by import_trees.py)
 │       └── import_mathisle.py      # (replaced by import_trees.py)
+├── seed/                     # Optional demo/test data (never auto-applied)
+│   └── demo_forest_seed.sql        # Synthetic 4-species, 3-scenario demo dataset (XRFF-241)
 └── utils/                    # Utility and debug scripts
     ├── check_db_schema.py          # Inspect database schema
     ├── test_aquarius.py            # Test Aquarius API connection
@@ -90,6 +92,17 @@ List sensors that have recent data in Aquarius:
 
 ```bash
 python scripts/import/find_active_sensors.py
+```
+
+## Seed Data (Optional)
+
+`scripts/seed/` holds demo/test datasets that are **never auto-applied**. A fresh
+`docker compose up` produces a clean, empty database — real forest data (ecosense,
+mathisle) and demo/test data are both loaded manually, on purpose.
+
+```bash
+# Load the synthetic demo dataset (4 species, 3 scenarios, sensors) — optional
+docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/demo_forest_seed.sql
 ```
 
 ## Utility Scripts
