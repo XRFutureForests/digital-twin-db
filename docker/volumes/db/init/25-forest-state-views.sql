@@ -50,6 +50,8 @@ SELECT
     t.healthscore,
     t.measurementdate,
     t.datasourcetype,
+    -- Main stem diameter (StemNumber=1) — flattened so UE gets height+DBH in one query
+    st.dbh_cm,
     -- Flat lat/lon for UE JSON parsing (no PostGIS parsing needed in Blueprint)
     ST_Y(t.position)    AS latitude,
     ST_X(t.position)    AS longitude,
@@ -58,7 +60,8 @@ SELECT
 FROM trees.trees t
 LEFT JOIN shared.scenarios   s  ON t.scenarioid   = s.scenarioid
 LEFT JOIN shared.varianttypes vt ON t.varianttypeid = vt.varianttypeid
-LEFT JOIN shared.species      sp ON t.speciesid    = sp.speciesid;
+LEFT JOIN shared.species      sp ON t.speciesid    = sp.speciesid
+LEFT JOIN trees.stems         st ON st.treevariantid = t.variantid AND st.stemnumber = 1;
 
 COMMENT ON VIEW public.forest_state IS
     'Flat view of all tree variants with scenario, species, and position. '
