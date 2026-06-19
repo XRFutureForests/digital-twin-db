@@ -67,6 +67,7 @@ Response fields:
   "scientificname": "Fagus sylvatica",
   "height_m": 22.5,
   "crownwidth_m": 8.2,
+  "dbh_cm": 34.1,
   "age_years": 95,
   "healthscore": 0.85,
   "latitude": 48.2684,
@@ -130,6 +131,63 @@ Then insert tree rows with the new `ScenarioID`:
 ```python
 # scripts/import/import_trees.py data/imports/silva_2060_trees.csv
 ```
+
+---
+
+## Generating a growth variant from existing data
+
+For "what would this same forest look like N years from now" variants — grow the
+trees that already exist in the DB rather than hand-writing new rows — use a SQL
+script that reads a baseline scenario and writes a derived one. The reference
+implementation is `scripts/seed/ecosense_growth_variants.sql`, which derives
+`Ecosense_Growth_2035` from the real Ecosense `Current_Conditions` import, then
+chains `Ecosense_Growth_2045` from `Ecosense_Growth_2035`.
+
+Each variant in that script does three things in one transaction (a `DO $$ ... $$`
+block, so a partial failure rolls back the whole variant instead of leaving it
+half-applied):
+
+1. **Grow survivors** — select baseline trees (joined to `trees.Stems` for DBH),
+   randomly drop a small fraction (simulated mortality — those trees are simply
+   absent from the new scenario), scale `Height_m`/`CrownWidth_m`/
+   `CrownBaseHeight_m`/`DBH_cm` up by a flat percentage, advance
+   `MeasurementDate`/`Age_years`, and insert one new `trees.Trees` row per
+   survivor with `TreeEntityID` carried over (same physical tree) and
+   `ParentVariantID` pointing at the baseline row (lineage chain).
+2. **Regenerate** — insert a small number of brand-new sapling rows with a fresh
+   `TreeEntityID` and no `ParentVariantID`, positioned with a small random offset
+   from an existing tree.
+3. Both inserts use `VariantTypeID = simulated_growth` and
+   `DataSourceType = 'simulated'` so they're clearly distinguishable from field
+   measurements.
+
+**This is a simple placeholder model** — flat percentage growth, not a calibrated
+forestry model. For scientifically calibrated projections, use the SILVA coupling
+instead (`docs/silva-coupling.md`, `docs/growth-simulation-schema.md`).
+
+### Adding your own variant
+
+Copy one of the `DO $$ ... $$` blocks in `scripts/seed/ecosense_growth_variants.sql`
+and change:
+
+| What | Where |
+|---|---|
+| New scenario name | `INSERT INTO shared.Scenarios` block, and every `ScenarioName = '...'` reference in your copied block |
+| Source scenario to grow from | The `WHERE ... ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = '...')` line in the baseline `SELECT` — point it at any existing scenario, including one this script already generated |
+| Growth amount | The `1.12`/`1.08`/`1.05`/`1.15`-style multipliers on `Height_m`/`CrownWidth_m`/`CrownBaseHeight_m`/`DBH_cm` |
+| Time elapsed | The `INTERVAL '10 years'` and matching `Age_years + 10` |
+| Mortality rate | The `r >= 0.03` cutoff (raise to kill off more trees, lower for less) |
+| Regeneration rate | The `r < 0.02` cutoff and the `LIMIT 30` |
+
+Apply it the same way as the demo seed — manually, never auto-run on build:
+
+```bash
+docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/your_variant.sql
+```
+
+If you hit `function st_x(...) does not exist`, your `SET search_path` is missing
+`extensions` (where PostGIS lives in this self-hosted Supabase setup) — it must
+include it whenever the script calls `ST_X`/`ST_Y`/`ST_MakePoint`/`ST_SetSRID`.
 
 ---
 

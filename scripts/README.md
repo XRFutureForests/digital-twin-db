@@ -22,7 +22,8 @@ scripts/
 │       ├── import_ecosense.py      # (replaced by import_trees.py)
 │       └── import_mathisle.py      # (replaced by import_trees.py)
 ├── seed/                     # Optional demo/test data (never auto-applied)
-│   └── demo_forest_seed.sql        # Synthetic 4-species, 3-scenario demo dataset (XRFF-241)
+│   ├── demo_forest_seed.sql        # Synthetic 4-species, 3-scenario demo dataset (XRFF-241)
+│   └── ecosense_growth_variants.sql # Growth variants generated from real Ecosense baseline (see docs/variant-scenario-model.md)
 └── utils/                    # Utility and debug scripts
     ├── check_db_schema.py          # Inspect database schema
     ├── test_aquarius.py            # Test Aquarius API connection
@@ -103,6 +104,12 @@ mathisle) and demo/test data are both loaded manually, on purpose.
 ```bash
 # Load the synthetic demo dataset (4 species, 3 scenarios, sensors) — optional
 docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/demo_forest_seed.sql
+
+# Generate growth variants from the real Ecosense baseline — optional
+# (also backfills ScenarioID=Current_Conditions on the baseline import, which
+# import_trees.py leaves NULL). See docs/variant-scenario-model.md for how to
+# copy this pattern for your own variant.
+docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/ecosense_growth_variants.sql
 ```
 
 ## Utility Scripts
