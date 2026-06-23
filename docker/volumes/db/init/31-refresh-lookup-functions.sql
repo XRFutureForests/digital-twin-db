@@ -305,6 +305,24 @@ BEGIN
             SELECT COUNT(*) INTO v_rows_after FROM trees.barkcharacteristics;
             p_table_name := 'bark_characteristics';
 
+        WHEN 'datasource_types', 'datasourcetypes' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.datasourcetypes;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_datasource_types (
+                DataSourceTypeName VARCHAR(50),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_datasource_types;
+
+            EXECUTE format('COPY _temp_datasource_types FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'datasource_types.csv');
+
+            INSERT INTO trees.DataSourceTypes (DataSourceTypeName, Description)
+            SELECT DataSourceTypeName, Description FROM _temp_datasource_types
+            ON CONFLICT (DataSourceTypeName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.datasourcetypes;
+            p_table_name := 'datasource_types';
+
         -- =====================================================================
         -- TREE MORPHOLOGY TABLES (from tree_anatomy.pdf)
         -- =====================================================================
@@ -487,7 +505,7 @@ BEGIN
             p_table_name := 'growth_forms';
 
         ELSE
-            RETURN QUERY SELECT p_table_name, 0, 0, 'ERROR: Unknown table. Use: species, locations, sensor_types, tree_status, soil_types, climate_zones, variant_types, scenarios, taper_types, straightness_types, branching_patterns, bark_characteristics, height_classes, crown_architectures, branch_elongation_habits, growth_orientations, shoot_elongation_types, crown_shapes, geometric_crown_solids, axis_structures, growth_forms';
+            RETURN QUERY SELECT p_table_name, 0, 0, 'ERROR: Unknown table. Use: species, locations, sensor_types, tree_status, soil_types, climate_zones, variant_types, scenarios, taper_types, straightness_types, branching_patterns, bark_characteristics, datasource_types, height_classes, crown_architectures, branch_elongation_habits, growth_orientations, shoot_elongation_types, crown_shapes, geometric_crown_solids, axis_structures, growth_forms';
             RETURN;
     END CASE;
     
@@ -517,6 +535,7 @@ BEGIN
     RETURN QUERY SELECT * FROM shared.refresh_lookup('straightness_types');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('branching_patterns');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('bark_characteristics');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('datasource_types');
     -- Tree Morphology tables (from tree_anatomy.pdf)
     RETURN QUERY SELECT * FROM shared.refresh_lookup('height_classes');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_architectures');
@@ -556,7 +575,7 @@ BEGIN
     RAISE NOTICE '  species, locations, sensor_types, tree_status,';
     RAISE NOTICE '  soil_types, climate_zones, variant_types, scenarios,';
     RAISE NOTICE '  taper_types, straightness_types, branching_patterns,';
-    RAISE NOTICE '  bark_characteristics';
+    RAISE NOTICE '  bark_characteristics, datasource_types';
     RAISE NOTICE '';
     RAISE NOTICE 'Tree Morphology (from tree_anatomy.pdf):';
     RAISE NOTICE '  height_classes, crown_architectures, branch_elongation_habits,';

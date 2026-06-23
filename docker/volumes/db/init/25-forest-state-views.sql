@@ -18,6 +18,11 @@ SELECT * FROM shared.varianttypes;
 
 COMMENT ON VIEW public.varianttypes IS 'Public API view for data variant type classifications';
 
+-- DataSourceTypes view
+CREATE OR REPLACE VIEW public.datasourcetypes AS
+SELECT * FROM trees.DataSourceTypes;
+COMMENT ON VIEW public.datasourcetypes IS 'Data source type classifications (field, lidar, photogrammetry, estimated, simulated)';
+
 -- =============================================================================
 -- FOREST STATE VIEW (PRIMARY UE QUERY TARGET)
 -- =============================================================================
@@ -49,7 +54,7 @@ SELECT
     t.age_years,
     t.healthscore,
     t.measurementdate,
-    t.datasourcetype,
+    dst.datasourcetypename AS datasourcetype,
     -- Main stem diameter (StemNumber=1) — flattened so UE gets height+DBH in one query
     st.dbh_cm,
     -- Flat lat/lon for UE JSON parsing (no PostGIS parsing needed in Blueprint)
@@ -61,7 +66,8 @@ FROM trees.trees t
 LEFT JOIN shared.scenarios   s  ON t.scenarioid   = s.scenarioid
 LEFT JOIN shared.varianttypes vt ON t.varianttypeid = vt.varianttypeid
 LEFT JOIN shared.species      sp ON t.speciesid    = sp.speciesid
-LEFT JOIN trees.stems         st ON st.treevariantid = t.variantid AND st.stemnumber = 1;
+LEFT JOIN trees.stems         st ON st.treevariantid = t.variantid AND st.stemnumber = 1
+LEFT JOIN trees.DataSourceTypes dst ON t.datasourcetypeid = dst.datasourcetypeid;
 
 COMMENT ON VIEW public.forest_state IS
     'Flat view of all tree variants with scenario, species, and position. '
@@ -84,13 +90,15 @@ CREATE INDEX IF NOT EXISTS idx_trees_location_scenario
 -- GRANTS
 -- =============================================================================
 
-GRANT SELECT ON public.scenarios    TO anon, authenticated;
-GRANT SELECT ON public.varianttypes TO anon, authenticated;
-GRANT SELECT ON public.forest_state TO anon, authenticated;
+GRANT SELECT ON public.scenarios       TO anon, authenticated;
+GRANT SELECT ON public.varianttypes    TO anon, authenticated;
+GRANT SELECT ON public.datasourcetypes TO anon, authenticated;
+GRANT SELECT ON public.forest_state    TO anon, authenticated;
 
-GRANT ALL ON public.scenarios    TO service_role;
-GRANT ALL ON public.varianttypes TO service_role;
-GRANT ALL ON public.forest_state TO service_role;
+GRANT ALL ON public.scenarios       TO service_role;
+GRANT ALL ON public.varianttypes    TO service_role;
+GRANT ALL ON public.datasourcetypes TO service_role;
+GRANT ALL ON public.forest_state    TO service_role;
 
 -- Scenarios: allow authenticated users to add new scenarios (e.g. SILVA output)
 GRANT INSERT, UPDATE ON public.scenarios TO authenticated;

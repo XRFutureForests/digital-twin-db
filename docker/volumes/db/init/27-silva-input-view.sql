@@ -140,9 +140,10 @@ LEFT JOIN shared.Scenarios   sc ON t.ScenarioID  = sc.ScenarioID
 -- Join to main stem only (StemNumber = 1) for DBH
 LEFT JOIN trees.Stems        st ON st.TreeVariantID = t.VariantID
                                 AND st.StemNumber    = 1
+LEFT JOIN trees.DataSourceTypes  dst ON t.DataSourceTypeID = dst.DataSourceTypeID
 WHERE
     -- Only field/LiDAR measurements — not simulated or estimated rows
-    t.DataSourceType IN ('field', 'lidar', 'photogrammetry')
+    dst.DataSourceTypeName IN ('field', 'lidar', 'photogrammetry')
     -- Must have height (mandatory SILVA input)
     AND t.Height_m IS NOT NULL
     -- Must have a known location centre for coordinate conversion
