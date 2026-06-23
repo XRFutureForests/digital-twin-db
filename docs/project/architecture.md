@@ -412,17 +412,22 @@ sequenceDiagram
 
 ## 8. Architecture Decisions (ADRs)
 
-No formal ADR directory exists yet. Key implicit decisions documented here for future formalization:
+Formal ADRs are in `docs/reference/adrs/`. Key decisions:
+
+| ADR | Decision | Rationale Summary |
+|-----|----------|-------------------|
+| [ADR-001](../reference/adrs/adr-001-postgresql-postgis.md) | PostgreSQL 15 + PostGIS 3 | Spatial query support, PostgREST compatibility, open source |
+| [ADR-002](../reference/adrs/adr-002-supabase-auth.md) | GoTrue JWT auth | JWT-native PostgREST integration; no session storage |
+| [ADR-003](../reference/adrs/adr-003-self-hosted-supabase.md) | Self-hosted Supabase | Data sovereignty; university network; offline capability |
+| [ADR-004](../reference/adrs/adr-004-kong-api-gateway.md) | Kong declarative gateway | Supabase-native; declarative config; single entry point |
+| [ADR-005](../reference/adrs/adr-005-supavisor-pooler.md) | Supavisor connection pooler | Multi-tenant; already in Supabase stack; replaces PgBouncer |
+
+Additional implicit decisions not yet formalized as ADRs:
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Self-hosted Supabase | Docker Compose stack | Data sovereignty; no cloud egress; free tier limitations irrelevant |
 | PascalCase naming | PascalCase for all tables/columns | Established in earliest migrations; consistent with initial schema design |
 | Variant lineage pattern | `VariantID`/`ParentVariantID` on data tables | Supports multi-scenario forest simulation and temporal analysis |
-| PostgREST over custom API | Auto-generated REST | Eliminates API maintenance burden; schema changes auto-reflected |
-| Supavisor over PgBouncer | Supavisor | Supabase-native, multi-tenant pooler; already included in stack |
-
-**Recommended ADR location:** `docs/reference/adrs/` (create when first formal decisions are recorded).
 
 ---
 
@@ -458,7 +463,6 @@ No formal ADR directory exists yet. Key implicit decisions documented here for f
 |------|----------|--------|
 | Single-host deployment | Medium | No failover; disk failure = data loss without backup |
 | Aquarius API coupling | Medium | VPN dependency; API changes break sensor ingestion |
-| No formal ADRs | Low | Implicit decisions undocumented; harder to onboard new engineers |
 | PascalCase quoting | Low | Every SQL query must double-quote identifiers; error-prone for new contributors |
 
 ### 10.2 Technical Debt

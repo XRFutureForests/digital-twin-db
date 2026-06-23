@@ -52,7 +52,7 @@ The database is organized into **seven domain schemas** plus `public` (PostgREST
 | Schema | Purpose | Primary Tables |
 |--------|---------|----------------|
 | `shared` | Reference and cross-domain data | Locations, Species, Scenarios, Campaigns, Plots, Processes, AuditLog, ManagementEvents, DisturbanceEvents |
-| `trees` | Tree measurements and variants | Trees, Stems, PhenologyObservations, Deadwood, GroundVegetation, morphology lookups |
+| `trees` | Tree measurements, variants, and simulator output | Trees, Stems, PhenologyObservations, Deadwood, GroundVegetation, GrowthSimulations, morphology lookups |
 | `pointclouds` | LiDAR scan data and processing lineage | PointClouds, ScannerTypes, Scanners |
 | `sensor` | Environmental sensor hardware and time-series | SensorTypes, Sensors, SensorReadings, sensor_tree_links |
 | `environments` | Environmental condition variants | Environments |
@@ -432,7 +432,46 @@ erDiagram
 
 ---
 
-### 3.12 `shared.Processes` and `shared.ProcessParameters`
+### 3.12 `trees.GrowthSimulations`
+
+**Description:** Per-tree dimensional projections produced by external forest growth simulators (SILVA, FVS, iLand, manual). One row = one tree entity at one projected year under one simulation run. Rows from the same run share a `RunID` UUID. Added in migration `26-growth-simulations-schema.sql`.
+
+| Column | Type | Null | Description |
+|--------|------|------|-------------|
+| `SimulationID` | BIGSERIAL | No | Surrogate PK |
+| `RunID` | UUID | No | Groups all rows from a single simulator execution |
+| `TreeEntityID` | UUID | No | Stable physical-tree identity (matches `trees.Trees.TreeEntityID`) |
+| `BaseVariantID` | INTEGER | Yes | FK → `trees.Trees.VariantID`; starting-point measurement |
+| `LocationID` | INTEGER | Yes | FK → `shared.Locations` |
+| `PlotID` | INTEGER | Yes | FK → `shared.Plots` |
+| `ScenarioID` | INTEGER | Yes | FK → `shared.Scenarios` |
+| `SpeciesID` | INTEGER | Yes | FK → `shared.Species` |
+| `SimulatorName` | VARCHAR(100) | No | One of: SILVA, FVS, iLand, manual, other |
+| `SimulatorVersion` | VARCHAR(50) | Yes | Simulator version string |
+| `ProjectionYear` | INTEGER | No | Target calendar year (1900–2300) |
+| `TimeDelta_yrs` | NUMERIC(8,2) | Yes | Years since base variant measurement |
+| `Height_m` | NUMERIC(6,2) | Yes | Projected tree height |
+| `DBH_cm` | NUMERIC(6,2) | Yes | Projected diameter at breast height |
+| `BasalArea_m2` | NUMERIC(8,4) | Yes | Individual tree basal area |
+| `CrownWidth_m` | NUMERIC(6,2) | Yes | Projected crown width |
+| `CrownBaseHeight_m` | NUMERIC(6,2) | Yes | Height to crown base (≤ Height_m) |
+| `Volume_m3` | NUMERIC(10,3) | Yes | Stem volume |
+| `Biomass_kg` | NUMERIC(12,2) | Yes | Total above-ground biomass |
+| `CarbonContent_kg` | NUMERIC(12,2) | Yes | Carbon equivalent |
+| `HealthScore` | NUMERIC(3,2) | Yes | 0.0–1.0 vitality score |
+| `Mortality` | BOOLEAN | No | True if tree dies in this projection step |
+| `StandBasalArea_m2ha` | NUMERIC(8,4) | Yes | Stand-level basal area (same for all trees in RunID+Year) |
+| `StandVolume_m3ha` | NUMERIC(10,3) | Yes | Stand-level volume |
+| `StandBiomass_tha` | NUMERIC(10,3) | Yes | Stand-level biomass |
+| `StandStemCount_ha` | INTEGER | Yes | Stand-level stem density |
+| `CreatedAt` | TIMESTAMPTZ | No | Insert timestamp |
+| `CreatedBy` | VARCHAR(200) | Yes | Script or user that wrote the row |
+
+**Public API views:** `public.growth_simulations` (flat view with resolved scenario and species names) and `public.simulation_runs` (one row per run — for run selectors). Both are read-only via the API; writes use `scripts/silva/silva_writeback.py` with the service_role key.
+
+---
+
+### 3.13 `shared.Processes` and `shared.ProcessParameters`
 
 **Description:** Algorithm/process registry with academic attribution and versioning. Parameters are stored separately and linked to variant records via junction tables.
 

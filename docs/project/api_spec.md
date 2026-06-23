@@ -149,6 +149,15 @@ PostgREST exposes every public schema view as a resource. The path is `/rest/v1/
 | `/rest/v1/geometriccrownsolids` | `trees.GeometricCrownSolids` | Trees (lookup) | Yes | No |
 | `/rest/v1/axisstructures` | `trees.AxisStructures` | Trees (lookup) | Yes | No |
 | `/rest/v1/growthforms` | `trees.GrowthForms` | Trees (lookup) | Yes | No |
+| `/rest/v1/scenarios` | `shared.Scenarios` | Shared | Yes | Yes |
+| `/rest/v1/varianttypes` | `shared.VariantTypes` | Shared | Yes | No |
+| `/rest/v1/datasourcetypes` | `shared.DataSourceTypes` | Shared | Yes | No |
+| `/rest/v1/forest_state` | composite view | Trees (composite) | Yes | No |
+| `/rest/v1/silva_input` | composite view | Trees (external) | Yes | No |
+| `/rest/v1/growth_simulations` | `trees.GrowthSimulations` | Trees | Yes | No |
+| `/rest/v1/simulation_runs` | derived from GrowthSimulations | Trees | Yes | No |
+
+`forest_state` is the primary read endpoint for Unreal Engine — it joins trees, species, variant type, scenario, and stems into a single flat row with pre-computed `lat` and `lon` columns. `silva_input` is the SILVA R model export view. `growth_simulations` and `simulation_runs` expose simulator output; writes go to the underlying `trees.GrowthSimulations` table via `scripts/silva/silva_writeback.py` (service_role).
 
 ### 3.2 Standard CRUD Methods
 

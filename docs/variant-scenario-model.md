@@ -14,7 +14,9 @@ The digital twin DB stores multiple **variants** of a forest, not just one snaps
 | **VariantType** | How the data was produced | `original`, `simulated_growth`, `model_output` |
 | **Variant (row)** | A single tree state under a scenario | Tree #42 at height 18.3m in year 2060 |
 
-One physical tree (identified by `TreeEntityID`) can have many rows in `trees.Trees` — one per scenario/time-step. This is how time-machine switching works in UR: swap the `ScenarioID` filter and get a completely different forest.
+One physical tree (identified by `TreeEntityID`) can have many rows in `trees.Trees` — one per scenario/time-step. This is how time-machine switching works in UE: swap the `ScenarioID` filter and get a completely different forest.
+
+**Variants vs. data corrections:** A new variant is for a distinct forest state. If you find a typo or missed measurement in an existing record, fix it with a plain UPDATE — not a new variant. The DB has AFTER UPDATE audit triggers that log the change automatically. See [data-access-guide.md](data-access-guide.md#correcting-data--field-updates-vs-new-variants).
 
 ---
 
