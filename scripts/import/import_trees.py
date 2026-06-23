@@ -46,7 +46,7 @@ if POOLER_TENANT_ID:
 else:
     POSTGRES_USER_POOLER = POSTGRES_USER
 
-# Standard template columns (the 23 core columns)
+# Standard template columns (the 24 core columns)
 TEMPLATE_COLUMNS = [
     "LocationID",
     "PlotID",
@@ -71,6 +71,7 @@ TEMPLATE_COLUMNS = [
     "BarkCharacteristicID",
     "FieldNotes",
     "MeasurementDate",
+    "ScenarioName",
 ]
 
 REQUIRED_COLUMNS = ["LocationID", "Latitude", "Longitude"]
@@ -151,13 +152,7 @@ def validate_csv(df, csv_path):
         if bad_health > 0:
             errors.append(f"{bad_health} rows have HealthScore outside [0, 1]")
 
-    # Validate DataSourceType values
-    valid_sources = {"lidar", "field", "photogrammetry", "estimated", "simulated"}
-    if "DataSourceType" in df.columns:
-        unique_sources = set(df["DataSourceType"].dropna().str.lower().unique())
-        invalid = unique_sources - valid_sources
-        if invalid:
-            errors.append(f"Invalid DataSourceType values: {invalid}")
+    # DataSourceType string values are validated against the database in validate_foreign_keys()
 
     return errors, warnings
 
@@ -214,6 +209,36 @@ def validate_foreign_keys(df, conn):
                 plot_names = [f"{int(pid)}={valid_plots[int(pid)]}" for pid in plot_ids]
                 print(f"  Plots: {', '.join(plot_names)}")
 
+    # Check DataSourceType values exist in trees.DataSourceTypes (warn only)
+    if "DataSourceType" in df.columns:
+        ds_values = df["DataSourceType"].dropna().unique()
+        if len(ds_values) > 0:
+            cur.execute(
+                "SELECT DataSourceTypeName FROM trees.DataSourceTypes"
+            )
+            valid_ds_names = {row[0].lower() for row in cur.fetchall()}
+            unknown_ds = [
+                s for s in ds_values if str(s).lower() not in valid_ds_names
+            ]
+            if unknown_ds:
+                warnings.append(
+                    f"DataSourceType values not found in trees.DataSourceTypes: {unknown_ds}"
+                )
+
+    # Check ScenarioNames exist (warn only — unknown scenarios will be created on import)
+    if "ScenarioName" in df.columns:
+        scenario_names = df["ScenarioName"].dropna().unique()
+        if len(scenario_names) > 0:
+            cur.execute("SELECT ScenarioName FROM shared.Scenarios")
+            valid_scenarios = {row[0] for row in cur.fetchall()}
+            unknown_scenarios = [s for s in scenario_names if s not in valid_scenarios]
+            if unknown_scenarios:
+                warnings.append(
+                    f"ScenarioNames not found in database (will be created): {unknown_scenarios}"
+                )
+            else:
+                print(f"  Scenarios: {', '.join(sorted(scenario_names))}")
+
     return warnings
 
 
@@ -252,6 +277,25 @@ def import_trees(df, dry_run=False):
                 f"  Note: {existing} trees already exist for LocationID={int(loc_id)}"
             )
 
+    # Build datasource_type_id_map (new schema); fall back to None if table missing
+    datasource_type_id_map: dict[str, int] | None = None
+    try:
+        cur.execute(
+            "SELECT DataSourceTypeName, DataSourceTypeID FROM trees.DataSourceTypes"
+        )
+        datasource_type_id_map = {
+            row[0].lower(): row[1] for row in cur.fetchall()
+        }
+    except psycopg2.errors.UndefinedTable:
+        conn.rollback()
+        print("  Warning: trees.DataSourceTypes not found — using legacy DataSourceType string column")
+
+    # Build scenario_id_map; create missing scenarios on the fly
+    scenario_id_map: dict[str, int] = {}
+    cur.execute("SELECT ScenarioName, ScenarioID FROM shared.Scenarios")
+    for scenario_name, scenario_id in cur.fetchall():
+        scenario_id_map[scenario_name] = scenario_id
+
     # Build insert values
     has_position_original = (
         "Easting_32632" in df.columns and "Northing_32632" in df.columns
@@ -274,12 +318,40 @@ def import_trees(df, dry_run=False):
         if source_crs is not None:
             source_crs = int(source_crs)
 
+        # Resolve DataSourceTypeID from string name
+        ds_name = row.get("DataSourceType")
+        if datasource_type_id_map is not None:
+            datasource_type_id = None
+            if pd.notna(ds_name) and ds_name:
+                datasource_type_id = datasource_type_id_map.get(str(ds_name).lower())
+        else:
+            # Legacy fallback: pass the string directly
+            datasource_type_id = str(ds_name).lower() if pd.notna(ds_name) and ds_name else None
+
+        # Resolve ScenarioID, creating the scenario if it doesn't exist yet
+        scenario_name = row.get("ScenarioName")
+        if pd.notna(scenario_name) and scenario_name:
+            scenario_name = str(scenario_name)
+            if scenario_name not in scenario_id_map:
+                cur.execute(
+                    "INSERT INTO shared.Scenarios (ScenarioName, Description) "
+                    "VALUES (%s, NULL) RETURNING ScenarioID",
+                    (scenario_name,),
+                )
+                new_id = cur.fetchone()[0]
+                scenario_id_map[scenario_name] = new_id
+                print(f"  Created new scenario: '{scenario_name}' (ScenarioID={new_id})")
+            scenario_id = scenario_id_map[scenario_name]
+        else:
+            scenario_id = None
+
         tree_values.append(
             (
                 int(row["LocationID"]),
                 int(row["PlotID"]) if pd.notna(row.get("PlotID")) else None,
                 int(row["TreeNumber"]) if pd.notna(row.get("TreeNumber")) else None,
                 int(row["CampaignID"]) if pd.notna(row.get("CampaignID")) else None,
+                scenario_id,
                 int(row["VariantTypeID"]) if pd.notna(row.get("VariantTypeID")) else 1,
                 int(row["SpeciesID"]) if pd.notna(row.get("SpeciesID")) else None,
                 int(row["TreeStatusID"]) if pd.notna(row.get("TreeStatusID")) else None,
@@ -298,11 +370,7 @@ def import_trees(df, dry_run=False):
                     if pd.notna(row.get("MeasurementDate"))
                     else None
                 ),
-                (
-                    str(row["DataSourceType"]).lower()
-                    if pd.notna(row.get("DataSourceType"))
-                    else None
-                ),
+                datasource_type_id,
                 float(row["Height_m"]) if pd.notna(row.get("Height_m")) else None,
                 (
                     float(row["CrownWidth_m"])
@@ -343,7 +411,7 @@ def import_trees(df, dry_run=False):
 
     if dry_run:
         print("\n  [DRY RUN] No data inserted.")
-        with_dbh = sum(1 for v in tree_values if v[21] is not None)
+        with_dbh = sum(1 for v in tree_values if v[22] is not None)
         print(
             f"  Would insert {len(tree_values)} trees and {with_dbh} stem measurements"
         )
@@ -353,9 +421,9 @@ def import_trees(df, dry_run=False):
     # Insert trees
     insert_query = """
         INSERT INTO trees.Trees (
-            LocationID, PlotID, TreeNumber, CampaignID, VariantTypeID, SpeciesID,
+            LocationID, PlotID, TreeNumber, CampaignID, ScenarioID, VariantTypeID, SpeciesID,
             TreeStatusID, BranchingPatternID, BarkCharacteristicID,
-            MeasurementDate, DataSourceType,
+            MeasurementDate, DataSourceTypeID,
             Height_m, CrownWidth_m, CrownBaseHeight_m,
             Position, PositionOriginal, SourceCRS,
             Age_years, HealthScore, FieldNotes, CreatedBy
@@ -364,22 +432,22 @@ def import_trees(df, dry_run=False):
         RETURNING VariantID
     """
 
-    # Template: 21 tree columns (excluding the 3 stem columns at the end)
+    # Template: 22 tree columns (excluding the 3 stem columns at the end)
     if has_position_original:
         template = (
-            "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+            "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
             "ST_GeomFromText(%s, 4326), ST_GeomFromText(%s, 32632), "
             "%s, %s, %s, %s, %s)"
         )
     else:
         template = (
-            "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+            "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
             "ST_GeomFromText(%s, 4326), %s, "
             "%s, %s, %s, %s, %s)"
         )
 
-    # Extract only the tree columns (first 21) for insertion
-    tree_only = [v[:21] for v in tree_values]
+    # Extract only the tree columns (first 22) for insertion
+    tree_only = [v[:22] for v in tree_values]
 
     variant_ids = execute_values(
         cur,
@@ -394,9 +462,9 @@ def import_trees(df, dry_run=False):
     # Insert stems for trees with DBH
     stems = []
     for i, (variant_id,) in enumerate(variant_ids):
-        dbh_cm = tree_values[i][21]
-        taper_type_id = tree_values[i][22]
-        straightness_type_id = tree_values[i][23]
+        dbh_cm = tree_values[i][22]
+        taper_type_id = tree_values[i][23]
+        straightness_type_id = tree_values[i][24]
         if dbh_cm is not None:
             stems.append((variant_id, 1, dbh_cm, taper_type_id, straightness_type_id))
 
@@ -441,6 +509,15 @@ def print_summary(df, csv_path):
             print(f"  Measurement dates: {sorted(dates)}")
         else:
             print(f"  Measurement dates: {len(dates)} unique dates")
+
+    if "ScenarioName" in df.columns:
+        scenario_count = df["ScenarioName"].notna().sum()
+        scenario_null = df["ScenarioName"].isna().sum()
+        scenarios = df["ScenarioName"].dropna().unique()
+        if len(scenarios) <= 5:
+            print(f"  With scenario: {scenario_count} ({', '.join(sorted(scenarios))}), without: {scenario_null}")
+        else:
+            print(f"  With scenario: {scenario_count}, without: {scenario_null}")
 
 
 def main():

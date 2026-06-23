@@ -457,6 +457,22 @@ ON CONFLICT (GrowthFormName) DO UPDATE SET Description = EXCLUDED.Description;
 DROP TABLE temp_growth_forms;
 
 -- =============================================================================
+-- LOAD DATASOURCE TYPES
+-- =============================================================================
+CREATE TEMP TABLE temp_datasource_types (
+    DataSourceTypeName VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_datasource_types FROM '/var/lib/postgresql/lookups/datasource_types.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.DataSourceTypes (DataSourceTypeName, Description)
+SELECT DataSourceTypeName, Description FROM temp_datasource_types
+ON CONFLICT (DataSourceTypeName) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_datasource_types;
+
+-- =============================================================================
 -- SUMMARY
 -- =============================================================================
 DO $$
@@ -473,6 +489,7 @@ DECLARE
     straightness_count INTEGER;
     branching_count INTEGER;
     bark_count INTEGER;
+    datasource_type_count INTEGER;
     height_class_count INTEGER;
     crown_arch_count INTEGER;
     elongation_count INTEGER;
@@ -495,6 +512,7 @@ BEGIN
     SELECT COUNT(*) INTO straightness_count FROM trees.StraightnessTypes;
     SELECT COUNT(*) INTO branching_count FROM trees.BranchingPatterns;
     SELECT COUNT(*) INTO bark_count FROM trees.BarkCharacteristics;
+    SELECT COUNT(*) INTO datasource_type_count FROM trees.DataSourceTypes;
     SELECT COUNT(*) INTO height_class_count FROM trees.PhanerophyteHeightClasses;
     SELECT COUNT(*) INTO crown_arch_count FROM trees.CrownArchitectures;
     SELECT COUNT(*) INTO elongation_count FROM trees.BranchElongationHabits;
@@ -504,7 +522,7 @@ BEGIN
     SELECT COUNT(*) INTO geo_solid_count FROM trees.GeometricCrownSolids;
     SELECT COUNT(*) INTO axis_struct_count FROM trees.AxisStructures;
     SELECT COUNT(*) INTO growth_form_count FROM trees.GrowthForms;
-    
+
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Lookup Tables Loaded from CSV';
     RAISE NOTICE '=======================================================';
@@ -523,6 +541,7 @@ BEGIN
     RAISE NOTICE '  Straightness:     % rows', straightness_count;
     RAISE NOTICE '  Branching:        % rows', branching_count;
     RAISE NOTICE '  Bark Types:       % rows', bark_count;
+    RAISE NOTICE '  DataSource Types: % rows', datasource_type_count;
     RAISE NOTICE 'Tree Morphology (from tree_anatomy.pdf):';
     RAISE NOTICE '  Height Classes:   % rows', height_class_count;
     RAISE NOTICE '  Crown Arch:       % rows', crown_arch_count;

@@ -70,6 +70,14 @@ COMMENT ON TABLE trees.BarkCharacteristics IS 'Bark texture and appearance class
 
 -- NOTE: BarkCharacteristics data is loaded from data/lookups/bark_characteristics.csv
 
+CREATE TABLE trees.DataSourceTypes (
+    DataSourceTypeID   SERIAL PRIMARY KEY,
+    DataSourceTypeName VARCHAR(50) NOT NULL UNIQUE,
+    Description        TEXT
+);
+COMMENT ON TABLE trees.DataSourceTypes IS 'How tree measurement data was collected or generated';
+-- NOTE: DataSourceTypes data is loaded from data/lookups/datasource_types.csv
+
 -- Create indexes on reference tables
 CREATE INDEX idx_tree_status_name ON trees.TreeStatus(TreeStatusName);
 CREATE INDEX idx_taper_types_name ON trees.TaperTypes(TaperTypeName);
@@ -98,7 +106,7 @@ CREATE TABLE trees.Trees (
     BarkCharacteristicID INTEGER REFERENCES trees.BarkCharacteristics(BarkCharacteristicID),
     -- Measurement metadata
     MeasurementDate DATE,
-    DataSourceType VARCHAR(50) CHECK (DataSourceType IN ('lidar', 'field', 'photogrammetry', 'estimated', 'simulated')),
+    DataSourceTypeID   INTEGER REFERENCES trees.DataSourceTypes(DataSourceTypeID) ON DELETE SET NULL,
     -- Tree measurements
     Height_m NUMERIC(6, 2) CHECK (Height_m > 0 AND Height_m <= 200),
     HeightSource VARCHAR(50) DEFAULT 'measured',
@@ -140,7 +148,7 @@ COMMENT ON COLUMN trees.Trees.ParentVariantID IS 'Parent variant for tracking gr
 COMMENT ON COLUMN trees.Trees.PointCloudVariantID IS 'Source point cloud variant if tree was detected from LiDAR';
 COMMENT ON COLUMN trees.Trees.CampaignID IS 'Data collection campaign this measurement belongs to';
 COMMENT ON COLUMN trees.Trees.MeasurementDate IS 'Actual date of field measurement (may differ from CreatedAt)';
-COMMENT ON COLUMN trees.Trees.DataSourceType IS 'How the data was collected (lidar, field, photogrammetry, estimated, simulated)';
+COMMENT ON COLUMN trees.Trees.DataSourceTypeID IS 'FK to trees.DataSourceTypes — how the data was collected or generated';
 COMMENT ON COLUMN trees.Trees.Position IS 'PostGIS point for tree location in WGS84';
 COMMENT ON COLUMN trees.Trees.PositionOriginal IS 'Original coordinates in source CRS before WGS84 transformation';
 COMMENT ON COLUMN trees.Trees.CrownBoundary IS 'PostGIS polygon defining crown extent';
@@ -173,7 +181,7 @@ CREATE INDEX idx_trees_created_by ON trees.Trees(CreatedBy);
 CREATE INDEX idx_trees_tree_entity ON trees.Trees(TreeEntityID);
 CREATE INDEX idx_trees_campaign ON trees.Trees(CampaignID);
 CREATE INDEX idx_trees_measurement_date ON trees.Trees(MeasurementDate DESC);
-CREATE INDEX idx_trees_data_source ON trees.Trees(DataSourceType);
+CREATE INDEX idx_trees_datasource_type ON trees.Trees(DataSourceTypeID);
 CREATE INDEX idx_trees_plot ON trees.Trees(PlotID);
 CREATE INDEX idx_trees_tree_number ON trees.Trees(TreeNumber);
 

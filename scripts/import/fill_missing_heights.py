@@ -157,7 +157,10 @@ def main():
         UPDATE trees.Trees
         SET Height_m = %s,
             HeightSource = %s,
-            DataSourceType = 'estimated',
+            DataSourceTypeID = (
+                SELECT DataSourceTypeID FROM trees.DataSourceTypes
+                WHERE DataSourceTypeName = 'estimated'
+            ),
             UpdatedAt = NOW(),
             UpdatedBy = 'fill_missing_heights'
         WHERE VariantID = %s

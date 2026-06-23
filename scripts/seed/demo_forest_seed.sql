@@ -91,7 +91,7 @@ WHERE NOT EXISTS (
 INSERT INTO trees.Trees (
     TreeEntityID, LocationID, SpeciesID, ScenarioID, VariantTypeID, CampaignID,
     Position, Height_m, CrownWidth_m, CrownBaseHeight_m, Age_years, HealthScore,
-    MeasurementDate, DataSourceType
+    MeasurementDate, DataSourceTypeID
 )
 SELECT
     b.entity_uuid,
@@ -102,7 +102,7 @@ SELECT
     (SELECT CampaignID FROM shared.Campaigns WHERE CampaignName = 'Ecosense_Field_Inventory_2024'),
     extensions.ST_SetSRID(extensions.ST_MakePoint(b.lon, b.lat), 4326),
     b.height_m, b.crown_m, b.crown_base_m, b.age_years, b.health,
-    '2024-09-15', 'field'
+    '2024-09-15', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'field')
 FROM _demo_tree_bases b;
 
 -- ============================================================
@@ -113,7 +113,7 @@ FROM _demo_tree_bases b;
 INSERT INTO trees.Trees (
     TreeEntityID, LocationID, SpeciesID, ScenarioID, VariantTypeID,
     Position, Height_m, CrownWidth_m, CrownBaseHeight_m, Age_years, HealthScore,
-    MeasurementDate, DataSourceType
+    MeasurementDate, DataSourceTypeID
 )
 SELECT
     b.entity_uuid,
@@ -131,7 +131,7 @@ SELECT
         WHEN b.species_sci = 'Betula pendula' THEN GREATEST(b.health - 0.12, 0.50)
         ELSE GREATEST(b.health - 0.05, 0.60)
     END,
-    '2050-06-01', 'simulated'
+    '2050-06-01', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'simulated')
 FROM _demo_tree_bases b;
 
 -- ============================================================
@@ -142,7 +142,7 @@ FROM _demo_tree_bases b;
 INSERT INTO trees.Trees (
     TreeEntityID, LocationID, SpeciesID, ScenarioID, VariantTypeID,
     Position, Height_m, CrownWidth_m, CrownBaseHeight_m, Age_years, HealthScore,
-    MeasurementDate, DataSourceType
+    MeasurementDate, DataSourceTypeID
 )
 SELECT
     b.entity_uuid,
@@ -152,7 +152,7 @@ SELECT
     (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'model_output'),
     extensions.ST_SetSRID(extensions.ST_MakePoint(b.lon, b.lat), 4326),
     b.height_m, b.crown_m, b.crown_base_m, b.age_years, b.health,
-    '2024-09-15', 'simulated'
+    '2024-09-15', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'simulated')
 FROM _demo_tree_bases b
 WHERE b.thin = false;    -- thinned trees are absent from this scenario entirely
 
