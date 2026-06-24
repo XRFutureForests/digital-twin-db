@@ -1,0 +1,6 @@
+CrownClassName,Description
+dominant,Crown extends above the general canopy level with full overhead light exposure
+co_dominant,Crown forms part of the general canopy level with above-average light exposure
+intermediate,Crown is shorter than co-dominant trees but receives some direct overhead light
+overtopped,Crown is entirely below the general canopy level and receives only diffuse light
+open_grown,Tree grew with no canopy competition and has a full undamaged crown

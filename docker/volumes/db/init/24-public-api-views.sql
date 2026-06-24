@@ -179,6 +179,20 @@ SELECT * FROM trees.growthforms;
 COMMENT ON VIEW public.growthforms IS 'Public API view for growth forms lookup table';
 
 -- =============================================================================
+-- TREES SCHEMA: TREE CONDITION LOOKUP VIEWS
+-- =============================================================================
+
+CREATE OR REPLACE VIEW public.crownclasses AS
+SELECT * FROM trees.crownclasses;
+
+COMMENT ON VIEW public.crownclasses IS 'Public API view for crown classes (competitive/social position) lookup table';
+
+CREATE OR REPLACE VIEW public.damageagents AS
+SELECT * FROM trees.damageagents;
+
+COMMENT ON VIEW public.damageagents IS 'Public API view for damage agents lookup table';
+
+-- =============================================================================
 -- GRANT PERMISSIONS
 -- =============================================================================
 
@@ -209,6 +223,8 @@ GRANT SELECT ON public.crownshapes TO anon, authenticated;
 GRANT SELECT ON public.geometriccrownsolids TO anon, authenticated;
 GRANT SELECT ON public.axisstructures TO anon, authenticated;
 GRANT SELECT ON public.growthforms TO anon, authenticated;
+GRANT SELECT ON public.crownclasses TO anon, authenticated;
+GRANT SELECT ON public.damageagents TO anon, authenticated;
 
 -- Grant INSERT/UPDATE/DELETE to authenticated users on data tables
 GRANT INSERT, UPDATE, DELETE ON public.campaigns TO authenticated;
@@ -253,6 +269,8 @@ GRANT ALL ON public.crownshapes TO service_role;
 GRANT ALL ON public.geometriccrownsolids TO service_role;
 GRANT ALL ON public.axisstructures TO service_role;
 GRANT ALL ON public.growthforms TO service_role;
+GRANT ALL ON public.crownclasses TO service_role;
+GRANT ALL ON public.damageagents TO service_role;
 
 -- =============================================================================
 -- INSTEAD OF TRIGGERS FOR INSERTABLE/UPDATABLE VIEWS
@@ -325,25 +343,27 @@ BEGIN
         treeentityid, parentvariantid, pointcloudvariantid, campaignid,
         locationid, plotid, scenarioid, varianttypeid, processid,
         speciesid, treestatusid, branchingpatternid, barkcharacteristicid,
-        measurementdate, datasourcetype,
+        measurementdate, datasourcetypeid,
         height_m, crownwidth_m, crownbaseheight_m, crownboundary,
         crownoffsetx_m, crownoffsety_m, volume_m3,
         position, positionoriginal, sourcecrs,
         leanangle_deg, leandirection_azimuth, timedelta_yrs, age_years,
         healthscore, biomass_kg, carboncontent_kg,
         speciesconfidence, positionconfidence, heightconfidence,
+        crownclassid, damageagentid, defoliation_percent, discolouration_percent, crowntransparency_percent,
         statuschangedate, fieldnotes, createdby, updatedby
     ) VALUES (
         COALESCE(NEW.treeentityid, gen_random_uuid()), NEW.parentvariantid, NEW.pointcloudvariantid, NEW.campaignid,
         NEW.locationid, NEW.plotid, NEW.scenarioid, NEW.varianttypeid, NEW.processid,
         NEW.speciesid, NEW.treestatusid, NEW.branchingpatternid, NEW.barkcharacteristicid,
-        NEW.measurementdate, NEW.datasourcetype,
+        NEW.measurementdate, NEW.datasourcetypeid,
         NEW.height_m, NEW.crownwidth_m, NEW.crownbaseheight_m, NEW.crownboundary,
         NEW.crownoffsetx_m, NEW.crownoffsety_m, NEW.volume_m3,
         NEW.position, NEW.positionoriginal, NEW.sourcecrs,
         NEW.leanangle_deg, NEW.leandirection_azimuth, NEW.timedelta_yrs, NEW.age_years,
         NEW.healthscore, NEW.biomass_kg, NEW.carboncontent_kg,
         NEW.speciesconfidence, NEW.positionconfidence, NEW.heightconfidence,
+        NEW.crownclassid, NEW.damageagentid, NEW.defoliation_percent, NEW.discolouration_percent, NEW.crowntransparency_percent,
         NEW.statuschangedate, NEW.fieldnotes, NEW.createdby, NEW.updatedby
     ) RETURNING variantid INTO NEW.variantid;
     RETURN NEW;
@@ -373,7 +393,7 @@ BEGIN
         branchingpatternid = NEW.branchingpatternid,
         barkcharacteristicid = NEW.barkcharacteristicid,
         measurementdate = NEW.measurementdate,
-        datasourcetype = NEW.datasourcetype,
+        datasourcetypeid = NEW.datasourcetypeid,
         height_m = NEW.height_m,
         crownwidth_m = NEW.crownwidth_m,
         crownbaseheight_m = NEW.crownbaseheight_m,
@@ -394,6 +414,11 @@ BEGIN
         speciesconfidence = NEW.speciesconfidence,
         positionconfidence = NEW.positionconfidence,
         heightconfidence = NEW.heightconfidence,
+        crownclassid = NEW.crownclassid,
+        damageagentid = NEW.damageagentid,
+        defoliation_percent = NEW.defoliation_percent,
+        discolouration_percent = NEW.discolouration_percent,
+        crowntransparency_percent = NEW.crowntransparency_percent,
         statuschangedate = NEW.statuschangedate,
         fieldnotes = NEW.fieldnotes,
         updatedat = NOW(),

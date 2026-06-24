@@ -473,6 +473,38 @@ ON CONFLICT (DataSourceTypeName) DO UPDATE SET Description = EXCLUDED.Descriptio
 DROP TABLE temp_datasource_types;
 
 -- =============================================================================
+-- LOAD CROWN CLASSES
+-- =============================================================================
+CREATE TEMP TABLE temp_crown_classes (
+    CrownClassName VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_crown_classes FROM '/var/lib/postgresql/lookups/crown_classes.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.CrownClasses (CrownClassName, Description)
+SELECT CrownClassName, Description FROM temp_crown_classes
+ON CONFLICT (CrownClassName) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_crown_classes;
+
+-- =============================================================================
+-- LOAD DAMAGE AGENTS
+-- =============================================================================
+CREATE TEMP TABLE temp_damage_agents (
+    DamageAgentName VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_damage_agents FROM '/var/lib/postgresql/lookups/damage_agents.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.DamageAgents (DamageAgentName, Description)
+SELECT DamageAgentName, Description FROM temp_damage_agents
+ON CONFLICT (DamageAgentName) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_damage_agents;
+
+-- =============================================================================
 -- SUMMARY
 -- =============================================================================
 DO $$
@@ -499,6 +531,8 @@ DECLARE
     geo_solid_count INTEGER;
     axis_struct_count INTEGER;
     growth_form_count INTEGER;
+    crown_class_count INTEGER;
+    damage_agent_count INTEGER;
 BEGIN
     SELECT COUNT(*) INTO soil_count FROM shared.SoilTypes;
     SELECT COUNT(*) INTO climate_count FROM shared.ClimateZones;
@@ -522,6 +556,8 @@ BEGIN
     SELECT COUNT(*) INTO geo_solid_count FROM trees.GeometricCrownSolids;
     SELECT COUNT(*) INTO axis_struct_count FROM trees.AxisStructures;
     SELECT COUNT(*) INTO growth_form_count FROM trees.GrowthForms;
+    SELECT COUNT(*) INTO crown_class_count FROM trees.CrownClasses;
+    SELECT COUNT(*) INTO damage_agent_count FROM trees.DamageAgents;
 
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Lookup Tables Loaded from CSV';
@@ -552,6 +588,9 @@ BEGIN
     RAISE NOTICE '  Geo Solids:       % rows', geo_solid_count;
     RAISE NOTICE '  Axis Struct:      % rows', axis_struct_count;
     RAISE NOTICE '  Growth Forms:     % rows', growth_form_count;
+    RAISE NOTICE 'Tree Condition (FIA/NEON/ICP Forests-aligned):';
+    RAISE NOTICE '  Crown Classes:    % rows', crown_class_count;
+    RAISE NOTICE '  Damage Agents:    % rows', damage_agent_count;
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Edit CSV files in data/lookups/ and rebuild to update';
     RAISE NOTICE '=======================================================';

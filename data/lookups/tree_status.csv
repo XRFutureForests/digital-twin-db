@@ -5,3 +5,5 @@ declining,Tree health is deteriorating
 dead,Tree is no longer alive
 harvested,Tree has been removed through management
 missing,Tree cannot be located or identified
+downed,Tree has fallen but is not standing dead
+broken,Stem or main trunk is broken above breast height
