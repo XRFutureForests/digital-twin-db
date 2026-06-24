@@ -1,0 +1,13 @@
+DamageAgentName,Description
+none,No observable damage agent
+insect,Damage from insect infestation or boring
+disease,Damage from fungal bacterial or viral pathogens
+fire,Damage from wildfire or prescribed burn
+wind,Damage from windthrow or windsnap
+snow_ice,Damage from snow loading or ice accumulation
+drought,Damage or decline attributable to water stress
+mechanical,Damage from human or machine impact such as logging or vehicles
+animal,Damage from browsing bark stripping or other animal activity
+human_activity,Damage from direct human activity other than mechanical equipment
+competition,Decline attributable to competitive suppression by neighboring trees
+unknown,Damage agent could not be determined

@@ -336,6 +336,18 @@ CREATE POLICY "Tree reference tables are viewable by everyone"
     ON trees.GrowthForms FOR SELECT
     USING (true);
 
+-- Tree condition lookup tables (read-only)
+ALTER TABLE trees.CrownClasses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trees.DamageAgents ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.CrownClasses FOR SELECT
+    USING (true);
+
+CREATE POLICY "Tree reference tables are viewable by everyone"
+    ON trees.DamageAgents FOR SELECT
+    USING (true);
+
 -- Trees: Public read, authenticated write
 ALTER TABLE trees.Trees ENABLE ROW LEVEL SECURITY;
 

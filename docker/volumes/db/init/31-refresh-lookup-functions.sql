@@ -504,8 +504,48 @@ BEGIN
             SELECT COUNT(*) INTO v_rows_after FROM trees.growthforms;
             p_table_name := 'growth_forms';
 
+        -- =====================================================================
+        -- TREE CONDITION TABLES (FIA/NEON/ICP Forests-aligned)
+        -- =====================================================================
+
+        WHEN 'crown_classes', 'crownclasses' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.crownclasses;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_crown_classes (
+                CrownClassName VARCHAR(50),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_crown_classes;
+
+            EXECUTE format('COPY _temp_crown_classes FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'crown_classes.csv');
+
+            INSERT INTO trees.CrownClasses (CrownClassName, Description)
+            SELECT CrownClassName, Description FROM _temp_crown_classes
+            ON CONFLICT (CrownClassName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.crownclasses;
+            p_table_name := 'crown_classes';
+
+        WHEN 'damage_agents', 'damageagents' THEN
+            SELECT COUNT(*) INTO v_rows_before FROM trees.damageagents;
+
+            CREATE TEMP TABLE IF NOT EXISTS _temp_damage_agents (
+                DamageAgentName VARCHAR(50),
+                Description TEXT
+            ) ON COMMIT DROP;
+            TRUNCATE _temp_damage_agents;
+
+            EXECUTE format('COPY _temp_damage_agents FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'damage_agents.csv');
+
+            INSERT INTO trees.DamageAgents (DamageAgentName, Description)
+            SELECT DamageAgentName, Description FROM _temp_damage_agents
+            ON CONFLICT (DamageAgentName) DO UPDATE SET Description = EXCLUDED.Description;
+
+            SELECT COUNT(*) INTO v_rows_after FROM trees.damageagents;
+            p_table_name := 'damage_agents';
+
         ELSE
-            RETURN QUERY SELECT p_table_name, 0, 0, 'ERROR: Unknown table. Use: species, locations, sensor_types, tree_status, soil_types, climate_zones, variant_types, scenarios, taper_types, straightness_types, branching_patterns, bark_characteristics, datasource_types, height_classes, crown_architectures, branch_elongation_habits, growth_orientations, shoot_elongation_types, crown_shapes, geometric_crown_solids, axis_structures, growth_forms';
+            RETURN QUERY SELECT p_table_name, 0, 0, 'ERROR: Unknown table. Use: species, locations, sensor_types, tree_status, soil_types, climate_zones, variant_types, scenarios, taper_types, straightness_types, branching_patterns, bark_characteristics, datasource_types, height_classes, crown_architectures, branch_elongation_habits, growth_orientations, shoot_elongation_types, crown_shapes, geometric_crown_solids, axis_structures, growth_forms, crown_classes, damage_agents';
             RETURN;
     END CASE;
     
@@ -546,6 +586,9 @@ BEGIN
     RETURN QUERY SELECT * FROM shared.refresh_lookup('geometric_crown_solids');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('axis_structures');
     RETURN QUERY SELECT * FROM shared.refresh_lookup('growth_forms');
+    -- Tree Condition tables (FIA/NEON/ICP Forests-aligned)
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_classes');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('damage_agents');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -581,5 +624,8 @@ BEGIN
     RAISE NOTICE '  height_classes, crown_architectures, branch_elongation_habits,';
     RAISE NOTICE '  growth_orientations, shoot_elongation_types, crown_shapes,';
     RAISE NOTICE '  geometric_crown_solids, axis_structures, growth_forms';
+    RAISE NOTICE '';
+    RAISE NOTICE 'Tree Condition (FIA/NEON/ICP Forests-aligned):';
+    RAISE NOTICE '  crown_classes, damage_agents';
     RAISE NOTICE '=======================================================';
 END $$;

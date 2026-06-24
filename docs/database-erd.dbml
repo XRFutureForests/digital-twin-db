@@ -339,7 +339,7 @@ Table pointclouds.PointClouds {
 
 Table trees.TreeStatus {
   TreeStatusID integer [primary key]
-  TreeStatusName varchar [note: 'healthy, stressed, declining, dead']
+  TreeStatusName varchar [note: 'healthy, stressed, declining, dead, harvested, missing, downed, broken']
   Description text
 }
 
@@ -370,6 +370,18 @@ Table trees.BarkCharacteristics {
   BarkCharacteristicName varchar [note: 'Smooth, Furrowed, Plated, Exfoliating']
   Description text [note: 'Bark texture description']
   TypicalSpecies text [note: 'Examples: e.g., Fagus, Quercus, Pinus, Platanus']
+}
+
+Table trees.CrownClasses {
+  CrownClassID integer [primary key]
+  CrownClassName varchar [note: 'dominant, co_dominant, intermediate, overtopped, open_grown']
+  Description text [note: 'Crown competitive/social position (FIA CCLCD / NEON canopyPosition analog)']
+}
+
+Table trees.DamageAgents {
+  DamageAgentID integer [primary key]
+  DamageAgentName varchar [note: 'none, insect, disease, fire, wind, snow_ice, drought, mechanical, animal, human_activity, competition, unknown']
+  Description text [note: 'Cause of tree damage, decline, or mortality (FIA AGENTCD analog)']
 }
 
 Table trees.Trees {
@@ -409,6 +421,11 @@ Table trees.Trees {
   SpeciesConfidence float [note: '0.0-1.0, confidence in species ID']
   PositionConfidence float [note: '0.0-1.0, confidence in position accuracy']
   HeightConfidence float [note: '0.0-1.0, confidence in height measurement']
+  CrownClassID integer [ref: > trees.CrownClasses.CrownClassID, note: 'Crown competitive/social position']
+  DamageAgentID integer [ref: > trees.DamageAgents.DamageAgentID, note: 'Primary damage/decline agent, if any']
+  Defoliation_percent float [note: '0-100, ICP Forests-style defoliation assessment']
+  Discolouration_percent float [note: '0-100, ICP Forests-style discolouration assessment']
+  CrownTransparency_percent float [note: '0-100, ICP Forests-style crown transparency assessment']
   StatusChangeDate date [note: 'Date when status changed (e.g., mortality)']
   FieldNotes text [note: 'Field observations and FID identifiers']
   CreatedAt timestamp
@@ -654,6 +671,8 @@ TableGroup "Trees Schema" {
   trees.PhenologyObservations
   trees.Deadwood
   trees.GroundVegetation
+  trees.CrownClasses
+  trees.DamageAgents
 }
 
 TableGroup "Sensor Schema" {

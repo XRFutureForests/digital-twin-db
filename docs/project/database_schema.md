@@ -269,6 +269,11 @@ erDiagram
 | `PositionConfidence` | NUMERIC(3,2) | YES | 0–1 | Position accuracy confidence |
 | `HeightConfidence` | NUMERIC(3,2) | YES | 0–1 | Height measurement confidence |
 | `TreeNumber` | INTEGER | YES | — | Local tree ID within location/plot |
+| `CrownClassID` | INTEGER | YES | FK → `trees.CrownClasses` | Crown competitive/social position (dominant/co_dominant/intermediate/overtopped/open_grown) — FIA `CCLCD` / NEON `canopyPosition` analog |
+| `DamageAgentID` | INTEGER | YES | FK → `trees.DamageAgents` | Primary agent responsible for observed damage or decline — FIA `AGENTCD` analog |
+| `Defoliation_percent` | NUMERIC(5,2) | YES | 0–100 | ICP Forests-style defoliation assessment |
+| `Discolouration_percent` | NUMERIC(5,2) | YES | 0–100 | ICP Forests-style foliage discolouration assessment |
+| `CrownTransparency_percent` | NUMERIC(5,2) | YES | 0–100 | ICP Forests-style crown transparency assessment |
 
 **Key computed functions:** `trees.calculate_basal_area(dbh_cm)`, `trees.calculate_crown_volume(crown_width_m, crown_height_m)`
 
@@ -294,6 +299,17 @@ erDiagram
 | `WoodDensity_kg_m3` | NUMERIC(6,2) | YES | 100–2000 | Wood density (kg/m³) |
 
 ---
+
+### 3.5a `trees.CrownClasses` and `trees.DamageAgents`
+
+**Description:** Read-only reference tables added to align `trees.Trees` with variables standard across FIA, NEON, and ICP Forests inventory designs.
+
+| Table | Key Column | Allowed Values |
+|-------|-----------|-----------------|
+| `trees.CrownClasses` | `CrownClassName` | dominant, co_dominant, intermediate, overtopped, open_grown |
+| `trees.DamageAgents` | `DamageAgentName` | none, insect, disease, fire, wind, snow_ice, drought, mechanical, animal, human_activity, competition, unknown |
+
+**Lookup data source:** `data/lookups/crown_classes.csv`, `data/lookups/damage_agents.csv`
 
 ### 3.6 `pointclouds.PointClouds`
 
@@ -569,6 +585,7 @@ Plain SQL migration files applied in numeric order by the PostgreSQL Docker init
 | `16-sensor-tree-links-schema.sql` | sensor.sensor_tree_links junction table |
 | `17-imagery-schema.sql` | imagery schema: Images |
 | `18-tree-morphology-schema.sql` | trees morphology lookups: PhanerophyteHeightClasses, CrownArchitectures, BranchElongationHabits, GrowthOrientations, ShootElongationTypes, CrownShapes, GeometricCrownSolids, AxisStructures, GrowthForms |
+| `19-tree-condition-fields-schema.sql` | trees.CrownClasses, trees.DamageAgents lookups; adds CrownClassID/DamageAgentID/Defoliation_percent/Discolouration_percent/CrownTransparency_percent to trees.Trees; extends TreeStatus CHECK constraint with downed/broken (FIA/NEON/ICP Forests-aligned) |
 | `20-rls-policies.sql` | Row Level Security policies for all tables |
 | `21-audit-functions.sql` | Audit trigger functions |
 | `22-aquarius-integration.sql` | Adds `ExternalID`/`ExternalMetadata` to Sensors; bulk upsert/insert RPC functions |
