@@ -15,10 +15,9 @@
 
 ## Quick Navigation
 
-- [Docs Hub](../README.md)
-- [Infrastructure](infrastructure.md)
-- [Architecture](../ARCHITECTURE.md)
-- [Docker Troubleshooting](../docker/TROUBLESHOOTING.md)
+- [Docs Hub](README.md)
+- [Architecture](architecture.md)
+- [Docker Troubleshooting](docker/TROUBLESHOOTING.md)
 
 ## Agent Entry
 
@@ -28,7 +27,7 @@
 | Read When | You need commands, setup steps, troubleshooting, or recovery actions. |
 | Skip When | You only need static topology or design rationale. |
 | Canonical | Yes |
-| Next Docs | [Infrastructure](infrastructure.md), [Architecture](../ARCHITECTURE.md), [Docker Troubleshooting](../docker/TROUBLESHOOTING.md) |
+| Next Docs | [Architecture](architecture.md), [Docker Troubleshooting](docker/TROUBLESHOOTING.md) |
 | Primary Sources | `docker/docker-compose.yml`, `docker/.env.example`, `scripts/` |
 
 ---
@@ -41,10 +40,9 @@ This runbook provides step-by-step operational procedures for the Digital Forest
 
 ### 1.2 Quick Links
 
-- Infrastructure inventory: [infrastructure.md](infrastructure.md)
-- Architecture overview: [../ARCHITECTURE.md](../ARCHITECTURE.md)
-- Database schema: [../database-schema.md](../database-schema.md)
-- Docker changelog: [../docker/CHANGELOG.md](../docker/CHANGELOG.md)
+- Architecture overview: [architecture.md](architecture.md)
+- Database schema: [database_schema.md](database_schema.md)
+- Docker changelog: [docker/CHANGELOG.md](docker/CHANGELOG.md)
 
 ### 1.3 Key Contacts
 

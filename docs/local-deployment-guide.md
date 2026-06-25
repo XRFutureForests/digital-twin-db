@@ -128,7 +128,7 @@ Use these values in your UE Blueprint (`BP_DigitalTwinFetcher` or equivalent):
 | **API Base URL** | `http://localhost:8000/rest/v1` |
 | **ANON_KEY** | from `ANON_KEY=` line in `docker/.env` |
 
-Set these as Blueprint variables or in a `DT_Config` DataTable. See [docs/unreal-engine-integration.md](unreal-engine-integration.md) for the full Blueprint setup.
+Set these as Blueprint variables or in a `DT_Config` DataTable. See the XR Future Forests Lab knowledge hub note `05-PRESENTATION-TIER/data-fetcher-guide` (Unreal ↔ Digital Twin DB Integration Guide) for the full Blueprint setup.
 
 **Quick test query (paste in browser):**
 ```

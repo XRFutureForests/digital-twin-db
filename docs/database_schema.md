@@ -11,16 +11,16 @@
 <!-- PRIMARY_SOURCES: docker/volumes/db/init/11-shared-schema.sql, docker/volumes/db/init/12-pointclouds-schema.sql, docker/volumes/db/init/13-trees-schema.sql, docker/volumes/db/init/14-sensor-schema.sql, docker/volumes/db/init/15-environments-schema.sql, docker/volumes/db/init/17-imagery-schema.sql, docker/volumes/db/init/18-tree-morphology-schema.sql -->
 
 <!-- SCOPE: Database schema (ER diagrams, table definitions, data dictionary, indexes, constraints, migrations, normalization) ONLY. -->
-<!-- DO NOT add here: API endpoints → api_spec.md, Tech stack versions → docs/ARCHITECTURE.md, Deployment → docs/project/deployment-guide.md, Docker setup → docs/docker/ -->
+<!-- DO NOT add here: API endpoints → api_spec.md, Tech stack versions → architecture.md, Deployment → deployment-guide.md, Docker setup → docs/docker/ -->
 
 ## Quick Navigation
 
-- [Docs Hub](../README.md)
-- [Architecture](../ARCHITECTURE.md)
+- [Docs Hub](README.md)
+- [Architecture](architecture.md)
 - [API Spec](api_spec.md)
 - [Deployment Guide](deployment-guide.md)
 - [Existing DB Overview](database-overview.md)
-- [Existing DB ERD (DBML)](../database-erd.dbml)
+- [Existing DB ERD (DBML)](database-erd.dbml)
 
 ## Agent Entry
 
@@ -30,7 +30,7 @@
 | Read When | You need exact database structure, column types, integrity rules, or schema lineage. |
 | Skip When | You only need API contracts or operational commands. |
 | Canonical | Yes |
-| Next Docs | [Architecture](../ARCHITECTURE.md), [API Spec](api_spec.md), [DB Overview](database-overview.md) |
+| Next Docs | [Architecture](architecture.md), [API Spec](api_spec.md), [DB Overview](database-overview.md) |
 | Primary Sources | `docker/volumes/db/init/` SQL migration files (11–18, 20–24) |
 
 ---

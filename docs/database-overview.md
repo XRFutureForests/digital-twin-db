@@ -23,7 +23,7 @@ The Digital Forest Twin is a PostgreSQL-based spatial database for forest resear
 The database is organized into **6 schemas**, each handling a specific domain:
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph shared["SHARED SCHEMA"]
         direction TB
         Locations["Locations"]
@@ -52,6 +52,7 @@ flowchart TB
         PhenologyObservations["PhenologyObservations"]
         Deadwood["Deadwood"]
         GroundVegetation["GroundVegetation"]
+        GrowthSimulations["GrowthSimulations"]
     end
 
     subgraph sensor["SENSOR SCHEMA"]
@@ -76,16 +77,51 @@ flowchart TB
     Locations --> Environments
     Locations --> Campaigns
     Locations --> Images
+    Locations --> ManagementEvents
+    Locations --> DisturbanceEvents
+    Locations --> Deadwood
+    Locations --> GroundVegetation
+    Locations --> GrowthSimulations
+
     Plots --> Trees
+    Plots --> ManagementEvents
+    Plots --> DisturbanceEvents
+    Plots --> Deadwood
+    Plots --> GroundVegetation
+    Plots --> Images
+    Plots --> GrowthSimulations
+
     Species --> Trees
+    Species --> Deadwood
+    Species --> GrowthSimulations
+
     Scenarios --> PointClouds
     Scenarios --> Trees
     Scenarios --> Environments
+    Scenarios --> SensorReadings
+    Scenarios --> GrowthSimulations
+
+    VariantTypes --> PointClouds
+    VariantTypes --> Trees
+    VariantTypes --> Environments
+
+    Processes --> PointClouds
+    Processes --> Trees
+    Processes --> Environments
+
+    Campaigns --> PointClouds
     Campaigns --> Trees
+    Campaigns --> Sensors
+    Campaigns --> Images
+
     PointClouds --> Trees
+    TreeStatus --> Trees
     Trees --> Stems
     Trees --> PhenologyObservations
+    Trees --> GrowthSimulations
+    TaperTypes --> Stems
     DisturbanceEvents --> Trees
+    ScannerTypes --> Scanners
     Scanners --> PointClouds
     Sensors --> SensorReadings
     Sensors --> SensorTreeLinks
@@ -97,13 +133,36 @@ flowchart TB
     style sensor fill:#eeb896,stroke:#673428
     style environments fill:#8fa8c8,stroke:#181d26
     style imagery fill:#d4a5e5,stroke:#5a2d6a
+    classDef cShared fill:#FAF6D2,stroke:#c7bb1a,color:#4a4500;
+    classDef cPc fill:#f5f5f5,stroke:#4f4f4f,color:#2a2a2a;
+    classDef cTrees fill:#b9e3d4,stroke:#19392f,color:#0c241c;
+    classDef cSensor fill:#f6ddcb,stroke:#673428,color:#3c1d13;
+    classDef cEnv fill:#c3d2e3,stroke:#181d26,color:#10151d;
+    classDef cImg fill:#e7cbf1,stroke:#5a2d6a,color:#321640;
+    class Locations,Plots,Species,Scenarios,VariantTypes,Campaigns,Processes,AuditLog,ManagementEvents,DisturbanceEvents cShared;
+    class ScannerTypes,Scanners,PointClouds cPc;
+    class Trees,Stems,TreeStatus,TaperTypes,PhenologyObservations,Deadwood,GroundVegetation,GrowthSimulations cTrees;
+    class Sensors,SensorReadings,SensorTreeLinks cSensor;
+    class Environments cEnv;
+    class Images cImg;
 ```
+
+**Schema colour key:**
+
+| | Schema | Domain |
+|---|---|---|
+| 🟨 | `shared` | Reference & audit tables used across all domains |
+| ⬜ | `pointclouds` | LiDAR scans and scanner hardware |
+| 🟩 | `trees` | Tree inventory, stems, morphology, phenology |
+| 🟧 | `sensor` | Environmental sensors and time-series readings |
+| 🟦 | `environments` | Aggregated environmental conditions |
+| 🟪 | `imagery` | Aerial and ground imagery |
 
 ---
 
 ## Schema Details
 
-### 1. Shared Schema
+### 1. 🟨 Shared Schema
 
 Central reference tables used across all domains.
 
@@ -120,7 +179,7 @@ Central reference tables used across all domains.
 | **ManagementEvents** | Forest management activities (thinning, planting, harvesting) |
 | **DisturbanceEvents** | Natural disturbance events (storms, fire, insects, drought) |
 
-### 2. PointClouds Schema
+### 2. ⬜ PointClouds Schema
 
 LiDAR scan data and processing variants with scanner hardware tracking.
 
@@ -151,7 +210,7 @@ LiDAR scan data and processing variants with scanner hardware tracking.
 | PointDensity_per_m2 | Average point density in points per square meter |
 | ProcessingStatus | pending, processing, completed, failed, cancelled |
 
-### 3. Trees Schema
+### 3. 🟩 Trees Schema
 
 Individual tree measurements with multi-stem support.
 
@@ -278,8 +337,9 @@ erDiagram
 | **PhenologyObservations** | Tree phenology observations tracking seasonal development phases (bud_break, leaf_out, flowering, fruit_set, leaf_color, leaf_fall, dormancy) |
 | **Deadwood** | Dead wood inventory including standing dead, fallen logs, stumps, and branches with decay classification (1-5) |
 | **GroundVegetation** | Ground vegetation survey records by plot and layer (herb, shrub, moss, litter, fern, grass) |
+| **GrowthSimulations** | Per-tree dimensional projections from external growth simulators (SILVA, FVS, iLand, manual) at discrete future years, keyed by `RunID` and `TreeEntityID`; powers the Unreal Time Machine feature |
 
-### 4. Sensor Schema
+### 4. 🟧 Sensor Schema
 
 Environmental monitoring hardware and time-series data.
 
@@ -341,7 +401,7 @@ erDiagram
 
 **External Integration:** `ExternalID` and `ExternalMetadata` columns enable synchronization with the Aquarius API for automated data ingestion.
 
-### 5. Environments Schema
+### 5. 🟦 Environments Schema
 
 Aggregated environmental conditions per location/time period.
 
@@ -471,6 +531,9 @@ Every data modification is tracked:
 flowchart LR
     Change["Field Update"] --> AuditLog
     AuditLog --> |"Records"| Details["FieldName<br/>OldValue → NewValue<br/>UserID<br/>Timestamp<br/>IPAddress"]
+    style AuditLog fill:#F4EFA9,stroke:#c7bb1a,color:#3a3600
+    style Change fill:#f5f5f5,stroke:#4f4f4f,color:#2a2a2a
+    style Details fill:#FAF6D2,stroke:#c7bb1a,color:#4a4500
 ```
 
 Junction tables link audit entries to specific variants:
@@ -521,7 +584,12 @@ flowchart TB
     REST --> UE
     REST --> Analysis
 
-    style DB fill:#e8f4ea,stroke:#2d5a3d
+    style DB fill:#fbfbfb,stroke:#888888
+    style PC fill:#f5f5f5,stroke:#4f4f4f,color:#2a2a2a
+    style TR fill:#b9e3d4,stroke:#19392f,color:#0c241c
+    style SE fill:#f6ddcb,stroke:#673428,color:#3c1d13
+    style SR fill:#f6ddcb,stroke:#673428,color:#3c1d13
+    style EN fill:#c3d2e3,stroke:#181d26,color:#10151d
 ```
 
 ---
@@ -584,4 +652,4 @@ The Digital Forest Twin database provides:
 5. **Field-level auditing** for scientific reproducibility
 6. **Auto-generated REST API** for application integration
 
-For detailed schema definitions, see [database-schema.md](database-schema.md) and [database-erd.dbml](database-erd.dbml).
+For detailed schema definitions, see [database_schema.md](database_schema.md) and [database-erd.dbml](database-erd.dbml).
