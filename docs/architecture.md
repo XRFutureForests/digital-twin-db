@@ -11,9 +11,9 @@
 <!-- DOC_ROLE: canonical -->
 <!-- READ_WHEN: Read when you need the system model, boundaries, runtime flow, or design rationale. -->
 <!-- SKIP_WHEN: Skip when you only need operational steps or API/database lookup details. -->
-<!-- PRIMARY_SOURCES: docs/project/requirements.md, docs/project/tech_stack.md, docs/ARCHITECTURE.md -->
+<!-- PRIMARY_SOURCES: docs/database-overview.md, docs/database_schema.md, docker/docker-compose.yml -->
 
-<!-- DO NOT add here: Deployment procedures → docs/project/deployment-guide.md, Schema details → docs/database-schema.md, API specs → docs/api-quick-reference.md, Requirements → requirements.md, Tech stack versions → tech_stack.md -->
+<!-- DO NOT add here: Deployment procedures → docs/deployment-guide.md, Schema details → docs/database_schema.md, API specs → docs/api_spec.md -->
 
 <!-- NO_CODE_EXAMPLES: Architecture documentation describes DECISIONS and CONTRACTS, not implementations.
      FORBIDDEN: Import statements, function bodies, code blocks > 5 lines
@@ -21,11 +21,10 @@
 
 ## Quick Navigation
 
-- [Docs Hub](../README.md)
-- [Requirements](requirements.md)
-- [Tech Stack](tech_stack.md)
-- [Database Schema](../database-schema.md)
-- [Patterns Catalog](../architecture/patterns_catalog.md)
+- [Docs Hub](README.md)
+- [Database Overview](database-overview.md)
+- [Database Schema](database_schema.md)
+- [API Spec](api_spec.md)
 - [Deployment Guide](deployment-guide.md)
 
 ## Agent Entry
@@ -36,8 +35,8 @@
 | Read When | You need mental models, component boundaries, schema organization, or cross-cutting concerns. |
 | Skip When | You only need endpoint lists, schema column lookup, or deployment commands. |
 | Canonical | Yes |
-| Next Docs | [Requirements](requirements.md), [Tech Stack](tech_stack.md), [Database Schema](../database-schema.md) |
-| Primary Sources | `docs/project/requirements.md`, `docs/project/tech_stack.md`, `docs/ARCHITECTURE.md` |
+| Next Docs | [Database Overview](database-overview.md), [Database Schema](database_schema.md), [API Spec](api_spec.md) |
+| Primary Sources | `docker/docker-compose.yml`, `docs/database_schema.md` |
 
 ---
 
@@ -412,15 +411,15 @@ sequenceDiagram
 
 ## 8. Architecture Decisions (ADRs)
 
-Formal ADRs are in `docs/reference/adrs/`. Key decisions:
+Key architecture decisions (rationale summarized below):
 
 | ADR | Decision | Rationale Summary |
 |-----|----------|-------------------|
-| [ADR-001](../reference/adrs/adr-001-postgresql-postgis.md) | PostgreSQL 15 + PostGIS 3 | Spatial query support, PostgREST compatibility, open source |
-| [ADR-002](../reference/adrs/adr-002-supabase-auth.md) | GoTrue JWT auth | JWT-native PostgREST integration; no session storage |
-| [ADR-003](../reference/adrs/adr-003-self-hosted-supabase.md) | Self-hosted Supabase | Data sovereignty; university network; offline capability |
-| [ADR-004](../reference/adrs/adr-004-kong-api-gateway.md) | Kong declarative gateway | Supabase-native; declarative config; single entry point |
-| [ADR-005](../reference/adrs/adr-005-supavisor-pooler.md) | Supavisor connection pooler | Multi-tenant; already in Supabase stack; replaces PgBouncer |
+| ADR-001 | PostgreSQL 15 + PostGIS 3 | Spatial query support, PostgREST compatibility, open source |
+| ADR-002 | GoTrue JWT auth | JWT-native PostgREST integration; no session storage |
+| ADR-003 | Self-hosted Supabase | Data sovereignty; university network; offline capability |
+| ADR-004 | Kong declarative gateway | Supabase-native; declarative config; single entry point |
+| ADR-005 | Supavisor connection pooler | Multi-tenant; already in Supabase stack; replaces PgBouncer |
 
 Additional implicit decisions not yet formalized as ADRs:
 
@@ -502,8 +501,8 @@ Additional implicit decisions not yet formalized as ADRs:
 3. ISO/IEC/IEEE 42010:2022 — Architecture description
 4. Supabase Self-Hosting Docs — https://supabase.com/docs/guides/self-hosting/docker
 5. PostgREST Documentation — https://postgrest.org/
-6. Digital Forest Twin Database Architecture Overview — [docs/ARCHITECTURE.md](../ARCHITECTURE.md)
-7. Digital Forest Twin Database Requirements — [docs/project/requirements.md](requirements.md)
+6. Digital Forest Twin Database Overview — [database-overview.md](database-overview.md)
+7. Functional requirements are tracked in Linear (XRFF team)
 
 ---
 

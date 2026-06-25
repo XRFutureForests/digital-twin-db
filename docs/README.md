@@ -2,6 +2,8 @@
 
 Self-hosted Supabase/PostgreSQL backend for XR Future Forests digital twin research. University of Freiburg, funded by Eva Mayr-Stihl Stiftung.
 
+> **New here?** Start with the **[Database Overview](database-overview.md)** — the schema architecture diagram, the six schemas and their tables, how they connect, and the key design patterns (variant lineage, audit trail, PostGIS, auto-generated REST API).
+
 ---
 
 ## Quick Start Paths
@@ -46,7 +48,7 @@ Full model explanation and API query patterns: [variant-scenario-model.md](varia
 
 Set the API Base URL to `http://<HOST>:8000/rest/v1` and the ANON_KEY from `docker/.env`. The primary endpoint for tree placement is `/rest/v1/forest_state` — a flat, pre-joined view that includes lat/lon, species name, height, DBH, and scenario info in a single query.
 
-Step-by-step Blueprint setup and PCG integration: [unreal-engine-integration.md](unreal-engine-integration.md)
+Step-by-step Blueprint setup, flat SQL view contracts, and PCG integration live in the XR Future Forests Lab knowledge hub → `05-PRESENTATION-TIER/data-fetcher-guide` (Unreal ↔ Digital Twin DB Integration Guide).
 
 ---
 
@@ -84,7 +86,7 @@ python scripts/admin/reset_database.py  # full schema wipe + reinit (destroys da
 ```
 
 Common issues: [docs/docker/TROUBLESHOOTING.md](docker/TROUBLESHOOTING.md)
-Full operations runbook: [project/runbook.md](project/runbook.md)
+Full operations runbook: [runbook.md](runbook.md)
 
 ---
 
@@ -92,41 +94,18 @@ Full operations runbook: [project/runbook.md](project/runbook.md)
 
 | Document | What it covers |
 |---|---|
+| [database-overview.md](database-overview.md) | **Start here** — schema architecture, the six schemas, tables, design patterns, audit trail, access patterns |
+| [architecture.md](architecture.md) | System architecture (arc42) with C4 diagrams and runtime scenarios |
+| [database_schema.md](database_schema.md) | Full schema, data dictionary, constraints, indexes |
+| [api_spec.md](api_spec.md) | Complete PostgREST endpoint reference |
+| [database-erd.dbml](database-erd.dbml) | Entity-relationship model (dbdiagram.io source) |
 | [local-deployment-guide.md](local-deployment-guide.md) | Spin up a local stack in <30 min; step-by-step onboarding |
 | [data-access-guide.md](data-access-guide.md) | Read/write access, user accounts, permissions model |
 | [variant-scenario-model.md](variant-scenario-model.md) | Scenarios, VariantTypes, Variants — data model and API patterns |
-| [unreal-engine-integration.md](unreal-engine-integration.md) | UE Blueprint setup, PCG, coordinate transform |
 | [silva-coupling.md](silva-coupling.md) | SILVA R model workflow — export, run, write-back |
 | [growth-simulation-schema.md](growth-simulation-schema.md) | GrowthSimulations table and API views |
-| [project/api_spec.md](project/api_spec.md) | Complete PostgREST endpoint reference |
-| [project/database_schema.md](project/database_schema.md) | Full schema, data dictionary, constraints, indexes |
-| [project/runbook.md](project/runbook.md) | Operations: start/stop, reset, backups, health checks |
-| [project/architecture.md](project/architecture.md) | arc42 architecture with C4 diagrams |
-| [project/infrastructure.md](project/infrastructure.md) | Docker services, ports, environment variables |
-| [project/tech_stack.md](project/tech_stack.md) | Technology versions and service inventory |
-| [project/requirements.md](project/requirements.md) | Functional requirements (FR-XXX-NNN) with MoSCoW |
-| [principles.md](principles.md) | Development principles and anti-patterns |
-| [documentation_standards.md](documentation_standards.md) | Documentation rules for contributors |
-
----
-
-## ADRs and Guides
-
-| Document | What it covers |
-|---|---|
-| [reference/README.md](reference/README.md) | Reference hub: ADRs, guides |
-| [reference/adrs/adr-001-postgresql-postgis.md](reference/adrs/adr-001-postgresql-postgis.md) | PostgreSQL+PostGIS selection |
-| [reference/adrs/adr-002-supabase-auth.md](reference/adrs/adr-002-supabase-auth.md) | GoTrue JWT auth design |
-| [reference/adrs/adr-003-self-hosted-supabase.md](reference/adrs/adr-003-self-hosted-supabase.md) | Self-hosted Supabase rationale |
-| [reference/adrs/adr-004-kong-api-gateway.md](reference/adrs/adr-004-kong-api-gateway.md) | Kong declarative gateway routing |
-| [reference/adrs/adr-005-supavisor-pooler.md](reference/adrs/adr-005-supavisor-pooler.md) | Supavisor connection pooler |
-| [reference/guides/01-postgrest-schema-exposure-pattern.md](reference/guides/01-postgrest-schema-exposure-pattern.md) | PostgREST schema exposure patterns |
-
----
-
-## Task Management
-
-| Document | What it covers |
-|---|---|
-| [tasks/README.md](tasks/README.md) | Task workflow, Linear XRFF team integration |
-| [tasks/kanban_board.md](tasks/kanban_board.md) | Live kanban board |
+| [species-naming-audit.md](species-naming-audit.md) | Species naming conventions and audit notes |
+| [runbook.md](runbook.md) | Operations: start/stop, reset, backups, health checks |
+| [deployment-guide.md](deployment-guide.md) | Production deployment guidance |
+| [troubleshooting.md](troubleshooting.md) | Common issues and resolutions |
+| [docker/README.md](docker/README.md) | Docker stack: services, ports, environment variables |

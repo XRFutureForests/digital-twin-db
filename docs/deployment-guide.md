@@ -542,10 +542,9 @@ docker run --rm -v docker_db-config:/data -v $(pwd):/backup \
 
 ## Next Steps
 
-- [Architecture Overview](./ARCHITECTURE.md) - Full system architecture and data patterns
-- [API Quick Reference](./api-quick-reference.md) - Common API commands and examples
-- [Database Schema](./database-schema.md) - Detailed schema documentation
-- [Troubleshooting](./troubleshooting.md) - Common issues and solutions
+- [Architecture Overview](architecture.md) - Full system architecture and data patterns
+- [Database Schema](database_schema.md) - Detailed schema documentation
+- [Troubleshooting](troubleshooting.md) - Common issues and solutions
 
 ## Support
 

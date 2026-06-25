@@ -762,7 +762,7 @@ All checks pass? You're good to go! 🎉
 
 ## 📚 Related Documentation
 
-- [../README.md](../README.md) - Project overview and setup instructions
+- [README.md](README.md) - Project overview and setup instructions
 - [supabase/setup-guide.md](supabase/setup-guide.md) - Detailed production deployment guide
 - [VERIFICATION_GUIDE.md](VERIFICATION_GUIDE.md) - Testing and verification
 
