@@ -31,6 +31,22 @@ SELECT * FROM shared.plots;
 
 COMMENT ON VIEW public.plots IS 'Public API view for sub-plot divisions within locations';
 
+-- Scenarios view
+CREATE OR REPLACE VIEW public.scenarios AS
+SELECT * FROM shared.scenarios;
+
+COMMENT ON VIEW public.scenarios IS 'Public API view for scenarios reference table';
+
+-- Variants view
+CREATE OR REPLACE VIEW public.variants AS
+SELECT
+    v.*,
+    s.scenarioname
+FROM shared.variants v
+LEFT JOIN shared.scenarios s ON v.scenarioid = s.scenarioid;
+
+COMMENT ON VIEW public.variants IS 'Public API view for forest state variants (time steps within a scenario)';
+
 -- ManagementEvents view
 CREATE OR REPLACE VIEW public.managementevents AS
 SELECT * FROM shared.managementevents;
@@ -225,6 +241,8 @@ GRANT SELECT ON public.axisstructures TO anon, authenticated;
 GRANT SELECT ON public.growthforms TO anon, authenticated;
 GRANT SELECT ON public.crownclasses TO anon, authenticated;
 GRANT SELECT ON public.damageagents TO anon, authenticated;
+GRANT SELECT ON public.scenarios TO anon, authenticated;
+GRANT SELECT ON public.variants TO anon, authenticated;
 
 -- Grant INSERT/UPDATE/DELETE to authenticated users on data tables
 GRANT INSERT, UPDATE, DELETE ON public.campaigns TO authenticated;
@@ -271,6 +289,8 @@ GRANT ALL ON public.axisstructures TO service_role;
 GRANT ALL ON public.growthforms TO service_role;
 GRANT ALL ON public.crownclasses TO service_role;
 GRANT ALL ON public.damageagents TO service_role;
+GRANT ALL ON public.scenarios TO service_role;
+GRANT ALL ON public.variants TO service_role;
 
 -- =============================================================================
 -- INSTEAD OF TRIGGERS FOR INSERTABLE/UPDATABLE VIEWS
@@ -340,7 +360,7 @@ CREATE OR REPLACE FUNCTION public.trees_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO trees.trees (
-        treeentityid, parentvariantid, pointcloudvariantid, campaignid,
+        treeentityid, variantid, parenttreeid, pointcloudid, campaignid,
         locationid, plotid, scenarioid, varianttypeid, processid,
         speciesid, treestatusid, branchingpatternid, barkcharacteristicid,
         measurementdate, datasourcetypeid,
@@ -353,7 +373,7 @@ BEGIN
         crownclassid, damageagentid, defoliation_percent, discolouration_percent, crowntransparency_percent,
         statuschangedate, fieldnotes, createdby, updatedby
     ) VALUES (
-        COALESCE(NEW.treeentityid, gen_random_uuid()), NEW.parentvariantid, NEW.pointcloudvariantid, NEW.campaignid,
+        COALESCE(NEW.treeentityid, gen_random_uuid()), NEW.variantid, NEW.parenttreeid, NEW.pointcloudid, NEW.campaignid,
         NEW.locationid, NEW.plotid, NEW.scenarioid, NEW.varianttypeid, NEW.processid,
         NEW.speciesid, NEW.treestatusid, NEW.branchingpatternid, NEW.barkcharacteristicid,
         NEW.measurementdate, NEW.datasourcetypeid,
@@ -365,7 +385,7 @@ BEGIN
         NEW.speciesconfidence, NEW.positionconfidence, NEW.heightconfidence,
         NEW.crownclassid, NEW.damageagentid, NEW.defoliation_percent, NEW.discolouration_percent, NEW.crowntransparency_percent,
         NEW.statuschangedate, NEW.fieldnotes, NEW.createdby, NEW.updatedby
-    ) RETURNING variantid INTO NEW.variantid;
+    ) RETURNING treeid INTO NEW.treeid;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -380,8 +400,9 @@ RETURNS TRIGGER AS $$
 BEGIN
     UPDATE trees.trees SET
         treeentityid = NEW.treeentityid,
-        parentvariantid = NEW.parentvariantid,
-        pointcloudvariantid = NEW.pointcloudvariantid,
+        variantid = NEW.variantid,
+        parenttreeid = NEW.parenttreeid,
+        pointcloudid = NEW.pointcloudid,
         campaignid = NEW.campaignid,
         locationid = NEW.locationid,
         plotid = NEW.plotid,
@@ -423,7 +444,7 @@ BEGIN
         fieldnotes = NEW.fieldnotes,
         updatedat = NOW(),
         updatedby = NEW.updatedby
-    WHERE variantid = OLD.variantid;
+    WHERE treeid = OLD.treeid;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -436,7 +457,7 @@ FOR EACH ROW EXECUTE FUNCTION public.trees_update();
 CREATE OR REPLACE FUNCTION public.trees_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-    DELETE FROM trees.trees WHERE variantid = OLD.variantid;
+    DELETE FROM trees.trees WHERE treeid = OLD.treeid;
     RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;
@@ -597,7 +618,7 @@ BEGIN
         NEW.locationid, NEW.plotid, NEW.eventtype, NEW.eventdate, NEW.enddate,
         NEW.description, NEW.affectedarea_m2, NEW.performedby, NEW.notes,
         NEW.createdby, NEW.updatedby
-    ) RETURNING eventid INTO NEW.eventid;
+    ) RETURNING managementeventid INTO NEW.managementeventid;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -618,7 +639,7 @@ BEGIN
         NEW.locationid, NEW.plotid, NEW.disturbancetype, NEW.eventdate, NEW.enddate,
         NEW.severity, NEW.affectedarea_m2, NEW.description, NEW.notes,
         NEW.createdby, NEW.updatedby
-    ) RETURNING eventid INTO NEW.eventid;
+    ) RETURNING disturbanceeventid INTO NEW.disturbanceeventid;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -632,12 +653,12 @@ CREATE OR REPLACE FUNCTION public.phenologyobservations_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO trees.phenologyobservations (
-        treevariantid, observationdate, phenophasetype,
+        treeid, observationdate, phenophasetype,
         phenophasestatus, intensity_percent, observer, notes, createdby
     ) VALUES (
-        NEW.treevariantid, NEW.observationdate, NEW.phenophasetype,
+        NEW.treeid, NEW.observationdate, NEW.phenophasetype,
         NEW.phenophasestatus, NEW.intensity_percent, NEW.observer, NEW.notes, NEW.createdby
-    ) RETURNING observationid INTO NEW.observationid;
+    ) RETURNING phenologyobservationid INTO NEW.phenologyobservationid;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -651,11 +672,11 @@ CREATE OR REPLACE FUNCTION public.deadwood_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO trees.deadwood (
-        locationid, plotid, treevariantid, speciesid,
+        locationid, plotid, treeid, speciesid,
         woodtype, length_m, diameter_cm, decayclass,
         volume_m3, position, measurementdate, notes, createdby
     ) VALUES (
-        NEW.locationid, NEW.plotid, NEW.treevariantid, NEW.speciesid,
+        NEW.locationid, NEW.plotid, NEW.treeid, NEW.speciesid,
         NEW.woodtype, NEW.length_m, NEW.diameter_cm, NEW.decayclass,
         NEW.volume_m3, NEW.position, NEW.measurementdate, NEW.notes, NEW.createdby
     ) RETURNING deadwoodid INTO NEW.deadwoodid;
@@ -677,7 +698,7 @@ BEGIN
     ) VALUES (
         NEW.locationid, NEW.plotid, NEW.speciesname, NEW.coverpercent,
         NEW.height_cm, NEW.layer, NEW.measurementdate, NEW.notes, NEW.createdby
-    ) RETURNING vegetationid INTO NEW.vegetationid;
+    ) RETURNING groundvegetationid INTO NEW.groundvegetationid;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -746,19 +767,22 @@ ALTER VIEW public.phenologyobservations SET (security_invoker = on);
 ALTER VIEW public.deadwood SET (security_invoker = on);
 ALTER VIEW public.groundvegetation SET (security_invoker = on);
 ALTER VIEW public.images SET (security_invoker = on);
+ALTER VIEW public.scenarios SET (security_invoker = on);
+ALTER VIEW public.variants SET (security_invoker = on);
 
 -- Grant USAGE on sequences to allow auto-incrementing IDs
 GRANT USAGE ON SEQUENCE shared.campaigns_campaignid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE trees.trees_variantid_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE trees.trees_treeid_seq TO authenticated, service_role;
 GRANT USAGE ON SEQUENCE sensor.sensors_sensorid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE sensor.sensorreadings_readingid_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE sensor.sensorreadings_sensorreadingid_seq TO authenticated, service_role;
 GRANT USAGE ON SEQUENCE trees.stems_stemid_seq TO authenticated, service_role;
 GRANT USAGE ON SEQUENCE shared.plots_plotid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE shared.managementevents_eventid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE shared.disturbanceevents_eventid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE trees.phenologyobservations_observationid_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE shared.managementevents_managementeventid_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE shared.disturbanceevents_disturbanceeventid_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE trees.phenologyobservations_phenologyobservationid_seq TO authenticated, service_role;
 GRANT USAGE ON SEQUENCE trees.deadwood_deadwoodid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE trees.groundvegetation_vegetationid_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE trees.groundvegetation_groundvegetationid_seq TO authenticated, service_role;
 GRANT USAGE ON SEQUENCE imagery.images_imageid_seq TO authenticated, service_role;
 GRANT USAGE ON SEQUENCE pointclouds.scannertypes_scannertypeid_seq TO authenticated, service_role;
 GRANT USAGE ON SEQUENCE pointclouds.scanners_scannerid_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE shared.variants_variantid_seq TO authenticated, service_role;

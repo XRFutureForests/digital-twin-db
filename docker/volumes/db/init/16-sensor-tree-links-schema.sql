@@ -12,24 +12,24 @@ SET search_path TO sensor, trees, shared, public;
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS sensor.sensor_tree_links (
-    link_id SERIAL PRIMARY KEY,
+    SensorTreeLinkID SERIAL PRIMARY KEY,
     sensor_id INTEGER NOT NULL,
-    tree_variant_id INTEGER NOT NULL,
+    tree_id INTEGER NOT NULL,
     description TEXT,
     start_date DATE,
     end_date DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(sensor_id, tree_variant_id),
+    UNIQUE(sensor_id, tree_id),
     FOREIGN KEY (sensor_id) REFERENCES sensor.sensors(sensorid) ON DELETE CASCADE,
-    FOREIGN KEY (tree_variant_id) REFERENCES trees.trees(variantid) ON DELETE CASCADE
+    FOREIGN KEY (tree_id) REFERENCES trees.trees(treeid) ON DELETE CASCADE
 );
 
-COMMENT ON TABLE sensor.sensor_tree_links IS 'Links sensors to specific tree variants';
+COMMENT ON TABLE sensor.sensor_tree_links IS 'Links sensors to specific tree records';
 
 -- Grant permissions
 GRANT ALL ON sensor.sensor_tree_links TO service_role;
 GRANT SELECT ON sensor.sensor_tree_links TO authenticated, anon;
-GRANT USAGE, SELECT ON SEQUENCE sensor.sensor_tree_links_link_id_seq TO service_role, authenticated, anon;
+GRANT USAGE, SELECT ON SEQUENCE sensor.sensor_tree_links_sensortreelinkid_seq TO service_role, authenticated, anon;
 
 -- =============================================================================
 -- LINKING FUNCTION (called by user after data import)
@@ -39,7 +39,7 @@ CREATE OR REPLACE FUNCTION sensor.link_sensors_to_trees_by_pattern()
 RETURNS TABLE (
     sensor_id INTEGER,
     sensor_name TEXT,
-    tree_variant_id INTEGER,
+    tree_id INTEGER,
     tree_info TEXT,
     link_created BOOLEAN
 ) AS $$
@@ -50,8 +50,8 @@ DECLARE
     links_created INTEGER := 0;
 BEGIN
     -- Loop through all dendrometer and sap flow sensors
-    FOR sensor_rec IN 
-        SELECT 
+    FOR sensor_rec IN
+        SELECT
             s.sensorid,
             s.serialnumber,
             s.externalmetadata->>'LocationIdentifier' as location,
@@ -63,16 +63,16 @@ BEGIN
         ORDER BY s.serialnumber
     LOOP
         tree_number := NULL;
-        
+
         -- Extract tree number from sensor name patterns
         IF sensor_rec.serialnumber ~* '.*_([0-9]+)_(Dendrometer|SapFlow)$' THEN
             tree_number := substring(sensor_rec.serialnumber from '.*_([0-9]+)_(Dendrometer|SapFlow)$');
         ELSIF sensor_rec.serialnumber ~* '.*_([0-9]+)_(Drought|Control)$' THEN
             tree_number := substring(sensor_rec.serialnumber from '.*_([0-9]+)_(Drought|Control)$');
         END IF;
-        
+
         IF tree_number IS NOT NULL THEN
-            SELECT t.variantid, t.fieldnotes
+            SELECT t.treeid, t.fieldnotes
             INTO tree_rec
             FROM trees.trees t
             WHERE t.fieldnotes IS NOT NULL
@@ -81,25 +81,25 @@ BEGIN
                 OR t.fieldnotes ~* ('FID: ' || tree_number || ' ')
             )
             LIMIT 1;
-            
-            IF tree_rec.variantid IS NOT NULL THEN
+
+            IF tree_rec.treeid IS NOT NULL THEN
                 BEGIN
-                    INSERT INTO sensor.sensor_tree_links (sensor_id, tree_variant_id, description)
+                    INSERT INTO sensor.sensor_tree_links (sensor_id, tree_id, description)
                     VALUES (
                         sensor_rec.sensorid,
-                        tree_rec.variantid,
+                        tree_rec.treeid,
                         'Auto-linked based on sensor name: ' || sensor_rec.serialnumber
                     )
-                    ON CONFLICT (sensor_id, tree_variant_id) DO NOTHING;
-                    
+                    ON CONFLICT (sensor_id, tree_id) DO NOTHING;
+
                     links_created := links_created + 1;
-                    
+
                     sensor_id := sensor_rec.sensorid;
                     sensor_name := sensor_rec.serialnumber;
-                    tree_variant_id := tree_rec.variantid;
+                    tree_id := tree_rec.treeid;
                     tree_info := tree_rec.fieldnotes;
                     link_created := TRUE;
-                    
+
                     RETURN NEXT;
                 EXCEPTION WHEN OTHERS THEN
                     CONTINUE;
@@ -107,7 +107,7 @@ BEGIN
             END IF;
         END IF;
     END LOOP;
-    
+
     RAISE NOTICE 'Created % sensor-tree links', links_created;
 END;
 $$ LANGUAGE plpgsql;
@@ -127,7 +127,7 @@ SELECT
     s.isactive AS sensor_active,
     stl.description AS link_description,
     stl.created_at AS link_created_at,
-    t.variantid AS tree_variant_id,
+    t.treeid AS tree_id,
     sp.commonname AS tree_species,
     t.height_m AS tree_height_m,
     substring(t.fieldnotes from 'TreeID: [^|]+') AS tree_identifier,
@@ -138,7 +138,7 @@ SELECT
 FROM sensor.sensor_tree_links stl
 JOIN sensor.sensors s ON stl.sensor_id = s.sensorid
 JOIN sensor.sensortypes st ON s.sensortypeid = st.sensortypeid
-LEFT JOIN trees.trees t ON stl.tree_variant_id = t.variantid
+LEFT JOIN trees.trees t ON stl.tree_id = t.treeid
 LEFT JOIN shared.species sp ON t.speciesid = sp.speciesid
 LEFT JOIN shared.locations l ON t.locationid = l.locationid;
 

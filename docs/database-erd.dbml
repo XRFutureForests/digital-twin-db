@@ -77,6 +77,17 @@ Table shared.Scenarios {
   Description varchar [note: 'Scenario description']
 }
 
+Table shared.Variants {
+  VariantID integer [primary key, note: 'Forest state group — all trees with the same VariantID form one complete forest state']
+  ScenarioID integer [not null, ref: > shared.Scenarios.ScenarioID, note: 'Parent scenario']
+  VariantName varchar [not null, note: 'Ecosense_2035_Baseline, Mathisle_2045_Baseline, etc.']
+  SimulationYear integer [note: 'Calendar year this forest state represents']
+  TimeDelta_yrs float [note: 'Years elapsed from the scenario baseline (0 for baseline)']
+  SortOrder integer [note: 'Display order for UE time-slider (0=earliest)']
+  Description text
+  CreatedAt timestamp
+}
+
 Table shared.VariantTypes {
   VariantTypeID integer [primary key]
   VariantTypeName varchar [note: 'original, processed, manual, simulated_growth, user_input, repeat_measurement']
@@ -120,7 +131,7 @@ Table shared.Plots {
 }
 
 Table shared.ManagementEvents {
-  EventID integer [primary key, note: 'Unique management event ID']
+  ManagementEventID integer [primary key, note: 'Unique management event ID']
   LocationID integer [not null, ref: > shared.Locations.LocationID, note: 'Location of event']
   PlotID integer [ref: > shared.Plots.PlotID, note: 'Optional sub-plot']
   EventType varchar [not null, note: 'thinning, planting, harvesting, pruning, fertilization, prescribed_burn, salvage_logging, site_preparation, other']
@@ -137,7 +148,7 @@ Table shared.ManagementEvents {
 }
 
 Table shared.DisturbanceEvents {
-  EventID integer [primary key, note: 'Unique disturbance event ID']
+  DisturbanceEventID integer [primary key, note: 'Unique disturbance event ID']
   LocationID integer [not null, ref: > shared.Locations.LocationID, note: 'Location of disturbance']
   PlotID integer [ref: > shared.Plots.PlotID, note: 'Optional sub-plot']
   DisturbanceType varchar [not null, note: 'storm, fire, insect, drought, disease, flood, frost, snow_damage, landslide, other']
@@ -154,13 +165,13 @@ Table shared.DisturbanceEvents {
 }
 
 Table shared.DisturbanceEvents_Trees {
-  EventID integer [ref: > shared.DisturbanceEvents.EventID, note: 'References DisturbanceEvents']
-  TreeVariantID integer [ref: > trees.Trees.VariantID, note: 'References Trees variant']
+  DisturbanceEventID integer [ref: > shared.DisturbanceEvents.DisturbanceEventID, note: 'References DisturbanceEvents']
+  TreeID integer [ref: > trees.Trees.TreeID, note: 'References Trees row']
   DamageLevel varchar [note: 'none, light, moderate, severe, destroyed']
   Notes text [note: 'Damage notes for individual tree']
 
   indexes {
-    (EventID, TreeVariantID) [pk]
+    (DisturbanceEventID, TreeID) [pk]
   }
 }
 
@@ -177,7 +188,7 @@ Table shared.Processes {
 }
 
 Table shared.ProcessParameters {
-  ParameterID integer [primary key]
+  ProcessParameterID integer [primary key]
   ParameterName varchar [note: 'learning_rate, max_depth, threshold, growth_rate, interpolation_method']
   ParameterValue varchar [note: 'Actual parameter value used for this variant']
   DataType varchar [note: 'float, int, string, boolean']
@@ -186,43 +197,43 @@ Table shared.ProcessParameters {
 
 // Junction tables for ProcessParameters polymorphic relationships
 Table shared.ProcessParameters_PointClouds {
-  ParameterID integer [ref: > shared.ProcessParameters.ParameterID, note: 'References ProcessParameters']
-  VariantID integer [ref: > pointclouds.PointClouds.VariantID, note: 'References PointClouds variant']
+  ProcessParameterID integer [ref: > shared.ProcessParameters.ProcessParameterID, note: 'References ProcessParameters']
+  PointCloudID integer [ref: > pointclouds.PointClouds.PointCloudID, note: 'References PointClouds row']
 
   indexes {
-    (ParameterID, VariantID) [pk]
+    (ProcessParameterID, PointCloudID) [pk]
   }
 }
 
 Table shared.ProcessParameters_Trees {
-  ParameterID integer [ref: > shared.ProcessParameters.ParameterID, note: 'References ProcessParameters']
-  VariantID integer [ref: > trees.Trees.VariantID, note: 'References Trees variant']
+  ProcessParameterID integer [ref: > shared.ProcessParameters.ProcessParameterID, note: 'References ProcessParameters']
+  TreeID integer [ref: > trees.Trees.TreeID, note: 'References Trees row']
 
   indexes {
-    (ParameterID, VariantID) [pk]
+    (ProcessParameterID, TreeID) [pk]
   }
 }
 
 Table shared.ProcessParameters_Environments {
-  ParameterID integer [ref: > shared.ProcessParameters.ParameterID, note: 'References ProcessParameters']
-  VariantID integer [ref: > environments.Environments.VariantID, note: 'References Environments variant']
+  ProcessParameterID integer [ref: > shared.ProcessParameters.ProcessParameterID, note: 'References ProcessParameters']
+  EnvironmentID integer [ref: > environments.Environments.EnvironmentID, note: 'References Environments row']
 
   indexes {
-    (ParameterID, VariantID) [pk]
+    (ProcessParameterID, EnvironmentID) [pk]
   }
 }
 
 Table shared.ProcessParameters_Stems {
-  ParameterID integer [ref: > shared.ProcessParameters.ParameterID, note: 'References ProcessParameters']
+  ProcessParameterID integer [ref: > shared.ProcessParameters.ProcessParameterID, note: 'References ProcessParameters']
   StemID integer [ref: > trees.Stems.StemID, note: 'References Stems']
 
   indexes {
-    (ParameterID, StemID) [pk]
+    (ProcessParameterID, StemID) [pk]
   }
 }
 
 Table shared.ProcessMetrics {
-  MetricID integer [primary key]
+  ProcessMetricID integer [primary key]
   ProcessID integer [ref: > shared.Processes.ProcessID, note: 'References Processes']
   MetricName varchar [note: 'accuracy, precision, recall, f1_score, rmse']
   MetricValue float [note: 'Published performance value']
@@ -245,28 +256,28 @@ Table shared.AuditLog {
 // Junction tables for AuditLog polymorphic relationships
 Table shared.AuditLog_PointClouds {
   AuditID bigint [ref: > shared.AuditLog.AuditID, note: 'References AuditLog']
-  VariantID integer [ref: > pointclouds.PointClouds.VariantID, note: 'References PointClouds variant']
+  PointCloudID integer [ref: > pointclouds.PointClouds.PointCloudID, note: 'References PointClouds row']
 
   indexes {
-    (AuditID, VariantID) [pk]
+    (AuditID, PointCloudID) [pk]
   }
 }
 
 Table shared.AuditLog_Trees {
   AuditID bigint [ref: > shared.AuditLog.AuditID, note: 'References AuditLog']
-  VariantID integer [ref: > trees.Trees.VariantID, note: 'References Trees variant']
+  TreeID integer [ref: > trees.Trees.TreeID, note: 'References Trees row']
 
   indexes {
-    (AuditID, VariantID) [pk]
+    (AuditID, TreeID) [pk]
   }
 }
 
 Table shared.AuditLog_Environments {
   AuditID bigint [ref: > shared.AuditLog.AuditID, note: 'References AuditLog']
-  VariantID integer [ref: > environments.Environments.VariantID, note: 'References Environments variant']
+  EnvironmentID integer [ref: > environments.Environments.EnvironmentID, note: 'References Environments row']
 
   indexes {
-    (AuditID, VariantID) [pk]
+    (AuditID, EnvironmentID) [pk]
   }
 }
 
@@ -302,8 +313,8 @@ Table pointclouds.Scanners {
 }
 
 Table pointclouds.PointClouds {
-  VariantID integer [primary key]
-  ParentVariantID integer [ref: > pointclouds.PointClouds.VariantID, note: 'Self-reference for variant lineage']
+  PointCloudID integer [primary key]
+  ParentPointCloudID integer [ref: > pointclouds.PointClouds.PointCloudID, note: 'Self-reference for processing lineage']
   LocationID integer [ref: > shared.Locations.LocationID, note: 'References shared.Locations']
   ScenarioID integer [ref: > shared.Scenarios.ScenarioID, note: 'References shared.Scenarios - NULL for non-scenario variants']
   VariantTypeID integer [ref: > shared.VariantTypes.VariantTypeID, note: 'References shared.VariantTypes']
@@ -385,10 +396,11 @@ Table trees.DamageAgents {
 }
 
 Table trees.Trees {
-  VariantID integer [primary key]
-  TreeEntityID uuid [note: 'Persistent UUID identifying physical tree across all variants']
-  ParentVariantID integer [ref: > trees.Trees.VariantID, note: 'Self-reference for variant lineage']
-  PointCloudVariantID integer [ref: > pointclouds.PointClouds.VariantID, note: 'References pointclouds.PointClouds - NULL if not derived from point cloud']
+  TreeID integer [primary key, note: 'Unique row identifier for this tree record']
+  TreeEntityID uuid [note: 'Persistent UUID identifying the same physical tree across all variants and scenarios']
+  VariantID integer [ref: > shared.Variants.VariantID, note: 'Forest state group — all trees with the same VariantID form one complete forest state for UE']
+  ParentTreeID integer [ref: > trees.Trees.TreeID, note: 'Parent tree record for growth lineage tracking']
+  PointCloudID integer [ref: > pointclouds.PointClouds.PointCloudID, note: 'Source point cloud if tree was detected from LiDAR']
   CampaignID integer [ref: > shared.Campaigns.CampaignID, note: 'Data collection campaign']
   LocationID integer [ref: > shared.Locations.LocationID, note: 'References shared.Locations']
   PlotID integer [ref: > shared.Plots.PlotID, note: 'Sub-plot within the location where tree is located']
@@ -436,7 +448,7 @@ Table trees.Trees {
 
 Table trees.Stems {
   StemID integer [primary key]
-  TreeVariantID integer [ref: > trees.Trees.VariantID, note: 'References Trees.VariantID']
+  TreeID integer [ref: > trees.Trees.TreeID, note: 'References Trees row']
   StemNumber integer [note: '1=main stem, 2+=secondary stems']
   TaperTypeID integer [ref: > trees.TaperTypes.TaperTypeID, note: 'References TaperTypes']
   StraightnessTypeID integer [ref: > trees.StraightnessTypes.StraightnessTypeID, note: 'References StraightnessTypes']
@@ -452,8 +464,8 @@ Table trees.Stems {
 }
 
 Table trees.PhenologyObservations {
-  ObservationID integer [primary key, note: 'Unique observation ID']
-  TreeVariantID integer [not null, ref: > trees.Trees.VariantID, note: 'References Trees variant']
+  PhenologyObservationID integer [primary key, note: 'Unique observation ID']
+  TreeID integer [not null, ref: > trees.Trees.TreeID, note: 'References Trees row']
   ObservationDate date [not null, note: 'Date of phenology observation']
   PhenophaseType varchar [not null, note: 'bud_break, leaf_out, flowering, fruit_set, leaf_color, leaf_fall, dormancy']
   PhenophaseStatus varchar [note: 'not_started, beginning, intermediate, peak, ending, completed']
@@ -468,7 +480,7 @@ Table trees.Deadwood {
   DeadwoodID integer [primary key, note: 'Unique deadwood ID']
   LocationID integer [not null, ref: > shared.Locations.LocationID, note: 'Location reference']
   PlotID integer [ref: > shared.Plots.PlotID, note: 'Optional sub-plot']
-  TreeVariantID integer [ref: > trees.Trees.VariantID, note: 'Optional link to known dead tree variant']
+  TreeID integer [ref: > trees.Trees.TreeID, note: 'Optional link to known dead tree record']
   SpeciesID integer [ref: > shared.Species.SpeciesID, note: 'Species reference']
   WoodType varchar [not null, note: 'standing, fallen, stump, branch']
   Length_m float [note: 'Length in meters']
@@ -483,7 +495,7 @@ Table trees.Deadwood {
 }
 
 Table trees.GroundVegetation {
-  VegetationID integer [primary key, note: 'Unique vegetation record ID']
+  GroundVegetationID integer [primary key, note: 'Unique vegetation record ID']
   LocationID integer [not null, ref: > shared.Locations.LocationID, note: 'Location reference']
   PlotID integer [ref: > shared.Plots.PlotID, note: 'Optional sub-plot']
   SpeciesName varchar [note: 'Vegetation species name']
@@ -539,7 +551,7 @@ Table sensor.Sensors {
 }
 
 Table sensor.SensorReadings {
-  ReadingID bigint [primary key]
+  SensorReadingID bigint [primary key]
   SensorID integer [ref: > sensor.Sensors.SensorID, note: 'References sensors.Sensors']
   Timestamp timestamp [note: 'Reading timestamp']
   Value float
@@ -552,9 +564,9 @@ Table sensor.SensorReadings {
 }
 
 Table sensor.SensorTreeLinks {
-  LinkID integer [primary key]
+  SensorTreeLinkID integer [primary key]
   SensorID integer [ref: > sensor.Sensors.SensorID, note: 'References Sensors']
-  TreeVariantID integer [ref: > trees.Trees.VariantID, note: 'References Trees variant']
+  TreeID integer [ref: > trees.Trees.TreeID, note: 'References Trees row']
   Description text [note: 'Link description and automated matching notes']
   StartDate date [note: 'Start date of sensor-tree link']
   EndDate date [note: 'End date of sensor-tree link']
@@ -566,8 +578,8 @@ Table sensor.SensorTreeLinks {
 // =============================================================================
 
 Table environments.Environments {
-  VariantID integer [primary key]
-  ParentVariantID integer [ref: > environments.Environments.VariantID, note: 'Self-reference for variant lineage']
+  EnvironmentID integer [primary key]
+  ParentEnvironmentID integer [ref: > environments.Environments.EnvironmentID, note: 'Self-reference for processing lineage']
   LocationID integer [ref: > shared.Locations.LocationID, note: 'References shared.Locations']
   ScenarioID integer [ref: > shared.Scenarios.ScenarioID, note: 'References shared.Scenarios']
   VariantTypeID integer [ref: > shared.VariantTypes.VariantTypeID, note: 'References shared.VariantTypes']
@@ -634,6 +646,7 @@ TableGroup "Shared Schema" {
   shared.ClimateZones
   shared.Species
   shared.Scenarios
+  shared.Variants
   shared.VariantTypes
   shared.Campaigns
   shared.Plots

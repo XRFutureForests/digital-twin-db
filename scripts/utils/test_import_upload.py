@@ -204,7 +204,7 @@ def test_insert(df: pd.DataFrame, conn, dry_run: bool = True) -> dict:
                 TreeStatusID, FieldNotes, CreatedBy
             )
             VALUES %s
-            RETURNING TreeVariantID
+            RETURNING TreeID
         """
 
         tree_values = [
@@ -243,7 +243,7 @@ def test_insert(df: pd.DataFrame, conn, dry_run: bool = True) -> dict:
 
             if stem_values:
                 stem_query = """
-                    INSERT INTO trees.Stems (TreeVariantID, StemNumber, DBH_cm)
+                    INSERT INTO trees.Stems (TreeID, StemNumber, DBH_cm)
                     VALUES %s
                 """
                 execute_values(cur, stem_query, stem_values)

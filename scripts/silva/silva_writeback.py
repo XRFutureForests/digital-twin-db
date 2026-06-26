@@ -62,7 +62,7 @@ SILVA_TO_DB: dict[str, str] = {
     "n_ha":          "standstemcount_ha",    # stem count (stems/ha)
     # Carry-through columns from silva_input (added by R script for join-back)
     "tree_entity_id":  "treeentityid",
-    "base_variant_id": "basevariantid",
+    "base_tree_id":    "basetreeid",
     "species_id":      "speciesid",
     "location_id":     "locationid",
     "plot_id":         "plotid",
@@ -105,7 +105,7 @@ def map_columns(df: pd.DataFrame, run_id: str, simulator: str, version: str,
     # Drop any column not in the DB schema (safety guard)
     known_db_cols = set(SILVA_TO_DB.values()) | {
         "runid", "simulatorname", "simulatorversion", "scenarioid",
-        "treeentityid", "basevariantid", "locationid", "plotid", "speciesid",
+        "treeentityid", "basetreeid", "locationid", "plotid", "speciesid",
         "projectionyear", "timedelta_yrs",
         "height_m", "dbh_cm", "basalarea_m2", "crownwidth_m", "crownbaseheight_m",
         "volume_m3", "biomass_kg", "carboncontent_kg", "healthscore", "mortality",

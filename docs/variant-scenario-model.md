@@ -6,65 +6,95 @@
 
 ## Concept
 
-The digital twin DB stores multiple **variants** of a forest, not just one snapshot.
+The digital twin DB stores multiple **forest states** across two levels: Scenarios and Variants.
 
 | Term | Meaning | Example |
 |------|---------|---------|
-| **Scenario** | A named set of assumptions | `Current_Conditions`, `Climate_Change_2050` |
+| **Scenario** | A named set of top-level assumptions | `Current_Conditions`, `Climate_Change_2050`, `Management_Thinning` |
+| **Variant** | A specific time step or management increment *within* a scenario | `Ecosense_2035_Baseline`, `Ecosense_2045_Baseline` |
 | **VariantType** | How the data was produced | `original`, `simulated_growth`, `model_output` |
-| **Variant (row)** | A single tree state under a scenario | Tree #42 at height 18.3m in year 2060 |
+| **Tree row** | One tree's state at one time step | Tree #42 at height 22.5m in year 2035 |
 
-One physical tree (identified by `TreeEntityID`) can have many rows in `trees.Trees` — one per scenario/time-step. This is how time-machine switching works in UE: swap the `ScenarioID` filter and get a completely different forest.
+### Two-level hierarchy
 
-**Variants vs. data corrections:** A new variant is for a distinct forest state. If you find a typo or missed measurement in an existing record, fix it with a plain UPDATE — not a new variant. The DB has AFTER UPDATE audit triggers that log the change automatically. See [data-access-guide.md](data-access-guide.md#correcting-data--field-updates-vs-new-variants).
+```
+shared.Scenarios
+  └── shared.Variants  (one or more per Scenario — each is one time step)
+        └── trees.Trees.VariantID  (FK — all trees at the same time step share one VariantID)
+```
+
+One physical tree (identified by `TreeEntityID`) can appear in many rows in `trees.Trees` — one per time step / variant. All trees at the same time step share the same `VariantID`. This is what enables UE "time travel": query by `VariantID` to load the complete forest at one point in time.
+
+**Variants vs. data corrections:** A new Variant is for a distinct forest state. If you find a typo or missed measurement in an existing record, fix it with a plain UPDATE — not a new variant. The DB has AFTER UPDATE audit triggers that log the change automatically. See [data-access-guide.md](data-access-guide.md#correcting-data--field-updates-vs-new-variants).
 
 ---
 
-## Schema (already in place)
+## Schema
 
 ```
-shared.Scenarios         ← named scenarios (lookup table)
-  ScenarioID
-  ScenarioName           ← "Current_Conditions", "Climate_Change_2050", etc.
+shared.Scenarios              ← named scenarios (lookup)
+  ScenarioID  PK
+  ScenarioName                ← "Current_Conditions", "Climate_Change_2050", etc.
 
-shared.VariantTypes      ← how data was generated
-  VariantTypeName        ← "original", "simulated_growth", "model_output", etc.
-
-trees.Trees              ← one row per tree-variant (the main data table)
+shared.Variants               ← time steps within a scenario
   VariantID   PK
-  TreeEntityID UUID      ← same UUID across all variants of the same tree
   ScenarioID  FK → shared.Scenarios
+  VariantName                 ← "Ecosense_2035_Baseline", etc.
+  SimulationYear              ← calendar year this state represents
+  TimeDelta_yrs               ← years since baseline
+  SortOrder                   ← display order in UE selector
+
+shared.VariantTypes           ← how data was generated
+  VariantTypeName             ← "original", "simulated_growth", "model_output", etc.
+
+trees.Trees                   ← one row per tree per time step
+  TreeID        PK            ← unique row identifier
+  TreeEntityID  UUID          ← stable identity across all variants of the same physical tree
+  VariantID     FK → shared.Variants   ← group selector: all trees at one time step
+  ParentTreeID  FK → trees.Trees       ← lineage: which row this was grown from
+  ScenarioID    FK → shared.Scenarios  ← direct convenience FK (redundant with Variants)
   VariantTypeID FK → shared.VariantTypes
   Height_m, Position, SpeciesID, Age_years, ...
 ```
 
-`VariantID` is a surrogate key. `TreeEntityID` is the stable identity — use it to track one tree across scenarios.
+`TreeID` is the row PK (auto-increment, changes each time a tree is inserted). `TreeEntityID` is the stable physical-tree UUID — use it to track one tree across all variants/time steps. `VariantID` is the group selector used by UE to load a complete forest state.
 
 ---
 
 ## API query patterns for UE
 
-### List available scenarios (populate selector UI)
+### Step 1: List available variants for a scenario (populate time-step selector UI)
 
 ```
-GET /scenarios
-→ [{"scenarioid": 1, "scenarioname": "Current_Conditions", "description": "..."},
-   {"scenarioid": 2, "scenarioname": "Climate_Change_2050", ...}]
+GET /variants?scenarioid=eq.1&order=sortorder
+→ [
+    {"variantid": 3, "scenarioid": 1, "variantname": "Ecosense_2035_Baseline", "simulationyear": 2035, "timedelta_yrs": 10, ...},
+    {"variantid": 4, "scenarioid": 1, "variantname": "Ecosense_2045_Baseline", "simulationyear": 2045, "timedelta_yrs": 20, ...}
+  ]
 ```
 
-### Load a forest state by scenario name
+Or list with scenario name already joined (via `public.variants` view):
 
 ```
-GET /forest_state?scenarioname=eq.Current_Conditions
+GET /variants?scenarioname=eq.Current_Conditions
+```
+
+### Step 2: Load all trees at one time step
+
+```
+GET /forest_state?variantid=eq.3
 ```
 
 Response fields:
 ```json
 {
-  "variantid": 1042,
+  "treeid": 1042,
   "treeentityid": "uuid...",
+  "variantid": 3,
+  "variantname": "Ecosense_2035_Baseline",
+  "simulationyear": 2035,
   "scenarioname": "Current_Conditions",
-  "varianttypename": "original",
+  "varianttypename": "simulated_growth",
   "speciesname": "European Beech",
   "scientificname": "Fagus sylvatica",
   "height_m": 22.5,
@@ -77,10 +107,16 @@ Response fields:
 }
 ```
 
-### Filter by location + scenario
+### Filter by location + scenario name (when VariantID is unknown)
 
 ```
-GET /forest_state?locationid=eq.5&scenarioname=eq.Climate_Change_2050
+GET /forest_state?locationid=eq.5&scenarioname=eq.Current_Conditions
+```
+
+### Filter by scenario only (returns all time steps for that scenario)
+
+```
+GET /forest_state?scenarioname=eq.Ecosense_Growth_2035
 ```
 
 ### Load tree stems (DBH) alongside
@@ -88,13 +124,13 @@ GET /forest_state?locationid=eq.5&scenarioname=eq.Climate_Change_2050
 Stems are in a separate table — query in parallel or join in UE:
 
 ```
-GET /stems?variantid=in.(1042,1043,1044,...)
+GET /stems?treeid=in.(1042,1043,1044,...)
 ```
 
-Or use the existing `trees` view with embedded select:
+Or use the `trees` view with embedded select:
 
 ```
-GET /trees?scenarioid=eq.2&select=variantid,height_m,position,species(commonname),stems(dbh_cm)
+GET /trees?variantid=eq.3&select=treeid,height_m,position,species(commonname),stems(dbh_cm)
 ```
 
 ---
@@ -114,21 +150,27 @@ The following are loaded from `data/lookups/scenarios.csv` on DB init:
 | `Management_Thinning` | Post-thinning state |
 | `No_Management` | Natural development |
 
-For the **Sept 2026 demo**, use `Current_Conditions` plus 2–3 contrasting variants loaded as demo data (see XRFF-241).
+Variants (time steps) are NOT pre-loaded — they are created by seed scripts or SILVA write-back when growth simulations are run.
 
 ---
 
-## Adding a new scenario (e.g. SILVA output)
+## Adding a new scenario and variant
 
 ```bash
-# Via API (authenticated)
+# Create scenario (via API)
 curl -X POST "http://localhost:8000/rest/v1/scenarios" \
   -H "apikey: <SERVICE_ROLE_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"scenarioname": "SILVA_2060_RCP45", "description": "SILVA growth simulation, RCP4.5, year 2060"}'
+
+# Create variant for that scenario
+curl -X POST "http://localhost:8000/rest/v1/variants" \
+  -H "apikey: <SERVICE_ROLE_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"scenarioid": <new_id>, "variantname": "RCP45_2060_Run1", "simulationyear": 2060, "timedelta_yrs": 40, "sortorder": 0}'
 ```
 
-Then insert tree rows with the new `ScenarioID`:
+Then insert tree rows with the new `ScenarioID` and `VariantID`:
 
 ```python
 # scripts/import/import_trees.py data/imports/silva_2060_trees.csv
@@ -136,7 +178,7 @@ Then insert tree rows with the new `ScenarioID`:
 
 ---
 
-## Generating a growth variant from existing data
+## Generating growth variants from existing data
 
 For "what would this same forest look like N years from now" variants — grow the
 trees that already exist in the DB rather than hand-writing new rows — use a SQL
@@ -145,51 +187,22 @@ implementation is `scripts/seed/ecosense_growth_variants.sql`, which derives
 `Ecosense_Growth_2035` from the real Ecosense `Current_Conditions` import, then
 chains `Ecosense_Growth_2045` from `Ecosense_Growth_2035`.
 
-Each variant in that script does three things in one transaction (a `DO $$ ... $$`
-block, so a partial failure rolls back the whole variant instead of leaving it
-half-applied):
+Each variant block:
 
-1. **Grow survivors** — select baseline trees (joined to `trees.Stems` for DBH),
-   randomly drop a small fraction (simulated mortality — those trees are simply
-   absent from the new scenario), scale `Height_m`/`CrownWidth_m`/
-   `CrownBaseHeight_m`/`DBH_cm` up by a flat percentage, advance
-   `MeasurementDate`/`Age_years`, and insert one new `trees.Trees` row per
-   survivor with `TreeEntityID` carried over (same physical tree) and
-   `ParentVariantID` pointing at the baseline row (lineage chain).
-2. **Regenerate** — insert a small number of brand-new sapling rows with a fresh
-   `TreeEntityID` and no `ParentVariantID`, positioned with a small random offset
-   from an existing tree.
-3. Both inserts use `VariantTypeID = simulated_growth` and
-   `DataSourceType = 'simulated'` so they're clearly distinguishable from field
-   measurements.
+1. **Creates a Variant row** in `shared.Variants` linking to the new scenario.
+2. **Grows survivors** — selects baseline trees (joined to `trees.Stems` for DBH),
+   randomly drops a small fraction (simulated mortality), scales measurements up,
+   and inserts new `trees.Trees` rows with `VariantID` set to the new Variant,
+   `TreeEntityID` carried over (same physical tree), and `ParentTreeID` pointing
+   at the baseline row (lineage chain).
+3. **Regenerates** — inserts new sapling rows with fresh `TreeEntityID` and no
+   `ParentTreeID`, assigned to the same `VariantID`.
+
+Both inserts use `VariantTypeID = simulated_growth` and `DataSourceType = 'simulated'`.
 
 **This is a simple placeholder model** — flat percentage growth, not a calibrated
 forestry model. For scientifically calibrated projections, use the SILVA coupling
 instead (`docs/silva-coupling.md`, `docs/growth-simulation-schema.md`).
-
-### Adding your own variant
-
-Copy one of the `DO $$ ... $$` blocks in `scripts/seed/ecosense_growth_variants.sql`
-and change:
-
-| What | Where |
-|---|---|
-| New scenario name | `INSERT INTO shared.Scenarios` block, and every `ScenarioName = '...'` reference in your copied block |
-| Source scenario to grow from | The `WHERE ... ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = '...')` line in the baseline `SELECT` — point it at any existing scenario, including one this script already generated |
-| Growth amount | The `1.12`/`1.08`/`1.05`/`1.15`-style multipliers on `Height_m`/`CrownWidth_m`/`CrownBaseHeight_m`/`DBH_cm` |
-| Time elapsed | The `INTERVAL '10 years'` and matching `Age_years + 10` |
-| Mortality rate | The `r >= 0.03` cutoff (raise to kill off more trees, lower for less) |
-| Regeneration rate | The `r < 0.02` cutoff and the `LIMIT 30` |
-
-Apply it the same way as the demo seed — manually, never auto-run on build:
-
-```bash
-docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/your_variant.sql
-```
-
-If you hit `function st_x(...) does not exist`, your `SET search_path` is missing
-`extensions` (where PostGIS lives in this self-hosted Supabase setup) — it must
-include it whenever the script calls `ST_X`/`ST_Y`/`ST_MakePoint`/`ST_SetSRID`.
 
 ---
 
@@ -197,7 +210,8 @@ include it whenever the script calls `ST_X`/`ST_Y`/`ST_MakePoint`/`ST_SetSRID`.
 
 In the HTTPS Blueprint:
 1. On level load, call `GET /scenarios` → populate a DataTable `DT_Scenarios`.
-2. When user selects a scenario, call `GET /forest_state?scenarioname=eq.<selected>` → repopulate `DT_Trees`.
-3. PCG graph re-runs → trees respawn at new heights/positions.
+2. When user selects a scenario, call `GET /variants?scenarioid=eq.<id>&order=sortorder` → populate a `DT_Variants` time-step selector.
+3. When user selects a time step, call `GET /forest_state?variantid=eq.<variantid>` → repopulate `DT_Trees`.
+4. PCG graph re-runs → trees respawn at new heights/positions.
 
 The `forest_state` view includes pre-flattened `latitude`/`longitude` — no PostGIS geometry parsing needed in Blueprint. See XRFF-242 for the blueprint implementation.

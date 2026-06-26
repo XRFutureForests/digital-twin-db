@@ -118,9 +118,10 @@ erDiagram
     }
 
     TREES_TREES {
-        int VariantID PK
+        int TreeID PK
         uuid TreeEntityID
-        int ParentVariantID FK
+        int VariantID FK
+        int ParentTreeID FK
         int LocationID FK
         int SpeciesID FK
         date MeasurementDate
@@ -131,7 +132,7 @@ erDiagram
     }
 
     SENSOR_SENSORREADINGS {
-        bigint ReadingID PK
+        bigint SensorReadingID PK
         int SensorID FK
         timestamptz Timestamp
         numeric Value
@@ -139,8 +140,8 @@ erDiagram
     }
 
     POINTCLOUDS_POINTCLOUDS {
-        int VariantID PK
-        int ParentVariantID FK
+        int PointCloudID PK
+        int ParentPointCloudID FK
         int LocationID FK
         text FilePath
         varchar PlatformType
@@ -236,14 +237,15 @@ erDiagram
 
 ### 3.4 `trees.Trees`
 
-**Description:** Tree measurement and simulation variants. Each row is one **variant** of a physical tree (identified by `TreeEntityID`). Multiple variants per tree entity track temporal changes, processing lineage, or scenario simulations.
+**Description:** Tree measurement and simulation rows. Each row is one physical-tree record within a specific forest state (Variant). `TreeEntityID` is the stable identity across all rows. `VariantID` groups all rows belonging to the same time step / scenario snapshot.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
-| `VariantID` | SERIAL | NO | PRIMARY KEY | Unique variant identifier |
-| `TreeEntityID` | UUID | NO | DEFAULT gen_random_uuid() | Persistent ID for the physical tree across variants |
-| `ParentVariantID` | INTEGER | YES | FK → `trees.Trees` ON DELETE SET NULL | Parent in lineage chain |
-| `PointCloudVariantID` | INTEGER | YES | FK → `pointclouds.PointClouds` ON DELETE SET NULL | Source LiDAR scan |
+| `TreeID` | SERIAL | NO | PRIMARY KEY | Unique row identifier |
+| `TreeEntityID` | UUID | NO | DEFAULT gen_random_uuid() | Persistent ID for the physical tree across all rows |
+| `VariantID` | INTEGER | YES | FK → `shared.Variants` ON DELETE SET NULL | Forest state group (one time step in a scenario) |
+| `ParentTreeID` | INTEGER | YES | FK → `trees.Trees` ON DELETE SET NULL | Parent row in lineage chain |
+| `PointCloudID` | INTEGER | YES | FK → `pointclouds.PointClouds` ON DELETE SET NULL | Source LiDAR scan |
 | `CampaignID` | INTEGER | YES | FK → `shared.Campaigns` | Data collection campaign |
 | `LocationID` | INTEGER | NO | FK → `shared.Locations` ON DELETE CASCADE | Plot location |
 | `PlotID` | INTEGER | YES | FK → `shared.Plots` ON DELETE SET NULL | Sub-plot within location |
@@ -286,8 +288,8 @@ erDiagram
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
 | `StemID` | SERIAL | NO | PRIMARY KEY | — |
-| `TreeVariantID` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE | Parent tree variant |
-| `StemNumber` | INTEGER | NO | ≥ 1, UNIQUE with TreeVariantID | 1 = main stem |
+| `TreeID` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE | Parent tree row |
+| `StemNumber` | INTEGER | NO | ≥ 1, UNIQUE with TreeID | 1 = main stem |
 | `TaperTypeID` | INTEGER | YES | FK → `trees.TaperTypes` | Stem taper form |
 | `StraightnessTypeID` | INTEGER | YES | FK → `trees.StraightnessTypes` | Stem straightness |
 | `DBH_cm` | NUMERIC(6,2) | YES | 0–1000 | Diameter at breast height (1.3 m) in cm |
@@ -313,12 +315,12 @@ erDiagram
 
 ### 3.6 `pointclouds.PointClouds`
 
-**Description:** LiDAR point cloud variants. Original scans and processed derivatives share the same table, linked via `ParentVariantID`. File content is stored in S3; `FilePath` holds the S3 URI.
+**Description:** LiDAR point cloud records. Original scans and processed derivatives share the same table, linked via `ParentPointCloudID`. File content is stored in S3; `FilePath` holds the S3 URI.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
-| `VariantID` | SERIAL | NO | PRIMARY KEY | — |
-| `ParentVariantID` | INTEGER | YES | FK → `pointclouds.PointClouds` | Parent in processing lineage |
+| `PointCloudID` | SERIAL | NO | PRIMARY KEY | — |
+| `ParentPointCloudID` | INTEGER | YES | FK → `pointclouds.PointClouds` | Parent in processing lineage |
 | `LocationID` | INTEGER | NO | FK → `shared.Locations` ON DELETE CASCADE | — |
 | `CampaignID` | INTEGER | YES | FK → `shared.Campaigns` | Acquisition campaign |
 | `ScannerID` | INTEGER | YES | FK → `pointclouds.Scanners` | Hardware used |
@@ -454,10 +456,10 @@ erDiagram
 
 | Column | Type | Null | Description |
 |--------|------|------|-------------|
-| `SimulationID` | BIGSERIAL | No | Surrogate PK |
+| `GrowthSimulationID` | BIGSERIAL | No | Surrogate PK |
 | `RunID` | UUID | No | Groups all rows from a single simulator execution |
 | `TreeEntityID` | UUID | No | Stable physical-tree identity (matches `trees.Trees.TreeEntityID`) |
-| `BaseVariantID` | INTEGER | Yes | FK → `trees.Trees.VariantID`; starting-point measurement |
+| `BaseTreeID` | INTEGER | Yes | FK → `trees.Trees.TreeID`; starting-point measurement row |
 | `LocationID` | INTEGER | Yes | FK → `shared.Locations` |
 | `PlotID` | INTEGER | Yes | FK → `shared.Plots` |
 | `ScenarioID` | INTEGER | Yes | FK → `shared.Scenarios` |
@@ -510,13 +512,14 @@ erDiagram
 |------------|--------|-------------|-----------|
 | `shared.Plots` | `LocationID` | `shared.Locations` | CASCADE |
 | `trees.Trees` | `LocationID` | `shared.Locations` | CASCADE |
-| `trees.Trees` | `ParentVariantID` | `trees.Trees` | SET NULL |
-| `trees.Trees` | `PointCloudVariantID` | `pointclouds.PointClouds` | SET NULL |
-| `trees.Stems` | `TreeVariantID` | `trees.Trees` | CASCADE |
+| `trees.Trees` | `VariantID` | `shared.Variants` | SET NULL |
+| `trees.Trees` | `ParentTreeID` | `trees.Trees` | SET NULL |
+| `trees.Trees` | `PointCloudID` | `pointclouds.PointClouds` | SET NULL |
+| `trees.Stems` | `TreeID` | `trees.Trees` | CASCADE |
 | `sensor.Sensors` | `LocationID` | `shared.Locations` | CASCADE |
 | `sensor.SensorReadings` | `SensorID` | `sensor.Sensors` | CASCADE |
-| `sensor.sensor_tree_links` | `sensor_id` | `sensor.Sensors` | CASCADE |
-| `sensor.sensor_tree_links` | `tree_variant_id` | `trees.Trees` | CASCADE |
+| `sensor.SensorTreeLinks` | `SensorID` | `sensor.Sensors` | CASCADE |
+| `sensor.SensorTreeLinks` | `TreeID` | `trees.Trees` | CASCADE |
 | `pointclouds.PointClouds` | `LocationID` | `shared.Locations` | CASCADE |
 | `imagery.Images` | `LocationID` | `shared.Locations` | CASCADE |
 
@@ -562,7 +565,7 @@ All geometry columns use GIST indexes:
 
 ### 5.3 Lineage Indexes
 
-`ParentVariantID` is indexed on `trees.Trees`, `pointclouds.PointClouds`, and `environments.Environments` to support recursive lineage traversal.
+`ParentTreeID`, `ParentPointCloudID`, and `ParentEnvironmentID` are indexed on their respective tables to support recursive lineage traversal. `trees.Trees.VariantID` is indexed to support fast forest-state queries (`GET /forest_state?variantid=eq.X`).
 
 ---
 

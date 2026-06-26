@@ -429,7 +429,7 @@ def import_trees(df, dry_run=False):
             Age_years, HealthScore, FieldNotes, CreatedBy
         )
         VALUES %s
-        RETURNING VariantID
+        RETURNING TreeID
     """
 
     # Template: 22 tree columns (excluding the 3 stem columns at the end)
@@ -449,7 +449,7 @@ def import_trees(df, dry_run=False):
     # Extract only the tree columns (first 22) for insertion
     tree_only = [v[:22] for v in tree_values]
 
-    variant_ids = execute_values(
+    tree_ids = execute_values(
         cur,
         insert_query,
         tree_only,
@@ -457,20 +457,20 @@ def import_trees(df, dry_run=False):
         fetch=True,
     )
     conn.commit()
-    print(f"  Inserted {len(variant_ids)} trees")
+    print(f"  Inserted {len(tree_ids)} trees")
 
     # Insert stems for trees with DBH
     stems = []
-    for i, (variant_id,) in enumerate(variant_ids):
+    for i, (tree_id,) in enumerate(tree_ids):
         dbh_cm = tree_values[i][22]
         taper_type_id = tree_values[i][23]
         straightness_type_id = tree_values[i][24]
         if dbh_cm is not None:
-            stems.append((variant_id, 1, dbh_cm, taper_type_id, straightness_type_id))
+            stems.append((tree_id, 1, dbh_cm, taper_type_id, straightness_type_id))
 
     if stems:
         stem_query = """
-            INSERT INTO trees.Stems (TreeVariantID, StemNumber, DBH_cm, TaperTypeID, StraightnessTypeID)
+            INSERT INTO trees.Stems (TreeID, StemNumber, DBH_cm, TaperTypeID, StraightnessTypeID)
             VALUES %s
         """
         execute_values(cur, stem_query, stems)
@@ -618,7 +618,7 @@ def main():
             )
             total_trees = cur.fetchone()[0]
             cur.execute(
-                "SELECT count(*) FROM trees.stems s JOIN trees.trees t ON s.treevariantid = t.variantid WHERE t.locationid = %s",
+                "SELECT count(*) FROM trees.stems s JOIN trees.trees t ON s.treeid = t.treeid WHERE t.locationid = %s",
                 (int(loc_id),),
             )
             total_stems = cur.fetchone()[0]

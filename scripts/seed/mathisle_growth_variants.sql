@@ -40,6 +40,7 @@
 -- ===========================
 -- Copy one of the two `DO $$ ... $$` blocks below and adjust:
 --   - the new ScenarioName (must be unique in shared.Scenarios)
+--   - the new VariantName (must be unique within the Scenario in shared.Variants)
 --   - the source scenario to grow from (the WHERE ScenarioName = '...' inside
 --     the baseline CTE) — point it at any existing scenario, including one
 --     you generated with this same script
@@ -49,7 +50,7 @@
 --   - the interval added to MeasurementDate / Age_years
 --   - the mortality fraction (the `r >= 0.04` cutoff — raise/lower as needed)
 --   - the regeneration fraction (the `r < 0.02` cutoff and the LIMIT)
--- Nothing else needs to change — TreeEntityID/ParentVariantID/lineage and the
+-- Nothing else needs to change — TreeEntityID/ParentTreeID/lineage and the
 -- Stems insert are handled generically from whatever baseline you select.
 
 SET search_path TO shared, trees, extensions, public;
@@ -82,6 +83,36 @@ FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM shared.Scenarios s WHERE s.ScenarioName = v.name);
 
 -- ============================================================
+-- VARIANTS (one per scenario time step)
+-- ============================================================
+
+INSERT INTO shared.Variants (ScenarioID, VariantName, SimulationYear, TimeDelta_yrs, SortOrder, Description)
+SELECT
+    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2035'),
+    'Mathisle_2035_Baseline',
+    2035,
+    10,
+    0,
+    'Synthetic +10y growth from Mathisle Current_Conditions baseline'
+WHERE NOT EXISTS (
+    SELECT 1 FROM shared.Variants
+    WHERE VariantName = 'Mathisle_2035_Baseline'
+);
+
+INSERT INTO shared.Variants (ScenarioID, VariantName, SimulationYear, TimeDelta_yrs, SortOrder, Description)
+SELECT
+    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2045'),
+    'Mathisle_2045_Baseline',
+    2045,
+    20,
+    0,
+    'Synthetic +20y growth from Mathisle_Growth_2035'
+WHERE NOT EXISTS (
+    SELECT 1 FROM shared.Variants
+    WHERE VariantName = 'Mathisle_2045_Baseline'
+);
+
+-- ============================================================
 -- VARIANT 1: Mathisle_Growth_2035 (from Current_Conditions, +10 years)
 -- ============================================================
 
@@ -94,7 +125,7 @@ BEGIN
 
         CREATE TEMP TABLE _m2035_base AS
         SELECT
-            t.VariantID AS base_variant_id, t.TreeEntityID, t.LocationID, t.PlotID, t.CampaignID,
+            t.TreeID AS base_tree_id, t.TreeEntityID, t.LocationID, t.PlotID, t.CampaignID,
             t.SpeciesID, t.TreeStatusID, t.BranchingPatternID, t.BarkCharacteristicID,
             t.Height_m, t.Position, t.PositionOriginal, t.SourceCRS,
             t.Age_years, t.HealthScore, t.MeasurementDate,
@@ -102,7 +133,7 @@ BEGIN
             random() AS r
         FROM trees.Trees t
         JOIN shared.Locations l ON t.LocationID = l.LocationID
-        LEFT JOIN trees.Stems st ON st.TreeVariantID = t.VariantID AND st.StemNumber = 1
+        LEFT JOIN trees.Stems st ON st.TreeID = t.TreeID AND st.StemNumber = 1
         WHERE l.LocationName = 'Mathisle'
           AND t.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions')
           AND t.VariantTypeID = (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'original');
@@ -111,17 +142,21 @@ BEGIN
         CREATE TEMP TABLE _m2035_survivors AS
         SELECT * FROM _m2035_base WHERE r >= 0.04;
 
-        -- Grow survivors forward 10 years; insert new variant rows + scaled stems
+        -- Grow survivors forward 10 years; insert new tree rows + scaled stems
         -- Crown dimensions are synthesized from grown height: closed-canopy Black Forest spruce/fir ratios
         WITH ins AS (
             INSERT INTO trees.Trees (
-                TreeEntityID, ParentVariantID, LocationID, PlotID, CampaignID, ScenarioID, VariantTypeID,
+                TreeEntityID, ParentTreeID,
+                VariantID,
+                LocationID, PlotID, CampaignID, ScenarioID, VariantTypeID,
                 SpeciesID, TreeStatusID, BranchingPatternID, BarkCharacteristicID,
                 MeasurementDate, DataSourceTypeID, Height_m, CrownWidth_m, CrownBaseHeight_m,
                 Position, PositionOriginal, SourceCRS, TimeDelta_yrs, Age_years, HealthScore, CreatedBy
             )
             SELECT
-                b.TreeEntityID, b.base_variant_id, b.LocationID, b.PlotID, b.CampaignID,
+                b.TreeEntityID, b.base_tree_id,
+                (SELECT VariantID FROM shared.Variants WHERE VariantName = 'Mathisle_2035_Baseline'),
+                b.LocationID, b.PlotID, b.CampaignID,
                 (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2035'),
                 (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
                 b.SpeciesID, b.TreeStatusID, b.BranchingPatternID, b.BarkCharacteristicID,
@@ -134,22 +169,26 @@ BEGIN
                 b.Position, b.PositionOriginal, b.SourceCRS,
                 10, b.Age_years + 10, b.HealthScore, 'growth_variant_seed'
             FROM _m2035_survivors b
-            RETURNING VariantID, TreeEntityID
+            RETURNING TreeID, TreeEntityID
         )
-        INSERT INTO trees.Stems (TreeVariantID, StemNumber, DBH_cm, TaperTypeID, StraightnessTypeID)
-        SELECT ins.VariantID, 1, ROUND((s.DBH_cm * 1.10)::numeric, 2), s.TaperTypeID, s.StraightnessTypeID
+        INSERT INTO trees.Stems (TreeID, StemNumber, DBH_cm, TaperTypeID, StraightnessTypeID)
+        SELECT ins.TreeID, 1, ROUND((s.DBH_cm * 1.10)::numeric, 2), s.TaperTypeID, s.StraightnessTypeID
         FROM ins
         JOIN _m2035_survivors s ON s.TreeEntityID = ins.TreeEntityID
         WHERE s.DBH_cm IS NOT NULL;
 
-        -- ~2% regeneration: brand-new saplings, no ParentVariantID, jittered near an existing tree
+        -- ~2% regeneration: brand-new saplings, no ParentTreeID, jittered near an existing tree
         INSERT INTO trees.Trees (
-            TreeEntityID, LocationID, PlotID, CampaignID, ScenarioID, VariantTypeID,
+            TreeEntityID,
+            VariantID,
+            LocationID, PlotID, CampaignID, ScenarioID, VariantTypeID,
             SpeciesID, MeasurementDate, DataSourceTypeID, Height_m, CrownWidth_m, CrownBaseHeight_m,
             Position, Age_years, HealthScore, CreatedBy
         )
         SELECT
-            gen_random_uuid(), b.LocationID, b.PlotID, b.CampaignID,
+            gen_random_uuid(),
+            (SELECT VariantID FROM shared.Variants WHERE VariantName = 'Mathisle_2035_Baseline'),
+            b.LocationID, b.PlotID, b.CampaignID,
             (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2035'),
             (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
             b.SpeciesID, b.MeasurementDate + INTERVAL '10 years', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'simulated'),
@@ -183,14 +222,14 @@ BEGIN
 
         CREATE TEMP TABLE _m2045_base AS
         SELECT
-            t.VariantID AS base_variant_id, t.TreeEntityID, t.LocationID, t.PlotID, t.CampaignID,
+            t.TreeID AS base_tree_id, t.TreeEntityID, t.LocationID, t.PlotID, t.CampaignID,
             t.SpeciesID, t.TreeStatusID, t.BranchingPatternID, t.BarkCharacteristicID,
             t.Height_m, t.CrownWidth_m, t.CrownBaseHeight_m, t.Position, t.PositionOriginal, t.SourceCRS,
             t.Age_years, t.HealthScore, t.MeasurementDate,
             st.DBH_cm, st.TaperTypeID, st.StraightnessTypeID,
             random() AS r
         FROM trees.Trees t
-        LEFT JOIN trees.Stems st ON st.TreeVariantID = t.VariantID AND st.StemNumber = 1
+        LEFT JOIN trees.Stems st ON st.TreeID = t.TreeID AND st.StemNumber = 1
         WHERE t.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2035');
 
         -- ~6% mortality over the second decade
@@ -201,13 +240,17 @@ BEGIN
         -- Crown dimensions re-synthesized from already-grown heights (same formula applied to 2035 heights)
         WITH ins AS (
             INSERT INTO trees.Trees (
-                TreeEntityID, ParentVariantID, LocationID, PlotID, CampaignID, ScenarioID, VariantTypeID,
+                TreeEntityID, ParentTreeID,
+                VariantID,
+                LocationID, PlotID, CampaignID, ScenarioID, VariantTypeID,
                 SpeciesID, TreeStatusID, BranchingPatternID, BarkCharacteristicID,
                 MeasurementDate, DataSourceTypeID, Height_m, CrownWidth_m, CrownBaseHeight_m,
                 Position, PositionOriginal, SourceCRS, TimeDelta_yrs, Age_years, HealthScore, CreatedBy
             )
             SELECT
-                b.TreeEntityID, b.base_variant_id, b.LocationID, b.PlotID, b.CampaignID,
+                b.TreeEntityID, b.base_tree_id,
+                (SELECT VariantID FROM shared.Variants WHERE VariantName = 'Mathisle_2045_Baseline'),
+                b.LocationID, b.PlotID, b.CampaignID,
                 (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2045'),
                 (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
                 b.SpeciesID, b.TreeStatusID, b.BranchingPatternID, b.BarkCharacteristicID,
@@ -220,22 +263,26 @@ BEGIN
                 b.Position, b.PositionOriginal, b.SourceCRS,
                 10, b.Age_years + 10, b.HealthScore, 'growth_variant_seed'
             FROM _m2045_survivors b
-            RETURNING VariantID, TreeEntityID
+            RETURNING TreeID, TreeEntityID
         )
-        INSERT INTO trees.Stems (TreeVariantID, StemNumber, DBH_cm, TaperTypeID, StraightnessTypeID)
-        SELECT ins.VariantID, 1, ROUND((s.DBH_cm * 1.08)::numeric, 2), s.TaperTypeID, s.StraightnessTypeID
+        INSERT INTO trees.Stems (TreeID, StemNumber, DBH_cm, TaperTypeID, StraightnessTypeID)
+        SELECT ins.TreeID, 1, ROUND((s.DBH_cm * 1.08)::numeric, 2), s.TaperTypeID, s.StraightnessTypeID
         FROM ins
         JOIN _m2045_survivors s ON s.TreeEntityID = ins.TreeEntityID
         WHERE s.DBH_cm IS NOT NULL;
 
         -- ~2% further regeneration
         INSERT INTO trees.Trees (
-            TreeEntityID, LocationID, PlotID, CampaignID, ScenarioID, VariantTypeID,
+            TreeEntityID,
+            VariantID,
+            LocationID, PlotID, CampaignID, ScenarioID, VariantTypeID,
             SpeciesID, MeasurementDate, DataSourceTypeID, Height_m, CrownWidth_m, CrownBaseHeight_m,
             Position, Age_years, HealthScore, CreatedBy
         )
         SELECT
-            gen_random_uuid(), b.LocationID, b.PlotID, b.CampaignID,
+            gen_random_uuid(),
+            (SELECT VariantID FROM shared.Variants WHERE VariantName = 'Mathisle_2045_Baseline'),
+            b.LocationID, b.PlotID, b.CampaignID,
             (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2045'),
             (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
             b.SpeciesID, b.MeasurementDate + INTERVAL '10 years', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'simulated'),

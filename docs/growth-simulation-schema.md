@@ -25,9 +25,9 @@ The stable UUID for a physical tree, shared across all `trees.Trees` variant row
 
 The calendar year the row describes. A typical SILVA run might output years 2025, 2030, 2035, …, 2100 — one row per tree per year step.
 
-### BaseVariantID
+### BaseTreeID
 
-The `trees.Trees.VariantID` row used as the simulation starting point (e.g. the 2024 field inventory row). Allows tracing which baseline measurement the projection was derived from.
+The `trees.Trees.TreeID` row used as the simulation starting point (e.g. the 2024 field inventory row). Allows tracing which baseline measurement the projection was derived from.
 
 ---
 
@@ -35,10 +35,10 @@ The `trees.Trees.VariantID` row used as the simulation starting point (e.g. the 
 
 ```
 trees.GrowthSimulations
-├── SimulationID      BIGSERIAL PK
+├── GrowthSimulationID BIGSERIAL PK
 ├── RunID             UUID (groups one complete run)
 ├── TreeEntityID      UUID (FK: stable tree identity)
-├── BaseVariantID     → trees.Trees.VariantID (input measurement)
+├── BaseTreeID        → trees.Trees.TreeID (input measurement)
 ├── LocationID        → shared.Locations
 ├── PlotID            → shared.Plots
 ├── ScenarioID        → shared.Scenarios (e.g. Climate_Change_2050)
@@ -109,7 +109,7 @@ GET /simulation_runs?scenarioname=eq.Climate_Change_2050
 1. Confirm `SimulatorName` is one of `SILVA | FVS | iLand | manual | other`. If adding a new name, update the CHECK constraint in the schema migration and add an `ALTER TABLE` migration.
 2. Map simulator output columns to the table columns (see XRFF-244 for the SILVA input view).
 3. Set `RunID = gen_random_uuid()` at the start of the write-back script; use the same value for all rows in that run.
-4. Always set `BaseVariantID` to the `trees.Trees.VariantID` row that was used as the simulation starting point.
+4. Always set `BaseTreeID` to the `trees.Trees.TreeID` row that was used as the simulation starting point.
 5. Populate `SpeciesID` via `SELECT SpeciesID FROM shared.Species WHERE ScientificName = '...'`.
 
 ---

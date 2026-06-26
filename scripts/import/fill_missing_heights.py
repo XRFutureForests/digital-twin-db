@@ -76,10 +76,10 @@ def fetch_trees_missing_height(conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT t.VariantID, s.ScientificName, st.DBH_cm
+        SELECT t.TreeID, s.ScientificName, st.DBH_cm
         FROM trees.Trees t
         JOIN shared.Species s ON t.SpeciesID = s.SpeciesID
-        JOIN trees.Stems st ON st.TreeVariantID = t.VariantID
+        JOIN trees.Stems st ON st.TreeID = t.TreeID
         WHERE t.Height_m IS NULL
           AND st.DBH_cm IS NOT NULL
           AND st.StemNumber = 1
@@ -132,21 +132,21 @@ def main():
     updates = []
     skipped = 0
 
-    for variant_id, scientific_name, dbh_cm in rows:
+    for tree_id, scientific_name, dbh_cm in rows:
         try:
             model = get_hd_model(scientific_name)
             predicted_h = float(model.predict(dsob=float(dbh_cm)))
-            updates.append((predicted_h, "allometric_pylometree", variant_id))
+            updates.append((predicted_h, "allometric_pylometree", tree_id))
         except Exception as e:
-            print(f"  Warning: prediction failed for VariantID={variant_id}: {e}")
+            print(f"  Warning: prediction failed for TreeID={tree_id}: {e}")
             skipped += 1
 
     print(f"\nPredictions ready: {len(updates)} updates, {skipped} skipped")
 
     if args.dry_run:
         print("\nDry-run — sample predictions (first 10):")
-        for h, source, vid in updates[:10]:
-            print(f"  VariantID={vid}: Height_m={h:.2f} (source={source})")
+        for h, source, tid in updates[:10]:
+            print(f"  TreeID={tid}: Height_m={h:.2f} (source={source})")
         print("\nRe-run without --dry-run to apply.")
         conn.close()
         return 0
@@ -163,7 +163,7 @@ def main():
             ),
             UpdatedAt = NOW(),
             UpdatedBy = 'fill_missing_heights'
-        WHERE VariantID = %s
+        WHERE TreeID = %s
     """,
         updates,
     )
