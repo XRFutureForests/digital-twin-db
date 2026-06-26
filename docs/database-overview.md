@@ -194,8 +194,8 @@ LiDAR scan data and processing variants with scanner hardware tracking.
 
 | Field | Description |
 |-------|-------------|
-| VariantID | Unique version identifier |
-| ParentVariantID | Links to source variant |
+| PointCloudID | Unique row identifier |
+| ParentPointCloudID | Links to source point cloud for processing lineage |
 | CampaignID | Links scan to data collection campaign |
 | ScannerID | Physical scanner hardware used for this scan |
 | ScanDate | Acquisition timestamp |
@@ -217,9 +217,10 @@ Individual tree measurements with multi-stem support.
 ```mermaid
 erDiagram
     Trees {
-        int VariantID PK
+        int TreeID PK
         uuid TreeEntityID "Persistent tree identity"
-        int ParentVariantID FK
+        int VariantID FK "Forest state group"
+        int ParentTreeID FK
         int CampaignID FK
         int LocationID FK
         int PlotID FK
@@ -245,7 +246,7 @@ erDiagram
 
     Stems {
         int StemID PK
-        int TreeVariantID FK
+        int TreeID FK
         int StemNumber
         float DBH_cm
         int TaperTypeID FK
@@ -254,8 +255,8 @@ erDiagram
     }
 
     PhenologyObservations {
-        int ObservationID PK
-        int TreeVariantID FK
+        int PhenologyObservationID PK
+        int TreeID FK
         date ObservationDate
         varchar PhenophaseType
         varchar PhenophaseStatus
@@ -267,7 +268,7 @@ erDiagram
         int DeadwoodID PK
         int LocationID FK
         int PlotID FK
-        int TreeVariantID FK
+        int TreeID FK
         int SpeciesID FK
         varchar WoodType
         float Length_m
@@ -278,7 +279,7 @@ erDiagram
     }
 
     GroundVegetation {
-        int VegetationID PK
+        int GroundVegetationID PK
         int LocationID FK
         int PlotID FK
         varchar SpeciesName
@@ -360,7 +361,7 @@ erDiagram
     }
 
     SensorReadings {
-        bigint ReadingID PK
+        bigint SensorReadingID PK
         int SensorID FK
         timestamp Timestamp
         float Value
@@ -369,9 +370,9 @@ erDiagram
     }
 
     SensorTreeLinks {
-        int LinkID PK
+        int SensorTreeLinkID PK
         int SensorID FK
-        int TreeVariantID FK
+        int TreeID FK
         varchar Description
         date StartDate
         date EndDate
@@ -429,16 +430,16 @@ flowchart TB
     end
 
     subgraph Variants["Measurement Variants"]
-        V1["VariantID: 1<br/>Campaign: 2024 Inventory<br/>Height: 15.2m"]
-        V2["VariantID: 5<br/>Campaign: 2025 Inventory<br/>Height: 15.8m"]
-        V3["VariantID: 12<br/>Campaign: LiDAR 2025<br/>Height: 15.9m"]
+        V1["TreeID: 1<br/>Campaign: 2024 Inventory<br/>Height: 15.2m"]
+        V2["TreeID: 5<br/>Campaign: 2025 Inventory<br/>Height: 15.8m"]
+        V3["TreeID: 12<br/>Campaign: LiDAR 2025<br/>Height: 15.9m"]
     end
 
     Tree --> V1
     Tree --> V2
     Tree --> V3
-    V1 -.->|ParentVariantID| V2
-    V2 -.->|ParentVariantID| V3
+    V1 -.->|ParentTreeID| V2
+    V2 -.->|ParentTreeID| V3
 
     style Physical fill:#2d5a3d,color:#fff
     style V1 fill:#5CB89C
@@ -463,7 +464,7 @@ Campaigns track data collection events with full methodology:
 1. Create Campaign record with dates, methodology, equipment
 2. Import data with `CampaignID` reference
 3. Set `VariantTypeID` = "repeat_measurement" for follow-up surveys
-4. Link to parent variant via `ParentVariantID` using `TreeEntityID` matching
+4. Link to parent tree row via `ParentTreeID` using `TreeEntityID` matching
 
 ### Variant-Based Lineage
 

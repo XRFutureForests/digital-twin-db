@@ -12,8 +12,8 @@ SET search_path TO environments, shared, sensor, public;
 -- =============================================================================
 
 CREATE TABLE environments.Environments (
-    VariantID SERIAL PRIMARY KEY,
-    ParentVariantID INTEGER REFERENCES environments.Environments(VariantID) ON DELETE SET NULL,
+    EnvironmentID SERIAL PRIMARY KEY,
+    ParentEnvironmentID INTEGER REFERENCES environments.Environments(EnvironmentID) ON DELETE SET NULL,
     LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
     ScenarioID INTEGER REFERENCES shared.Scenarios(ScenarioID) ON DELETE SET NULL,
     VariantTypeID INTEGER NOT NULL REFERENCES shared.VariantTypes(VariantTypeID),
@@ -45,15 +45,15 @@ CREATE TABLE environments.Environments (
 );
 
 COMMENT ON TABLE environments.Environments IS 'Environmental condition variants derived from sensors, models, or user input';
-COMMENT ON COLUMN environments.Environments.VariantID IS 'Unique identifier for this environment variant';
-COMMENT ON COLUMN environments.Environments.ParentVariantID IS 'Parent variant for tracking environmental modifications';
+COMMENT ON COLUMN environments.Environments.EnvironmentID IS 'Unique identifier for this environment record';
+COMMENT ON COLUMN environments.Environments.ParentEnvironmentID IS 'Parent environment for tracking environmental modifications';
 COMMENT ON COLUMN environments.Environments.StartDate IS 'Start of environmental measurement period';
 COMMENT ON COLUMN environments.Environments.EndDate IS 'End of environmental measurement period (NULL for ongoing)';
 COMMENT ON COLUMN environments.Environments.AvgGlobalRadiation_W_m2 IS 'Average global radiation in W/m²';
 COMMENT ON COLUMN environments.Environments.StressFactor IS 'Environmental stress index (0=optimal, 1=severe stress)';
 
 -- Create indexes
-CREATE INDEX idx_environments_parent_variant ON environments.Environments(ParentVariantID);
+CREATE INDEX idx_environments_parent ON environments.Environments(ParentEnvironmentID);
 CREATE INDEX idx_environments_location ON environments.Environments(LocationID);
 CREATE INDEX idx_environments_scenario ON environments.Environments(ScenarioID);
 CREATE INDEX idx_environments_variant_type ON environments.Environments(VariantTypeID);
@@ -68,15 +68,15 @@ CREATE INDEX idx_environments_created_by ON environments.Environments(CreatedBy)
 -- =============================================================================
 
 CREATE TABLE shared.ProcessParameters_Environments (
-    ParameterID INTEGER NOT NULL REFERENCES shared.ProcessParameters(ParameterID) ON DELETE CASCADE,
-    VariantID INTEGER NOT NULL REFERENCES environments.Environments(VariantID) ON DELETE CASCADE,
-    PRIMARY KEY (ParameterID, VariantID)
+    ProcessParameterID INTEGER NOT NULL REFERENCES shared.ProcessParameters(ProcessParameterID) ON DELETE CASCADE,
+    EnvironmentID INTEGER NOT NULL REFERENCES environments.Environments(EnvironmentID) ON DELETE CASCADE,
+    PRIMARY KEY (ProcessParameterID, EnvironmentID)
 );
 
-COMMENT ON TABLE shared.ProcessParameters_Environments IS 'Links process parameters to environment variants';
+COMMENT ON TABLE shared.ProcessParameters_Environments IS 'Links process parameters to environment records';
 
-CREATE INDEX idx_pp_environments_parameter ON shared.ProcessParameters_Environments(ParameterID);
-CREATE INDEX idx_pp_environments_variant ON shared.ProcessParameters_Environments(VariantID);
+CREATE INDEX idx_pp_environments_parameter ON shared.ProcessParameters_Environments(ProcessParameterID);
+CREATE INDEX idx_pp_environments_environment ON shared.ProcessParameters_Environments(EnvironmentID);
 
 -- =============================================================================
 -- JUNCTION TABLE: AUDIT LOG FOR ENVIRONMENTS
@@ -84,14 +84,14 @@ CREATE INDEX idx_pp_environments_variant ON shared.ProcessParameters_Environment
 
 CREATE TABLE shared.AuditLog_Environments (
     AuditID BIGINT NOT NULL REFERENCES shared.AuditLog(AuditID) ON DELETE CASCADE,
-    VariantID INTEGER NOT NULL REFERENCES environments.Environments(VariantID) ON DELETE CASCADE,
-    PRIMARY KEY (AuditID, VariantID)
+    EnvironmentID INTEGER NOT NULL REFERENCES environments.Environments(EnvironmentID) ON DELETE CASCADE,
+    PRIMARY KEY (AuditID, EnvironmentID)
 );
 
-COMMENT ON TABLE shared.AuditLog_Environments IS 'Links audit log entries to environment variants';
+COMMENT ON TABLE shared.AuditLog_Environments IS 'Links audit log entries to environment records';
 
 CREATE INDEX idx_audit_environments_audit ON shared.AuditLog_Environments(AuditID);
-CREATE INDEX idx_audit_environments_variant ON shared.AuditLog_Environments(VariantID);
+CREATE INDEX idx_audit_environments_environment ON shared.AuditLog_Environments(EnvironmentID);
 
 -- =============================================================================
 -- HELPER FUNCTIONS
@@ -180,7 +180,7 @@ BEGIN
         AND sr.Timestamp <= end_time
         AND sr.Quality IN ('good', 'suspect')
     HAVING COUNT(*) > 0
-    RETURNING VariantID INTO new_variant_id;
+    RETURNING EnvironmentID INTO new_variant_id;
 
     RETURN new_variant_id;
 END;
@@ -231,7 +231,7 @@ CREATE OR REPLACE VIEW environments.location_environment_summary AS
 SELECT
     l.LocationID,
     l.LocationName,
-    COUNT(e.VariantID) AS environment_count,
+    COUNT(e.EnvironmentID) AS environment_count,
     AVG(e.AvgTemperature_C) AS avg_temperature,
     AVG(e.AvgHumidity_percent) AS avg_humidity,
     AVG(e.AvgCO2_ppm) AS avg_co2,

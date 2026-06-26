@@ -101,7 +101,9 @@ The Digital Forest Twin Database stores and exposes multi-temporal, multi-varian
 | SQL naming | PascalCase tables and columns, snake_case for schemas |
 | Migrations | Ordered numeric prefix: `10-`, `11-`, ..., `31-` |
 | Spatial data | Always store `SourceCRS` (EPSG code) alongside geometry |
-| Variant IDs | UUID type; `VariantID` is the record key; `ParentVariantID` links to previous version |
+| Row PKs | Integer surrogate PKs named after the singular entity (`TreeID`, `PointCloudID`, `EnvironmentID`, etc.) |
+| Variant grouping | `shared.Variants.VariantID` groups all tree rows at one time step; FK `trees.Trees.VariantID` references it |
+| Lineage | `ParentTreeID` / `ParentPointCloudID` / `ParentEnvironmentID` links to the prior version of the same entity |
 | Audit trail | All write operations trigger `shared.AuditLog_*` inserts |
 | Secrets | Never committed; managed via `docker/.env` (git-ignored) |
 
@@ -180,7 +182,7 @@ graph LR
 
 | Quality Goal | Mechanism |
 |-------------|-----------|
-| Data Integrity | `VariantID`/`ParentVariantID` chain + audit triggers + FK constraints |
+| Data Integrity | `TreeID`/`ParentTreeID` lineage chain + audit triggers + FK constraints |
 | Spatial Accuracy | PostGIS geometry columns + `SourceCRS` tracking on all spatial tables |
 | Operational Simplicity | Docker Compose single command; numbered migration files; reset script |
 | API Reliability | Kong health checks; PostgREST schema cache; Supavisor pooling |
@@ -405,7 +407,7 @@ sequenceDiagram
 | Direct psql | Admin operations, migrations, reset — authenticated via `POSTGRES_PASSWORD` |
 | Python scripts | `psycopg2` for bulk imports; `supabase-py` for REST API operations |
 | R clients | `RPostgres` / `DBI` for direct DB access; `httr` for REST API |
-| Variant pattern | All queryable data versions accessed by `VariantID`; parent chain via `ParentVariantID` |
+| Variant pattern | `shared.Variants.VariantID` groups all tree rows at one time step; `trees.Trees.TreeID` is the row PK; `ParentTreeID` tracks lineage |
 
 ---
 
@@ -426,7 +428,7 @@ Additional implicit decisions not yet formalized as ADRs:
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | PascalCase naming | PascalCase for all tables/columns | Established in earliest migrations; consistent with initial schema design |
-| Variant lineage pattern | `VariantID`/`ParentVariantID` on data tables | Supports multi-scenario forest simulation and temporal analysis |
+| Variant lineage pattern | `shared.Variants` (group) + per-entity `ParentXxxID` FK (lineage) | Separates the "which forest state" question (Variant) from the "which row" question (entity PK) |
 
 ---
 
@@ -482,7 +484,7 @@ Additional implicit decisions not yet formalized as ADRs:
 | arc42 | Architecture documentation framework (ISO/IEC/IEEE 42010:2022 compliant) |
 | C4 Model | Context, Container, Component, Code — hierarchical architecture diagram model |
 | Container | Deployable/runnable unit in C4 Model (NOT a Docker container specifically) |
-| Variant | A versioned data record linked to its parent via `ParentVariantID` |
+| Variant | A forest state snapshot within a scenario (`shared.Variants`); one `VariantID` groups all tree rows at one point in time for UE loading |
 | PostGIS | PostgreSQL spatial extension providing geometry types and spatial functions |
 | PostgREST | Middleware auto-generating REST API from PostgreSQL schema |
 | GoTrue | Supabase authentication service (JWT issuance and verification) |

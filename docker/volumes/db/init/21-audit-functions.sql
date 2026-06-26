@@ -41,13 +41,13 @@ BEGIN
     -- Create junction table entry based on table name
     CASE table_name_param
         WHEN 'PointClouds' THEN
-            INSERT INTO shared.AuditLog_PointClouds (AuditID, VariantID)
+            INSERT INTO shared.AuditLog_PointClouds (AuditID, PointCloudID)
             VALUES (audit_id, variant_id_param);
         WHEN 'Trees' THEN
-            INSERT INTO shared.AuditLog_Trees (AuditID, VariantID)
+            INSERT INTO shared.AuditLog_Trees (AuditID, TreeID)
             VALUES (audit_id, variant_id_param);
         WHEN 'Environments' THEN
-            INSERT INTO shared.AuditLog_Environments (AuditID, VariantID)
+            INSERT INTO shared.AuditLog_Environments (AuditID, EnvironmentID)
             VALUES (audit_id, variant_id_param);
         WHEN 'Stems' THEN
             INSERT INTO shared.AuditLog_Stems (AuditID, StemID)
@@ -90,7 +90,7 @@ BEGIN
                 al.ChangeType
             FROM shared.AuditLog al
             JOIN shared.AuditLog_PointClouds alpc ON al.AuditID = alpc.AuditID
-            WHERE alpc.VariantID = variant_id_param
+            WHERE alpc.PointCloudID = variant_id_param
             ORDER BY al.Timestamp DESC
             LIMIT limit_param;
     ELSIF table_name_param = 'Trees' THEN
@@ -106,7 +106,7 @@ BEGIN
                 al.ChangeType
             FROM shared.AuditLog al
             JOIN shared.AuditLog_Trees alt ON al.AuditID = alt.AuditID
-            WHERE alt.VariantID = variant_id_param
+            WHERE alt.TreeID = variant_id_param
             ORDER BY al.Timestamp DESC
             LIMIT limit_param;
     ELSIF table_name_param = 'Environments' THEN
@@ -122,7 +122,7 @@ BEGIN
                 al.ChangeType
             FROM shared.AuditLog al
             JOIN shared.AuditLog_Environments ale ON al.AuditID = ale.AuditID
-            WHERE ale.VariantID = variant_id_param
+            WHERE ale.EnvironmentID = variant_id_param
             ORDER BY al.Timestamp DESC
             LIMIT limit_param;
     ELSIF table_name_param = 'Stems' THEN
@@ -174,13 +174,13 @@ BEGIN
     -- Determine table and variant from junction tables
     IF EXISTS (SELECT 1 FROM shared.AuditLog_PointClouds WHERE AuditID = audit_id_param) THEN
         table_name := 'PointClouds';
-        SELECT VariantID INTO variant_id FROM shared.AuditLog_PointClouds WHERE AuditID = audit_id_param;
+        SELECT PointCloudID INTO variant_id FROM shared.AuditLog_PointClouds WHERE AuditID = audit_id_param;
     ELSIF EXISTS (SELECT 1 FROM shared.AuditLog_Trees WHERE AuditID = audit_id_param) THEN
         table_name := 'Trees';
-        SELECT VariantID INTO variant_id FROM shared.AuditLog_Trees WHERE AuditID = audit_id_param;
+        SELECT TreeID INTO variant_id FROM shared.AuditLog_Trees WHERE AuditID = audit_id_param;
     ELSIF EXISTS (SELECT 1 FROM shared.AuditLog_Environments WHERE AuditID = audit_id_param) THEN
         table_name := 'Environments';
-        SELECT VariantID INTO variant_id FROM shared.AuditLog_Environments WHERE AuditID = audit_id_param;
+        SELECT EnvironmentID INTO variant_id FROM shared.AuditLog_Environments WHERE AuditID = audit_id_param;
     ELSIF EXISTS (SELECT 1 FROM shared.AuditLog_Stems WHERE AuditID = audit_id_param) THEN
         table_name := 'Stems';
         SELECT StemID INTO variant_id FROM shared.AuditLog_Stems WHERE AuditID = audit_id_param;
@@ -230,11 +230,11 @@ BEGIN
     table_name := TG_TABLE_NAME;
     CASE TG_TABLE_NAME
         WHEN 'pointclouds' THEN
-            record_id := NEW.VariantID;
+            record_id := NEW.PointCloudID;
         WHEN 'trees' THEN
-            record_id := NEW.VariantID;
+            record_id := NEW.TreeID;
         WHEN 'environments' THEN
-            record_id := NEW.VariantID;
+            record_id := NEW.EnvironmentID;
         WHEN 'stems' THEN
             record_id := NEW.StemID;
         ELSE
@@ -360,13 +360,13 @@ CREATE OR REPLACE VIEW shared.recent_changes AS
 SELECT
     al.AuditID,
     COALESCE(
-        CASE WHEN alpc.VariantID IS NOT NULL THEN 'PointClouds'
-             WHEN alt.VariantID IS NOT NULL THEN 'Trees'
-             WHEN ale.VariantID IS NOT NULL THEN 'Environments'
+        CASE WHEN alpc.PointCloudID IS NOT NULL THEN 'PointClouds'
+             WHEN alt.TreeID IS NOT NULL THEN 'Trees'
+             WHEN ale.EnvironmentID IS NOT NULL THEN 'Environments'
              WHEN als.StemID IS NOT NULL THEN 'Stems'
         END
     ) AS table_name,
-    COALESCE(alpc.VariantID, alt.VariantID, ale.VariantID, als.StemID) AS record_id,
+    COALESCE(alpc.PointCloudID, alt.TreeID, ale.EnvironmentID, als.StemID) AS record_id,
     al.FieldName,
     al.OldValue,
     al.NewValue,

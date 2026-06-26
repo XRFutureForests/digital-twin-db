@@ -90,7 +90,7 @@ CREATE INDEX idx_sensors_campaign ON sensor.Sensors(CampaignID);
 -- =============================================================================
 
 CREATE TABLE sensor.SensorReadings (
-    ReadingID BIGSERIAL PRIMARY KEY,
+    SensorReadingID BIGSERIAL PRIMARY KEY,
     SensorID INTEGER NOT NULL REFERENCES sensor.Sensors(SensorID) ON DELETE CASCADE,
     Timestamp TIMESTAMPTZ NOT NULL,
     Value NUMERIC(12, 4) NOT NULL,
@@ -123,7 +123,7 @@ CREATE INDEX idx_sensor_readings_scenario ON sensor.SensorReadings(ScenarioID);
 -- Function to get latest reading for a sensor
 CREATE OR REPLACE FUNCTION sensor.get_latest_reading(sensor_id_param INTEGER)
 RETURNS TABLE (
-    ReadingID BIGINT,
+    SensorReadingID BIGINT,
     reading_timestamp TIMESTAMPTZ,
     Value NUMERIC,
     Quality VARCHAR
@@ -131,7 +131,7 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     SELECT
-        sr.ReadingID,
+        sr.SensorReadingID,
         sr."Timestamp",
         sr.Value,
         sr.Quality

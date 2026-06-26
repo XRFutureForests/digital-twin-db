@@ -90,10 +90,11 @@ CREATE INDEX idx_bark_characteristics_name ON trees.BarkCharacteristics(BarkChar
 -- =============================================================================
 
 CREATE TABLE trees.Trees (
-    VariantID SERIAL PRIMARY KEY,
+    TreeID SERIAL PRIMARY KEY,
     TreeEntityID UUID DEFAULT gen_random_uuid(),
-    ParentVariantID INTEGER REFERENCES trees.Trees(VariantID) ON DELETE SET NULL,
-    PointCloudVariantID INTEGER REFERENCES pointclouds.PointClouds(VariantID) ON DELETE SET NULL,
+    VariantID INTEGER REFERENCES shared.Variants(VariantID) ON DELETE SET NULL,
+    ParentTreeID INTEGER REFERENCES trees.Trees(TreeID) ON DELETE SET NULL,
+    PointCloudID INTEGER REFERENCES pointclouds.PointClouds(PointCloudID) ON DELETE SET NULL,
     CampaignID INTEGER REFERENCES shared.Campaigns(CampaignID) ON DELETE SET NULL,
     LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
     PlotID INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
@@ -141,11 +142,12 @@ CREATE TABLE trees.Trees (
     CONSTRAINT chk_crown_base_height CHECK (CrownBaseHeight_m IS NULL OR CrownBaseHeight_m <= Height_m)
 );
 
-COMMENT ON TABLE trees.Trees IS 'Tree measurement and simulation variants with spatial positions';
-COMMENT ON COLUMN trees.Trees.VariantID IS 'Unique identifier for this tree variant';
+COMMENT ON TABLE trees.Trees IS 'Tree measurement and simulation records with spatial positions';
+COMMENT ON COLUMN trees.Trees.TreeID IS 'Unique row identifier for this tree record';
 COMMENT ON COLUMN trees.Trees.TreeEntityID IS 'Persistent UUID identifying the physical tree across all variants';
-COMMENT ON COLUMN trees.Trees.ParentVariantID IS 'Parent variant for tracking growth or modifications';
-COMMENT ON COLUMN trees.Trees.PointCloudVariantID IS 'Source point cloud variant if tree was detected from LiDAR';
+COMMENT ON COLUMN trees.Trees.VariantID IS 'Forest state group — all trees sharing this VariantID belong to the same time step within a scenario. Use for UE time-travel switching.';
+COMMENT ON COLUMN trees.Trees.ParentTreeID IS 'Parent tree record for tracking growth or modifications';
+COMMENT ON COLUMN trees.Trees.PointCloudID IS 'Source point cloud if tree was detected from LiDAR';
 COMMENT ON COLUMN trees.Trees.CampaignID IS 'Data collection campaign this measurement belongs to';
 COMMENT ON COLUMN trees.Trees.MeasurementDate IS 'Actual date of field measurement (may differ from CreatedAt)';
 COMMENT ON COLUMN trees.Trees.DataSourceTypeID IS 'FK to trees.DataSourceTypes — how the data was collected or generated';
@@ -165,8 +167,9 @@ COMMENT ON COLUMN trees.Trees.TreeNumber IS 'Local tree identifier within the lo
 COMMENT ON COLUMN trees.Trees.SourceCRS IS 'EPSG code of original coordinate reference system for PositionOriginal';
 
 -- Create indexes
-CREATE INDEX idx_trees_parent_variant ON trees.Trees(ParentVariantID);
-CREATE INDEX idx_trees_pointcloud_variant ON trees.Trees(PointCloudVariantID);
+CREATE INDEX idx_trees_variant ON trees.Trees(VariantID);
+CREATE INDEX idx_trees_parent ON trees.Trees(ParentTreeID);
+CREATE INDEX idx_trees_pointcloud ON trees.Trees(PointCloudID);
 CREATE INDEX idx_trees_location ON trees.Trees(LocationID);
 CREATE INDEX idx_trees_scenario ON trees.Trees(ScenarioID);
 CREATE INDEX idx_trees_variant_type ON trees.Trees(VariantTypeID);
@@ -191,7 +194,7 @@ CREATE INDEX idx_trees_tree_number ON trees.Trees(TreeNumber);
 
 CREATE TABLE trees.Stems (
     StemID SERIAL PRIMARY KEY,
-    TreeVariantID INTEGER NOT NULL REFERENCES trees.Trees(VariantID) ON DELETE CASCADE,
+    TreeID INTEGER NOT NULL REFERENCES trees.Trees(TreeID) ON DELETE CASCADE,
     StemNumber INTEGER NOT NULL CHECK (StemNumber >= 1),
     TaperTypeID INTEGER REFERENCES trees.TaperTypes(TaperTypeID),
     StraightnessTypeID INTEGER REFERENCES trees.StraightnessTypes(StraightnessTypeID),
@@ -204,7 +207,7 @@ CREATE TABLE trees.Stems (
     WoodDensity_kg_m3 NUMERIC(6, 2) CHECK (WoodDensity_kg_m3 >= 100 AND WoodDensity_kg_m3 <= 2000),
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ,
-    UNIQUE (TreeVariantID, StemNumber)
+    UNIQUE (TreeID, StemNumber)
 );
 
 COMMENT ON TABLE trees.Stems IS 'Individual stem measurements for multi-stem trees';
@@ -213,7 +216,7 @@ COMMENT ON COLUMN trees.Stems.DBH_cm IS 'Diameter at breast height (1.3m) in cen
 COMMENT ON COLUMN trees.Stems.TaperRatio IS 'Ratio of top diameter to bottom diameter';
 COMMENT ON COLUMN trees.Stems.Sweep_cm_per_m IS 'Maximum horizontal deviation per meter of height';
 
-CREATE INDEX idx_stems_tree_variant ON trees.Stems(TreeVariantID);
+CREATE INDEX idx_stems_tree ON trees.Stems(TreeID);
 CREATE INDEX idx_stems_stem_number ON trees.Stems(StemNumber);
 CREATE INDEX idx_stems_taper_type ON trees.Stems(TaperTypeID);
 CREATE INDEX idx_stems_straightness_type ON trees.Stems(StraightnessTypeID);
@@ -224,43 +227,44 @@ CREATE INDEX idx_stems_dbh ON trees.Stems(DBH_cm);
 -- =============================================================================
 
 CREATE TABLE shared.ProcessParameters_Trees (
-    ParameterID INTEGER NOT NULL REFERENCES shared.ProcessParameters(ParameterID) ON DELETE CASCADE,
-    VariantID INTEGER NOT NULL REFERENCES trees.Trees(VariantID) ON DELETE CASCADE,
-    PRIMARY KEY (ParameterID, VariantID)
+    ProcessParameterID INTEGER NOT NULL REFERENCES shared.ProcessParameters(ProcessParameterID) ON DELETE CASCADE,
+    TreeID INTEGER NOT NULL REFERENCES trees.Trees(TreeID) ON DELETE CASCADE,
+    PRIMARY KEY (ProcessParameterID, TreeID)
 );
 
-COMMENT ON TABLE shared.ProcessParameters_Trees IS 'Links process parameters to tree variants';
+COMMENT ON TABLE shared.ProcessParameters_Trees IS 'Links process parameters to tree records';
 
-CREATE INDEX idx_pp_trees_parameter ON shared.ProcessParameters_Trees(ParameterID);
-CREATE INDEX idx_pp_trees_variant ON shared.ProcessParameters_Trees(VariantID);
+CREATE INDEX idx_pp_trees_parameter ON shared.ProcessParameters_Trees(ProcessParameterID);
+CREATE INDEX idx_pp_trees_tree ON shared.ProcessParameters_Trees(TreeID);
 
 CREATE TABLE shared.ProcessParameters_Stems (
-    ParameterID INTEGER NOT NULL REFERENCES shared.ProcessParameters(ParameterID) ON DELETE CASCADE,
+    ProcessParameterID INTEGER NOT NULL REFERENCES shared.ProcessParameters(ProcessParameterID) ON DELETE CASCADE,
     StemID INTEGER NOT NULL REFERENCES trees.Stems(StemID) ON DELETE CASCADE,
-    PRIMARY KEY (ParameterID, StemID)
+    PRIMARY KEY (ProcessParameterID, StemID)
 );
 
 COMMENT ON TABLE shared.ProcessParameters_Stems IS 'Links process parameters to individual stems';
 
-CREATE INDEX idx_pp_stems_parameter ON shared.ProcessParameters_Stems(ParameterID);
+CREATE INDEX idx_pp_stems_parameter ON shared.ProcessParameters_Stems(ProcessParameterID);
 CREATE INDEX idx_pp_stems_stem ON shared.ProcessParameters_Stems(StemID);
 
 CREATE TABLE shared.AuditLog_Trees (
     AuditID BIGINT NOT NULL REFERENCES shared.AuditLog(AuditID) ON DELETE CASCADE,
-    VariantID INTEGER NOT NULL REFERENCES trees.Trees(VariantID) ON DELETE CASCADE,
-    PRIMARY KEY (AuditID, VariantID)
+    TreeID INTEGER NOT NULL REFERENCES trees.Trees(TreeID) ON DELETE CASCADE,
+    PRIMARY KEY (AuditID, TreeID)
 );
 
-COMMENT ON TABLE shared.AuditLog_Trees IS 'Links audit log entries to tree variants';
+COMMENT ON TABLE shared.AuditLog_Trees IS 'Links audit log entries to tree records';
 
 CREATE INDEX idx_audit_trees_audit ON shared.AuditLog_Trees(AuditID);
-CREATE INDEX idx_audit_trees_variant ON shared.AuditLog_Trees(VariantID);
+CREATE INDEX idx_audit_trees_tree ON shared.AuditLog_Trees(TreeID);
 
 CREATE TABLE shared.AuditLog_Stems (
     AuditID BIGINT NOT NULL REFERENCES shared.AuditLog(AuditID) ON DELETE CASCADE,
     StemID INTEGER NOT NULL REFERENCES trees.Stems(StemID) ON DELETE CASCADE,
     PRIMARY KEY (AuditID, StemID)
 );
+
 
 COMMENT ON TABLE shared.AuditLog_Stems IS 'Links audit log entries to individual stems';
 
@@ -331,8 +335,8 @@ SELECT
     trees.calculate_crown_volume(t.CrownWidth_m, t.Height_m - t.CrownBaseHeight_m) AS crown_volume_m3
 FROM trees.Trees t
 LEFT JOIN shared.Species s ON t.SpeciesID = s.SpeciesID
-LEFT JOIN trees.Stems st ON t.VariantID = st.TreeVariantID
-GROUP BY t.VariantID, s.SpeciesID;
+LEFT JOIN trees.Stems st ON t.TreeID = st.TreeID
+GROUP BY t.TreeID, s.SpeciesID;
 
 COMMENT ON VIEW trees.trees_with_metrics IS 'Trees with computed metrics (basal area, crown volume, stem count)';
 
@@ -341,8 +345,8 @@ COMMENT ON VIEW trees.trees_with_metrics IS 'Trees with computed metrics (basal 
 -- =============================================================================
 
 CREATE TABLE trees.PhenologyObservations (
-    ObservationID SERIAL PRIMARY KEY,
-    TreeVariantID INTEGER NOT NULL REFERENCES trees.Trees(VariantID) ON DELETE CASCADE,
+    PhenologyObservationID SERIAL PRIMARY KEY,
+    TreeID INTEGER NOT NULL REFERENCES trees.Trees(TreeID) ON DELETE CASCADE,
     ObservationDate DATE NOT NULL,
     PhenophaseType VARCHAR(50) NOT NULL CHECK (PhenophaseType IN (
         'bud_break', 'leaf_out', 'flowering', 'fruit_set',
@@ -363,7 +367,7 @@ COMMENT ON COLUMN trees.PhenologyObservations.PhenophaseType IS 'Type of phenolo
 COMMENT ON COLUMN trees.PhenologyObservations.PhenophaseStatus IS 'Current status of the phenophase';
 COMMENT ON COLUMN trees.PhenologyObservations.Intensity_percent IS 'Intensity of the phenophase (0-100%)';
 
-CREATE INDEX idx_phenology_tree ON trees.PhenologyObservations(TreeVariantID);
+CREATE INDEX idx_phenology_tree ON trees.PhenologyObservations(TreeID);
 CREATE INDEX idx_phenology_date ON trees.PhenologyObservations(ObservationDate DESC);
 CREATE INDEX idx_phenology_type ON trees.PhenologyObservations(PhenophaseType);
 
@@ -375,7 +379,7 @@ CREATE TABLE trees.Deadwood (
     DeadwoodID SERIAL PRIMARY KEY,
     LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
     PlotID INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
-    TreeVariantID INTEGER REFERENCES trees.Trees(VariantID) ON DELETE SET NULL,
+    TreeID INTEGER REFERENCES trees.Trees(TreeID) ON DELETE SET NULL,
     SpeciesID INTEGER REFERENCES shared.Species(SpeciesID) ON DELETE SET NULL,
     WoodType VARCHAR(50) NOT NULL CHECK (WoodType IN ('standing', 'fallen', 'stump', 'branch')),
     Length_m NUMERIC(6, 2) CHECK (Length_m > 0),
@@ -392,11 +396,11 @@ CREATE TABLE trees.Deadwood (
 COMMENT ON TABLE trees.Deadwood IS 'Dead wood inventory including standing dead, fallen logs, stumps, and branches';
 COMMENT ON COLUMN trees.Deadwood.WoodType IS 'Type of dead wood: standing, fallen, stump, or branch';
 COMMENT ON COLUMN trees.Deadwood.DecayClass IS 'Decay stage from 1 (fresh) to 5 (fully decomposed)';
-COMMENT ON COLUMN trees.Deadwood.TreeVariantID IS 'Optional link to known dead tree variant';
+COMMENT ON COLUMN trees.Deadwood.TreeID IS 'Optional link to known dead tree record';
 
 CREATE INDEX idx_deadwood_location ON trees.Deadwood(LocationID);
 CREATE INDEX idx_deadwood_plot ON trees.Deadwood(PlotID);
-CREATE INDEX idx_deadwood_tree ON trees.Deadwood(TreeVariantID);
+CREATE INDEX idx_deadwood_tree ON trees.Deadwood(TreeID);
 CREATE INDEX idx_deadwood_species ON trees.Deadwood(SpeciesID);
 CREATE INDEX idx_deadwood_type ON trees.Deadwood(WoodType);
 CREATE INDEX idx_deadwood_position ON trees.Deadwood USING GIST (Position);
@@ -406,7 +410,7 @@ CREATE INDEX idx_deadwood_position ON trees.Deadwood USING GIST (Position);
 -- =============================================================================
 
 CREATE TABLE trees.GroundVegetation (
-    VegetationID SERIAL PRIMARY KEY,
+    GroundVegetationID SERIAL PRIMARY KEY,
     LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
     PlotID INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
     SpeciesName VARCHAR(200),
@@ -433,18 +437,18 @@ CREATE INDEX idx_groundveg_date ON trees.GroundVegetation(MeasurementDate DESC);
 -- =============================================================================
 
 CREATE TABLE shared.DisturbanceEvents_Trees (
-    EventID INTEGER NOT NULL REFERENCES shared.DisturbanceEvents(EventID) ON DELETE CASCADE,
-    TreeVariantID INTEGER NOT NULL REFERENCES trees.Trees(VariantID) ON DELETE CASCADE,
+    DisturbanceEventID INTEGER NOT NULL REFERENCES shared.DisturbanceEvents(DisturbanceEventID) ON DELETE CASCADE,
+    TreeID INTEGER NOT NULL REFERENCES trees.Trees(TreeID) ON DELETE CASCADE,
     DamageLevel VARCHAR(50) CHECK (DamageLevel IN ('none', 'light', 'moderate', 'severe', 'destroyed')),
     Notes TEXT,
-    PRIMARY KEY (EventID, TreeVariantID)
+    PRIMARY KEY (DisturbanceEventID, TreeID)
 );
 
 COMMENT ON TABLE shared.DisturbanceEvents_Trees IS 'Links disturbance events to affected individual trees with damage assessment';
 COMMENT ON COLUMN shared.DisturbanceEvents_Trees.DamageLevel IS 'Level of damage to individual tree';
 
-CREATE INDEX idx_dist_trees_event ON shared.DisturbanceEvents_Trees(EventID);
-CREATE INDEX idx_dist_trees_tree ON shared.DisturbanceEvents_Trees(TreeVariantID);
+CREATE INDEX idx_dist_trees_event ON shared.DisturbanceEvents_Trees(DisturbanceEventID);
+CREATE INDEX idx_dist_trees_tree ON shared.DisturbanceEvents_Trees(TreeID);
 
 -- Grant appropriate permissions
 GRANT USAGE ON SCHEMA trees TO anon, authenticated, service_role;

@@ -52,8 +52,8 @@ CREATE INDEX idx_scanners_serial ON pointclouds.Scanners(SerialNumber);
 -- =============================================================================
 
 CREATE TABLE pointclouds.PointClouds (
-    VariantID SERIAL PRIMARY KEY,
-    ParentVariantID INTEGER REFERENCES pointclouds.PointClouds(VariantID) ON DELETE SET NULL,
+    PointCloudID SERIAL PRIMARY KEY,
+    ParentPointCloudID INTEGER REFERENCES pointclouds.PointClouds(PointCloudID) ON DELETE SET NULL,
     LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
     ScenarioID INTEGER REFERENCES shared.Scenarios(ScenarioID) ON DELETE SET NULL,
     VariantTypeID INTEGER NOT NULL REFERENCES shared.VariantTypes(VariantTypeID),
@@ -86,8 +86,8 @@ CREATE TABLE pointclouds.PointClouds (
 );
 
 COMMENT ON TABLE pointclouds.PointClouds IS 'LiDAR point cloud variants - original scans and processed results';
-COMMENT ON COLUMN pointclouds.PointClouds.VariantID IS 'Unique identifier for this point cloud variant';
-COMMENT ON COLUMN pointclouds.PointClouds.ParentVariantID IS 'Parent variant for processing lineage tracking';
+COMMENT ON COLUMN pointclouds.PointClouds.PointCloudID IS 'Unique identifier for this point cloud record';
+COMMENT ON COLUMN pointclouds.PointClouds.ParentPointCloudID IS 'Parent point cloud for processing lineage tracking';
 COMMENT ON COLUMN pointclouds.PointClouds.FilePath IS 'S3 URI to point cloud file (e.g., s3://bucket-name/path/file.las)';
 COMMENT ON COLUMN pointclouds.PointClouds.ScanBounds IS 'PostGIS polygon defining point cloud coverage area in WGS84';
 COMMENT ON COLUMN pointclouds.PointClouds.ProcessingStatus IS 'NULL for original scans, status for processed variants';
@@ -103,7 +103,7 @@ COMMENT ON COLUMN pointclouds.PointClouds.Overlap_percent IS 'Swath overlap perc
 COMMENT ON COLUMN pointclouds.PointClouds.PointDensity_per_m2 IS 'Average point density in points per square meter';
 
 -- Create indexes
-CREATE INDEX idx_pointclouds_parent_variant ON pointclouds.PointClouds(ParentVariantID);
+CREATE INDEX idx_pointclouds_parent ON pointclouds.PointClouds(ParentPointCloudID);
 CREATE INDEX idx_pointclouds_location ON pointclouds.PointClouds(LocationID);
 CREATE INDEX idx_pointclouds_scenario ON pointclouds.PointClouds(ScenarioID);
 CREATE INDEX idx_pointclouds_variant_type ON pointclouds.PointClouds(VariantTypeID);
@@ -122,15 +122,15 @@ CREATE INDEX idx_pointclouds_platform_type ON pointclouds.PointClouds(PlatformTy
 -- =============================================================================
 
 CREATE TABLE shared.ProcessParameters_PointClouds (
-    ParameterID INTEGER NOT NULL REFERENCES shared.ProcessParameters(ParameterID) ON DELETE CASCADE,
-    VariantID INTEGER NOT NULL REFERENCES pointclouds.PointClouds(VariantID) ON DELETE CASCADE,
-    PRIMARY KEY (ParameterID, VariantID)
+    ProcessParameterID INTEGER NOT NULL REFERENCES shared.ProcessParameters(ProcessParameterID) ON DELETE CASCADE,
+    PointCloudID INTEGER NOT NULL REFERENCES pointclouds.PointClouds(PointCloudID) ON DELETE CASCADE,
+    PRIMARY KEY (ProcessParameterID, PointCloudID)
 );
 
-COMMENT ON TABLE shared.ProcessParameters_PointClouds IS 'Links process parameters to point cloud variants';
+COMMENT ON TABLE shared.ProcessParameters_PointClouds IS 'Links process parameters to point cloud records';
 
-CREATE INDEX idx_pp_pointclouds_parameter ON shared.ProcessParameters_PointClouds(ParameterID);
-CREATE INDEX idx_pp_pointclouds_variant ON shared.ProcessParameters_PointClouds(VariantID);
+CREATE INDEX idx_pp_pointclouds_parameter ON shared.ProcessParameters_PointClouds(ProcessParameterID);
+CREATE INDEX idx_pp_pointclouds_pointcloud ON shared.ProcessParameters_PointClouds(PointCloudID);
 
 -- =============================================================================
 -- JUNCTION TABLE: AUDIT LOG FOR POINT CLOUDS
@@ -138,14 +138,14 @@ CREATE INDEX idx_pp_pointclouds_variant ON shared.ProcessParameters_PointClouds(
 
 CREATE TABLE shared.AuditLog_PointClouds (
     AuditID BIGINT NOT NULL REFERENCES shared.AuditLog(AuditID) ON DELETE CASCADE,
-    VariantID INTEGER NOT NULL REFERENCES pointclouds.PointClouds(VariantID) ON DELETE CASCADE,
-    PRIMARY KEY (AuditID, VariantID)
+    PointCloudID INTEGER NOT NULL REFERENCES pointclouds.PointClouds(PointCloudID) ON DELETE CASCADE,
+    PRIMARY KEY (AuditID, PointCloudID)
 );
 
-COMMENT ON TABLE shared.AuditLog_PointClouds IS 'Links audit log entries to point cloud variants';
+COMMENT ON TABLE shared.AuditLog_PointClouds IS 'Links audit log entries to point cloud records';
 
 CREATE INDEX idx_audit_pointclouds_audit ON shared.AuditLog_PointClouds(AuditID);
-CREATE INDEX idx_audit_pointclouds_variant ON shared.AuditLog_PointClouds(VariantID);
+CREATE INDEX idx_audit_pointclouds_pointcloud ON shared.AuditLog_PointClouds(PointCloudID);
 
 -- =============================================================================
 -- HELPER FUNCTIONS
@@ -204,31 +204,31 @@ CREATE TRIGGER trigger_pointclouds_updated_at
 
 CREATE OR REPLACE VIEW pointclouds.processing_lineage AS
 WITH RECURSIVE lineage AS (
-    -- Base case: original point clouds
+    -- Base case: original point clouds (no parent)
     SELECT
-        VariantID,
-        ParentVariantID,
+        PointCloudID,
+        ParentPointCloudID,
         VariantName,
         ProcessID,
         ProcessingStatus,
         1 AS depth,
-        ARRAY[VariantID] AS lineage_path
+        ARRAY[PointCloudID] AS lineage_path
     FROM pointclouds.PointClouds
-    WHERE ParentVariantID IS NULL
+    WHERE ParentPointCloudID IS NULL
 
     UNION ALL
 
-    -- Recursive case: processed variants
+    -- Recursive case: derived point clouds
     SELECT
-        pc.VariantID,
-        pc.ParentVariantID,
+        pc.PointCloudID,
+        pc.ParentPointCloudID,
         pc.VariantName,
         pc.ProcessID,
         pc.ProcessingStatus,
         l.depth + 1,
-        l.lineage_path || pc.VariantID
+        l.lineage_path || pc.PointCloudID
     FROM pointclouds.PointClouds pc
-    INNER JOIN lineage l ON pc.ParentVariantID = l.VariantID
+    INNER JOIN lineage l ON pc.ParentPointCloudID = l.PointCloudID
 )
 SELECT * FROM lineage;
 

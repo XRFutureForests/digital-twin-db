@@ -54,7 +54,7 @@ SELECT
     -- -------------------------------------------------------
     t.LocationID                                            AS bid,
     COALESCE(t.PlotID, t.LocationID)                       AS bid2,
-    COALESCE(t.TreeNumber, t.VariantID)                    AS nr,
+    COALESCE(t.TreeNumber, t.TreeID)                       AS nr,
 
     -- -------------------------------------------------------
     -- SILVA Baumart code  (SILVA: ba)
@@ -123,7 +123,7 @@ SELECT
     -- so silva_writeback.py can match rows back to DB entities.
     -- -------------------------------------------------------
     t.TreeEntityID                                          AS tree_entity_id,
-    t.VariantID                                             AS base_variant_id,
+    t.TreeID                                                AS base_tree_id,
     t.ScenarioID                                            AS scenario_id,
     sc.ScenarioName                                         AS scenario_name,
     t.LocationID                                            AS location_id,
@@ -138,8 +138,8 @@ LEFT JOIN shared.Locations   l  ON t.LocationID  = l.LocationID
 LEFT JOIN shared.Species     sp ON t.SpeciesID   = sp.SpeciesID
 LEFT JOIN shared.Scenarios   sc ON t.ScenarioID  = sc.ScenarioID
 -- Join to main stem only (StemNumber = 1) for DBH
-LEFT JOIN trees.Stems        st ON st.TreeVariantID = t.VariantID
-                                AND st.StemNumber    = 1
+LEFT JOIN trees.Stems        st ON st.TreeID = t.TreeID
+                                AND st.StemNumber = 1
 LEFT JOIN trees.DataSourceTypes  dst ON t.DataSourceTypeID = dst.DataSourceTypeID
 WHERE
     -- Only field/LiDAR measurements — not simulated or estimated rows

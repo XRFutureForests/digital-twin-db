@@ -122,6 +122,34 @@ COMMENT ON TABLE shared.Scenarios IS 'Simulation scenarios (e.g., Current_Condit
 
 CREATE INDEX idx_scenarios_name ON shared.Scenarios(ScenarioName);
 
+-- =============================================================================
+-- VARIANTS (FOREST STATE SNAPSHOTS WITHIN A SCENARIO)
+-- =============================================================================
+
+CREATE TABLE shared.Variants (
+    VariantID      SERIAL PRIMARY KEY,
+    ScenarioID     INTEGER NOT NULL REFERENCES shared.Scenarios(ScenarioID) ON DELETE CASCADE,
+    VariantName    VARCHAR(200) NOT NULL,
+    SimulationYear INTEGER CHECK (SimulationYear >= 1900 AND SimulationYear <= 2300),
+    TimeDelta_yrs  NUMERIC(8, 2) CHECK (TimeDelta_yrs >= 0),
+    SortOrder      INTEGER NOT NULL DEFAULT 0,
+    Description    TEXT,
+    CreatedAt      TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (ScenarioID, VariantName)
+);
+
+COMMENT ON TABLE shared.Variants IS 'Forest state snapshots within a scenario — one VariantID groups all trees at one point in time. Use VariantID to load a complete forest state in UE.';
+COMMENT ON COLUMN shared.Variants.SimulationYear IS 'Calendar year this forest state represents';
+COMMENT ON COLUMN shared.Variants.TimeDelta_yrs IS 'Years elapsed from the scenario baseline';
+COMMENT ON COLUMN shared.Variants.SortOrder IS 'Display order for time-slider UI in UE (0=earliest)';
+
+CREATE INDEX idx_variants_scenario ON shared.Variants(ScenarioID);
+CREATE INDEX idx_variants_sort ON shared.Variants(ScenarioID, SortOrder);
+
+GRANT SELECT ON shared.Variants TO anon, authenticated;
+GRANT ALL ON shared.Variants TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE shared.variants_variantid_seq TO authenticated, service_role;
+
 CREATE TABLE shared.VariantTypes (
     VariantTypeID SERIAL PRIMARY KEY,
     VariantTypeName VARCHAR(100) NOT NULL UNIQUE,
@@ -204,7 +232,7 @@ CREATE INDEX idx_plots_centerpoint ON shared.Plots USING GIST (CenterPoint);
 -- =============================================================================
 
 CREATE TABLE shared.ManagementEvents (
-    EventID SERIAL PRIMARY KEY,
+    ManagementEventID SERIAL PRIMARY KEY,
     LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
     PlotID INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
     EventType VARCHAR(50) NOT NULL CHECK (EventType IN (
@@ -238,7 +266,7 @@ CREATE INDEX idx_mgmt_events_date ON shared.ManagementEvents(EventDate DESC);
 -- =============================================================================
 
 CREATE TABLE shared.DisturbanceEvents (
-    EventID SERIAL PRIMARY KEY,
+    DisturbanceEventID SERIAL PRIMARY KEY,
     LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
     PlotID INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
     DisturbanceType VARCHAR(50) NOT NULL CHECK (DisturbanceType IN (
@@ -296,7 +324,7 @@ CREATE INDEX idx_processes_name ON shared.Processes(ProcessName);
 CREATE INDEX idx_processes_category ON shared.Processes(Category);
 
 CREATE TABLE shared.ProcessParameters (
-    ParameterID SERIAL PRIMARY KEY,
+    ProcessParameterID SERIAL PRIMARY KEY,
     ParameterName VARCHAR(200) NOT NULL,
     ParameterValue TEXT NOT NULL,
     DataType VARCHAR(50) CHECK (DataType IN ('float', 'int', 'string', 'boolean', 'json')),
@@ -310,7 +338,7 @@ COMMENT ON COLUMN shared.ProcessParameters.ParameterValue IS 'Parameter value as
 CREATE INDEX idx_process_parameters_name ON shared.ProcessParameters(ParameterName);
 
 CREATE TABLE shared.ProcessMetrics (
-    MetricID SERIAL PRIMARY KEY,
+    ProcessMetricID SERIAL PRIMARY KEY,
     ProcessID INTEGER NOT NULL REFERENCES shared.Processes(ProcessID) ON DELETE CASCADE,
     MetricName VARCHAR(200) NOT NULL,
     MetricValue NUMERIC(10, 6),

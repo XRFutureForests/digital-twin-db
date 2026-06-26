@@ -13,17 +13,17 @@ SET search_path TO trees, shared, public;
 -- One row = one tree entity at one projected year under one simulation run.
 -- Rows from the same run share a RunID UUID.
 -- TreeEntityID links to the stable physical-tree identity in trees.Trees.
--- BaseVariantID points to the trees.Trees row used as the simulation starting point.
+-- BaseTreeID points to the trees.Trees row used as the simulation starting point.
 --
 -- Stand-level aggregates (BasalArea per ha, etc.) are repeated across all rows
 -- in the same (RunID, ProjectionYear) group — they are stored here for convenience
 -- so UE can obtain them in a single query without a separate aggregation step.
 
 CREATE TABLE trees.GrowthSimulations (
-    SimulationID         BIGSERIAL PRIMARY KEY,
+    GrowthSimulationID   BIGSERIAL PRIMARY KEY,
     RunID                UUID NOT NULL DEFAULT gen_random_uuid(),
     TreeEntityID         UUID NOT NULL,
-    BaseVariantID        INTEGER REFERENCES trees.Trees(VariantID) ON DELETE SET NULL,
+    BaseTreeID           INTEGER REFERENCES trees.Trees(TreeID) ON DELETE SET NULL,
     LocationID           INTEGER REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
     PlotID               INTEGER REFERENCES shared.Plots(PlotID) ON DELETE SET NULL,
     ScenarioID           INTEGER REFERENCES shared.Scenarios(ScenarioID) ON DELETE SET NULL,
@@ -78,8 +78,8 @@ COMMENT ON COLUMN trees.GrowthSimulations.RunID IS
     'to one simulator execution and can be compared as a complete forest state.';
 COMMENT ON COLUMN trees.GrowthSimulations.TreeEntityID IS
     'Stable UUID of the physical tree (cross-variant identity from trees.Trees.TreeEntityID).';
-COMMENT ON COLUMN trees.GrowthSimulations.BaseVariantID IS
-    'trees.Trees row used as the simulation input (baseline measurement).';
+COMMENT ON COLUMN trees.GrowthSimulations.BaseTreeID IS
+    'trees.Trees row (TreeID) used as the simulation input (baseline measurement).';
 COMMENT ON COLUMN trees.GrowthSimulations.ProjectionYear IS
     'Calendar year this projection describes.';
 COMMENT ON COLUMN trees.GrowthSimulations.Mortality IS
@@ -119,10 +119,10 @@ CREATE INDEX idx_growthsim_simulator
 -- Primary UE query target for the Time Machine feature
 CREATE OR REPLACE VIEW public.growth_simulations AS
 SELECT
-    gs.SimulationID,
+    gs.GrowthSimulationID,
     gs.RunID,
     gs.TreeEntityID,
-    gs.BaseVariantID,
+    gs.BaseTreeID,
     gs.LocationID,
     gs.PlotID,
     gs.ScenarioID,
@@ -191,4 +191,4 @@ GRANT ALL    ON public.simulation_runs     TO service_role;
 
 -- authenticated role can write simulation output (SILVA write-back via XRFF-245)
 GRANT INSERT, UPDATE ON trees.GrowthSimulations TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE trees.growthsimulations_simulationid_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE trees.growthsimulations_growthsimulationid_seq TO authenticated;

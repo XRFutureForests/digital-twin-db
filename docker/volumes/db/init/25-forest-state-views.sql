@@ -6,12 +6,6 @@
 -- MISSING PUBLIC VIEWS FOR LOOKUP TABLES
 -- =============================================================================
 
--- Scenarios view (UE queries this to populate the variant selector UI)
-CREATE OR REPLACE VIEW public.scenarios AS
-SELECT * FROM shared.scenarios;
-
-COMMENT ON VIEW public.scenarios IS 'Public API view for simulation scenarios (Current_Conditions, Climate_Change_2050, etc.)';
-
 -- VariantTypes view
 CREATE OR REPLACE VIEW public.varianttypes AS
 SELECT * FROM shared.varianttypes;
@@ -32,11 +26,17 @@ COMMENT ON VIEW public.datasourcetypes IS 'Data source type classifications (fie
 
 CREATE OR REPLACE VIEW public.forest_state AS
 SELECT
-    t.variantid,
+    t.treeid,
     t.treeentityid,
-    t.parentvariantid,
+    t.parenttreeid,
     t.locationid,
     t.plotid,
+    -- Variant info (use VariantID to load all trees at one time step)
+    t.variantid,
+    v.variantname,
+    v.simulationyear,
+    v.timedelta_yrs,
+    v.sortorder AS variant_sortorder,
     -- Scenario info (allows UE to filter by name, not just ID)
     s.scenarioid,
     s.scenarioname,
@@ -63,16 +63,17 @@ SELECT
     -- Full geometry for PostGIS queries if needed
     t.position
 FROM trees.trees t
-LEFT JOIN shared.scenarios   s  ON t.scenarioid   = s.scenarioid
+LEFT JOIN shared.variants    v  ON t.variantid    = v.variantid
+LEFT JOIN shared.scenarios   s  ON v.scenarioid   = s.scenarioid
 LEFT JOIN shared.varianttypes vt ON t.varianttypeid = vt.varianttypeid
 LEFT JOIN shared.species      sp ON t.speciesid    = sp.speciesid
-LEFT JOIN trees.stems         st ON st.treevariantid = t.variantid AND st.stemnumber = 1
+LEFT JOIN trees.stems         st ON st.treeid = t.treeid AND st.stemnumber = 1
 LEFT JOIN trees.DataSourceTypes dst ON t.datasourcetypeid = dst.datasourcetypeid;
 
 COMMENT ON VIEW public.forest_state IS
-    'Flat view of all tree variants with scenario, species, and position. '
-    'Primary UE query target: filter by scenarioname to load a specific forest state. '
-    'Example: GET /forest_state?scenarioname=eq.Current_Conditions';
+    'Flat view of all tree records with variant, scenario, species, and position. '
+    'Primary UE query target: filter by variantid to load all trees at one time step. '
+    'Example: GET /forest_state?variantid=eq.3';
 
 -- =============================================================================
 -- PERFORMANCE INDEXES
@@ -90,15 +91,10 @@ CREATE INDEX IF NOT EXISTS idx_trees_location_scenario
 -- GRANTS
 -- =============================================================================
 
-GRANT SELECT ON public.scenarios       TO anon, authenticated;
 GRANT SELECT ON public.varianttypes    TO anon, authenticated;
 GRANT SELECT ON public.datasourcetypes TO anon, authenticated;
 GRANT SELECT ON public.forest_state    TO anon, authenticated;
 
-GRANT ALL ON public.scenarios       TO service_role;
 GRANT ALL ON public.varianttypes    TO service_role;
 GRANT ALL ON public.datasourcetypes TO service_role;
 GRANT ALL ON public.forest_state    TO service_role;
-
--- Scenarios: allow authenticated users to add new scenarios (e.g. SILVA output)
-GRANT INSERT, UPDATE ON public.scenarios TO authenticated;

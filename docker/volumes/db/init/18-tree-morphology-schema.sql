@@ -10,7 +10,7 @@ SET search_path TO trees, shared, public;
 -- =============================================================================
 
 CREATE TABLE trees.PhanerophyteHeightClasses (
-    HeightClassID SERIAL PRIMARY KEY,
+    PhanerophyteHeightClassID SERIAL PRIMARY KEY,
     HeightClassName VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT,
     MinHeight_m NUMERIC(6, 2) CHECK (MinHeight_m >= 0),
@@ -47,7 +47,7 @@ CREATE INDEX idx_crown_architectures_name ON trees.CrownArchitectures(CrownArchi
 -- =============================================================================
 
 CREATE TABLE trees.BranchElongationHabits (
-    ElongationHabitID SERIAL PRIMARY KEY,
+    BranchElongationHabitID SERIAL PRIMARY KEY,
     ElongationHabitName VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT
 );
@@ -157,9 +157,9 @@ CREATE INDEX idx_growth_forms_name ON trees.GrowthForms(GrowthFormName);
 -- =============================================================================
 
 ALTER TABLE trees.Trees
-    ADD COLUMN IF NOT EXISTS HeightClassID INTEGER REFERENCES trees.PhanerophyteHeightClasses(HeightClassID),
+    ADD COLUMN IF NOT EXISTS HeightClassID INTEGER REFERENCES trees.PhanerophyteHeightClasses(PhanerophyteHeightClassID),
     ADD COLUMN IF NOT EXISTS CrownArchitectureID INTEGER REFERENCES trees.CrownArchitectures(CrownArchitectureID),
-    ADD COLUMN IF NOT EXISTS ElongationHabitID INTEGER REFERENCES trees.BranchElongationHabits(ElongationHabitID),
+    ADD COLUMN IF NOT EXISTS ElongationHabitID INTEGER REFERENCES trees.BranchElongationHabits(BranchElongationHabitID),
     ADD COLUMN IF NOT EXISTS GrowthOrientationID INTEGER REFERENCES trees.GrowthOrientations(GrowthOrientationID),
     ADD COLUMN IF NOT EXISTS ShootElongationTypeID INTEGER REFERENCES trees.ShootElongationTypes(ShootElongationTypeID),
     ADD COLUMN IF NOT EXISTS CrownShapeID INTEGER REFERENCES trees.CrownShapes(CrownShapeID),
@@ -205,7 +205,7 @@ CREATE OR REPLACE FUNCTION trees.assign_height_class()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.Height_m IS NOT NULL AND NEW.HeightClassID IS NULL THEN
-        SELECT HeightClassID INTO NEW.HeightClassID
+        SELECT PhanerophyteHeightClassID INTO NEW.HeightClassID
         FROM trees.PhanerophyteHeightClasses
         WHERE (MinHeight_m IS NULL OR NEW.Height_m >= MinHeight_m)
           AND (MaxHeight_m IS NULL OR NEW.Height_m < MaxHeight_m)

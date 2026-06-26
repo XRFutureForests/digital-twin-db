@@ -192,7 +192,7 @@ def insert_trees(trees):
     insert_query = """
         INSERT INTO trees.Trees (LocationID, VariantTypeID, SpeciesID, DataSourceType, SourceCRS, Height_m, Position, PositionOriginal, FieldNotes, CreatedBy)
         VALUES %s
-        RETURNING VariantID
+        RETURNING TreeID
     """
 
     def _clean(val):
@@ -262,7 +262,7 @@ def insert_stems(trees):
 
     # Insert stems
     insert_query = """
-        INSERT INTO trees.Stems (TreeVariantID, StemNumber, DBH_cm)
+        INSERT INTO trees.Stems (TreeID, StemNumber, DBH_cm)
         VALUES %s
     """
 
@@ -329,7 +329,7 @@ def main():
     print("\nQuery imported data:")
     print(f"  SELECT * FROM trees.Trees WHERE CreatedBy = '{CREATED_BY}';")
     print(
-        f"  SELECT * FROM trees.Stems WHERE TreeVariantID IN (SELECT VariantID FROM trees.Trees WHERE CreatedBy = '{CREATED_BY}');"
+        f"  SELECT * FROM trees.Stems WHERE TreeID IN (SELECT TreeID FROM trees.Trees WHERE CreatedBy = '{CREATED_BY}');"
     )
 
 

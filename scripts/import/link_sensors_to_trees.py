@@ -137,7 +137,7 @@ def get_trees_with_metadata():
     cur.execute(
         """
         SELECT
-            t.variantid,
+            t.treeid,
             t.locationid,
             l.locationname,
             t.treenumber,
@@ -151,7 +151,7 @@ def get_trees_with_metadata():
 
     trees = []
     for row in cur.fetchall():
-        variant_id, location_id, location_name, tree_number, plot_id, field_notes = row
+        tree_id, location_id, location_name, tree_number, plot_id, field_notes = row
 
         sensor_tree = False
         if field_notes:
@@ -159,10 +159,10 @@ def get_trees_with_metadata():
 
         trees.append(
             {
-                "variant_id": variant_id,
+                "tree_id": tree_id,
                 "location_id": location_id,
                 "location_name": location_name,
-                "tree_id": str(tree_number),
+                "tree_number": str(tree_number),
                 "sensor_tree": sensor_tree,
                 "plot_id": plot_id,
             }
@@ -181,10 +181,10 @@ def create_sensor_tree_links(sensors, trees):
     """Match sensors to trees and create links"""
     print("\n🔗 Creating sensor-tree links...")
 
-    # Index trees by location and tree_id for fast lookup
+    # Index trees by location and tree_number for fast lookup
     tree_index = {}
     for tree in trees:
-        key = (tree["location_name"], tree["tree_id"])
+        key = (tree["location_name"], tree["tree_number"])
         tree_index[key] = tree
 
     links = []
@@ -213,9 +213,9 @@ def create_sensor_tree_links(sensors, trees):
             links.append(
                 {
                     "sensor_id": sensor["sensor_id"],
-                    "tree_variant_id": tree["variant_id"],
+                    "tree_id": tree["tree_id"],
                     "sensor_label": sensor["label"],
-                    "tree_id": tree_num,
+                    "tree_number": tree_num,
                     "location": sensor["location_name"],
                 }
             )
@@ -255,16 +255,16 @@ def insert_links(links):
 
     # Prepare values for insertion
     values = [
-        (link["sensor_id"], link["tree_variant_id"], CREATED_BY) for link in links
+        (link["sensor_id"], link["tree_id"], CREATED_BY) for link in links
     ]
 
     # Insert with conflict handling
     execute_values(
         cur,
         """
-        INSERT INTO sensor.sensor_tree_links (sensor_id, tree_variant_id, description)
+        INSERT INTO sensor.sensor_tree_links (sensor_id, tree_id, description)
         VALUES %s
-        ON CONFLICT (sensor_id, tree_variant_id) DO NOTHING
+        ON CONFLICT (sensor_id, tree_id) DO NOTHING
         """,
         values,
     )
@@ -308,7 +308,7 @@ def verify_links():
     # Count unique trees with sensors
     cur.execute(
         """
-        SELECT COUNT(DISTINCT tree_variant_id)
+        SELECT COUNT(DISTINCT tree_id)
         FROM sensor.sensor_tree_links
         WHERE description = %s
     """,
@@ -360,10 +360,10 @@ def main():
         )
         print(
             """
-  SELECT s.serialnumber as SensorLabel, t.variantid, t.treenumber
+  SELECT s.serialnumber as SensorLabel, t.treeid, t.treenumber
   FROM sensor.sensor_tree_links stl
   JOIN sensor.sensors s ON stl.sensor_id = s.sensorid
-  JOIN trees.trees t ON stl.tree_variant_id = t.variantid
+  JOIN trees.trees t ON stl.tree_id = t.treeid
   WHERE stl.description = '"""
             + CREATED_BY
             + "';"

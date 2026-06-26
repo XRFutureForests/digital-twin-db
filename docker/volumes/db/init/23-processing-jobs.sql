@@ -9,7 +9,7 @@ SET search_path TO shared, public;
 -- =============================================================================
 
 CREATE TABLE shared.ProcessingJobs (
-    JobID SERIAL PRIMARY KEY,
+    ProcessingJobID SERIAL PRIMARY KEY,
     ExternalJobID VARCHAR(200) UNIQUE,
     WorkflowName VARCHAR(200) NOT NULL,
     WorkflowVersion VARCHAR(50),

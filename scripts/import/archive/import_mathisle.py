@@ -109,7 +109,7 @@ def main():
             Height_m, Position, FieldNotes, MeasurementDate, CreatedBy
         )
         VALUES %s
-        RETURNING VariantID
+        RETURNING TreeID
     """
 
     def _clean(val):
@@ -148,7 +148,7 @@ def main():
             )
         )
 
-    variant_ids = execute_values(
+    tree_ids = execute_values(
         cur,
         insert_query,
         values,
@@ -157,20 +157,20 @@ def main():
     )
 
     conn.commit()
-    print(f"✓ Inserted {len(variant_ids)} trees")
+    print(f"✓ Inserted {len(tree_ids)} trees")
 
     # Insert stems for trees with DBH
     print("\n💾 Inserting stem measurements...")
     stems = []
-    for i, (variant_id,) in enumerate(variant_ids):
+    for i, (tree_id,) in enumerate(tree_ids):
         row = df.iloc[i]
         dbh = row.get("DBH_cm")
         if pd.notna(dbh) and float(dbh) > 0:
-            stems.append((variant_id, 1, float(dbh)))
+            stems.append((tree_id, 1, float(dbh)))
 
     if stems:
         stem_query = """
-            INSERT INTO trees.Stems (TreeVariantID, StemNumber, DBH_cm)
+            INSERT INTO trees.Stems (TreeID, StemNumber, DBH_cm)
             VALUES %s
         """
         execute_values(cur, stem_query, stems)
@@ -189,7 +189,7 @@ def main():
     )
     total = cur.fetchone()[0]
     cur.execute(
-        "SELECT count(*) FROM trees.stems s JOIN trees.trees t ON s.treevariantid = t.variantid WHERE t.locationid = %s",
+        "SELECT count(*) FROM trees.stems s JOIN trees.trees t ON s.treeid = t.treeid WHERE t.locationid = %s",
         (LOCATION_ID,),
     )
     stem_total = cur.fetchone()[0]
