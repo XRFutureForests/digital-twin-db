@@ -31,5 +31,5 @@ dependencies:
       - pyproj>=3.4.0
       - supabase>=2.26.0
       - pygbif>=0.6.0 # GBIF API for species name validation
-      - pylometree @ git+https://github.com/geosense-ufr/pylometree.git
+      - pylometree @ git+https://gitlab.uni-freiburg.de/xr-future-forests-lab/pylometree.git
       - openyieldtables # For real-world yield data calibration
