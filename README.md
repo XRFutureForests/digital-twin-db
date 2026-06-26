@@ -667,3 +667,28 @@ All documentation is in the `docs/` directory, organized by topic. Start with [d
 - [PostgREST API Reference](https://postgrest.org/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [PostGIS Documentation](https://postgis.net/)
+
+
+---
+
+## License
+
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
+
+This project is licensed under the
+[Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/).
+You may use, share, and adapt it for **non-commercial** purposes with attribution;
+commercial use is not permitted. See [LICENSE](LICENSE). Note: CC BY-NC is not an
+OSI-approved license — this is intentional, to keep the project non-commercial.
+
+## Citation
+
+<!-- After the first Zenodo release, replace XXXXXXX and uncomment the badge. -->
+<!-- [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
+
+If you use this database schema in a publication, please cite it. See
+[CITATION.cff](CITATION.cff) for machine-readable metadata, or:
+
+> Sperlich, M. (2026). Digital Twin Database: Forest Inventory Schema (PostgreSQL/PostGIS).
+> University of Freiburg.
+> https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db
