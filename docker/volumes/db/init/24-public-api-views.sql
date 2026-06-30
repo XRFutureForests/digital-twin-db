@@ -41,11 +41,15 @@ COMMENT ON VIEW public.scenarios IS 'Public API view for scenarios reference tab
 CREATE OR REPLACE VIEW public.variants AS
 SELECT
     v.*,
-    s.scenarioname
+    l.locationname,
+    s.scenarioname,
+    vt.varianttypename
 FROM shared.variants v
-LEFT JOIN shared.scenarios s ON v.scenarioid = s.scenarioid;
+LEFT JOIN shared.locations  l  ON v.locationid  = l.locationid
+LEFT JOIN shared.scenarios  s  ON v.scenarioid  = s.scenarioid
+LEFT JOIN shared.varianttypes vt ON v.varianttypeid = vt.varianttypeid;
 
-COMMENT ON VIEW public.variants IS 'Public API view for forest state variants (time steps within a scenario)';
+COMMENT ON VIEW public.variants IS 'Forest state variants with location, scenario, and type names joined. Filter by locationid+scenarioid to get the time-step list for a site+scenario combination.';
 
 -- ManagementEvents view
 CREATE OR REPLACE VIEW public.managementevents AS

@@ -61,7 +61,7 @@ CREATE POLICY "Enable read for authenticated users" ON shared.ProcessingJobs
 
 GRANT ALL ON shared.ProcessingJobs TO service_role;
 GRANT SELECT ON shared.ProcessingJobs TO authenticated, anon;
-GRANT USAGE, SELECT ON SEQUENCE shared.ProcessingJobs_JobID_seq TO service_role, authenticated;
+GRANT USAGE, SELECT ON SEQUENCE shared.ProcessingJobs_ProcessingJobID_seq TO service_role, authenticated;
 
 -- =============================================================================
 -- SUMMARY

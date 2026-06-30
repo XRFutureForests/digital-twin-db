@@ -122,34 +122,7 @@ COMMENT ON TABLE shared.Scenarios IS 'Simulation scenarios (e.g., Current_Condit
 
 CREATE INDEX idx_scenarios_name ON shared.Scenarios(ScenarioName);
 
--- =============================================================================
--- VARIANTS (FOREST STATE SNAPSHOTS WITHIN A SCENARIO)
--- =============================================================================
-
-CREATE TABLE shared.Variants (
-    VariantID      SERIAL PRIMARY KEY,
-    ScenarioID     INTEGER NOT NULL REFERENCES shared.Scenarios(ScenarioID) ON DELETE CASCADE,
-    VariantName    VARCHAR(200) NOT NULL,
-    SimulationYear INTEGER CHECK (SimulationYear >= 1900 AND SimulationYear <= 2300),
-    TimeDelta_yrs  NUMERIC(8, 2) CHECK (TimeDelta_yrs >= 0),
-    SortOrder      INTEGER NOT NULL DEFAULT 0,
-    Description    TEXT,
-    CreatedAt      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (ScenarioID, VariantName)
-);
-
-COMMENT ON TABLE shared.Variants IS 'Forest state snapshots within a scenario — one VariantID groups all trees at one point in time. Use VariantID to load a complete forest state in UE.';
-COMMENT ON COLUMN shared.Variants.SimulationYear IS 'Calendar year this forest state represents';
-COMMENT ON COLUMN shared.Variants.TimeDelta_yrs IS 'Years elapsed from the scenario baseline';
-COMMENT ON COLUMN shared.Variants.SortOrder IS 'Display order for time-slider UI in UE (0=earliest)';
-
-CREATE INDEX idx_variants_scenario ON shared.Variants(ScenarioID);
-CREATE INDEX idx_variants_sort ON shared.Variants(ScenarioID, SortOrder);
-
-GRANT SELECT ON shared.Variants TO anon, authenticated;
-GRANT ALL ON shared.Variants TO service_role;
-GRANT USAGE, SELECT ON SEQUENCE shared.variants_variantid_seq TO authenticated, service_role;
-
+-- VariantTypes must be created before Variants (Variants.VariantTypeID references it)
 CREATE TABLE shared.VariantTypes (
     VariantTypeID SERIAL PRIMARY KEY,
     VariantTypeName VARCHAR(100) NOT NULL UNIQUE,
@@ -162,6 +135,42 @@ CREATE TABLE shared.VariantTypes (
 COMMENT ON TABLE shared.VariantTypes IS 'Types of data variants (original, processed, simulated, etc.)';
 
 CREATE INDEX idx_variant_types_name ON shared.VariantTypes(VariantTypeName);
+
+-- =============================================================================
+-- VARIANTS (FOREST STATE SNAPSHOTS WITHIN A SCENARIO)
+-- =============================================================================
+
+CREATE TABLE shared.Variants (
+    VariantID      SERIAL PRIMARY KEY,
+    LocationID     INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
+    ScenarioID     INTEGER NOT NULL REFERENCES shared.Scenarios(ScenarioID) ON DELETE CASCADE,
+    VariantTypeID  INTEGER NOT NULL REFERENCES shared.VariantTypes(VariantTypeID),
+    VariantName    VARCHAR(200) NOT NULL,
+    SimulationYear INTEGER CHECK (SimulationYear >= 1900 AND SimulationYear <= 2300),
+    TimeDelta_yrs  NUMERIC(8, 2) CHECK (TimeDelta_yrs >= 0),
+    SortOrder      INTEGER NOT NULL DEFAULT 0,
+    Description    TEXT,
+    CreatedAt      TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (LocationID, ScenarioID, VariantName)
+);
+
+COMMENT ON TABLE shared.Variants IS 'Forest state snapshots — each row is one time step at one location within one scenario. VariantID groups all trees at that state. Use for UE time-travel switching.';
+COMMENT ON COLUMN shared.Variants.LocationID IS 'The forest site this variant belongs to — top level of the Location → Scenario → Variant hierarchy';
+COMMENT ON COLUMN shared.Variants.ScenarioID IS 'The scenario (set of assumptions) this variant belongs to';
+COMMENT ON COLUMN shared.Variants.VariantTypeID IS 'Type of data in this variant (original field measurement, simulated growth, etc.)';
+COMMENT ON COLUMN shared.Variants.SimulationYear IS 'Calendar year this forest state represents';
+COMMENT ON COLUMN shared.Variants.TimeDelta_yrs IS 'Years elapsed from the scenario baseline';
+COMMENT ON COLUMN shared.Variants.SortOrder IS 'Display order for time-slider UI in UE (0=earliest)';
+
+CREATE INDEX idx_variants_location ON shared.Variants(LocationID);
+CREATE INDEX idx_variants_scenario ON shared.Variants(ScenarioID);
+CREATE INDEX idx_variants_type ON shared.Variants(VariantTypeID);
+CREATE INDEX idx_variants_location_scenario ON shared.Variants(LocationID, ScenarioID);
+CREATE INDEX idx_variants_sort ON shared.Variants(LocationID, ScenarioID, SortOrder);
+
+GRANT SELECT ON shared.Variants TO anon, authenticated;
+GRANT ALL ON shared.Variants TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE shared.variants_variantid_seq TO authenticated, service_role;
 
 -- =============================================================================
 -- CAMPAIGNS (INVENTORY EVENTS AND DATA COLLECTION)

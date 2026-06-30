@@ -36,12 +36,12 @@ SELECT
     v.variantname,
     v.simulationyear,
     v.timedelta_yrs,
-    v.sortorder AS variant_sortorder,
+    v.sortorder         AS variant_sortorder,
     -- Scenario info (allows UE to filter by name, not just ID)
     s.scenarioid,
     s.scenarioname,
-    -- Variant type info
-    vt.varianttypeid,
+    -- Variant type comes from the variant, not the individual tree row
+    v.varianttypeid,
     vt.varianttypename,
     -- Species info (common name is the UE asset lookup key)
     sp.speciesid,
@@ -57,22 +57,25 @@ SELECT
     dst.datasourcetypename AS datasourcetype,
     -- Main stem diameter (StemNumber=1) — flattened so UE gets height+DBH in one query
     st.dbh_cm,
+    -- Competition proxy: crown starts above 60% of tree height → high competition pressure
+    COALESCE((t.crownbaseheight_m / NULLIF(t.height_m, 0)) > 0.6, false) AS competition,
     -- Flat lat/lon for UE JSON parsing (no PostGIS parsing needed in Blueprint)
     ST_Y(t.position)    AS latitude,
     ST_X(t.position)    AS longitude,
     -- Full geometry for PostGIS queries if needed
     t.position
 FROM trees.trees t
-LEFT JOIN shared.variants    v  ON t.variantid    = v.variantid
-LEFT JOIN shared.scenarios   s  ON v.scenarioid   = s.scenarioid
-LEFT JOIN shared.varianttypes vt ON t.varianttypeid = vt.varianttypeid
-LEFT JOIN shared.species      sp ON t.speciesid    = sp.speciesid
-LEFT JOIN trees.stems         st ON st.treeid = t.treeid AND st.stemnumber = 1
-LEFT JOIN trees.DataSourceTypes dst ON t.datasourcetypeid = dst.datasourcetypeid;
+LEFT JOIN shared.variants     v   ON t.variantid       = v.variantid
+LEFT JOIN shared.scenarios    s   ON v.scenarioid      = s.scenarioid
+LEFT JOIN shared.varianttypes vt  ON v.varianttypeid   = vt.varianttypeid
+LEFT JOIN shared.species      sp  ON t.speciesid       = sp.speciesid
+LEFT JOIN trees.stems         st  ON st.treeid = t.treeid AND st.stemnumber = 1
+LEFT JOIN trees.datasourcetypes dst ON t.datasourcetypeid = dst.datasourcetypeid;
 
 COMMENT ON VIEW public.forest_state IS
     'Flat view of all tree records with variant, scenario, species, and position. '
     'Primary UE query target: filter by variantid to load all trees at one time step. '
+    'Variant type (original/simulated_growth/etc.) is sourced from shared.Variants, not per-tree rows. '
     'Example: GET /forest_state?variantid=eq.3';
 
 -- =============================================================================
@@ -98,3 +101,44 @@ GRANT SELECT ON public.forest_state    TO anon, authenticated;
 GRANT ALL ON public.varianttypes    TO service_role;
 GRANT ALL ON public.datasourcetypes TO service_role;
 GRANT ALL ON public.forest_state    TO service_role;
+
+-- =============================================================================
+-- TREES_FLAT VIEW (UE IMPORT TARGET)
+-- =============================================================================
+-- Flat alias of forest_state scoped to the fields the UE Blueprint consumes.
+-- Exposes the same columns as forest_state so existing UE queries keep working,
+-- but the name matches the DataTable row struct used in the import Blueprint.
+
+CREATE OR REPLACE VIEW public.trees_flat AS
+SELECT
+    treeid,
+    treeentityid,
+    locationid,
+    variantid,
+    variantname,
+    simulationyear,
+    scenarioid,
+    scenarioname,
+    varianttypeid,
+    varianttypename,
+    speciesid,
+    speciesname,
+    scientificname,
+    height_m,
+    crownwidth_m,
+    crownbaseheight_m,
+    dbh_cm,
+    age_years,
+    healthscore,
+    competition,
+    latitude,
+    longitude
+FROM public.forest_state;
+
+COMMENT ON VIEW public.trees_flat IS
+    'Flat tree catalogue for UE Blueprint import. Alias of forest_state scoped to '
+    'the ST_TreeCatalogEntry struct fields. Filter by variantid to load one time step: '
+    'GET /trees_flat?variantid=eq.<id>';
+
+GRANT SELECT ON public.trees_flat TO anon, authenticated;
+GRANT ALL    ON public.trees_flat TO service_role;
