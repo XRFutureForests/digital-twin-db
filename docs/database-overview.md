@@ -172,7 +172,7 @@ Central reference tables used across all domains.
 | **Plots** | Sub-plot divisions within locations with PostGIS boundaries |
 | **Species** | Tree species (common name, scientific name, growth characteristics, IsDeciduous) |
 | **Scenarios** | Named analysis variants (Current_Conditions, Climate_Change_2050) |
-| **VariantTypes** | Version types: original, processed, simulated, manual, repeat_measurement |
+| **VariantTypes** | How a variant's data was produced: original, processed, manual, simulated_growth, user_input, sensor_derived, model_output, repeat_measurement |
 | **Campaigns** | Data collection events (LiDAR flights, field inventories) with methodology |
 | **Processes** | Algorithm/processing metadata with citations |
 | **AuditLog** | Field-level change tracking with user attribution |
@@ -629,12 +629,12 @@ POST /rest/v1/rpc/trees_within_radius
 -- Trees with stems at location
 SELECT t.*, s.dbh_cm, sp.commonname
 FROM trees.trees t
-JOIN trees.stems s ON t.variantid = s.treevariantid
+JOIN trees.stems s ON t.treeid = s.treeid
 JOIN shared.species sp ON t.speciesid = sp.speciesid
 WHERE t.locationid = 4;
 
 -- Sensor readings for tree correlation
-SELECT sr.timestamp, sr.value, stl.tree_variant_id
+SELECT sr.timestamp, sr.value, stl.tree_id
 FROM sensor.sensorreadings sr
 JOIN sensor.sensor_tree_links stl ON sr.sensorid = stl.sensor_id
 WHERE sr.timestamp > NOW() - INTERVAL '30 days';

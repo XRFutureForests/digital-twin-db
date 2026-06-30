@@ -161,7 +161,7 @@ See [data/templates/DATA_PREPARATION_GUIDE.md](../data/templates/DATA_PREPARATIO
 
 ```sql
 -- Example: fix a wrong height recorded in the field
-UPDATE trees."Trees" SET "Height_m" = 22.5 WHERE "VariantID" = 1234;
+UPDATE trees."Trees" SET "Height_m" = 22.5 WHERE "TreeID" = 1234;
 
 -- Example: backfill a missing DBH on a stem
 UPDATE trees."Stems" SET "DBH_cm" = 31.2 WHERE "StemID" = 5678;

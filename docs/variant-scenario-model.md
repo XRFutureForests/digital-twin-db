@@ -6,24 +6,28 @@
 
 ## Concept
 
-The digital twin DB stores multiple **forest states** across two levels: Scenarios and Variants.
+The digital twin DB stores multiple **forest states** across three levels: Location → Scenario → Variant.
 
 | Term | Meaning | Example |
 |------|---------|---------|
-| **Scenario** | A named set of top-level assumptions | `Current_Conditions`, `Climate_Change_2050`, `Management_Thinning` |
-| **Variant** | A specific time step or management increment *within* a scenario | `Ecosense_2035_Baseline`, `Ecosense_2045_Baseline` |
+| **Location** | A physical forest site | `Ecosense_MixedPlot`, `Mathisle` |
+| **Scenario** | A named set of assumptions (climate, management) | `Current_Conditions`, `Ecosense_Growth_2035` |
+| **Variant** | A specific time step within a scenario at a site | `Baseline_2025`, `Growth_2035` |
 | **VariantType** | How the data was produced | `original`, `simulated_growth`, `model_output` |
 | **Tree row** | One tree's state at one time step | Tree #42 at height 22.5m in year 2035 |
 
-### Two-level hierarchy
+### Three-level hierarchy
 
 ```
-shared.Scenarios
-  └── shared.Variants  (one or more per Scenario — each is one time step)
-        └── trees.Trees.VariantID  (FK — all trees at the same time step share one VariantID)
+shared.Locations   (which forest site)
+  └── shared.Scenarios   (which set of assumptions)
+        └── shared.Variants   (which time step / growth age)
+              └── trees.Trees  (all trees at that time step, joined by VariantID)
 ```
 
-One physical tree (identified by `TreeEntityID`) can appear in many rows in `trees.Trees` — one per time step / variant. All trees at the same time step share the same `VariantID`. This is what enables UE "time travel": query by `VariantID` to load the complete forest at one point in time.
+**Location** is the top-level differentiator — `shared.Variants.LocationID NOT NULL FK` ensures every variant is pinned to a site. This means the same name like `Baseline_2025` or `Growth_2035` can exist for both Ecosense and Mathisle as separate rows, disambiguated by location rather than embedded in the name.
+
+One physical tree (identified by `TreeEntityID`) can appear in many rows in `trees.Trees` — one per variant. All trees at the same time step share the same `VariantID`. This is what enables UE "time travel": query by `VariantID` to load the complete forest at one point in time.
 
 **Variants vs. data corrections:** A new Variant is for a distinct forest state. If you find a typo or missed measurement in an existing record, fix it with a plain UPDATE — not a new variant. The DB has AFTER UPDATE audit triggers that log the change automatically. See [data-access-guide.md](data-access-guide.md#correcting-data--field-updates-vs-new-variants).
 
@@ -32,51 +36,59 @@ One physical tree (identified by `TreeEntityID`) can appear in many rows in `tre
 ## Schema
 
 ```
-shared.Scenarios              ← named scenarios (lookup)
-  ScenarioID  PK
-  ScenarioName                ← "Current_Conditions", "Climate_Change_2050", etc.
+shared.Locations              ← forest sites (top of hierarchy)
+  LocationID  PK
+  LocationName                ← "Ecosense_MixedPlot", "Mathisle", etc.
 
-shared.Variants               ← time steps within a scenario
-  VariantID   PK
-  ScenarioID  FK → shared.Scenarios
-  VariantName                 ← "Ecosense_2035_Baseline", etc.
+shared.Scenarios              ← named scenarios (reusable across locations)
+  ScenarioID  PK
+  ScenarioName                ← "Current_Conditions", "Ecosense_Growth_2035", etc.
+
+shared.VariantTypes           ← how data was generated (lookup)
+  VariantTypeID PK
+  VariantTypeName             ← "original", "simulated_growth", "model_output", etc.
+
+shared.Variants               ← one time step at one site within one scenario
+  VariantID     PK
+  LocationID    FK → shared.Locations    ← site — top of hierarchy
+  ScenarioID    FK → shared.Scenarios
+  VariantTypeID FK → shared.VariantTypes ← type of this entire snapshot
+  VariantName                 ← "Baseline_2025", "Growth_2035", etc. (unique per location+scenario)
   SimulationYear              ← calendar year this state represents
   TimeDelta_yrs               ← years since baseline
-  SortOrder                   ← display order in UE selector
-
-shared.VariantTypes           ← how data was generated
-  VariantTypeName             ← "original", "simulated_growth", "model_output", etc.
+  SortOrder                   ← display order in UE time-step selector
 
 trees.Trees                   ← one row per tree per time step
   TreeID        PK            ← unique row identifier
   TreeEntityID  UUID          ← stable identity across all variants of the same physical tree
-  VariantID     FK → shared.Variants   ← group selector: all trees at one time step
-  ParentTreeID  FK → trees.Trees       ← lineage: which row this was grown from
-  ScenarioID    FK → shared.Scenarios  ← direct convenience FK (redundant with Variants)
-  VariantTypeID FK → shared.VariantTypes
+  VariantID     FK → shared.Variants     ← group selector: all trees at one time step
+  ParentTreeID  FK → trees.Trees         ← lineage: which row this was grown from
+  ScenarioID    FK → shared.Scenarios    ← direct convenience FK (avoids join via Variants)
   Height_m, Position, SpeciesID, Age_years, ...
 ```
 
 `TreeID` is the row PK (auto-increment, changes each time a tree is inserted). `TreeEntityID` is the stable physical-tree UUID — use it to track one tree across all variants/time steps. `VariantID` is the group selector used by UE to load a complete forest state.
 
+The **VariantType** (original, simulated_growth, etc.) is a property of the *variant as a whole* and lives on `shared.Variants.VariantTypeID`, not on individual tree rows. `forest_state` surfaces it via the variant join, so UE sees it per tree without any extra query.
+
 ---
 
 ## API query patterns for UE
 
-### Step 1: List available variants for a scenario (populate time-step selector UI)
+### Step 1: List available variants for a location + scenario (populate time-step selector UI)
 
 ```
-GET /variants?scenarioid=eq.1&order=sortorder
+GET /variants?locationid=eq.5&scenarioid=eq.1&order=sortorder
 → [
-    {"variantid": 3, "scenarioid": 1, "variantname": "Ecosense_2035_Baseline", "simulationyear": 2035, "timedelta_yrs": 10, ...},
-    {"variantid": 4, "scenarioid": 1, "variantname": "Ecosense_2045_Baseline", "simulationyear": 2045, "timedelta_yrs": 20, ...}
+    {"variantid": 3, "locationid": 5, "locationname": "Ecosense_MixedPlot", "scenarioid": 1, "variantname": "Baseline_2025", "simulationyear": 2025, ...},
+    {"variantid": 4, "locationid": 5, "locationname": "Ecosense_MixedPlot", "scenarioid": 2, "variantname": "Growth_2035", "simulationyear": 2035, ...}
   ]
 ```
 
-Or list with scenario name already joined (via `public.variants` view):
+Or filter by name directly (via `public.variants` view which joins `locationname` and `scenarioname`):
 
 ```
-GET /variants?scenarioname=eq.Current_Conditions
+GET /variants?locationname=eq.Ecosense_MixedPlot&order=sortorder
 ```
 
 ### Step 2: Load all trees at one time step
@@ -102,6 +114,8 @@ Response fields:
   "dbh_cm": 34.1,
   "age_years": 95,
   "healthscore": 0.85,
+  "dbh_cm": 34.1,
+  "competition": false,
   "latitude": 48.2684,
   "longitude": 7.8779
 }
@@ -163,11 +177,11 @@ curl -X POST "http://localhost:8000/rest/v1/scenarios" \
   -H "Content-Type: application/json" \
   -d '{"scenarioname": "SILVA_2060_RCP45", "description": "SILVA growth simulation, RCP4.5, year 2060"}'
 
-# Create variant for that scenario
+# Create variant for that scenario (locationid and varianttypeid are both required)
 curl -X POST "http://localhost:8000/rest/v1/variants" \
   -H "apikey: <SERVICE_ROLE_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{"scenarioid": <new_id>, "variantname": "RCP45_2060_Run1", "simulationyear": 2060, "timedelta_yrs": 40, "sortorder": 0}'
+  -d '{"locationid": <location_id>, "scenarioid": <new_id>, "varianttypeid": 4, "variantname": "Growth_2060", "simulationyear": 2060, "timedelta_yrs": 40, "sortorder": 0}'
 ```
 
 Then insert tree rows with the new `ScenarioID` and `VariantID`:
@@ -214,4 +228,4 @@ In the HTTPS Blueprint:
 3. When user selects a time step, call `GET /forest_state?variantid=eq.<variantid>` → repopulate `DT_Trees`.
 4. PCG graph re-runs → trees respawn at new heights/positions.
 
-The `forest_state` view includes pre-flattened `latitude`/`longitude` — no PostGIS geometry parsing needed in Blueprint. See XRFF-242 for the blueprint implementation.
+The `forest_state` view includes pre-flattened `latitude`/`longitude` — no PostGIS geometry parsing needed in Blueprint. It also exposes `competition` (boolean), derived as `crownbaseheight_m / height_m > 0.6` — trees where the live crown starts in the upper 40% are considered under competition pressure. See XRFF-242 for the blueprint implementation.
