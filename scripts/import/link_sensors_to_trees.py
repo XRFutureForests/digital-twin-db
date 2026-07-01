@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
-Link sensors to trees based on label patterns
+Link sensors to trees based on label patterns.
 
-This script:
-1. Analyzes sensor labels to extract tree identifiers
-2. Matches sensors to trees using location and TreeNumber
-3. Creates SensorTreeLinks records in the database
+Matches Ecosense sensors (dendrometers, sap flow) to their respective trees.
+Sensors are matched by extracting the tree number from the Aquarius label and
+looking it up in the sensor-tree (treenumber) mapping at the same location.
 
 Sensor label pattern: {Species}_{PlotType}_{TreeNumber}_{SensorType}
-Example: "Beech_Mixed_10_Dendrometer" → plot=Mixed, tree_number=10
+Example: "Beech_Mixed_10_Dendrometer" → tree_number=10 at Ecosense_MixedPlot
+
+When a tree number is shared by multiple sensor trees at the same location the
+match is ambiguous and the sensor is skipped with a warning rather than linked
+to the wrong tree.
 """
 
 import os
@@ -95,6 +98,8 @@ def get_sensors_with_locations():
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # No createdby filter: match all Ecosense sensors regardless of import method
+    # (import_sensor_data.py, sync_aquarius_direct.py, or ecosense-ingest edge function)
     cur.execute(
         """
         SELECT
@@ -104,8 +109,7 @@ def get_sensors_with_locations():
             l.locationid
         FROM sensor.sensors s
         JOIN shared.locations l ON s.locationid = l.locationid
-        WHERE s.createdby = 'import_sensor_data_script'
-        AND l.locationname LIKE 'Ecosense_%'
+        WHERE l.locationname LIKE 'Ecosense_%'
     """
     )
 
@@ -181,11 +185,14 @@ def create_sensor_tree_links(sensors, trees):
     """Match sensors to trees and create links"""
     print("\n🔗 Creating sensor-tree links...")
 
-    # Index trees by location and tree_number for fast lookup
-    tree_index = {}
+    # Index sensor trees by (location_name, tree_number) → list of matching trees.
+    # A treenumber can appear in multiple plots at the same location (e.g. Plot 8 and
+    # Plot 12 both have a tree #16 at Ecosense_MixedPlot).  We collect ALL matches and
+    # only create a link when the match is unambiguous (exactly one candidate).
+    tree_index: dict[tuple, list] = {}
     for tree in trees:
         key = (tree["location_name"], tree["tree_number"])
-        tree_index[key] = tree
+        tree_index.setdefault(key, []).append(tree)
 
     links = []
     matched_count = 0
@@ -206,10 +213,10 @@ def create_sensor_tree_links(sensors, trees):
             )
             continue
 
-        # Look up tree by location and tree_id
-        tree = tree_index.get((sensor["location_name"], tree_num))
+        candidates = tree_index.get((sensor["location_name"], tree_num), [])
 
-        if tree:
+        if len(candidates) == 1:
+            tree = candidates[0]
             links.append(
                 {
                     "sensor_id": sensor["sensor_id"],
@@ -220,24 +227,39 @@ def create_sensor_tree_links(sensors, trees):
                 }
             )
             matched_count += 1
+        elif len(candidates) > 1:
+            tree_ids = [c["tree_id"] for c in candidates]
+            unmatched_sensors.append(
+                {
+                    "label": sensor["label"],
+                    "location": sensor["location_name"],
+                    "extracted_tree_num": tree_num,
+                    "reason": (
+                        f"Ambiguous: tree number {tree_num} matches "
+                        f"{len(candidates)} sensor trees {tree_ids} — "
+                        "cannot determine which tree the sensor is mounted on"
+                    ),
+                }
+            )
         else:
             unmatched_sensors.append(
                 {
                     "label": sensor["label"],
                     "location": sensor["location_name"],
-                    "extracted_tree_id": tree_num,
-                    "reason": f'No tree found with tree_id={tree_num} at {sensor["location_name"]}',
+                    "extracted_tree_num": tree_num,
+                    "reason": f"No sensor tree found with treenumber={tree_num} at {sensor['location_name']}",
                 }
             )
 
     print(f"✓ Matched {matched_count} sensors to trees")
     print(f"⚠️  {len(unmatched_sensors)} sensors could not be matched")
 
-    # Show sample of unmatched sensors
-    if unmatched_sensors and len(unmatched_sensors) <= 10:
+    if unmatched_sensors:
         print("\nUnmatched sensors:")
-        for item in unmatched_sensors[:10]:
+        for item in unmatched_sensors[:20]:
             print(f"  {item['label']}: {item['reason']}")
+        if len(unmatched_sensors) > 20:
+            print(f"  ... and {len(unmatched_sensors) - 20} more")
 
     return links
 
@@ -279,13 +301,12 @@ def insert_links(links):
 
 
 def verify_links():
-    """Show summary of created links"""
+    """Show summary of all sensor-tree links"""
     print("\n📊 Verifying links...")
 
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Count links by location
     cur.execute(
         """
         SELECT
@@ -294,27 +315,16 @@ def verify_links():
         FROM sensor.sensor_tree_links stl
         JOIN sensor.sensors s ON stl.sensor_id = s.sensorid
         JOIN shared.locations l ON s.locationid = l.locationid
-        WHERE stl.description = %s
         GROUP BY l.locationname
         ORDER BY link_count DESC
-    """,
-        (CREATED_BY,),
+    """
     )
 
     print("\nLinks by location:")
     for location_name, count in cur.fetchall():
         print(f"  {location_name}: {count} links")
 
-    # Count unique trees with sensors
-    cur.execute(
-        """
-        SELECT COUNT(DISTINCT tree_id)
-        FROM sensor.sensor_tree_links
-        WHERE description = %s
-    """,
-        (CREATED_BY,),
-    )
-
+    cur.execute("SELECT COUNT(DISTINCT tree_id) FROM sensor.sensor_tree_links")
     tree_count = cur.fetchone()[0]
     print(f"\n✓ {tree_count} trees linked to sensors")
 
@@ -355,18 +365,9 @@ def main():
         print("=" * 80)
         print(f"Created {inserted_count} sensor-tree links")
         print("\nQuery linked data:")
+        print("  SELECT * FROM sensor.sensor_tree_links;")
         print(
-            f"  SELECT * FROM sensor.sensor_tree_links WHERE description = '{CREATED_BY}';"
-        )
-        print(
-            """
-  SELECT s.serialnumber as SensorLabel, t.treeid, t.treenumber
-  FROM sensor.sensor_tree_links stl
-  JOIN sensor.sensors s ON stl.sensor_id = s.sensorid
-  JOIN trees.trees t ON stl.tree_id = t.treeid
-  WHERE stl.description = '"""
-            + CREATED_BY
-            + "';"
+            "  SELECT * FROM public.sensors_flat WHERE linked_tree_id IS NOT NULL;"
         )
 
         return 0

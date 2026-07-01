@@ -103,13 +103,15 @@ GRANT ALL ON public.datasourcetypes TO service_role;
 GRANT ALL ON public.forest_state    TO service_role;
 
 -- =============================================================================
--- TREES_FLAT VIEW (UE IMPORT TARGET)
+-- UE_TREES VIEW (PRIMARY UE IMPORT TARGET)
 -- =============================================================================
--- Flat alias of forest_state scoped to the fields the UE Blueprint consumes.
--- Exposes the same columns as forest_state so existing UE queries keep working,
--- but the name matches the DataTable row struct used in the import Blueprint.
+-- Flat tree catalogue for UE Blueprint import. Alias of forest_state scoped to
+-- the ST_TreeCatalogEntry struct fields.
+-- Naming convention: ue_* prefix groups all Unreal Engine query views.
+--
+-- Example: GET /ue_trees?variantid=eq.<id>
 
-CREATE OR REPLACE VIEW public.trees_flat AS
+CREATE OR REPLACE VIEW public.ue_trees AS
 SELECT
     treeid,
     treeentityid,
@@ -135,10 +137,10 @@ SELECT
     longitude
 FROM public.forest_state;
 
-COMMENT ON VIEW public.trees_flat IS
+COMMENT ON VIEW public.ue_trees IS
     'Flat tree catalogue for UE Blueprint import. Alias of forest_state scoped to '
     'the ST_TreeCatalogEntry struct fields. Filter by variantid to load one time step: '
-    'GET /trees_flat?variantid=eq.<id>';
+    'GET /ue_trees?variantid=eq.<id>';
 
-GRANT SELECT ON public.trees_flat TO anon, authenticated;
-GRANT ALL    ON public.trees_flat TO service_role;
+GRANT SELECT ON public.ue_trees TO anon, authenticated;
+GRANT ALL    ON public.ue_trees TO service_role;
