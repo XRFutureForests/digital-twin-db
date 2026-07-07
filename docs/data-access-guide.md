@@ -89,9 +89,9 @@ In Supabase Studio (http://localhost:54323):
 1. Go to **Authentication → Users**
 2. Click **Invite user** → enter the collaborator's email
 3. They receive a magic link; clicking it lets them set a password
-4. Their account is assigned the `authenticated` role automatically — full read + write on data tables
+4. Their account is assigned the `authenticated` role automatically — read everywhere, full write on metadata/lookup tables. They get **no write access to field-data tables** (Trees, Stems, PointClouds, Environments, Images, SensorReadings, PhenologyObservations, Deadwood, GroundVegetation) until an admin also assigns a role tier — see [Assigning a role tier](#assigning-a-role-tier) below.
 
-No SQL or CLI required. The account works immediately for Studio and for direct API calls.
+No SQL or CLI required for the account itself. The account works immediately for Studio and for direct API calls; only field-data writes need the extra step.
 
 ### Removing a user
 
@@ -120,15 +120,34 @@ SELECT email, created_at, last_sign_in_at FROM auth.users ORDER BY created_at;
 
 ## Permissions summary
 
+Four tiers, named after standard research-data-management vocabulary (RDA/DataCite-style):
+
 | Role | Who | What they can do |
 |------|-----|-----------------|
-| `anon` | Anyone with ANON_KEY | SELECT on all public views |
-| `authenticated` | Users with a Studio account + valid JWT | SELECT + INSERT + UPDATE + DELETE on data tables |
+| `anon` (**Consumer**) | Anyone with ANON_KEY | SELECT on all public views |
+| `authenticated`, no role claim | Any Studio account by default | SELECT everywhere; full CRUD on metadata/lookup tables (species, scenarios, locations, sensors, management/disturbance events, campaigns, processes, …); no write access to field-data tables |
+| `authenticated` + `role: contributor` (**Contributor**) | Field data collectors | Everything above, plus INSERT on field-data tables |
+| `authenticated` + `role: curator` (**Curator**) | Trusted data managers | Everything above, plus UPDATE/DELETE on field-data tables |
+| `authenticated` + `role: admin` (**Administrator**) | Lab administrators | Everything above, plus can set other users' `role` claim |
 | `service_role` | Max / import scripts | Full access, bypasses RLS; never share externally |
+
+Field-data tables are the ones where a bad edit or delete actually costs something (cited measurements, growth-sim inputs): `Trees`, `Stems`, `PointClouds`, `Environments`, `Images`, `SensorReadings`, `PhenologyObservations`, `Deadwood`, `GroundVegetation`. Everything else stays full-CRUD for any `authenticated` user regardless of role claim — see `docker/volumes/db/init/29-role-tiers.sql`.
 
 **Never share `SERVICE_ROLE_KEY` with external collaborators.** Create a Studio account for write access instead.
 
 Read-only views (`forest_state`, `silva_input`, `growth_simulations`, `simulation_runs`, morphology lookups) are SELECT-only even for authenticated users. Writes to those domains go through the underlying tables via the import scripts.
+
+### Assigning a role tier
+
+New accounts have no `role` claim and can't write to field-data tables. An admin sets it directly (run as `service_role`, e.g. in Studio → SQL Editor):
+
+```sql
+UPDATE auth.users
+SET raw_app_meta_data = raw_app_meta_data || '{"role": "curator"}'::jsonb
+WHERE email = 'someone@example.com';
+```
+
+Valid values: `admin`, `curator`, `contributor`. No claim = base `authenticated` (metadata tables only, no field-data writes).
 
 ---
 
