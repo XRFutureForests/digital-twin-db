@@ -151,12 +151,38 @@ PostgREST exposes every public schema view as a resource. The path is `/rest/v1/
 | `/rest/v1/scenarios` | `shared.Scenarios` | Shared | Yes | Yes |
 | `/rest/v1/varianttypes` | `shared.VariantTypes` | Shared | Yes | No |
 | `/rest/v1/datasourcetypes` | `shared.DataSourceTypes` | Shared | Yes | No |
+| `/rest/v1/sensor_tree_links` | `sensor.sensor_tree_links` | Sensor | Yes | Yes |
 | `/rest/v1/forest_state` | composite view | Trees (composite) | Yes | No |
 | `/rest/v1/silva_input` | composite view | Trees (external) | Yes | No |
 | `/rest/v1/growth_simulations` | `trees.GrowthSimulations` | Trees | Yes | No |
 | `/rest/v1/simulation_runs` | derived from GrowthSimulations | Trees | Yes | No |
+| `/rest/v1/ue_trees` | `forest_state` (scoped) | Unreal Engine | Yes | No |
+| `/rest/v1/ue_sensors` | composite view | Unreal Engine | Yes | No |
+| `/rest/v1/ue_sensorreadings` | composite view | Unreal Engine | Yes | No |
 
-`forest_state` is the primary read endpoint for Unreal Engine — it joins trees, species, variant type, scenario, and stems into a single flat row with pre-computed `lat` and `lon` columns. `silva_input` is the SILVA R model export view. `growth_simulations` and `simulation_runs` expose simulator output; writes go to the underlying `trees.GrowthSimulations` table via `scripts/silva/silva_writeback.py` (service_role).
+`silva_input` is the SILVA R model export view. `growth_simulations` and `simulation_runs` expose simulator output; writes go to the underlying `trees.GrowthSimulations` table via `scripts/silva/silva_writeback.py` (service_role).
+
+#### Public view categories
+
+The domain data lives in the custom schemas (`shared`, `trees`, `sensor`, …); `public` holds only views. PostgREST serves `public` as its **default profile**, so exposing views there lets clients use simple names (`/trees`) without a schema-selection header. The public views fall into three groups:
+
+1. **Pass-through views** (`24-public-api-views.sql`) — 1:1 wrappers over a single domain table (`trees`, `sensors`, `sensorreadings`, `species`, all morphology/lookup tables, …). They exist purely to expose the domain schemas over REST; writable ones carry `INSTEAD OF` triggers.
+2. **Composite / export views** — `forest_state` (trees + variant + scenario + species + stem, flattened), `silva_input` (SILVA model export), `growth_simulations` / `simulation_runs` (simulator output).
+3. **Unreal Engine views** (`ue_*`) — flat, join-free payloads shaped for UE Blueprint HTTP import. `ue_trees` is a column-scoped alias of `forest_state`; `ue_sensors` and `ue_sensorreadings` are defined in `28-sensor-views.sql`.
+
+> **Note on `forest_state` vs `ue_trees`:** `forest_state` (XRFF-240) predates the `ue_*` naming convention and is still the documented primary UE tree endpoint; `ue_trees` is the same data scoped to the `ST_TreeCatalogEntry` struct. They overlap by design — prefer `ue_*` for new UE work.
+
+#### Linking trees ↔ sensors ↔ readings in Unreal Engine
+
+The three `ue_*` views form the complete chain UE needs; join on stable keys:
+
+```
+GET /ue_trees?variantid=eq.<v>                              → tree catalogue (treeid, treeentityid)
+GET /ue_sensors?linked_tree_entity_id=eq.<treeentityid>     → all sensors on that physical tree
+GET /ue_sensorreadings?sensorid=eq.<sensorid>&order=timestamp.desc&limit=96   → that sensor's readings
+```
+
+Join sensors to trees by **`linked_tree_entity_id`** (the persistent physical-tree UUID), not `linked_tree_id` (a single variant row) — this keeps the link stable across growth variants. `ue_sensors` also carries the latest reading inline, so a per-tree sensor list needs no extra readings call. `linked_tree_*` is populated by `scripts/import/link_sensors_to_trees.py` (see [database_schema.md §3.9](database_schema.md)); meteo/soil-station sensors have `NULL` tree fields.
 
 ### 3.2 Standard CRUD Methods
 

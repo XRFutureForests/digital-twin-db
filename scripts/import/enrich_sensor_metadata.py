@@ -1,42 +1,46 @@
 #!/usr/bin/env python3
 """
-Enrich sensor metadata from an Aquarius "Insitu DataUpload" .xlsx export.
+Enrich sensor metadata from the Ecosense sensor metadata catalogue.
 
 Aquarius sensor time-series carry hardware/ownership metadata that the API sync
 does not populate: the actual instrument model (e.g. SMT100, Implexx Sap Flow
 Sensor, FloraPulse_Tensiometer) and the responsible data owner. The DB stores a
 generic "Ecosense Node" placeholder in sensor.Sensors.SensorModel instead.
 
-The upload form's SensorData / deadSensors / sapflow sheets key each series by
-`TimeSeriesUniqueID`, which equals our sensor.Sensors.ExternalID. This script
-matches on that ID and, for each match:
+The catalogue keys each series by `external_id` (Aquarius TimeSeriesUniqueID),
+which equals our sensor.Sensors.ExternalID. This script matches on that ID and,
+for each match:
 
   - sets SensorModel to the real Instrument (when present)
   - merges Instrument / DataOwner / TypeOfMeasurement / GapTolerance into
     ExternalMetadata (existing keys are preserved unless re-supplied)
 
-Idempotent. Only touches sensors whose ExternalID appears in the export.
+Idempotent. Only touches sensors whose ExternalID appears in the catalogue.
+
+By default reads the committed catalogue
+data/reference/ecosense_sensor_metadata.csv. A raw Aquarius "Insitu DataUpload"
+.xlsx export can be passed instead to refresh from source.
 
 IMPORTANT: run this AFTER an Aquarius sync (import_sensor_data.py /
 sync_aquarius_direct.py). Those scripts upsert sensors and overwrite SensorModel
 with the generic "Ecosense Node" placeholder and reset ExternalMetadata, so this
 enrichment must be re-applied each time sensors are re-synced.
 
-    python scripts/import/enrich_sensor_metadata.py [path/to/form.xlsx]
+    python scripts/import/enrich_sensor_metadata.py [path/to/catalogue.csv|form.xlsx]
 """
 
+import csv
 import json
 import os
 import sys
 from pathlib import Path
 
-import openpyxl
 import psycopg2
 from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
 REPO_ROOT = Path(__file__).parent.parent.parent
-DEFAULT_XLSX = REPO_ROOT / "tmp" / "Insitu_DataUpload_Form.xlsx"
+DEFAULT_CSV = REPO_ROOT / "data" / "reference" / "ecosense_sensor_metadata.csv"
 SHEETS = ["SensorData", "deadSensors", "sapflow"]
 
 load_dotenv(REPO_ROOT / "docker" / ".env")
@@ -62,8 +66,31 @@ def get_db_connection():
     )
 
 
-def parse_metadata(xlsx_path):
+def parse_metadata_csv(csv_path):
     """externalid -> {Instrument, DataOwner, TypeOfMeasurement, GapTolerance}."""
+    meta = {}
+    with open(csv_path, newline="") as f:
+        for r in csv.DictReader(f):
+            guid = (r.get("external_id") or "").strip()
+            if not guid:
+                continue
+            fields = {
+                "Instrument": r.get("instrument"),
+                "DataOwner": r.get("data_owner"),
+                "TypeOfMeasurement": r.get("measurement_type"),
+                "GapTolerance": r.get("gap_tolerance"),
+            }
+            meta[guid] = {
+                k: v.strip() for k, v in fields.items() if v and v.strip()
+            }
+    print(f"📄 Parsed {len(meta)} sensor metadata entries from {csv_path.name}")
+    return meta
+
+
+def parse_metadata_xlsx(xlsx_path):
+    """externalid -> {Instrument, DataOwner, TypeOfMeasurement, GapTolerance}."""
+    import openpyxl  # lazy: only needed when refreshing from a raw xlsx export
+
     wb = openpyxl.load_workbook(xlsx_path, data_only=True, read_only=True)
     meta = {}
     for sheet in SHEETS:
@@ -153,17 +180,18 @@ def verify(conn):
 
 
 def main():
-    xlsx_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
+    src = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_CSV
     print("=" * 80)
     print("SENSOR METADATA ENRICHMENT")
     print("=" * 80)
-    if not xlsx_path.exists():
-        print(f"❌ Export not found: {xlsx_path}")
+    if not src.exists():
+        print(f"❌ Metadata source not found: {src}")
         return 1
 
     conn = get_db_connection()
     try:
-        meta = parse_metadata(xlsx_path)
+        parse = parse_metadata_xlsx if src.suffix.lower() == ".xlsx" else parse_metadata_csv
+        meta = parse(src)
         updated = enrich(conn, meta)
         if updated:
             verify(conn)
