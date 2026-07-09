@@ -363,7 +363,7 @@ erDiagram
 | `ExternalID` | VARCHAR(200) | YES | UNIQUE | Aquarius TimeSeriesIdentifier |
 | `ExternalMetadata` | JSONB | YES | DEFAULT `{}` | Additional Aquarius metadata: `Label`, `Parameter`, `LocationIdentifier`, and (after enrichment) `Instrument`, `DataOwner`, `TypeOfMeasurement`, `GapTolerance` |
 
-**Metadata enrichment.** `SensorModel` defaults to a generic `Ecosense Node` from the API sync. `scripts/import/enrich_sensor_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `ExternalID` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `SensorModel`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `ExternalMetadata`.
+**Metadata enrichment.** `SensorModel` defaults to a generic `Ecosense Node` from the API sync. `scripts/import/enrich_sensor_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `ExternalID` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `SensorModel`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `ExternalMetadata`. Re-run it **after** every Aquarius sync — the sync upsert resets these fields.
 
 ---
 
