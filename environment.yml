@@ -28,6 +28,7 @@ dependencies:
   - pandoc
   # Python packages via pip
   - pip:
+      - openpyxl>=3.1.0 # Read Aquarius .xlsx metadata exports
       - pyproj>=3.4.0
       - supabase>=2.26.0
       - pygbif>=0.6.0 # GBIF API for species name validation

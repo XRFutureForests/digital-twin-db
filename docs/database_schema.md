@@ -271,6 +271,7 @@ erDiagram
 | `PositionConfidence` | NUMERIC(3,2) | YES | 0–1 | Position accuracy confidence |
 | `HeightConfidence` | NUMERIC(3,2) | YES | 0–1 | Height measurement confidence |
 | `TreeNumber` | INTEGER | YES | — | Local tree ID within location/plot |
+| `AquariusName` | VARCHAR(100) | YES | — | Aquarius sensor-name prefix (`{Species}_{PlotType}_{Seq}`, e.g. `Beech_Mixed_8`) identifying the sensor cluster on this tree; matches the prefix of `sensor.Sensors.SerialNumber`. Populated for instrumented Ecosense trees only. See §3.x linking notes. |
 | `CrownClassID` | INTEGER | YES | FK → `trees.CrownClasses` | Crown competitive/social position (dominant/co_dominant/intermediate/overtopped/open_grown) — FIA `CCLCD` / NEON `canopyPosition` analog |
 | `DamageAgentID` | INTEGER | YES | FK → `trees.DamageAgents` | Primary agent responsible for observed damage or decline — FIA `AGENTCD` analog |
 | `Defoliation_percent` | NUMERIC(5,2) | YES | 0–100 | ICP Forests-style defoliation assessment |
@@ -360,7 +361,9 @@ erDiagram
 | `Unit` | VARCHAR(50) | YES | — | Measurement unit |
 | `IsActive` | BOOLEAN | NO | TRUE | Currently collecting data |
 | `ExternalID` | VARCHAR(200) | YES | UNIQUE | Aquarius TimeSeriesIdentifier |
-| `ExternalMetadata` | JSONB | YES | DEFAULT `{}` | Additional Aquarius metadata |
+| `ExternalMetadata` | JSONB | YES | DEFAULT `{}` | Additional Aquarius metadata: `Label`, `Parameter`, `LocationIdentifier`, and (after enrichment) `Instrument`, `DataOwner`, `TypeOfMeasurement`, `GapTolerance` |
+
+**Metadata enrichment.** `SensorModel` defaults to a generic `Ecosense Node` from the API sync. `scripts/import/enrich_sensor_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `ExternalID` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `SensorModel`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `ExternalMetadata`.
 
 ---
 
@@ -382,6 +385,26 @@ erDiagram
 **Key indexes:** `(SensorID, Timestamp DESC)` composite (covers all time-series queries), `(Quality)`, `(ScenarioID)`
 
 **Helper functions:** `sensor.get_latest_reading(sensor_id)`, `sensor.aggregate_readings(sensor_id, start_time, end_time, interval_minutes)`, `sensor.check_sensor_health(sensor_id, hours_back)`
+
+---
+
+### 3.9 `sensor.sensor_tree_links` — sensor ↔ tree
+
+**Description:** Junction table linking each Ecosense sensor to the inventory tree its monitoring cluster is installed on. Exposed to the API via `public.sensor_tree_links` and consumed by `public.ue_sensors` (`linked_tree_*` fields).
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `SensorTreeLinkID` | SERIAL | NO | PRIMARY KEY | — |
+| `sensor_id` | INTEGER | NO | FK → `sensor.Sensors` ON DELETE CASCADE, UNIQUE with tree_id | — |
+| `tree_id` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE, UNIQUE with sensor_id | — |
+| `description` | TEXT | YES | — | Link provenance |
+
+**How links are created.** Aquarius names each sensor time-series with a per-species, per-plot-type sequence number (e.g. `Beech_Mixed_8`) that is *independent* of our inventory tree numbering (`PlotID` × `TreeNumber`), and Aquarius does not carry the inventory ID. The field-surveyed map `data/reference/ecosense_sensor_tree_map.csv` bridges the two. `scripts/import/link_sensors_to_trees.py`:
+
+1. Backfills `trees.Trees.AquariusName` (resolved by `PlotID` + `TreeNumber`).
+2. Links every sensor whose `SerialNumber` prefix equals a tree's `AquariusName` — the whole monitoring cluster (dendrometer, sap flow, stem water potential, and the surrounding soil moisture / soil temperature probes).
+
+Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING`). The older `sensor.link_sensors_to_trees_by_pattern()` function is deprecated — it guessed the tree from the label number, which is ambiguous across plots.
 
 ---
 
@@ -596,6 +619,7 @@ Plain SQL migration files applied in numeric order by the PostgreSQL Docker init
 | `24-public-api-views.sql` | Public schema views exposing all domain tables to PostgREST |
 | `30-load-lookup-tables.sql` | Seeds lookup tables from `data/lookups/*.csv` |
 | `31-refresh-lookup-functions.sql` | Functions to refresh lookup data |
+| `32-ecosense-sensor-tree-map.sql` | Adds `AquariusName` to trees.Trees for joining Ecosense sensors to inventory trees; deprecates the pattern-match linker function |
 
 ### 6.3 Migration Strategy
 
