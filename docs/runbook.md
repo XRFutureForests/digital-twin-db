@@ -173,25 +173,60 @@ python scripts/utils/generate_jwt.py
 
 ### 3.4 Data Import
 
-**Import tree measurements:**
+Individual steps (run from the repo root, `conda activate digital-twin`):
+
+**Import tree measurements** (one CSV per site):
 ```bash
-python scripts/import/import_trees.py
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
+python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
 ```
 
-**Import sensor data:**
+**Sync Aquarius sensors + readings (requires university VPN):**
 ```bash
-python scripts/import/import_sensor_data.py
+python scripts/import/sync_aquarius_direct.py 45   # arg = days of history to fetch
 ```
 
-**Link sensors to trees:**
+**Link sensors to trees, then enrich sensor metadata (order matters):**
 ```bash
+python scripts/import/link_sensors_to_trees.py      # backfills trees.AquariusName + sensor_tree_links
+python scripts/import/enrich_sensor_metadata.py     # real instrument/owner — run AFTER every sync
+```
+
+### 3.4.1 Full rebuild from scratch (reproducible)
+
+Wipes the DB and rebuilds everything from committed sources. The DB image
+**bakes** `docker/volumes/db/init/`, so the image must be rebuilt to pick up any
+schema change — a bare `up -d` reuses the old baked SQL.
+
+```bash
+# 0. (optional but recommended) back up first
+docker exec dftdb-db pg_dump -U postgres -d postgres -Fc -f /tmp/backup.dump
+docker cp dftdb-db:/tmp/backup.dump ./backup.dump
+
+# 1. Wipe volumes, rebuild the baked image, boot (init scripts 10→34 run on first boot)
+cd docker
+docker compose down -v --remove-orphans
+docker compose build db
+docker compose up -d
+cd ..
+
+# 2. Trees (measured inventory)
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
+python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
+
+# 3. Growth variants (simulated_growth trees, cloned from the baseline)
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_growth_variants.sql
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/mathisle_growth_variants.sql
+
+# 4. Sensors + readings (VPN), then link + enrich
+python scripts/import/sync_aquarius_direct.py 45
 python scripts/import/link_sensors_to_trees.py
+python scripts/import/enrich_sensor_metadata.py
 ```
 
-**Sync Aquarius sensor data (requires VPN):**
-```bash
-python scripts/import/sync_aquarius.py
-```
+> Schema-owning DDL must run as `supabase_admin` (the `postgres` role is not the
+> table owner); the seed `psql` commands above use it. The Python importers
+> connect as `postgres` for DML, which is fine.
 
 ---
 
