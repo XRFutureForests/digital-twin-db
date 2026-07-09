@@ -17,6 +17,11 @@ matches on that ID and, for each match:
 
 Idempotent. Only touches sensors whose ExternalID appears in the export.
 
+IMPORTANT: run this AFTER an Aquarius sync (import_sensor_data.py /
+sync_aquarius_direct.py). Those scripts upsert sensors and overwrite SensorModel
+with the generic "Ecosense Node" placeholder and reset ExternalMetadata, so this
+enrichment must be re-applied each time sensors are re-synced.
+
     python scripts/import/enrich_sensor_metadata.py [path/to/form.xlsx]
 """
 
