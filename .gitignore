@@ -30,3 +30,6 @@ htmlcov/
 
 # Test results (manual test outputs)
 tests/manual/results/
+
+# Scratch / local data exports (raw Aquarius xlsx, ad-hoc CSVs, etc.)
+tmp/
