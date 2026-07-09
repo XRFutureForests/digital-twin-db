@@ -97,11 +97,12 @@ GET /variants?locationname=eq.Ecosense_MixedPlot&order=sortorder
 GET /ue_trees?variantid=eq.3
 ```
 
-Response fields:
+Response fields (full `ue_trees` struct):
 ```json
 {
   "treeid": 1042,
   "treeentityid": "uuid...",
+  "locationid": 5,
   "variantid": 3,
   "variantname": "Ecosense_2035_Baseline",
   "simulationyear": 2035,
@@ -111,15 +112,19 @@ Response fields:
   "scientificname": "Fagus sylvatica",
   "height_m": 22.5,
   "crownwidth_m": 8.2,
+  "crownbaseheight_m": 9.1,
   "dbh_cm": 34.1,
   "age_years": 95,
   "healthscore": 0.85,
-  "dbh_cm": 34.1,
   "competition": false,
+  "aquarius_name": "Beech_Mixed_8",
+  "has_sensors": true,
   "latitude": 48.2684,
   "longitude": 7.8779
 }
 ```
+
+`aquarius_name` / `has_sensors` are non-null/true only for instrumented trees — see [api_spec.md](api_spec.md) for the tree ↔ sensor ↔ reading query chain.
 
 ### Filter by location + scenario name (when VariantID is unknown)
 
