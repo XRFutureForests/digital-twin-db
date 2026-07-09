@@ -9,7 +9,7 @@
 -- 1. Backfills ScenarioID = Current_Conditions on the real Mathisle
 --    baseline import (import_trees.py does not set ScenarioID — see
 --    scripts/import/import_trees.py — so without this, the baseline is
---    invisible to `forest_state?scenarioname=eq.Current_Conditions`).
+--    invisible to `ue_trees?scenarioname=eq.Current_Conditions`).
 -- 2. Creates two chained growth variants from that baseline:
 --      Mathisle_Growth_2035  (parent: Current_Conditions, +10y)
 --      Mathisle_Growth_2045  (parent: Mathisle_Growth_2035, +10y)

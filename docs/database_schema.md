@@ -588,7 +588,7 @@ All geometry columns use GIST indexes:
 
 ### 5.3 Lineage Indexes
 
-`ParentTreeID`, `ParentPointCloudID`, and `ParentEnvironmentID` are indexed on their respective tables to support recursive lineage traversal. `trees.Trees.VariantID` is indexed to support fast forest-state queries (`GET /forest_state?variantid=eq.X`).
+`ParentTreeID`, `ParentPointCloudID`, and `ParentEnvironmentID` are indexed on their respective tables to support recursive lineage traversal. `trees.Trees.VariantID` is indexed to support fast tree-catalogue queries (`GET /ue_trees?variantid=eq.X`).
 
 ---
 
@@ -620,6 +620,7 @@ Plain SQL migration files applied in numeric order by the PostgreSQL Docker init
 | `30-load-lookup-tables.sql` | Seeds lookup tables from `data/lookups/*.csv` |
 | `31-refresh-lookup-functions.sql` | Functions to refresh lookup data |
 | `32-ecosense-sensor-tree-map.sql` | Adds `AquariusName` to trees.Trees for joining Ecosense sensors to inventory trees; deprecates the pattern-match linker function |
+| `33-consolidate-ue-trees.sql` | Consolidates `forest_state` + `ue_trees` into a single self-contained `public.ue_trees`; drops `forest_state` |
 
 ### 6.3 Migration Strategy
 

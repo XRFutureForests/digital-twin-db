@@ -46,7 +46,7 @@ Full model explanation and API query patterns: [variant-scenario-model.md](varia
 
 ### Connect Unreal Engine
 
-Set the API Base URL to `http://<HOST>:8000/rest/v1` and the ANON_KEY from `docker/.env`. The primary endpoint for tree placement is `/rest/v1/forest_state` — a flat, pre-joined view that includes lat/lon, species name, height, DBH, and scenario info in a single query.
+Set the API Base URL to `http://<HOST>:8000/rest/v1` and the ANON_KEY from `docker/.env`. The primary endpoint for tree placement is `/rest/v1/ue_trees` — a flat, pre-joined view that includes lat/lon, species name, height, DBH, and scenario info in a single query.
 
 Step-by-step Blueprint setup, flat SQL view contracts, and PCG integration live in the XR Future Forests Lab knowledge hub → `05-PRESENTATION-TIER/data-fetcher-guide` (Unreal ↔ Digital Twin DB Integration Guide).
 

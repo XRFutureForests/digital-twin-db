@@ -42,9 +42,9 @@ Add `--dry-run` to validate without writing to the database.
 REST API (PostgREST via Kong on port 8000):
 
 ```
-GET /forest_state?scenarioname=eq.Current_Conditions&locationid=eq.3
-GET /forest_state?scenarioname=eq.TestPlot_Growth_2035&locationid=eq.3
-GET /forest_state?scenarioname=eq.TestPlot_Management_2030&locationid=eq.3
+GET /ue_trees?scenarioname=eq.Current_Conditions&locationid=eq.3
+GET /ue_trees?scenarioname=eq.TestPlot_Growth_2035&locationid=eq.3
+GET /ue_trees?scenarioname=eq.TestPlot_Management_2030&locationid=eq.3
 ```
 
 Direct SQL:
