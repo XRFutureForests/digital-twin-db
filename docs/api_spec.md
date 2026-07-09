@@ -152,11 +152,10 @@ PostgREST exposes every public schema view as a resource. The path is `/rest/v1/
 | `/rest/v1/varianttypes` | `shared.VariantTypes` | Shared | Yes | No |
 | `/rest/v1/datasourcetypes` | `shared.DataSourceTypes` | Shared | Yes | No |
 | `/rest/v1/sensor_tree_links` | `sensor.sensor_tree_links` | Sensor | Yes | Yes |
-| `/rest/v1/forest_state` | composite view | Trees (composite) | Yes | No |
 | `/rest/v1/silva_input` | composite view | Trees (external) | Yes | No |
 | `/rest/v1/growth_simulations` | `trees.GrowthSimulations` | Trees | Yes | No |
 | `/rest/v1/simulation_runs` | derived from GrowthSimulations | Trees | Yes | No |
-| `/rest/v1/ue_trees` | `forest_state` (scoped) | Unreal Engine | Yes | No |
+| `/rest/v1/ue_trees` | composite view (trees) | Unreal Engine | Yes | No |
 | `/rest/v1/ue_sensors` | composite view | Unreal Engine | Yes | No |
 | `/rest/v1/ue_sensorreadings` | composite view | Unreal Engine | Yes | No |
 
@@ -167,10 +166,10 @@ PostgREST exposes every public schema view as a resource. The path is `/rest/v1/
 The domain data lives in the custom schemas (`shared`, `trees`, `sensor`, …); `public` holds only views. PostgREST serves `public` as its **default profile**, so exposing views there lets clients use simple names (`/trees`) without a schema-selection header. The public views fall into three groups:
 
 1. **Pass-through views** (`24-public-api-views.sql`) — 1:1 wrappers over a single domain table (`trees`, `sensors`, `sensorreadings`, `species`, all morphology/lookup tables, …). They exist purely to expose the domain schemas over REST; writable ones carry `INSTEAD OF` triggers.
-2. **Composite / export views** — `forest_state` (trees + variant + scenario + species + stem, flattened), `silva_input` (SILVA model export), `growth_simulations` / `simulation_runs` (simulator output).
-3. **Unreal Engine views** (`ue_*`) — flat, join-free payloads shaped for UE Blueprint HTTP import. `ue_trees` is a column-scoped alias of `forest_state`; `ue_sensors` and `ue_sensorreadings` are defined in `28-sensor-views.sql`.
+2. **Composite / export views** — `silva_input` (SILVA model export), `growth_simulations` / `simulation_runs` (simulator output).
+3. **Unreal Engine views** (`ue_*`) — flat, join-free payloads shaped for UE Blueprint HTTP import. `ue_trees` (trees + variant + scenario + species + main-stem DBH, flattened) is defined in `25-forest-state-views.sql`; `ue_sensors` and `ue_sensorreadings` in `28-sensor-views.sql`.
 
-> **Note on `forest_state` vs `ue_trees`:** `forest_state` (XRFF-240) predates the `ue_*` naming convention and is still the documented primary UE tree endpoint; `ue_trees` is the same data scoped to the `ST_TreeCatalogEntry` struct. They overlap by design — prefer `ue_*` for new UE work.
+> **`ue_trees`** is the single flat tree endpoint. It replaced the former `forest_state` view (XRFF-240), which was consolidated into `ue_trees` — see `33-consolidate-ue-trees.sql`. Filter by `variantid` to load one time step: `GET /ue_trees?variantid=eq.<id>`.
 
 #### Linking trees ↔ sensors ↔ readings in Unreal Engine
 

@@ -15,7 +15,7 @@ curl "http://<SERVER_OR_LOCALHOST>:8000/rest/v1/species" \
   -H "apikey: <ANON_KEY>"
 ```
 
-Read access covers every public view: `species`, `locations`, `trees`, `forest_state`, `scenarios`, `varianttypes`, `sensors`, `sensorreadings`, `growth_simulations`, `silva_input`, and all morphology lookups.
+Read access covers every public view: `species`, `locations`, `trees`, `ue_trees`, `scenarios`, `varianttypes`, `sensors`, `sensorreadings`, `growth_simulations`, `silva_input`, and all morphology lookups.
 
 ---
 
@@ -135,7 +135,7 @@ Field-data tables are the ones where a bad edit or delete actually costs somethi
 
 **Never share `SERVICE_ROLE_KEY` with external collaborators.** Create a Studio account for write access instead.
 
-Read-only views (`forest_state`, `silva_input`, `growth_simulations`, `simulation_runs`, morphology lookups) are SELECT-only even for authenticated users. Writes to those domains go through the underlying tables via the import scripts.
+Read-only views (`ue_trees`, `silva_input`, `growth_simulations`, `simulation_runs`, morphology lookups) are SELECT-only even for authenticated users. Writes to those domains go through the underlying tables via the import scripts.
 
 ### Assigning a role tier
 

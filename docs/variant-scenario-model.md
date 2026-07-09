@@ -69,7 +69,7 @@ trees.Trees                   ← one row per tree per time step
 
 `TreeID` is the row PK (auto-increment, changes each time a tree is inserted). `TreeEntityID` is the stable physical-tree UUID — use it to track one tree across all variants/time steps. `VariantID` is the group selector used by UE to load a complete forest state.
 
-The **VariantType** (original, simulated_growth, etc.) is a property of the *variant as a whole* and lives on `shared.Variants.VariantTypeID`, not on individual tree rows. `forest_state` surfaces it via the variant join, so UE sees it per tree without any extra query.
+The **VariantType** (original, simulated_growth, etc.) is a property of the *variant as a whole* and lives on `shared.Variants.VariantTypeID`, not on individual tree rows. `ue_trees` surfaces it via the variant join, so UE sees it per tree without any extra query.
 
 ---
 
@@ -94,7 +94,7 @@ GET /variants?locationname=eq.Ecosense_MixedPlot&order=sortorder
 ### Step 2: Load all trees at one time step
 
 ```
-GET /forest_state?variantid=eq.3
+GET /ue_trees?variantid=eq.3
 ```
 
 Response fields:
@@ -124,13 +124,13 @@ Response fields:
 ### Filter by location + scenario name (when VariantID is unknown)
 
 ```
-GET /forest_state?locationid=eq.5&scenarioname=eq.Current_Conditions
+GET /ue_trees?locationid=eq.5&scenarioname=eq.Current_Conditions
 ```
 
 ### Filter by scenario only (returns all time steps for that scenario)
 
 ```
-GET /forest_state?scenarioname=eq.Ecosense_Growth_2035
+GET /ue_trees?scenarioname=eq.Ecosense_Growth_2035
 ```
 
 ### Load tree stems (DBH) alongside
@@ -225,7 +225,7 @@ instead (`docs/silva-coupling.md`, `docs/growth-simulation-schema.md`).
 In the HTTPS Blueprint:
 1. On level load, call `GET /scenarios` → populate a DataTable `DT_Scenarios`.
 2. When user selects a scenario, call `GET /variants?scenarioid=eq.<id>&order=sortorder` → populate a `DT_Variants` time-step selector.
-3. When user selects a time step, call `GET /forest_state?variantid=eq.<variantid>` → repopulate `DT_Trees`.
+3. When user selects a time step, call `GET /ue_trees?variantid=eq.<variantid>` → repopulate `DT_Trees`.
 4. PCG graph re-runs → trees respawn at new heights/positions.
 
-The `forest_state` view includes pre-flattened `latitude`/`longitude` — no PostGIS geometry parsing needed in Blueprint. It also exposes `competition` (boolean), derived as `crownbaseheight_m / height_m > 0.6` — trees where the live crown starts in the upper 40% are considered under competition pressure. See XRFF-242 for the blueprint implementation.
+The `ue_trees` view includes pre-flattened `latitude`/`longitude` — no PostGIS geometry parsing needed in Blueprint. It also exposes `competition` (boolean), derived as `crownbaseheight_m / height_m > 0.6` — trees where the live crown starts in the upper 40% are considered under competition pressure. See XRFF-242 for the blueprint implementation.

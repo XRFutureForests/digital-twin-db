@@ -1,5 +1,12 @@
--- XR Future Forests Lab - Forest State Views (XRFF-240)
--- Exposes scenarios, variant types, and a flat forest_state view for UE HTTPS Blueprint queries.
+-- XR Future Forests Lab - Tree Catalogue / Forest State View (XRFF-240)
+-- Exposes scenarios, variant types, and the flat ue_trees view for UE HTTPS
+-- Blueprint queries.
+--
+-- History: this file originally created public.forest_state, with public.ue_trees
+-- as a column-scoped alias of it. The two were consolidated into a single
+-- self-contained public.ue_trees (forest_state removed) — see 33-consolidate-
+-- ue-trees.sql for the in-place migration applied to existing databases.
+--
 -- Dependencies: 11-shared-schema.sql, 13-trees-schema.sql, 24-public-api-views.sql
 
 -- =============================================================================
@@ -18,20 +25,23 @@ SELECT * FROM trees.DataSourceTypes;
 COMMENT ON VIEW public.datasourcetypes IS 'Data source type classifications (field, lidar, photogrammetry, estimated, simulated)';
 
 -- =============================================================================
--- FOREST STATE VIEW (PRIMARY UE QUERY TARGET)
+-- UE_TREES VIEW (PRIMARY UE TREE ENDPOINT)
 -- =============================================================================
--- Joins trees + scenario + species into a single flat view.
--- UE can filter by scenario name directly: ?scenarioname=eq.Current_Conditions
--- This avoids a two-step query (lookup ScenarioID first, then query trees).
+-- Flat view of all tree records with variant, scenario, species, main-stem DBH,
+-- and position joined in — one row per tree, no PostGIS parsing needed in UE
+-- Blueprint (pre-flattened latitude/longitude). Filter by variantid to load all
+-- trees at one time step: GET /ue_trees?variantid=eq.<id>
+--
+-- Naming convention: ue_* prefix groups all Unreal Engine query views.
 
-CREATE OR REPLACE VIEW public.forest_state AS
+CREATE OR REPLACE VIEW public.ue_trees AS
 SELECT
     t.treeid,
     t.treeentityid,
     t.parenttreeid,
     t.locationid,
     t.plotid,
-    -- Variant info (use VariantID to load all trees at one time step)
+    -- Variant info (use variantid to load all trees at one time step)
     t.variantid,
     v.variantname,
     v.simulationyear,
@@ -51,14 +61,16 @@ SELECT
     t.height_m,
     t.crownwidth_m,
     t.crownbaseheight_m,
+    st.dbh_cm,          -- main stem (StemNumber=1), flattened
     t.age_years,
     t.healthscore,
     t.measurementdate,
     dst.datasourcetypename AS datasourcetype,
-    -- Main stem diameter (StemNumber=1) — flattened so UE gets height+DBH in one query
-    st.dbh_cm,
-    -- Competition proxy: crown starts above 60% of tree height → high competition pressure
+    -- Competition proxy: crown starts above 60% of tree height → high pressure
     COALESCE((t.crownbaseheight_m / NULLIF(t.height_m, 0)) > 0.6, false) AS competition,
+    -- Aquarius sensor-cluster anchor (NULL unless this tree is instrumented);
+    -- lets UE flag instrumented trees and cross-reference ue_sensors.
+    t.aquariusname      AS aquarius_name,
     -- Flat lat/lon for UE JSON parsing (no PostGIS parsing needed in Blueprint)
     ST_Y(t.position)    AS latitude,
     ST_X(t.position)    AS longitude,
@@ -72,11 +84,12 @@ LEFT JOIN shared.species      sp  ON t.speciesid       = sp.speciesid
 LEFT JOIN trees.stems         st  ON st.treeid = t.treeid AND st.stemnumber = 1
 LEFT JOIN trees.datasourcetypes dst ON t.datasourcetypeid = dst.datasourcetypeid;
 
-COMMENT ON VIEW public.forest_state IS
-    'Flat view of all tree records with variant, scenario, species, and position. '
-    'Primary UE query target: filter by variantid to load all trees at one time step. '
-    'Variant type (original/simulated_growth/etc.) is sourced from shared.Variants, not per-tree rows. '
-    'Example: GET /forest_state?variantid=eq.3';
+COMMENT ON VIEW public.ue_trees IS
+    'Flat tree catalogue for UE Blueprint import. One row per tree with variant, '
+    'scenario, species, main-stem DBH, pre-flattened latitude/longitude, and the '
+    'Aquarius sensor anchor. Filter by variantid to load one time step: '
+    'GET /ue_trees?variantid=eq.<id>. For a tree''s sensors: '
+    'GET /ue_sensors?linked_tree_entity_id=eq.<treeentityid>.';
 
 -- =============================================================================
 -- PERFORMANCE INDEXES
@@ -96,51 +109,8 @@ CREATE INDEX IF NOT EXISTS idx_trees_location_scenario
 
 GRANT SELECT ON public.varianttypes    TO anon, authenticated;
 GRANT SELECT ON public.datasourcetypes TO anon, authenticated;
-GRANT SELECT ON public.forest_state    TO anon, authenticated;
+GRANT SELECT ON public.ue_trees        TO anon, authenticated;
 
 GRANT ALL ON public.varianttypes    TO service_role;
 GRANT ALL ON public.datasourcetypes TO service_role;
-GRANT ALL ON public.forest_state    TO service_role;
-
--- =============================================================================
--- UE_TREES VIEW (PRIMARY UE IMPORT TARGET)
--- =============================================================================
--- Flat tree catalogue for UE Blueprint import. Alias of forest_state scoped to
--- the ST_TreeCatalogEntry struct fields.
--- Naming convention: ue_* prefix groups all Unreal Engine query views.
---
--- Example: GET /ue_trees?variantid=eq.<id>
-
-CREATE OR REPLACE VIEW public.ue_trees AS
-SELECT
-    treeid,
-    treeentityid,
-    locationid,
-    variantid,
-    variantname,
-    simulationyear,
-    scenarioid,
-    scenarioname,
-    varianttypeid,
-    varianttypename,
-    speciesid,
-    speciesname,
-    scientificname,
-    height_m,
-    crownwidth_m,
-    crownbaseheight_m,
-    dbh_cm,
-    age_years,
-    healthscore,
-    competition,
-    latitude,
-    longitude
-FROM public.forest_state;
-
-COMMENT ON VIEW public.ue_trees IS
-    'Flat tree catalogue for UE Blueprint import. Alias of forest_state scoped to '
-    'the ST_TreeCatalogEntry struct fields. Filter by variantid to load one time step: '
-    'GET /ue_trees?variantid=eq.<id>';
-
-GRANT SELECT ON public.ue_trees TO anon, authenticated;
-GRANT ALL    ON public.ue_trees TO service_role;
+GRANT ALL ON public.ue_trees        TO service_role;
