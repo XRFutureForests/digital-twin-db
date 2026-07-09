@@ -26,20 +26,31 @@
 -- HELPER FUNCTIONS
 -- =============================================================================
 
+-- NOTE: plpgsql (not sql) so the body is NOT validated at creation time.
+-- auth.jwt() is provided by GoTrue and does not exist yet during first-time DB
+-- init (it is created when the auth service starts). A LANGUAGE sql function
+-- would fail to create here; plpgsql defers auth.jwt() resolution to runtime,
+-- when the function is actually called by an RLS policy.
 CREATE OR REPLACE FUNCTION shared.is_admin()
 RETURNS BOOLEAN AS $$
-    SELECT COALESCE((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false);
-$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '';
+BEGIN
+    RETURN COALESCE((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false);
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
 
 CREATE OR REPLACE FUNCTION shared.is_curator()
 RETURNS BOOLEAN AS $$
-    SELECT COALESCE((auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'curator'), false);
-$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '';
+BEGIN
+    RETURN COALESCE((auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'curator'), false);
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
 
 CREATE OR REPLACE FUNCTION shared.is_contributor()
 RETURNS BOOLEAN AS $$
-    SELECT COALESCE((auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'curator', 'contributor'), false);
-$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '';
+BEGIN
+    RETURN COALESCE((auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'curator', 'contributor'), false);
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '';
 
 COMMENT ON FUNCTION shared.is_admin IS 'RDA tier: Administrator - full user/role management, implies Curator rights';
 COMMENT ON FUNCTION shared.is_curator IS 'RDA tier: Curator - can alter/delete field-data records';

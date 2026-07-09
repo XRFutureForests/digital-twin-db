@@ -68,9 +68,8 @@ SELECT
     dst.datasourcetypename AS datasourcetype,
     -- Competition proxy: crown starts above 60% of tree height → high pressure
     COALESCE((t.crownbaseheight_m / NULLIF(t.height_m, 0)) > 0.6, false) AS competition,
-    -- Aquarius sensor-cluster anchor (NULL unless this tree is instrumented);
-    -- lets UE flag instrumented trees and cross-reference ue_sensors.
-    t.aquariusname      AS aquarius_name,
+    -- NOTE: trees.AquariusName (added by migration 32) and has_sensors are added
+    -- to ue_trees later, by 33/34 — do not reference them here, 25 runs first.
     -- Flat lat/lon for UE JSON parsing (no PostGIS parsing needed in Blueprint)
     ST_Y(t.position)    AS latitude,
     ST_X(t.position)    AS longitude,
