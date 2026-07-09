@@ -1,19 +1,29 @@
 #!/usr/bin/env python3
 """
-Link sensors to trees based on label patterns.
+Link Ecosense sensors to their inventory trees via the Aquarius name map.
 
-Matches Ecosense sensors (dendrometers, sap flow) to their respective trees.
-Sensors are matched by extracting the tree number from the Aquarius label and
-looking it up in the sensor-tree (treenumber) mapping at the same location.
+Aquarius names each sensor time-series with a per-species, per-plot-type
+sequence number (e.g. "Beech_Mixed_8", "DouglasFir_Pure_10"). That number is
+independent of our inventory tree numbering (plot x TreeNumber, e.g. tree 8_16)
+and Aquarius does not carry the inventory ID, so the two systems cannot be
+joined from Aquarius data alone.
 
-Sensor label pattern: {Species}_{PlotType}_{TreeNumber}_{SensorType}
-Example: "Beech_Mixed_10_Dendrometer" → tree_number=10 at Ecosense_MixedPlot
+data/reference/ecosense_sensor_tree_map.csv is the field-surveyed decoder ring
+mapping each Aquarius name to a tree's full_id (plot_id x tree_id). This script:
 
-When a tree number is shared by multiple sensor trees at the same location the
-match is ambiguous and the sensor is skipped with a warning rather than linked
-to the wrong tree.
+  1. Backfills trees.Trees.AquariusName for the mapped trees (resolved by
+     plot_id + tree_number at the Ecosense location).
+  2. Links every sensor whose serialnumber prefix equals a tree's AquariusName
+     to that tree in sensor.sensor_tree_links — the whole monitoring cluster
+     (dendrometer, sap flow, stem water potential, and the surrounding soil
+     moisture / soil temperature probes share the same Aquarius prefix).
+
+Idempotent: re-running only adds missing links and refreshes AquariusName.
+
+    python scripts/import/link_sensors_to_trees.py
 """
 
+import csv
 import os
 import re
 import sys
@@ -23,9 +33,11 @@ import psycopg2
 from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
+REPO_ROOT = Path(__file__).parent.parent.parent
+REFERENCE_CSV = REPO_ROOT / "data" / "reference" / "ecosense_sensor_tree_map.csv"
+
 # Load environment
-env_path = Path(__file__).parent.parent.parent / "docker" / ".env"
-load_dotenv(env_path)
+load_dotenv(REPO_ROOT / "docker" / ".env")
 
 # Database configuration
 POSTGRES_HOST = "localhost"
@@ -42,12 +54,11 @@ else:
 
 CREATED_BY = "link_sensors_trees_script"
 
-# Location name to plot type mapping
-LOCATION_PLOT_MAP = {
-    "Ecosense_MixedPlot": "Mixed",
-    "Ecosense_BeechPlot": "Beech",
-    "Ecosense_MeteoStation": "Meteo",
-}
+# Aquarius serialnumber prefix: {Species}_{PlotType}_{Seq}, e.g. Beech_Mixed_8.
+# The remainder of the serialnumber is the sensor role (e.g. _Dendrometer,
+# _Total_SapFlow, _stem_N). Requires alphabetic species + plot type so that
+# non-matching labels like "Beech_18_Dendrometer" are ignored.
+PREFIX_RE = re.compile(r"^([A-Za-z]+_[A-Za-z]+_\d+)")
 
 
 def get_db_connection():
@@ -61,323 +72,230 @@ def get_db_connection():
     )
 
 
-def extract_tree_identifier(label, location_name):
+def load_reference_map():
+    """Load the Aquarius-name -> tree mapping from the reference CSV."""
+    if not REFERENCE_CSV.exists():
+        raise FileNotFoundError(f"Reference map not found: {REFERENCE_CSV}")
+
+    rows = []
+    with open(REFERENCE_CSV, newline="") as f:
+        for r in csv.DictReader(f):
+            rows.append(
+                {
+                    "aquarius_name": r["aquarius_name"].strip(),
+                    "full_id": r["full_id"].strip(),
+                    "plot_id": int(r["plot_id"]),
+                    "tree_number": int(r["tree_id"]),
+                }
+            )
+    print(f"📄 Loaded {len(rows)} Aquarius→tree mappings from reference CSV")
+    return rows
+
+
+def backfill_aquarius_names(conn, mappings):
     """
-    Extract tree identifier from sensor label
-
-    Pattern: {Species}_{PlotType}_{TreeNumber}_{SensorType}
-    Example: "Beech_Mixed_10_Dendrometer" → ("Mixed", "10")
+    Set trees.Trees.AquariusName for each mapped tree, resolved by
+    (plot_id, tree_number) at an Ecosense location. Returns
+    {aquarius_name: (tree_id, full_id)} for the trees that were resolved.
     """
-    # Get expected plot type from location
-    expected_plot = LOCATION_PLOT_MAP.get(location_name)
-
-    # Pattern to extract tree number after plot type
-    # Look for: {PlotType}_{Number}
-    if expected_plot:
-        pattern = rf"{expected_plot}_(\d+)"
-        match = re.search(pattern, label)
-        if match:
-            tree_num = match.group(1)
-            return expected_plot, tree_num
-
-    # Fallback: try to find any pattern with plot type and number
-    for plot_type in ["Mixed", "Beech", "Meteo"]:
-        pattern = rf"{plot_type}_(\d+)"
-        match = re.search(pattern, label)
-        if match:
-            tree_num = match.group(1)
-            return plot_type, tree_num
-
-    return None, None
-
-
-def get_sensors_with_locations():
-    """Fetch sensors with their location information"""
-    print("\n📡 Fetching sensors with locations...")
-
-    conn = get_db_connection()
+    print("\n🌲 Backfilling trees.AquariusName...")
     cur = conn.cursor()
+    resolved = {}
+    unresolved = []
+    ambiguous = []
 
-    # No createdby filter: match all Ecosense sensors regardless of import method
-    # (import_sensor_data.py, sync_aquarius_direct.py, or ecosense-ingest edge function)
+    for m in mappings:
+        cur.execute(
+            """
+            SELECT t.treeid
+            FROM trees.trees t
+            JOIN shared.locations l ON t.locationid = l.locationid
+            WHERE l.locationname LIKE 'Ecosense_%%'
+              AND t.plotid = %s
+              AND t.treenumber = %s
+            """,
+            (m["plot_id"], m["tree_number"]),
+        )
+        tree_ids = [row[0] for row in cur.fetchall()]
+
+        if len(tree_ids) == 1:
+            tree_id = tree_ids[0]
+            cur.execute(
+                "UPDATE trees.trees SET aquariusname = %s WHERE treeid = %s",
+                (m["aquarius_name"], tree_id),
+            )
+            resolved[m["aquarius_name"]] = (tree_id, m["full_id"])
+        elif len(tree_ids) > 1:
+            ambiguous.append((m["full_id"], m["aquarius_name"], tree_ids))
+        else:
+            unresolved.append((m["full_id"], m["aquarius_name"]))
+
+    conn.commit()
+    print(f"✓ Set AquariusName on {len(resolved)} trees")
+    if ambiguous:
+        print(f"⚠️  {len(ambiguous)} mappings matched multiple trees (skipped):")
+        for full_id, aq, ids in ambiguous:
+            print(f"     {full_id} ({aq}) → treeids {ids}")
+    if unresolved:
+        print(f"⚠️  {len(unresolved)} mappings had no matching tree (not imported yet):")
+        for full_id, aq in unresolved:
+            print(f"     {full_id} ({aq})")
+
+    return resolved
+
+
+def get_ecosense_sensors(conn):
+    """Fetch all Ecosense sensors with their serialnumber."""
+    cur = conn.cursor()
     cur.execute(
         """
-        SELECT
-            s.sensorid,
-            s.serialnumber as Label,
-            l.locationname,
-            l.locationid
+        SELECT s.sensorid, s.serialnumber
         FROM sensor.sensors s
         JOIN shared.locations l ON s.locationid = l.locationid
         WHERE l.locationname LIKE 'Ecosense_%'
-    """
+          AND s.serialnumber IS NOT NULL
+        """
     )
-
-    sensors = []
-    for row in cur.fetchall():
-        sensor_id, label, location_name, location_id = row
-        sensors.append(
-            {
-                "sensor_id": sensor_id,
-                "label": label,
-                "location_name": location_name,
-                "location_id": location_id,
-            }
-        )
-
-    conn.close()
-
-    print(f"✓ Found {len(sensors)} Ecosense sensors")
+    sensors = [{"sensor_id": r[0], "label": r[1]} for r in cur.fetchall()]
+    print(f"\n📡 Found {len(sensors)} Ecosense sensors")
     return sensors
 
 
-def get_trees_with_metadata():
-    """Fetch trees with TreeNumber and PlotID from structured columns"""
-    print("🌲 Fetching trees with TreeNumber...")
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT
-            t.treeid,
-            t.locationid,
-            l.locationname,
-            t.treenumber,
-            t.plotid,
-            t.fieldnotes
-        FROM trees.trees t
-        JOIN shared.locations l ON t.locationid = l.locationid
-        WHERE t.treenumber IS NOT NULL
+def build_links(sensors, resolved):
     """
-    )
+    Match each sensor's serialnumber prefix to a resolved AquariusName and
+    build the whole-cluster links. Returns (links, unmatched_prefix_count).
+    """
+    print("\n🔗 Matching sensors to trees by Aquarius prefix...")
+    links = []
+    matched_prefixes = set()
+    unmatched_prefixes = set()
 
-    trees = []
-    for row in cur.fetchall():
-        tree_id, location_id, location_name, tree_number, plot_id, field_notes = row
-
-        sensor_tree = False
-        if field_notes:
-            sensor_tree = "sensor tree" in field_notes.lower()
-
-        trees.append(
+    for s in sensors:
+        m = PREFIX_RE.match(s["label"])
+        if not m:
+            continue
+        prefix = m.group(1)
+        hit = resolved.get(prefix)
+        if not hit:
+            unmatched_prefixes.add(prefix)
+            continue
+        tree_id, full_id = hit
+        matched_prefixes.add(prefix)
+        links.append(
             {
+                "sensor_id": s["sensor_id"],
                 "tree_id": tree_id,
-                "location_id": location_id,
-                "location_name": location_name,
-                "tree_number": str(tree_number),
-                "sensor_tree": sensor_tree,
-                "plot_id": plot_id,
+                "description": (
+                    f"Ecosense cluster sensor '{s['label']}' linked via "
+                    f"AquariusName '{prefix}' → tree {full_id}"
+                ),
             }
         )
 
-    conn.close()
-
-    print(f"✓ Found {len(trees)} trees with TreeNumber")
-    sensor_trees = sum(1 for t in trees if t["sensor_tree"])
-    print(f"✓ {sensor_trees} trees flagged as sensor trees")
-
-    return trees
-
-
-def create_sensor_tree_links(sensors, trees):
-    """Match sensors to trees and create links"""
-    print("\n🔗 Creating sensor-tree links...")
-
-    # Index sensor trees by (location_name, tree_number) → list of matching trees.
-    # A treenumber can appear in multiple plots at the same location (e.g. Plot 8 and
-    # Plot 12 both have a tree #16 at Ecosense_MixedPlot).  We collect ALL matches and
-    # only create a link when the match is unambiguous (exactly one candidate).
-    tree_index: dict[tuple, list] = {}
-    for tree in trees:
-        key = (tree["location_name"], tree["tree_number"])
-        tree_index.setdefault(key, []).append(tree)
-
-    links = []
-    matched_count = 0
-    unmatched_sensors = []
-
-    for sensor in sensors:
-        # Extract tree identifier from sensor label
-        plot_type, tree_num = extract_tree_identifier(
-            sensor["label"], sensor["location_name"]
+    print(
+        f"✓ {len(links)} sensor links across {len(matched_prefixes)} sensor-trees"
+    )
+    if unmatched_prefixes:
+        print(
+            f"ℹ️  {len(unmatched_prefixes)} sensor prefixes had no AquariusName "
+            f"tree (meteo/soil-pit/experiment or tree not yet mapped): "
+            f"{', '.join(sorted(unmatched_prefixes)[:10])}"
+            + (" ..." if len(unmatched_prefixes) > 10 else "")
         )
-
-        if not plot_type or not tree_num:
-            unmatched_sensors.append(
-                {
-                    "label": sensor["label"],
-                    "reason": "Could not extract tree number from label",
-                }
-            )
-            continue
-
-        candidates = tree_index.get((sensor["location_name"], tree_num), [])
-
-        if len(candidates) == 1:
-            tree = candidates[0]
-            links.append(
-                {
-                    "sensor_id": sensor["sensor_id"],
-                    "tree_id": tree["tree_id"],
-                    "sensor_label": sensor["label"],
-                    "tree_number": tree_num,
-                    "location": sensor["location_name"],
-                }
-            )
-            matched_count += 1
-        elif len(candidates) > 1:
-            tree_ids = [c["tree_id"] for c in candidates]
-            unmatched_sensors.append(
-                {
-                    "label": sensor["label"],
-                    "location": sensor["location_name"],
-                    "extracted_tree_num": tree_num,
-                    "reason": (
-                        f"Ambiguous: tree number {tree_num} matches "
-                        f"{len(candidates)} sensor trees {tree_ids} — "
-                        "cannot determine which tree the sensor is mounted on"
-                    ),
-                }
-            )
-        else:
-            unmatched_sensors.append(
-                {
-                    "label": sensor["label"],
-                    "location": sensor["location_name"],
-                    "extracted_tree_num": tree_num,
-                    "reason": f"No sensor tree found with treenumber={tree_num} at {sensor['location_name']}",
-                }
-            )
-
-    print(f"✓ Matched {matched_count} sensors to trees")
-    print(f"⚠️  {len(unmatched_sensors)} sensors could not be matched")
-
-    if unmatched_sensors:
-        print("\nUnmatched sensors:")
-        for item in unmatched_sensors[:20]:
-            print(f"  {item['label']}: {item['reason']}")
-        if len(unmatched_sensors) > 20:
-            print(f"  ... and {len(unmatched_sensors) - 20} more")
-
     return links
 
 
-def insert_links(links):
-    """Insert sensor-tree links into database"""
+def insert_links(conn, links):
+    """Insert sensor-tree links; returns number of new rows."""
     if not links:
         print("\n⚠️  No links to insert")
         return 0
 
     print(f"\n💾 Inserting {len(links)} sensor-tree links...")
-
-    conn = get_db_connection()
     cur = conn.cursor()
-
-    # Prepare values for insertion
-    values = [
-        (link["sensor_id"], link["tree_id"], CREATED_BY) for link in links
-    ]
-
-    # Insert with conflict handling
-    execute_values(
+    values = [(l["sensor_id"], l["tree_id"], l["description"]) for l in links]
+    # RETURNING + fetch=True gives the truly-inserted rows; ON CONFLICT rows are
+    # not returned. cur.rowcount is unreliable here because execute_values pages
+    # the INSERT into batches and only reports the last batch's count.
+    returned = execute_values(
         cur,
         """
         INSERT INTO sensor.sensor_tree_links (sensor_id, tree_id, description)
         VALUES %s
         ON CONFLICT (sensor_id, tree_id) DO NOTHING
+        RETURNING sensortreelinkid
         """,
         values,
+        fetch=True,
     )
-
-    inserted_count = cur.rowcount
+    inserted = len(returned)
     conn.commit()
-    conn.close()
-
-    print(f"✓ Inserted {inserted_count} new links (skipped duplicates)")
-
-    return inserted_count
+    print(f"✓ Inserted {inserted} new links ({len(links) - inserted} already existed)")
+    return inserted
 
 
-def verify_links():
-    """Show summary of all sensor-tree links"""
+def verify_links(conn):
+    """Summarise links by sensor type and linked-tree count."""
     print("\n📊 Verifying links...")
-
-    conn = get_db_connection()
     cur = conn.cursor()
-
     cur.execute(
         """
-        SELECT
-            l.locationname,
-            COUNT(*) as link_count
+        SELECT st.sensortypename, COUNT(*)
         FROM sensor.sensor_tree_links stl
         JOIN sensor.sensors s ON stl.sensor_id = s.sensorid
-        JOIN shared.locations l ON s.locationid = l.locationid
-        GROUP BY l.locationname
-        ORDER BY link_count DESC
-    """
+        JOIN sensor.sensortypes st ON s.sensortypeid = st.sensortypeid
+        GROUP BY st.sensortypename
+        ORDER BY COUNT(*) DESC
+        """
     )
-
-    print("\nLinks by location:")
-    for location_name, count in cur.fetchall():
-        print(f"  {location_name}: {count} links")
+    print("Links by sensor type:")
+    for name, count in cur.fetchall():
+        print(f"  {name}: {count}")
 
     cur.execute("SELECT COUNT(DISTINCT tree_id) FROM sensor.sensor_tree_links")
-    tree_count = cur.fetchone()[0]
-    print(f"\n✓ {tree_count} trees linked to sensors")
-
-    conn.close()
+    print(f"\n✓ {cur.fetchone()[0]} trees linked to sensors")
 
 
 def main():
-    """Main workflow"""
     print("=" * 80)
-    print("SENSOR-TREE LINKING")
+    print("SENSOR-TREE LINKING (via Aquarius name map)")
     print("=" * 80)
 
+    conn = get_db_connection()
     try:
-        # Fetch data
-        sensors = get_sensors_with_locations()
-        trees = get_trees_with_metadata()
+        mappings = load_reference_map()
+        resolved = backfill_aquarius_names(conn, mappings)
+        if not resolved:
+            print("\n❌ No trees resolved — import tree data first")
+            return 1
 
+        sensors = get_ecosense_sensors(conn)
         if not sensors:
-            print("❌ No sensors found")
+            print("\n❌ No Ecosense sensors found — import sensor data first")
             return 1
 
-        if not trees:
-            print("❌ No trees found")
-            return 1
-
-        # Create links
-        links = create_sensor_tree_links(sensors, trees)
-
-        # Insert into database
-        inserted_count = insert_links(links)
-
-        # Verify results
-        if inserted_count > 0:
-            verify_links()
+        links = build_links(sensors, resolved)
+        inserted = insert_links(conn, links)
+        verify_links(conn)
 
         print("\n" + "=" * 80)
         print("✅ LINKING COMPLETE")
         print("=" * 80)
-        print(f"Created {inserted_count} sensor-tree links")
+        print(f"Created {inserted} new sensor-tree links")
         print("\nQuery linked data:")
-        print("  SELECT * FROM sensor.sensor_tree_links;")
-        print(
-            "  SELECT * FROM public.sensors_flat WHERE linked_tree_id IS NOT NULL;"
-        )
-
+        print("  SELECT * FROM public.ue_sensors WHERE linked_tree_id IS NOT NULL;")
         return 0
 
     except Exception as e:
+        conn.rollback()
         print(f"\n❌ Linking failed: {e}")
         import traceback
 
         traceback.print_exc()
         return 1
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,47 @@
+aquarius_name,full_id,plot_id,tree_id,plot_type,species,x_32632,y_32632,dbh_m,tls_height_m,qr_code_id
+Beech_Mixed_10,4_61,4,61,MixedPlot,Beech,416747.2247,5346758.6,0.159154943091895,28.6064603,https://dt.unr.uni-freiburg.de/ecosense/4_61
+DouglasFir_Mixed_2,4_62,4,62,MixedPlot,Douglas Fir,416748.930375975,5346759.15983883,0.598422586025526,,https://dt.unr.uni-freiburg.de/ecosense/4_62
+Beech_Mixed_11,4_65,4,65,MixedPlot,Beech,416754.109018071,5346758.42761173,0.159154943091895,27.70761175,https://dt.unr.uni-freiburg.de/ecosense/4_65
+Beech_Mixed_1,4_67,4,67,MixedPlot,Beech,416758.791719972,5346760.98720913,0.391521160006063,,https://dt.unr.uni-freiburg.de/ecosense/4_67
+Beech_Mixed_2,5_31,5,31,MixedPlot,Beech,416761.8818,5346757.8,0.452000038380983,29.13032305,https://dt.unr.uni-freiburg.de/ecosense/5_31
+DouglasFir_Mixed_5,8_15,8,15,MixedPlot,Douglas Fir,416739.17463228,5346746.65375642,0.544309905374282,,https://dt.unr.uni-freiburg.de/ecosense/8_15
+Beech_Mixed_8,8_16,8,16,MixedPlot,Beech,416741.364568524,5346744.42893538,0.210084524881302,,https://dt.unr.uni-freiburg.de/ecosense/8_16
+DouglasFir_Mixed_3,8_17,8,17,MixedPlot,Douglas Fir,416743.4499,5346753.502,0.550676103097958,32.72774584,https://dt.unr.uni-freiburg.de/ecosense/8_17
+DouglasFir_Mixed_1,8_18,8,18,MixedPlot,Douglas Fir,416752.475357117,5346750.62977173,0.302394391874601,,https://dt.unr.uni-freiburg.de/ecosense/8_18
+Beech_Mixed_9,8_20,8,20,MixedPlot,Beech,416748.5884,5346749.9,0.162338041953733,27.6717414,https://dt.unr.uni-freiburg.de/ecosense/8_20
+DouglasFir_Mixed_6,8_23,8,23,MixedPlot,Douglas Fir,416752.967953518,5346746.09019684,0.346957775940332,,https://dt.unr.uni-freiburg.de/ecosense/8_23
+DouglasFir_Mixed_4,8_27,8,27,MixedPlot,Douglas Fir,416744.575059311,5346743.38897163,0.439267642933631,,https://dt.unr.uni-freiburg.de/ecosense/8_27
+Beech_Mixed_5,8_29,8,29,MixedPlot,Beech,416748.175762414,5346736.59545574,0.28966199642725,24.1417939,https://dt.unr.uni-freiburg.de/ecosense/8_29
+Beech_Mixed_4,9_2,9,2,MixedPlot,Beech,416761.931,5346751.534,0.327859182769304,27.24740432,https://dt.unr.uni-freiburg.de/ecosense/9_2
+Beech_Mixed_6,9_4,9,4,MixedPlot,Beech,416761.782673965,5346748.23251959,0.13687325105903,,https://dt.unr.uni-freiburg.de/ecosense/9_4
+Beech_Mixed_3,9_5,9,5,MixedPlot,Beech,416766.976118174,5346751.41925722,0.381971863420549,,https://dt.unr.uni-freiburg.de/ecosense/9_5
+Beech_Mixed_7,9_34,9,34,MixedPlot,Beech,416761.1903,5346743.541,0.159154943091895,27.54763004,https://dt.unr.uni-freiburg.de/ecosense/9_34
+Beech_Mixed_13,9_37,9,37,MixedPlot,Beech,416763.9346,5346735.576,0.404253555453414,28.47299354,https://dt.unr.uni-freiburg.de/ecosense/9_37
+Beech_Mixed_14,9_39,9,39,MixedPlot,Beech,416761.2829,5346732.762,0.442450741795469,29.30369442,https://dt.unr.uni-freiburg.de/ecosense/9_39
+DouglasFir_Pure_8,12_10,12,10,DouglasFirPlot,Douglas Fir,416728.3494,5346689.177,0.493380323584876,33.58278898,https://dt.unr.uni-freiburg.de/ecosense/12_10
+DouglasFir_Pure_9,12_14,12,14,DouglasFirPlot,Douglas Fir,416734.6866,5346697.662,0.541126806512444,34.84175598,https://dt.unr.uni-freiburg.de/ecosense/12_14
+DouglasFir_Pure_10,12_16,12,16,DouglasFirPlot,Douglas Fir,416739.2959,5346696.523,0.557042300821634,38.24917726,https://dt.unr.uni-freiburg.de/ecosense/12_16
+DouglasFir_Pure_1,12_22,12,22,DouglasFirPlot,Douglas Fir,416740.4814,5346681.825,0.74484513367007,37.8969438,https://dt.unr.uni-freiburg.de/ecosense/12_22
+DouglasFir_Pure_6,12_23,12,23,DouglasFirPlot,Douglas Fir,416735.365661007,5346678.63205172,0.509295817894065,,https://dt.unr.uni-freiburg.de/ecosense/12_23
+DouglasFir_Pure_7,12_24,12,24,DouglasFirPlot,Douglas Fir,416730.2002,5346681.051,0.432901445209955,33.89259655,https://dt.unr.uni-freiburg.de/ecosense/12_24
+DouglasFir_Pure_5,12_25,12,25,DouglasFirPlot,Douglas Fir,416733.1093,5346673.939,0.474281730413848,35.52921006,https://dt.unr.uni-freiburg.de/ecosense/12_25
+DouglasFir_Pure_4,12_26,12,26,DouglasFirPlot,Douglas Fir,416734.9604,5346670.973,0.483831026999362,33.08923761,https://dt.unr.uni-freiburg.de/ecosense/12_26
+DouglasFir_Pure_2,12_27,12,27,DouglasFirPlot,Douglas Fir,416740.689845401,5346673.4946663,0.407436654315252,,https://dt.unr.uni-freiburg.de/ecosense/12_27
+DouglasFir_Pure_3,12_28,12,28,DouglasFirPlot,Douglas Fir,416739.4479,5346670.125,0.566591597407147,36.97019443,https://dt.unr.uni-freiburg.de/ecosense/12_28
+Beech_Pure_10,13_110,13,110,BeechPlot,Beech,416750.1508,5346637.858,0.181436635124761,29.12429087,https://dt.unr.uni-freiburg.de/ecosense/13_110
+Beech_Pure_13,13_115,13,115,BeechPlot,Beech,416757.8892,5346639.375,0.369239467973197,29.71446393,https://dt.unr.uni-freiburg.de/ecosense/13_115
+Beech_Pure_17,13_116,13,116,BeechPlot,Beech,416762.1672,5346640.296,0.318309886183791,28.1663453,https://dt.unr.uni-freiburg.de/ecosense/13_116
+Beech_Pure_1,13_117,13,117,BeechPlot,Beech,416768.5208,5346648.363,0.423352148624442,30.1640723,https://dt.unr.uni-freiburg.de/ecosense/13_117
+Beech_Pure_11,13_118,13,118,BeechPlot,Beech,416768.9975,5346646.629,0.130507053335354,29.9490102,https://dt.unr.uni-freiburg.de/ecosense/13_118
+Beech_Pure_9,13_119,13,119,BeechPlot,Beech,416765.3769,5346637.203,0.190985931710274,28.50541915,https://dt.unr.uni-freiburg.de/ecosense/13_119
+Beech_Pure_8,13_120,13,120,BeechPlot,Beech,416764.8398,5346634.107,0.184619733986599,25.47176543,https://dt.unr.uni-freiburg.de/ecosense/13_120
+Beech_Pure_12,14_66,14,66,BeechPlot,Beech,416780.9837,5346648.228,0.181436635124761,29.24469662,https://dt.unr.uni-freiburg.de/ecosense/14_66
+Beech_Pure_15,14_86,14,86,BeechPlot,Beech,416779.677016052,5346631.88032158,0.47109863155201,,https://dt.unr.uni-freiburg.de/ecosense/14_86
+Beech_Pure_14,14_87,14,87,BeechPlot,Beech,416778.9924,5346637.885,0.3947042588679,30.22440536,https://dt.unr.uni-freiburg.de/ecosense/14_87
+Beech_Pure_4,14_90,14,90,BeechPlot,Beech,416774.5212,5346642.288,0.385154962282387,29.71296842,https://dt.unr.uni-freiburg.de/ecosense/14_90
+Beech_Pure_2,14_92,14,92,BeechPlot,Beech,416772.3034,5346647.643,0.331042281631142,30.22912117,https://dt.unr.uni-freiburg.de/ecosense/14_92
+Beech_Pure_3,14_94,14,94,BeechPlot,Beech,416770.0531,5346644.187,0.302394391874601,29.36839439,https://dt.unr.uni-freiburg.de/ecosense/14_94
+Beech_Pure_6,14_95,14,95,BeechPlot,Beech,416770.428713739,5346637.05698166,0.315126787321953,,https://dt.unr.uni-freiburg.de/ecosense/14_95
+Beech_Pure_5,14_96,14,96,BeechPlot,Beech,416773.537334425,5346635.31787117,0.407436654315252,,https://dt.unr.uni-freiburg.de/ecosense/14_96
+Beech_Pure_7,14_98,14,98,BeechPlot,Beech,416771.9686,5346631.138,0.222816920328653,30.44339835,https://dt.unr.uni-freiburg.de/ecosense/14_98
+Beech_Pure_16,14_99,14,99,BeechPlot,Beech,416769.3659,5346629.067,0.436084544071793,30.74512606,https://dt.unr.uni-freiburg.de/ecosense/14_99
