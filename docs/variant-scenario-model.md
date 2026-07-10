@@ -6,26 +6,30 @@
 
 ## Concept
 
-The digital twin DB stores multiple **forest states** across three levels: Location → Scenario → Variant.
+The digital twin DB stores multiple **forest states** in a strict three-level hierarchy: Location → Scenario → Variant.
 
 | Term | Meaning | Example |
 |------|---------|---------|
-| **Location** | A physical forest site | `Ecosense_MixedPlot`, `Mathisle` |
-| **Scenario** | A named set of assumptions (climate, management) | `Current_Conditions`, `Ecosense_Growth_2035` |
-| **Variant** | A specific time step within a scenario at a site | `Baseline_2025`, `Growth_2035` |
+| **Location** | A physical forest site | `ecosense`, `mathisle` |
+| **Scenario** | A management regime **at one site** that owns its baseline/initial conditions | `natural_growth` (per site) |
+| **Variant** | A state in that regime's timeline (baseline → growth → intervention) | `baseline_2025`, `growth_2035` |
 | **VariantType** | How the data was produced | `original`, `simulated_growth`, `model_output` |
 | **Tree row** | One tree's state at one time step | Tree #42 at height 22.5m in year 2035 |
 
 ### Three-level hierarchy
 
 ```
-shared.Locations   (which forest site)
-  └── shared.Scenarios   (which set of assumptions)
-        └── shared.Variants   (which time step / growth age)
-              └── trees.Trees  (all trees at that time step, joined by VariantID)
+shared.Locations   (which forest site: ecosense, mathisle)
+  └── shared.Scenarios   (a management regime AT that site; owns its baseline)
+        └── shared.Variants   (a state in the regime's timeline; ParentVariantID lineage)
+              └── trees.Trees  (all trees at that state, joined by VariantID)
 ```
 
-**Location** is the top-level differentiator — `shared.Variants.LocationID NOT NULL FK` ensures every variant is pinned to a site. This means the same name like `Baseline_2025` or `Growth_2035` can exist for both Ecosense and Mathisle as separate rows, disambiguated by location rather than embedded in the name.
+**Scenarios are location-scoped** — `shared.Scenarios.LocationID NOT NULL` and `UNIQUE(LocationID, ScenarioName)`. So a site like `ecosense` can hold several management regimes (`natural_growth`, and later e.g. `intensive_management`, `extensive_management`), each defining its own initial conditions and developing through its own variants. A scenario is *not* a single time step — the successive years are **variants** of it.
+
+**Variants form a timeline** — `shared.Variants.ParentVariantID` links each state to the one it developed from (`baseline_2025` → `growth_2035` → `growth_2045`), with `SortOrder` giving the display order. The same variant name (`baseline_2025`) exists once per (location, scenario), disambiguated by the hierarchy rather than embedded in the name.
+
+> The old model conflated the levels — each simulated year was its own "scenario" (`Ecosense_Growth_2035`, `Mathisle_Growth_2045`), so one trajectory was scattered across several scenarios. Consolidated to one `natural_growth` scenario per site.
 
 One physical tree (identified by `TreeEntityID`) can appear in many rows in `trees.Trees` — one per variant. All trees at the same time step share the same `VariantID`. This is what enables UE "time travel": query by `VariantID` to load the complete forest at one point in time.
 
@@ -38,33 +42,36 @@ One physical tree (identified by `TreeEntityID`) can appear in many rows in `tre
 ```
 shared.Locations              ← forest sites (top of hierarchy)
   LocationID  PK
-  LocationName                ← "Ecosense_MixedPlot", "Mathisle", etc.
+  LocationName                ← "ecosense", "mathisle"
 
-shared.Scenarios              ← named scenarios (reusable across locations)
+shared.Scenarios              ← management regimes, ONE set per location
   ScenarioID  PK
-  ScenarioName                ← "Current_Conditions", "Ecosense_Growth_2035", etc.
+  LocationID    FK → shared.Locations    ← the site this regime belongs to
+  ScenarioName                ← "natural_growth" (UNIQUE per LocationID)
 
 shared.VariantTypes           ← how data was generated (lookup)
   VariantTypeID PK
   VariantTypeName             ← "original", "simulated_growth", "model_output", etc.
 
-shared.Variants               ← one time step at one site within one scenario
-  VariantID     PK
-  LocationID    FK → shared.Locations    ← site — top of hierarchy
-  ScenarioID    FK → shared.Scenarios
-  VariantTypeID FK → shared.VariantTypes ← type of this entire snapshot
-  VariantName                 ← "Baseline_2025", "Growth_2035", etc. (unique per location+scenario)
+shared.Variants               ← one state in a scenario's timeline
+  VariantID       PK
+  LocationID      FK → shared.Locations    ← site (= the scenario's location)
+  ScenarioID      FK → shared.Scenarios
+  VariantTypeID   FK → shared.VariantTypes ← type of this entire snapshot
+  ParentVariantID FK → shared.Variants     ← lineage: the state this developed from
+  VariantName                 ← "baseline_2025", "growth_2035" (unique per location+scenario)
   SimulationYear              ← calendar year this state represents
   TimeDelta_yrs               ← years since baseline
-  SortOrder                   ← display order in UE time-step selector
+  SortOrder                   ← display order in UE time-step selector (0 = baseline)
 
 trees.Trees                   ← one row per tree per time step
   TreeID        PK            ← unique row identifier
   TreeEntityID  UUID          ← stable identity across all variants of the same physical tree
   VariantID     FK → shared.Variants     ← group selector: all trees at one time step
   ParentTreeID  FK → trees.Trees         ← lineage: which row this was grown from
-  ScenarioID    FK → shared.Scenarios    ← direct convenience FK (avoids join via Variants)
-  Height_m, Position, SpeciesID, Age_years, ...
+  ScenarioID    FK → shared.Scenarios    ← convenience FK, resynced from the variant
+  PlotID        FK → shared.Plots        ← sub-plot within the site
+  Height_m, Position, PositionOriginal, SpeciesID, Age_years, ...
 ```
 
 `TreeID` is the row PK (auto-increment, changes each time a tree is inserted). `TreeEntityID` is the stable physical-tree UUID — use it to track one tree across all variants/time steps. `VariantID` is the group selector used by UE to load a complete forest state.
@@ -78,18 +85,15 @@ The **VariantType** (original, simulated_growth, etc.) is a property of the *var
 ### Step 1: List available variants for a location + scenario (populate time-step selector UI)
 
 ```
-GET /variants?locationid=eq.5&scenarioid=eq.1&order=sortorder
+GET /variants?locationname=eq.ecosense&scenarioname=eq.natural_growth&order=sortorder
 → [
-    {"variantid": 3, "locationid": 5, "locationname": "Ecosense_MixedPlot", "scenarioid": 1, "variantname": "Baseline_2025", "simulationyear": 2025, ...},
-    {"variantid": 4, "locationid": 5, "locationname": "Ecosense_MixedPlot", "scenarioid": 2, "variantname": "Growth_2035", "simulationyear": 2035, ...}
+    {"variantid": 1, "locationname": "ecosense", "scenarioname": "natural_growth", "variantname": "baseline_2025", "simulationyear": 2025, "sortorder": 0, "parentvariantid": null, ...},
+    {"variantid": 2, "locationname": "ecosense", "scenarioname": "natural_growth", "variantname": "growth_2035",   "simulationyear": 2035, "sortorder": 1, "parentvariantid": 1, ...},
+    {"variantid": 3, "locationname": "ecosense", "scenarioname": "natural_growth", "variantname": "growth_2045",   "simulationyear": 2045, "sortorder": 2, "parentvariantid": 2, ...}
   ]
 ```
 
-Or filter by name directly (via `public.variants` view which joins `locationname` and `scenarioname`):
-
-```
-GET /variants?locationname=eq.Ecosense_MixedPlot&order=sortorder
-```
+The `public.variants` view joins `locationname`, `scenarioname`, `varianttypename`, so you can filter by name instead of id.
 
 ### Step 2: Load all trees at one time step
 
@@ -102,12 +106,12 @@ Response fields (full `ue_trees` struct):
 {
   "treeid": 1042,
   "treeentityid": "uuid...",
-  "locationid": 5,
-  "locationname": "Ecosense_MixedPlot",
+  "locationid": 1,
+  "locationname": "ecosense",
   "scenarioid": 1,
-  "scenarioname": "Current_Conditions",
+  "scenarioname": "natural_growth",
   "variantid": 3,
-  "variantname": "Ecosense_2035_Baseline",
+  "variantname": "growth_2035",
   "simulationyear": 2035,
   "varianttypename": "simulated_growth",
   "speciesname": "European Beech",
@@ -134,13 +138,13 @@ Response fields (full `ue_trees` struct):
 ### Filter by location + scenario name (when VariantID is unknown)
 
 ```
-GET /ue_trees?locationid=eq.5&scenarioname=eq.Current_Conditions
+GET /ue_trees?locationname=eq.ecosense&scenarioname=eq.natural_growth
 ```
 
-### Filter by scenario only (returns all time steps for that scenario)
+### Filter to one time step by variant name
 
 ```
-GET /ue_trees?scenarioname=eq.Ecosense_Growth_2035
+GET /ue_trees?locationname=eq.ecosense&variantname=eq.growth_2035
 ```
 
 ### Load tree stems (DBH) alongside
@@ -159,39 +163,34 @@ GET /trees?variantid=eq.3&select=treeid,height_m,position,species(commonname),st
 
 ---
 
-## Pre-loaded scenarios
+## Scenarios in the DB
 
-The following are loaded from `data/lookups/scenarios.csv` on DB init:
+Scenarios are **location-scoped and created by the growth-variant seed scripts**, not pre-loaded from a lookup CSV (a global scenario list no longer fits the per-site model). After the standard rebuild there is one regime per site:
 
-| ScenarioName | Purpose |
-|---|---|
-| `Current_Conditions` | Baseline — actual field measurements |
-| `Climate_Change_2050` | IPCC 2050 projection |
-| `Climate_Change_2100` | IPCC 2100 projection |
-| `Drought_Test` | Extreme drought stress |
-| `Heat_Wave` | Extended heat wave |
-| `Increased_CO2` | Elevated CO2 |
-| `Management_Thinning` | Post-thinning state |
-| `No_Management` | Natural development |
+| Location | ScenarioName | Purpose |
+|---|---|---|
+| `ecosense` | `natural_growth` | Baseline field inventory developing under no active management |
+| `mathisle` | `natural_growth` | Same, for the Mathisle site |
 
-Variants (time steps) are NOT pre-loaded — they are created by seed scripts or SILVA write-back when growth simulations are run.
+Additional regimes (e.g. `intensive_management`, `extensive_management`, a climate-stress scenario) are added per location, each owning its own baseline variant and trajectory. Variants (time steps) are created by the seed scripts or SILVA write-back when growth simulations are run.
 
 ---
 
 ## Adding a new scenario and variant
 
 ```bash
-# Create scenario (via API)
+# Create scenario (via API) — location-scoped: locationid is required
 curl -X POST "http://localhost:8000/rest/v1/scenarios" \
   -H "apikey: <SERVICE_ROLE_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{"scenarioname": "SILVA_2060_RCP45", "description": "SILVA growth simulation, RCP4.5, year 2060"}'
+  -d '{"locationid": <location_id>, "scenarioname": "intensive_management", "description": "Thinning regime, RCP4.5"}'
 
-# Create variant for that scenario (locationid and varianttypeid are both required)
+# Create variant for that scenario (locationid and varianttypeid are both required;
+# parentvariantid links it to the state it develops from)
 curl -X POST "http://localhost:8000/rest/v1/variants" \
   -H "apikey: <SERVICE_ROLE_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{"locationid": <location_id>, "scenarioid": <new_id>, "varianttypeid": 4, "variantname": "Growth_2060", "simulationyear": 2060, "timedelta_yrs": 40, "sortorder": 0}'
+  -d '{"locationid": <location_id>, "scenarioid": <new_id>, "varianttypeid": 4, "variantname": "growth_2060", "simulationyear": 2060, "timedelta_yrs": 40, "sortorder": 0, "parentvariantid": <prev_id>}'
 ```
 
 Then insert tree rows with the new `ScenarioID` and `VariantID`:
@@ -206,14 +205,15 @@ Then insert tree rows with the new `ScenarioID` and `VariantID`:
 
 For "what would this same forest look like N years from now" variants — grow the
 trees that already exist in the DB rather than hand-writing new rows — use a SQL
-script that reads a baseline scenario and writes a derived one. The reference
-implementation is `scripts/seed/ecosense_growth_variants.sql`, which derives
-`Ecosense_Growth_2035` from the real Ecosense `Current_Conditions` import, then
-chains `Ecosense_Growth_2045` from `Ecosense_Growth_2035`.
+script that grows a baseline variant into a derived one. The reference
+implementation is `scripts/seed/ecosense_growth_variants.sql`, which creates the
+`natural_growth` scenario, then chains its variants:
+`baseline_2025` → `growth_2035` → `growth_2045` (each `ParentVariantID` pointing
+at the prior state).
 
 Each variant block:
 
-1. **Creates a Variant row** in `shared.Variants` linking to the new scenario.
+1. **Creates a Variant row** in `shared.Variants` under the scenario, with `ParentVariantID` set to the state it grows from.
 2. **Grows survivors** — selects baseline trees (joined to `trees.Stems` for DBH),
    randomly drops a small fraction (simulated mortality), scales measurements up,
    and inserts new `trees.Trees` rows with `VariantID` set to the new Variant,
