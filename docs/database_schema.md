@@ -622,6 +622,7 @@ Plain SQL migration files applied in numeric order by the PostgreSQL Docker init
 | `32-ecosense-sensor-tree-map.sql` | Adds `AquariusName` to trees.Trees for joining Ecosense sensors to inventory trees; deprecates the pattern-match linker function |
 | `33-consolidate-ue-trees.sql` | Consolidates `forest_state` + `ue_trees` into a single self-contained `public.ue_trees`; drops `forest_state` |
 | `34-ue-view-refinements.sql` | Trims `ue_trees` to the UE struct + adds `has_sensors`; adds `sensor_model`/`data_owner` to `ue_sensors`; indexes `sensor_tree_links(tree_id)` |
+| `35-ue-trees-projected-coords.sql` | Adds `locationname`, `scenarioid`, and projected `original_x`/`original_y`/`source_crs` (from `PositionOriginal`, UTM 32N) to `ue_trees` |
 
 ### 6.3 Migration Strategy
 

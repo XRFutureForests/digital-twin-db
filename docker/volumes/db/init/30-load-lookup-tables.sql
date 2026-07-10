@@ -63,20 +63,12 @@ ON CONFLICT (VariantTypeName) DO UPDATE SET Description = EXCLUDED.Description;
 DROP TABLE temp_variant_types;
 
 -- =============================================================================
--- LOAD SCENARIOS
+-- SCENARIOS — intentionally NOT seeded here.
+-- Scenarios are location-scoped (Location -> Scenario -> Variant, see
+-- 37-scenario-variant-hierarchy.sql) and are created per site by the growth-
+-- variant seed scripts (scripts/seed/{ecosense,mathisle}_growth_variants.sql),
+-- each owning its baseline. A global scenarios.csv no longer fits the model.
 -- =============================================================================
-CREATE TEMP TABLE temp_scenarios (
-    ScenarioName VARCHAR(200),
-    Description TEXT
-);
-
-\copy temp_scenarios FROM '/var/lib/postgresql/lookups/scenarios.csv' WITH (FORMAT csv, HEADER true);
-
-INSERT INTO shared.Scenarios (ScenarioName, Description)
-SELECT ScenarioName, Description FROM temp_scenarios
-ON CONFLICT (ScenarioName) DO UPDATE SET Description = EXCLUDED.Description;
-
-DROP TABLE temp_scenarios;
 
 -- =============================================================================
 -- LOAD SPECIES
@@ -277,21 +269,25 @@ DROP TABLE temp_locations;
 -- Create plots for each research location.
 -- PlotNumber corresponds to the local plot identifier used in field campaigns.
 
--- EcoSense plots 1-18 at the Ecosense_MixedPlot location
+-- Ecosense tree subplots 1-18 (the field survey grid) under the ecosense site.
+-- PlotNumber matches the import CSV's PlotID; import_trees.py resolves plots by
+-- (LocationID, PlotNumber) so a clean rebuild stays consistent. The named
+-- monitoring plots (mixed_plot, douglas_fir_plot, ...) are created separately by
+-- 36-restructure-locations-plots-snakecase.sql for the sensor layer.
 INSERT INTO shared.Plots (LocationID, PlotName, PlotNumber, CreatedBy)
-SELECT 
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Ecosense_MixedPlot'),
-    'EcoSense Plot ' || n,
+SELECT
+    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'ecosense'),
+    'ecosense_plot_' || n,
     n,
     'init'
 FROM generate_series(1, 18) AS n
 ON CONFLICT (LocationID, PlotName) DO NOTHING;
 
--- Mathisle single plot
+-- Mathisle single plot (PlotNumber 1; import CSV PlotID normalised to 1)
 INSERT INTO shared.Plots (LocationID, PlotName, PlotNumber, CreatedBy)
 VALUES (
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Mathisle'),
-    'Mathisle',
+    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'mathisle'),
+    'mathisle',
     1,
     'init'
 )

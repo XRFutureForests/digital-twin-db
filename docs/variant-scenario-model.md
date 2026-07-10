@@ -103,10 +103,12 @@ Response fields (full `ue_trees` struct):
   "treeid": 1042,
   "treeentityid": "uuid...",
   "locationid": 5,
+  "locationname": "Ecosense_MixedPlot",
+  "scenarioid": 1,
+  "scenarioname": "Current_Conditions",
   "variantid": 3,
   "variantname": "Ecosense_2035_Baseline",
   "simulationyear": 2035,
-  "scenarioname": "Current_Conditions",
   "varianttypename": "simulated_growth",
   "speciesname": "European Beech",
   "scientificname": "Fagus sylvatica",
@@ -119,6 +121,9 @@ Response fields (full `ue_trees` struct):
   "competition": false,
   "aquarius_name": "Beech_Mixed_8",
   "has_sensors": true,
+  "original_x": 416747.2247,
+  "original_y": 5346758.6,
+  "source_crs": 32632,
   "latitude": 48.2684,
   "longitude": 7.8779
 }
@@ -233,4 +238,4 @@ In the HTTPS Blueprint:
 3. When user selects a time step, call `GET /ue_trees?variantid=eq.<variantid>` → repopulate `DT_Trees`.
 4. PCG graph re-runs → trees respawn at new heights/positions.
 
-The `ue_trees` view includes pre-flattened `latitude`/`longitude` — no PostGIS geometry parsing needed in Blueprint. It also exposes `competition` (boolean), derived as `crownbaseheight_m / height_m > 0.6` — trees where the live crown starts in the upper 40% are considered under competition pressure. See XRFF-242 for the blueprint implementation.
+The `ue_trees` view includes pre-flattened `latitude`/`longitude` — no PostGIS geometry parsing needed in Blueprint. It also carries the tree's projected source coordinates `original_x`/`original_y` (in `source_crs`, EPSG:32632 / UTM 32N), which UE places more reliably than WGS84 lat/lon. It also exposes `competition` (boolean), derived as `crownbaseheight_m / height_m > 0.6` — trees where the live crown starts in the upper 40% are considered under competition pressure. See XRFF-242 for the blueprint implementation.

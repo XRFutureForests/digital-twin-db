@@ -1,4 +1,4 @@
 ShootElongationTypeName,Description
-Long Shoots,Internode growth is allowed to fully elongate
-Short Shoots,Internode growth is constrained but not stopped
-Spur Shoots,Internodes elongate only slightly
+long_shoots,Internode growth is allowed to fully elongate
+short_shoots,Internode growth is constrained but not stopped
+spur_shoots,Internodes elongate only slightly
