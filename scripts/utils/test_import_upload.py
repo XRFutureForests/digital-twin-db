@@ -109,13 +109,15 @@ def validate_csv(df: pd.DataFrame, conn) -> dict:
             results["valid"] = False
             results["errors"].append(f"{col}: {null_count} NULL values")
 
-    # Validate LocationIDs
+    # Validate locations by name (import resolves location by LocationName now)
     db_locations = pd.read_sql(
-        "SELECT locationid, locationname FROM shared.Locations", conn
+        "SELECT location_id, location_name FROM shared.Locations", conn
     )
-    csv_locations = df["LocationID"].dropna().unique()
+    csv_locations = (
+        df["LocationName"].dropna().unique() if "LocationName" in df.columns else []
+    )
     invalid_locs = [
-        loc for loc in csv_locations if loc not in db_locations["locationid"].values
+        loc for loc in csv_locations if loc not in db_locations["location_name"].values
     ]
     if invalid_locs:
         results["valid"] = False

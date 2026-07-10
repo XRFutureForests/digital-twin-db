@@ -181,7 +181,7 @@ GET /ue_sensors?linked_tree_entity_id=eq.<tree_entity_id>     → all sensors on
 GET /ue_sensorreadings?sensor_id=eq.<sensor_id>&order=timestamp.desc&limit=96   → that sensor's readings
 ```
 
-Join sensors to trees by **`linked_tree_entity_id`** (the persistent physical-tree UUID), not `linked_tree_id` (a single variant row) — this keeps the link stable across growth variants. `ue_sensors` also carries the latest reading inline (plus `sensor_model` = real instrument and `data_owner`), so a per-tree sensor list needs no extra readings or `/sensors` call. `linked_tree_*` is populated by `scripts/import/link_sensors_to_trees.py` (see [database_schema.md §3.9](database_schema.md)); meteo/soil-station sensors have `NULL` tree fields.
+Join sensors to trees by **`linked_tree_entity_id`** (the persistent physical-tree UUID), not `linked_tree_id` (a single variant row) — this keeps the link stable across growth variants. `ue_sensors` also carries the latest reading inline (plus `sensor_model` = real instrument, `data_owner`, the generic `source` = provider e.g. `aquarius`, and `plot_name` = the sensor's monitoring sub-area), so a per-tree sensor list needs no extra readings or `/sensors` call. `linked_tree_*` is populated by `scripts/import/link_sensors_to_trees.py` (see [database_schema.md §3.9](database_schema.md)); meteo/soil-station sensors have `NULL` tree fields.
 
 `ue_trees` also carries `sensor_ref` and a `has_sensors` boolean, so UE can flag instrumented trees without a second query — filter with `GET /ue_trees?has_sensors=eq.true`.
 
@@ -279,6 +279,8 @@ Request body:
   "p_sensors": [
     {
       "location_id": 1,
+      "plot_id": 3,
+      "source": "aquarius",
       "sensor_type_id": 2,
       "sensor_model": "DendroNet DN2",
       "serial_number": "DN2-001",
@@ -286,7 +288,7 @@ Request body:
       "sampling_interval_seconds": 900,
       "unit": "mm",
       "external_id": "Mathisle_DN2-001",
-      "externalmetadata": { "LocationIdentifier": "Mathisle.DN2-001.Var@01" },
+      "external_metadata": { "LocationIdentifier": "Mathisle.DN2-001.Var@01" },
       "is_active": true,
       "created_by": "aquarius_sync"
     }

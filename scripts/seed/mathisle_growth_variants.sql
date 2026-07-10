@@ -6,13 +6,13 @@
 --
 -- What this does
 -- ==============
--- 1. Backfills scenario_id = Current_Conditions on the real Mathisle
+-- 1. Backfills scenario_id = natural_growth on the real Mathisle
 --    baseline import (import_trees.py does not set scenario_id — see
 --    scripts/import/import_trees.py — so without this, the baseline is
---    invisible to `ue_trees?scenario_name=eq.Current_Conditions`).
+--    invisible to `ue_trees?scenario_name=eq.natural_growth`).
 -- 2. Creates two chained growth variants from that baseline:
---      Mathisle_Growth_2035  (parent: Current_Conditions, +10y)
---      Mathisle_Growth_2045  (parent: Mathisle_Growth_2035, +10y)
+--      growth_2035  (parent: natural_growth, +10y)
+--      growth_2045  (parent: growth_2035, +10y)
 --    Each variant: scales Height_m/DBH_cm up by a flat percentage,
 --    GENERATES crown dimensions synthetically (crown_width_m and
 --    crown_base_height_m are NULL in the Mathisle baseline — heights come
@@ -115,7 +115,7 @@ SELECT
     (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'simulated_growth'),
     'growth_2035',
     2035, 10, 0,
-    'Synthetic +10y growth from Mathisle Current_Conditions baseline'
+    'Synthetic +10y growth from Mathisle natural_growth baseline'
 WHERE NOT EXISTS (
     SELECT 1 FROM shared.Variants v
     JOIN shared.Locations l ON v.location_id = l.location_id
@@ -129,7 +129,7 @@ SELECT
     (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'simulated_growth'),
     'growth_2045',
     2045, 20, 0,
-    'Synthetic +20y growth from Mathisle_Growth_2035'
+    'Synthetic +20y growth from growth_2035'
 WHERE NOT EXISTS (
     SELECT 1 FROM shared.Variants v
     JOIN shared.Locations l ON v.location_id = l.location_id
@@ -137,7 +137,7 @@ WHERE NOT EXISTS (
 );
 
 -- ============================================================
--- VARIANT 1: Mathisle_Growth_2035 (from Current_Conditions, +10 years)
+-- VARIANT 1: growth_2035 (from natural_growth, +10 years)
 -- ============================================================
 
 DO $$
@@ -236,7 +236,7 @@ BEGIN
 END $$;
 
 -- ============================================================
--- VARIANT 2: Mathisle_Growth_2045 (from Mathisle_Growth_2035, +10 more years)
+-- VARIANT 2: growth_2045 (from growth_2035, +10 more years)
 -- ============================================================
 
 DO $$

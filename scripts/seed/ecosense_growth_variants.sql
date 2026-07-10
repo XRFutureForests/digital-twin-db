@@ -7,13 +7,13 @@
 --
 -- What this does
 -- ==============
--- 1. Creates a Current_Conditions variant in shared.Variants and assigns all
---    Ecosense_MixedPlot baseline trees to it (import_trees.py sets scenario_id
+-- 1. Creates a natural_growth variant in shared.Variants and assigns all
+--    ecosense baseline trees to it (import_trees.py sets scenario_id
 --    but not variant_id, so without this the baseline trees have no variant and
 --    are invisible to ?variant_id= queries in UE).
 -- 2. Creates two chained growth variants from that baseline:
---      Ecosense_Growth_2035  (parent: Current_Conditions, +10y)
---      Ecosense_Growth_2045  (parent: Ecosense_Growth_2035, +10y)
+--      growth_2035  (parent: natural_growth, +10y)
+--      growth_2045  (parent: growth_2035, +10y)
 --    Each variant: scales Height_m/crown_width_m/crown_base_height_m/DBH_cm up by
 --    a flat percentage, drops ~3-5% of trees (mortality), adds ~2% new saplings
 --    (regeneration). parent_tree_id links each grown row back to its source.
@@ -58,7 +58,7 @@ SELECT
     2025,
     0,
     0,
-    'Ecosense_MixedPlot field measurements, September 2025'
+    'ecosense field measurements, September 2025'
 WHERE NOT EXISTS (
     SELECT 1 FROM shared.Variants v
     JOIN shared.Locations l ON v.location_id = l.location_id
@@ -99,7 +99,7 @@ SELECT
     (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'simulated_growth'),
     'growth_2035',
     2035, 10, 0,
-    'Synthetic +10y growth from Current_Conditions baseline'
+    'Synthetic +10y growth from natural_growth baseline'
 WHERE NOT EXISTS (
     SELECT 1 FROM shared.Variants v
     JOIN shared.Locations l ON v.location_id = l.location_id
@@ -113,7 +113,7 @@ SELECT
     (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'simulated_growth'),
     'growth_2045',
     2045, 20, 0,
-    'Synthetic +20y growth from Ecosense_Growth_2035'
+    'Synthetic +20y growth from growth_2035'
 WHERE NOT EXISTS (
     SELECT 1 FROM shared.Variants v
     JOIN shared.Locations l ON v.location_id = l.location_id
@@ -121,7 +121,7 @@ WHERE NOT EXISTS (
 );
 
 -- ============================================================
--- VARIANT 1: Ecosense_Growth_2035  (+10 years from baseline)
+-- VARIANT 1: growth_2035  (+10 years from baseline)
 -- ============================================================
 
 DO $$
@@ -225,7 +225,7 @@ BEGIN
 END $$;
 
 -- ============================================================
--- VARIANT 2: Ecosense_Growth_2045  (+10 more years from 2035)
+-- VARIANT 2: growth_2045  (+10 more years from 2035)
 -- ============================================================
 
 DO $$
