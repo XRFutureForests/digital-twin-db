@@ -21,10 +21,10 @@ By default reads the committed catalogue
 data/reference/ecosense_sensor_metadata.csv. A raw Aquarius "Insitu DataUpload"
 .xlsx export can be passed instead to refresh from source.
 
-IMPORTANT: run this AFTER an Aquarius sync (import_sensor_data.py /
-sync_aquarius_direct.py). Those scripts upsert sensors and overwrite SensorModel
-with the generic "Ecosense Node" placeholder and reset ExternalMetadata, so this
-enrichment must be re-applied each time sensors are re-synced.
+IMPORTANT: run this AFTER an Aquarius sync (sync_aquarius_direct.py). That script
+upserts sensors and overwrites sensor_model with the generic "Ecosense Node"
+placeholder and resets external_metadata, so this enrichment must be re-applied
+each time sensors are re-synced.
 
     python scripts/import/enrich_sensor_metadata.py [path/to/catalogue.csv|form.xlsx]
 """

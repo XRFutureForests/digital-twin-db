@@ -135,7 +135,7 @@ conda activate digital-twin
 python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
 
 # Import sensor data from Aquarius API
-python scripts/import/import_sensor_data.py
+python scripts/import/sync_aquarius_direct.py 45
 
 # Link sensors to nearby trees
 python scripts/import/link_sensors_to_trees.py

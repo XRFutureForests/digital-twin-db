@@ -1,9 +1,0 @@
-ScenarioName,Description
-Current_Conditions,Baseline scenario with current environmental conditions
-Climate_Change_2050,Projected conditions for year 2050 based on IPCC scenarios
-Climate_Change_2100,Projected conditions for year 2100 based on IPCC scenarios
-Drought_Test,Extreme drought stress scenario
-Heat_Wave,Extended heat wave scenario
-Increased_CO2,Elevated atmospheric CO2 concentration
-Management_Thinning,Forest management with selective thinning
-No_Management,Natural forest development without intervention

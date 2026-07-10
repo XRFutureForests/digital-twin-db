@@ -57,7 +57,7 @@ def ensure_height_source_column(conn):
         """
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'trees' AND table_name = 'trees'
-          AND column_name = 'heightsource'
+          AND column_name = 'height_source'
     """
     )
     if cur.fetchone():
@@ -76,13 +76,13 @@ def fetch_trees_missing_height(conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT t.TreeID, s.ScientificName, st.DBH_cm
+        SELECT t.tree_id, s.scientific_name, st.dbh_cm
         FROM trees.Trees t
-        JOIN shared.Species s ON t.SpeciesID = s.SpeciesID
-        JOIN trees.Stems st ON st.TreeID = t.TreeID
-        WHERE t.Height_m IS NULL
-          AND st.DBH_cm IS NOT NULL
-          AND st.StemNumber = 1
+        JOIN shared.Species s ON t.species_id = s.species_id
+        JOIN trees.Stems st ON st.tree_id = t.tree_id
+        WHERE t.height_m IS NULL
+          AND st.dbh_cm IS NOT NULL
+          AND st.stem_number = 1
     """
     )
     rows = cur.fetchall()
@@ -155,15 +155,15 @@ def main():
     cur.executemany(
         """
         UPDATE trees.Trees
-        SET Height_m = %s,
-            HeightSource = %s,
-            DataSourceTypeID = (
-                SELECT DataSourceTypeID FROM trees.DataSourceTypes
-                WHERE DataSourceTypeName = 'estimated'
+        SET height_m = %s,
+            height_source = %s,
+            data_source_type_id = (
+                SELECT data_source_type_id FROM trees.DataSourceTypes
+                WHERE data_source_type_name = 'estimated'
             ),
-            UpdatedAt = NOW(),
-            UpdatedBy = 'fill_missing_heights'
-        WHERE TreeID = %s
+            updated_at = NOW(),
+            updated_by = 'fill_missing_heights'
+        WHERE tree_id = %s
     """,
         updates,
     )
@@ -174,14 +174,14 @@ def main():
 
     # Verify
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM trees.Trees WHERE Height_m IS NULL")
+    cur.execute("SELECT COUNT(*) FROM trees.Trees WHERE height_m IS NULL")
     remaining = cur.fetchone()[0]
     cur.execute(
         """
-        SELECT HeightSource, COUNT(*)
+        SELECT height_source, COUNT(*)
         FROM trees.Trees
-        GROUP BY HeightSource
-        ORDER BY HeightSource
+        GROUP BY height_source
+        ORDER BY height_source
     """
     )
     source_counts = cur.fetchall()

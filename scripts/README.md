@@ -13,16 +13,15 @@ scripts/
 │   └── validate_species_gbif.py    # Validate species names via GBIF
 ├── import/                   # Data import & sync scripts
 │   ├── import_trees.py             # Unified tree import from template CSV
-│   ├── import_sensor_data.py       # Import sensor data from Aquarius
-│   ├── link_sensors_to_trees.py    # Link sensors to trees
+│   ├── sync_aquarius_direct.py     # Sync sensors + readings from Aquarius (VPN)
+│   ├── link_sensors_to_trees.py    # Link sensors to trees (writes sensor_ref)
+│   ├── enrich_sensor_metadata.py   # Backfill real instrument/owner after a sync
 │   ├── sync_aquarius.py            # Sync sensor data via edge function
-│   ├── sync_aquarius_direct.py     # Direct Aquarius sync (host-side)
 │   ├── find_active_sensors.py      # Find sensors with recent data
 │   └── archive/                    # Superseded scripts
 │       ├── import_ecosense.py      # (replaced by import_trees.py)
 │       └── import_mathisle.py      # (replaced by import_trees.py)
 ├── seed/                     # Optional demo/test data (never auto-applied)
-│   ├── demo_forest_seed.sql        # Synthetic 4-species, 3-scenario demo dataset (XRFF-241)
 │   └── ecosense_growth_variants.sql # Growth variants generated from real Ecosense baseline (see docs/variant-scenario-model.md)
 └── utils/                    # Utility and debug scripts
     ├── check_db_schema.py          # Inspect database schema
@@ -69,7 +68,7 @@ python scripts/import/import_trees.py data/imports/my_data.csv --dry-run
 
 ```bash
 # Import sensor data from Aquarius API
-python scripts/import/import_sensor_data.py
+python scripts/import/sync_aquarius_direct.py 45
 
 # Link sensors to nearby trees
 python scripts/import/link_sensors_to_trees.py
@@ -97,18 +96,15 @@ python scripts/import/find_active_sensors.py
 
 ## Seed Data (Optional)
 
-`scripts/seed/` holds demo/test datasets that are **never auto-applied**. A fresh
-`docker compose up` produces a clean, empty database — real forest data (ecosense,
-mathisle) and demo/test data are both loaded manually, on purpose.
+`scripts/seed/` holds the growth-variant seeds that are **never auto-applied**. A
+fresh `docker compose up` produces a clean, empty database — real forest data
+(ecosense, mathisle) and its growth variants are loaded manually, on purpose.
 
 ```bash
-# Load the synthetic demo dataset (4 species, 3 scenarios, sensors) — optional
-docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/demo_forest_seed.sql
-
 # Generate growth variants from the real Ecosense baseline — optional
-# (also backfills ScenarioID=Current_Conditions on the baseline import, which
-# import_trees.py leaves NULL). See docs/variant-scenario-model.md for how to
-# copy this pattern for your own variant.
+# (creates the location-scoped natural_growth scenario, assigns the baseline
+# trees to baseline_2025, and chains growth_2035/growth_2045). See
+# docs/variant-scenario-model.md for how to copy this pattern for your own variant.
 docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/ecosense_growth_variants.sql
 ```
 

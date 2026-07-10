@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION shared.create_audit_log(
 )
 RETURNS BIGINT AS $$
 DECLARE
-    audit_id BIGINT;
+    v_audit_id BIGINT;
 BEGIN
     INSERT INTO shared.AuditLog (
         field_name,
@@ -36,25 +36,25 @@ BEGIN
         change_type_param,
         inet_client_addr()
     )
-    RETURNING audit_id INTO audit_id;
+    RETURNING audit_id INTO v_audit_id;
 
     -- Create junction table entry based on table name
     CASE table_name_param
         WHEN 'PointClouds' THEN
             INSERT INTO shared.AuditLog_PointClouds (audit_id, point_cloud_id)
-            VALUES (audit_id, variant_id_param);
+            VALUES (v_audit_id, variant_id_param);
         WHEN 'Trees' THEN
             INSERT INTO shared.AuditLog_Trees (audit_id, tree_id)
-            VALUES (audit_id, variant_id_param);
+            VALUES (v_audit_id, variant_id_param);
         WHEN 'Environments' THEN
             INSERT INTO shared.AuditLog_Environments (audit_id, environment_id)
-            VALUES (audit_id, variant_id_param);
+            VALUES (v_audit_id, variant_id_param);
         WHEN 'Stems' THEN
             INSERT INTO shared.AuditLog_Stems (audit_id, stem_id)
-            VALUES (audit_id, variant_id_param);
+            VALUES (v_audit_id, variant_id_param);
     END CASE;
 
-    RETURN audit_id;
+    RETURN v_audit_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

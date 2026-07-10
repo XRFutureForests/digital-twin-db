@@ -8,10 +8,10 @@ Usage
 -----
     python scripts/silva/silva_writeback.py \\
         --input silva_output.csv \\
-        --scenario Climate_Change_2050 \\
+        --scenario natural_growth \\
         --simulator SILVA \\
         --version 4.5 \\
-        --location Ecosense_MixedPlot
+        --location ecosense
 
 Prerequisites
 -------------
@@ -44,28 +44,28 @@ from dotenv import load_dotenv
 # ⚠ VERIFY these against the actual R output before first use (XRFF-244)
 # ---------------------------------------------------------------------------
 SILVA_TO_DB: dict[str, str] = {
-    # SILVA col      → DB column
-    "year":          "projectionyear",       # projection calendar year
-    "nr":            "_nr",                  # tree number (used for entity lookup)
-    "bid":           "_bid",                 # stand/plot id (for location lookup)
-    "bid2":          "_bid2",                # sub-plot id
-    "h":             "height_m",             # total height (m)
-    "d":             "dbh_cm",               # DBH at 1.3 m (cm)
-    "hkb":           "crownbaseheight_m",    # crown base height (m)
-    "kb":            "crownwidth_m",         # crown width (m)
-    "ba_m2":         "basalarea_m2",         # basal area per tree (m²)  — may be absent
-    "vol":           "volume_m3",            # stem volume (m³)  — may be absent
-    "mort":          "mortality",            # mortality flag (0/1)
+    # SILVA col      → DB column (trees.GrowthSimulations, snake_case)
+    "year":          "projection_year",       # projection calendar year
+    "nr":            "_nr",                   # tree number (used for entity lookup)
+    "bid":           "_bid",                  # stand/plot id (for location lookup)
+    "bid2":          "_bid2",                 # sub-plot id
+    "h":             "height_m",              # total height (m)
+    "d":             "dbh_cm",                # DBH at 1.3 m (cm)
+    "hkb":           "crown_base_height_m",   # crown base height (m)
+    "kb":            "crown_width_m",         # crown width (m)
+    "ba_m2":         "basal_area_m2",         # basal area per tree (m²)  — may be absent
+    "vol":           "volume_m3",             # stem volume (m³)  — may be absent
+    "mort":          "mortality",             # mortality flag (0/1)
     # Stand-level columns (same value repeated across all trees in a step)
-    "g_ha":          "standbasalarea_m2ha",  # stand basal area (m²/ha)
-    "v_ha":          "standvolume_m3ha",     # stand volume (m³/ha)
-    "n_ha":          "standstemcount_ha",    # stem count (stems/ha)
+    "g_ha":          "stand_basal_area_m2ha", # stand basal area (m²/ha)
+    "v_ha":          "stand_volume_m3ha",     # stand volume (m³/ha)
+    "n_ha":          "stand_stem_count_ha",   # stem count (stems/ha)
     # Carry-through columns from silva_input (added by R script for join-back)
-    "tree_entity_id":  "treeentityid",
-    "base_tree_id":    "basetreeid",
-    "species_id":      "speciesid",
-    "location_id":     "locationid",
-    "plot_id":         "plotid",
+    "tree_entity_id":  "tree_entity_id",
+    "base_tree_id":    "base_tree_id",
+    "species_id":      "species_id",
+    "location_id":     "location_id",
+    "plot_id":         "plot_id",
 }
 
 ENDPOINT = "/rest/v1/rpc/insert_growth_simulations"   # or direct table endpoint below
@@ -87,14 +87,14 @@ def map_columns(df: pd.DataFrame, run_id: str, simulator: str, version: str,
     df = df.rename(columns=rename)
 
     # Add run-level metadata (same for every row)
-    df["runid"]           = run_id
-    df["simulatorname"]   = simulator
-    df["simulatorversion"] = version
-    df["scenarioid"]      = scenario_id
+    df["run_id"]           = run_id
+    df["simulator_name"]   = simulator
+    df["simulator_version"] = version
+    df["scenario_id"]      = scenario_id
 
     # Coerce types
-    if "projectionyear" in df.columns:
-        df["projectionyear"] = df["projectionyear"].astype(int)
+    if "projection_year" in df.columns:
+        df["projection_year"] = df["projection_year"].astype(int)
     if "mortality" in df.columns:
         df["mortality"] = df["mortality"].astype(bool)
 
@@ -104,12 +104,12 @@ def map_columns(df: pd.DataFrame, run_id: str, simulator: str, version: str,
 
     # Drop any column not in the DB schema (safety guard)
     known_db_cols = set(SILVA_TO_DB.values()) | {
-        "runid", "simulatorname", "simulatorversion", "scenarioid",
-        "treeentityid", "basetreeid", "locationid", "plotid", "speciesid",
-        "projectionyear", "timedelta_yrs",
-        "height_m", "dbh_cm", "basalarea_m2", "crownwidth_m", "crownbaseheight_m",
-        "volume_m3", "biomass_kg", "carboncontent_kg", "healthscore", "mortality",
-        "standbasalarea_m2ha", "standvolume_m3ha", "standbio_tha", "standstemcount_ha",
+        "run_id", "simulator_name", "simulator_version", "scenario_id",
+        "tree_entity_id", "base_tree_id", "location_id", "plot_id", "species_id",
+        "projection_year", "time_delta_yrs",
+        "height_m", "dbh_cm", "basal_area_m2", "crown_width_m", "crown_base_height_m",
+        "volume_m3", "biomass_kg", "carbon_content_kg", "health_score", "mortality",
+        "stand_basal_area_m2ha", "stand_volume_m3ha", "stand_biomass_tha", "stand_stem_count_ha",
     }
     extra = [c for c in df.columns if c not in known_db_cols]
     if extra:
@@ -119,15 +119,29 @@ def map_columns(df: pd.DataFrame, run_id: str, simulator: str, version: str,
     return df.where(pd.notnull(df), None).to_dict(orient="records")
 
 
-def get_scenario_id(base_url: str, headers: dict, scenario_name: str) -> int:
-    r = httpx.get(f"{base_url}/rest/v1/scenarios",
-                  params={"scenarioname": f"eq.{scenario_name}", "select": "scenarioid"},
-                  headers=headers)
+def get_scenario_id(base_url: str, headers: dict, scenario_name: str,
+                    location_name: str | None = None) -> int:
+    # Scenarios are location-scoped (unique per location), so a location is
+    # needed to disambiguate. Resolve the location id first when provided.
+    params = {"scenario_name": f"eq.{scenario_name}", "select": "scenario_id,location_id"}
+    if location_name:
+        loc = httpx.get(f"{base_url}/rest/v1/locations",
+                        params={"location_name": f"eq.{location_name}", "select": "location_id"},
+                        headers=headers)
+        loc.raise_for_status()
+        loc_rows = loc.json()
+        if not loc_rows:
+            raise ValueError(f"Location '{location_name}' not found in DB")
+        params["location_id"] = f"eq.{loc_rows[0]['location_id']}"
+    r = httpx.get(f"{base_url}/rest/v1/scenarios", params=params, headers=headers)
     r.raise_for_status()
     rows = r.json()
     if not rows:
         raise ValueError(f"Scenario '{scenario_name}' not found in DB")
-    return rows[0]["scenarioid"]
+    if len(rows) > 1:
+        raise ValueError(
+            f"Scenario '{scenario_name}' is ambiguous across locations; pass --location")
+    return rows[0]["scenario_id"]
 
 
 def insert_rows(base_url: str, headers: dict, rows: list[dict],
@@ -154,10 +168,10 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Write SILVA output to trees.GrowthSimulations")
     parser.add_argument("--input",      required=True, help="Path to SILVA output CSV")
-    parser.add_argument("--scenario",   required=True, help="Scenario name (e.g. Climate_Change_2050)")
+    parser.add_argument("--scenario",   required=True, help="Scenario name (e.g. natural_growth)")
     parser.add_argument("--simulator",  default="SILVA", choices=["SILVA", "FVS", "iLand", "manual", "other"])
     parser.add_argument("--version",    default="4.5",   help="Simulator version string")
-    parser.add_argument("--location",   default=None,    help="Location name (informational only)")
+    parser.add_argument("--location",   default=None,    help="Location name (e.g. ecosense) — disambiguates the location-scoped scenario")
     parser.add_argument("--run-id",     default=None,    help="UUID for this run (auto-generated if omitted)")
     parser.add_argument("--dry-run",    action="store_true", help="Parse and map columns; do not insert")
     args = parser.parse_args()
@@ -178,8 +192,8 @@ def main() -> None:
     print(f"Input  : {args.input}")
     print(f"Scenario: {args.scenario}  Simulator: {args.simulator} {args.version}")
 
-    # Resolve scenario ID
-    scenario_id = get_scenario_id(base_url, headers, args.scenario)
+    # Resolve scenario ID (location-scoped)
+    scenario_id = get_scenario_id(base_url, headers, args.scenario, args.location)
     print(f"Scenario ID: {scenario_id}")
 
     # Load and map

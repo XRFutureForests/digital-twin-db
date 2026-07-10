@@ -45,7 +45,7 @@ Available scripts:
 | Script | Purpose |
 |--------|---------|
 | `scripts/import/import_trees.py` | Bulk upsert tree inventory CSV |
-| `scripts/import/import_sensor_data.py` | Import sensor hardware records |
+| `scripts/import/sync_aquarius_direct.py` | Sync sensors + readings from Aquarius (VPN) |
 | `scripts/import/link_sensors_to_trees.py` | Link sensors to their nearest tree |
 | `scripts/silva/silva_writeback.py` | Write SILVA simulation output to `trees.GrowthSimulations` |
 | `scripts/admin/refresh_lookups.py` | Reload lookup CSVs without a full DB reset |

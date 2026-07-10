@@ -91,11 +91,11 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint 
-        WHERE conname = 'sensorreadings_sensorid_timestamp_unique' 
+        WHERE conname = 'sensorreadings_sensor_id_timestamp_unique' 
         AND conrelid = 'sensor.sensorreadings'::regclass
     ) THEN
         ALTER TABLE sensor.sensorreadings 
-        ADD CONSTRAINT sensorreadings_sensorid_timestamp_unique 
+        ADD CONSTRAINT sensorreadings_sensor_id_timestamp_unique 
         UNIQUE (sensor_id, timestamp);
     END IF;
 END $$;
