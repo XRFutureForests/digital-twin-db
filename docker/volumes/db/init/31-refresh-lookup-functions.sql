@@ -204,21 +204,12 @@ BEGIN
             p_table_name := 'variant_types';
 
         WHEN 'scenarios' THEN
+            -- Scenarios are location-scoped (Scenarios.location_id NOT NULL,
+            -- UNIQUE(location_id, scenario_name)) and are created per site by the
+            -- growth-variant seed scripts — not a refreshable global lookup CSV.
             SELECT COUNT(*) INTO v_rows_before FROM shared.scenarios;
-
-            CREATE TEMP TABLE IF NOT EXISTS _temp_scenarios (
-                scenario_name VARCHAR(200),
-                Description TEXT
-            ) ON COMMIT DROP;
-            TRUNCATE _temp_scenarios;
-
-            EXECUTE format('COPY _temp_scenarios FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'scenarios.csv');
-
-            INSERT INTO shared.Scenarios (scenario_name, Description)
-            SELECT scenario_name, Description FROM _temp_scenarios
-            ON CONFLICT (scenario_name) DO UPDATE SET Description = EXCLUDED.Description;
-
-            SELECT COUNT(*) INTO v_rows_after FROM shared.scenarios;
+            RAISE NOTICE 'scenarios are location-scoped; not refreshed from a global CSV (skipped)';
+            v_rows_after := v_rows_before;
 
         WHEN 'taper_types', 'tapertypes' THEN
             SELECT COUNT(*) INTO v_rows_before FROM trees.tapertypes;
