@@ -123,7 +123,7 @@ Response fields (full `ue_trees` struct):
   "age_years": 95,
   "health_score": 0.85,
   "competition": false,
-  "aquarius_name": "Beech_Mixed_8",
+  "sensor_ref": "Beech_Mixed_8",
   "has_sensors": true,
   "original_x": 416747.2247,
   "original_y": 5346758.6,
@@ -133,7 +133,7 @@ Response fields (full `ue_trees` struct):
 }
 ```
 
-`aquarius_name` / `has_sensors` are non-null/true only for instrumented trees — see [api_spec.md](api_spec.md) for the tree ↔ sensor ↔ reading query chain.
+`sensor_ref` / `has_sensors` are non-null/true only for instrumented trees — see [api_spec.md](api_spec.md) for the tree ↔ sensor ↔ reading query chain.
 
 ### Filter by location + scenario name (when variant_id is unknown)
 

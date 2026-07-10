@@ -271,7 +271,7 @@ erDiagram
 | `position_confidence` | NUMERIC(3,2) | YES | 0–1 | Position accuracy confidence |
 | `height_confidence` | NUMERIC(3,2) | YES | 0–1 | Height measurement confidence |
 | `tree_number` | INTEGER | YES | — | Local tree ID within location/plot |
-| `aquarius_name` | VARCHAR(100) | YES | — | Aquarius sensor-name prefix (`{Species}_{PlotType}_{Seq}`, e.g. `Beech_Mixed_8`) identifying the sensor cluster on this tree; matches the prefix of `sensor.Sensors.serial_number`. Populated for instrumented Ecosense trees only. See §3.x linking notes. |
+| `sensor_ref` | VARCHAR(100) | YES | — | Aquarius sensor-name prefix (`{Species}_{PlotType}_{Seq}`, e.g. `Beech_Mixed_8`) identifying the sensor cluster on this tree; matches the prefix of `sensor.Sensors.serial_number`. Populated for instrumented Ecosense trees only. See §3.x linking notes. |
 | `crown_class_id` | INTEGER | YES | FK → `trees.CrownClasses` | Crown competitive/social position (dominant/co_dominant/intermediate/overtopped/open_grown) — FIA `CCLCD` / NEON `canopyPosition` analog |
 | `damage_agent_id` | INTEGER | YES | FK → `trees.DamageAgents` | Primary agent responsible for observed damage or decline — FIA `AGENTCD` analog |
 | `Defoliation_percent` | NUMERIC(5,2) | YES | 0–100 | ICP Forests-style defoliation assessment |
@@ -401,8 +401,8 @@ erDiagram
 
 **How links are created.** Aquarius names each sensor time-series with a per-species, per-plot-type sequence number (e.g. `Beech_Mixed_8`) that is *independent* of our inventory tree numbering (`plot_id` × `tree_number`), and Aquarius does not carry the inventory ID. The field-surveyed map `data/reference/ecosense_sensor_tree_map.csv` bridges the two. `scripts/import/link_sensors_to_trees.py`:
 
-1. Backfills `trees.Trees.aquarius_name` (resolved by `plot_id` + `tree_number`).
-2. Links every sensor whose `serial_number` prefix equals a tree's `aquarius_name` — the whole monitoring cluster (dendrometer, sap flow, stem water potential, and the surrounding soil moisture / soil temperature probes).
+1. Backfills `trees.Trees.sensor_ref` (resolved by `plot_id` + `tree_number`).
+2. Links every sensor whose `serial_number` prefix equals a tree's `sensor_ref` — the whole monitoring cluster (dendrometer, sap flow, stem water potential, and the surrounding soil moisture / soil temperature probes).
 
 Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING`). The older `sensor.link_sensors_to_trees_by_pattern()` function is deprecated — it guessed the tree from the label number, which is ambiguous across plots.
 
@@ -619,7 +619,7 @@ Plain SQL migration files applied in numeric order by the PostgreSQL Docker init
 | `24-public-api-views.sql` | Public schema views exposing all domain tables to PostgREST |
 | `30-load-lookup-tables.sql` | Seeds lookup tables from `data/lookups/*.csv` |
 | `31-refresh-lookup-functions.sql` | Functions to refresh lookup data |
-| `32-ecosense-sensor-tree-map.sql` | Adds `aquarius_name` to trees.Trees for joining Ecosense sensors to inventory trees; deprecates the pattern-match linker function |
+| `32-ecosense-sensor-tree-map.sql` | Adds `sensor_ref` to trees.Trees for joining Ecosense sensors to inventory trees; deprecates the pattern-match linker function |
 | `33-consolidate-ue-trees.sql` | Consolidates `forest_state` + `ue_trees` into a single self-contained `public.ue_trees`; drops `forest_state` |
 | `34-ue-view-refinements.sql` | Trims `ue_trees` to the UE struct + adds `has_sensors`; adds `sensor_model`/`data_owner` to `ue_sensors`; indexes `sensor_tree_links(tree_id)` |
 | `35-ue-trees-projected-coords.sql` | Adds `location_name`, `scenario_id`, and projected `original_x`/`original_y`/`source_crs` (from `position_original`, UTM 32N) to `ue_trees` |

@@ -68,7 +68,7 @@ SELECT
     dst.data_source_type_name AS datasourcetype,
     -- Competition proxy: crown starts above 60% of tree height → high pressure
     COALESCE((t.crown_base_height_m / NULLIF(t.height_m, 0)) > 0.6, false) AS competition,
-    -- NOTE: trees.aquarius_name (added by migration 32) and has_sensors are added
+    -- NOTE: trees.sensor_ref (added by migration 32) and has_sensors are added
     -- to ue_trees later, by 33/34 — do not reference them here, 25 runs first.
     -- Flat lat/lon for UE JSON parsing (no PostGIS parsing needed in Blueprint)
     ST_Y(t.position)    AS latitude,
@@ -86,7 +86,7 @@ LEFT JOIN trees.datasourcetypes dst ON t.data_source_type_id = dst.data_source_t
 COMMENT ON VIEW public.ue_trees IS
     'Flat tree catalogue for UE Blueprint import. One row per tree with variant, '
     'scenario, species, main-stem DBH, pre-flattened latitude/longitude, and the '
-    'Aquarius sensor anchor. Filter by variant_id to load one time step: '
+    'Sensor-cluster reference (sensor_ref). Filter by variant_id to load one time step: '
     'GET /ue_trees?variant_id=eq.<id>. For a tree''s sensors: '
     'GET /ue_sensors?linked_tree_entity_id=eq.<tree_entity_id>.';
 

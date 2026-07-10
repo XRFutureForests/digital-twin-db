@@ -183,7 +183,7 @@ GET /ue_sensorreadings?sensor_id=eq.<sensor_id>&order=timestamp.desc&limit=96   
 
 Join sensors to trees by **`linked_tree_entity_id`** (the persistent physical-tree UUID), not `linked_tree_id` (a single variant row) — this keeps the link stable across growth variants. `ue_sensors` also carries the latest reading inline (plus `sensor_model` = real instrument and `data_owner`), so a per-tree sensor list needs no extra readings or `/sensors` call. `linked_tree_*` is populated by `scripts/import/link_sensors_to_trees.py` (see [database_schema.md §3.9](database_schema.md)); meteo/soil-station sensors have `NULL` tree fields.
 
-`ue_trees` also carries `aquarius_name` and a `has_sensors` boolean, so UE can flag instrumented trees without a second query — filter with `GET /ue_trees?has_sensors=eq.true`.
+`ue_trees` also carries `sensor_ref` and a `has_sensors` boolean, so UE can flag instrumented trees without a second query — filter with `GET /ue_trees?has_sensors=eq.true`.
 
 ### 3.2 Standard CRUD Methods
 

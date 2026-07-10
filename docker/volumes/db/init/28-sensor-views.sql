@@ -31,9 +31,9 @@ COMMENT ON VIEW public.sensor_tree_links IS 'Public API view for sensor-tree lin
 CREATE OR REPLACE VIEW public.ue_sensors AS
 SELECT
     s.sensor_id,
-    s.external_id                              AS aquarius_id,
+    s.external_id                              AS external_id,
     s.serial_number                            AS sensor_label,
-    s.external_metadata->>'Parameter'          AS aquarius_parameter,
+    s.external_metadata->>'Parameter'          AS parameter,
     -- Sensor classification
     st.sensor_type_id,
     st.sensor_type_name                         AS sensor_type,
