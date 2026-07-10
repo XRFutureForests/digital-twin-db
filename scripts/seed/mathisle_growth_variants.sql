@@ -56,21 +56,29 @@
 SET search_path TO shared, trees, extensions, public;
 
 -- ============================================================
--- STEP 0: Create Mathisle baseline variant and assign baseline trees
+-- STEP 0: Create natural_growth scenario + baseline variant, assign trees
 -- ============================================================
+
+-- Location-scoped scenario (Location -> Scenario -> Variant) owning the baseline.
+INSERT INTO shared.Scenarios (LocationID, ScenarioName, Description)
+SELECT
+    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'mathisle'),
+    'natural_growth',
+    'Baseline field inventory developing under no active management (growth only).'
+ON CONFLICT (LocationID, ScenarioName) DO NOTHING;
 
 INSERT INTO shared.Variants (LocationID, ScenarioID, VariantTypeID, VariantName, SimulationYear, TimeDelta_yrs, SortOrder, Description)
 SELECT
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Mathisle'),
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions'),
+    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'mathisle'),
+    (SELECT s.ScenarioID FROM shared.Scenarios s JOIN shared.Locations l ON s.LocationID = l.LocationID WHERE l.LocationName = 'mathisle' AND s.ScenarioName = 'natural_growth'),
     (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'original'),
-    'Baseline_2025',
+    'baseline_2025',
     2025, 0, 0,
     'Mathisle field measurements, March 2025'
 WHERE NOT EXISTS (
     SELECT 1 FROM shared.Variants v
     JOIN shared.Locations l ON v.LocationID = l.LocationID
-    WHERE l.LocationName = 'Mathisle' AND v.VariantName = 'Baseline_2025'
+    WHERE l.LocationName = 'mathisle' AND v.VariantName = 'baseline_2025'
 );
 
 UPDATE trees.Trees t
@@ -78,12 +86,12 @@ SET
     VariantID  = (
         SELECT v.VariantID FROM shared.Variants v
         JOIN shared.Locations l ON v.LocationID = l.LocationID
-        WHERE l.LocationName = 'Mathisle' AND v.VariantName = 'Baseline_2025'
+        WHERE l.LocationName = 'mathisle' AND v.VariantName = 'baseline_2025'
     ),
-    ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions')
+    ScenarioID = (SELECT s.ScenarioID FROM shared.Scenarios s JOIN shared.Locations l ON s.LocationID = l.LocationID WHERE l.LocationName = 'mathisle' AND s.ScenarioName = 'natural_growth')
 FROM shared.Locations l
 WHERE t.LocationID = l.LocationID
-  AND l.LocationName = 'Mathisle'
+  AND l.LocationName = 'mathisle'
   AND t.VariantID IS NULL;
 
 -- Reproducible randomness for crown synthesis, mortality/regeneration sampling below
@@ -93,13 +101,8 @@ SELECT setseed(0.43);
 -- SCENARIOS
 -- ============================================================
 
-INSERT INTO shared.Scenarios (ScenarioName, Description)
-SELECT v.name, v.description
-FROM (VALUES
-    ('Mathisle_Growth_2035', '+10y synthetic growth projection from Mathisle Current_Conditions baseline. Crown dimensions synthesized; heights from allometric predictions. Placeholder percentages, not a calibrated growth model.'),
-    ('Mathisle_Growth_2045', '+20y synthetic growth projection, chained from Mathisle_Growth_2035. Crown dimensions synthesized.')
-) v(name, description)
-WHERE NOT EXISTS (SELECT 1 FROM shared.Scenarios s WHERE s.ScenarioName = v.name);
+-- (Growth states are variants of the single natural_growth scenario, not
+--  separate scenarios — see STEP 0.)
 
 -- ============================================================
 -- VARIANTS (one per scenario time step)
@@ -107,30 +110,30 @@ WHERE NOT EXISTS (SELECT 1 FROM shared.Scenarios s WHERE s.ScenarioName = v.name
 
 INSERT INTO shared.Variants (LocationID, ScenarioID, VariantTypeID, VariantName, SimulationYear, TimeDelta_yrs, SortOrder, Description)
 SELECT
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Mathisle'),
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2035'),
+    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'mathisle'),
+    (SELECT s.ScenarioID FROM shared.Scenarios s JOIN shared.Locations l ON s.LocationID = l.LocationID WHERE l.LocationName = 'mathisle' AND s.ScenarioName = 'natural_growth'),
     (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
-    'Growth_2035',
+    'growth_2035',
     2035, 10, 0,
     'Synthetic +10y growth from Mathisle Current_Conditions baseline'
 WHERE NOT EXISTS (
     SELECT 1 FROM shared.Variants v
     JOIN shared.Locations l ON v.LocationID = l.LocationID
-    WHERE l.LocationName = 'Mathisle' AND v.VariantName = 'Growth_2035'
+    WHERE l.LocationName = 'mathisle' AND v.VariantName = 'growth_2035'
 );
 
 INSERT INTO shared.Variants (LocationID, ScenarioID, VariantTypeID, VariantName, SimulationYear, TimeDelta_yrs, SortOrder, Description)
 SELECT
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Mathisle'),
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2045'),
+    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'mathisle'),
+    (SELECT s.ScenarioID FROM shared.Scenarios s JOIN shared.Locations l ON s.LocationID = l.LocationID WHERE l.LocationName = 'mathisle' AND s.ScenarioName = 'natural_growth'),
     (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
-    'Growth_2045',
+    'growth_2045',
     2045, 20, 0,
     'Synthetic +20y growth from Mathisle_Growth_2035'
 WHERE NOT EXISTS (
     SELECT 1 FROM shared.Variants v
     JOIN shared.Locations l ON v.LocationID = l.LocationID
-    WHERE l.LocationName = 'Mathisle' AND v.VariantName = 'Growth_2045'
+    WHERE l.LocationName = 'mathisle' AND v.VariantName = 'growth_2045'
 );
 
 -- ============================================================
@@ -141,7 +144,9 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM trees.Trees t
-        WHERE t.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2035')
+        JOIN shared.Variants v ON t.VariantID = v.VariantID
+        JOIN shared.Locations l ON v.LocationID = l.LocationID
+        WHERE l.LocationName = 'mathisle' AND v.VariantName = 'growth_2035'
     ) THEN
 
         CREATE TEMP TABLE _m2035_base AS
@@ -156,8 +161,8 @@ BEGIN
         JOIN shared.Variants bv ON t.VariantID = bv.VariantID
         JOIN shared.Locations l ON bv.LocationID = l.LocationID
         LEFT JOIN trees.Stems st ON st.TreeID = t.TreeID AND st.StemNumber = 1
-        WHERE l.LocationName = 'Mathisle'
-          AND bv.VariantName = 'Baseline_2025';
+        WHERE l.LocationName = 'mathisle'
+          AND bv.VariantName = 'baseline_2025';
 
         -- ~4% mortality (steeper than Ecosense — drier climate signal): these trees are simply absent from the new variant
         CREATE TEMP TABLE _m2035_survivors AS
@@ -176,9 +181,9 @@ BEGIN
             )
             SELECT
                 b.TreeEntityID, b.base_tree_id,
-                (SELECT v.VariantID FROM shared.Variants v JOIN shared.Locations l ON v.LocationID = l.LocationID WHERE l.LocationName = 'Mathisle' AND v.VariantName = 'Growth_2035'),
+                (SELECT v.VariantID FROM shared.Variants v JOIN shared.Locations l ON v.LocationID = l.LocationID WHERE l.LocationName = 'mathisle' AND v.VariantName = 'growth_2035'),
                 b.LocationID, b.PlotID, b.CampaignID,
-                (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2035'),
+                (SELECT s.ScenarioID FROM shared.Scenarios s JOIN shared.Locations l ON s.LocationID = l.LocationID WHERE l.LocationName = 'mathisle' AND s.ScenarioName = 'natural_growth'),
                 (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
                 b.SpeciesID, b.TreeStatusID, b.BranchingPatternID, b.BarkCharacteristicID,
                 b.MeasurementDate + INTERVAL '10 years', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'simulated'),
@@ -210,7 +215,7 @@ BEGIN
             gen_random_uuid(),
             (SELECT VariantID FROM shared.Variants WHERE VariantName = 'Mathisle_2035_Baseline'),
             b.LocationID, b.PlotID, b.CampaignID,
-            (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2035'),
+            (SELECT s.ScenarioID FROM shared.Scenarios s JOIN shared.Locations l ON s.LocationID = l.LocationID WHERE l.LocationName = 'mathisle' AND s.ScenarioName = 'natural_growth'),
             (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
             b.SpeciesID, b.MeasurementDate + INTERVAL '10 years', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'simulated'),
             ROUND((2 + random() * 2)::numeric, 2),
@@ -238,7 +243,9 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM trees.Trees t
-        WHERE t.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2045')
+        JOIN shared.Variants v ON t.VariantID = v.VariantID
+        JOIN shared.Locations l ON v.LocationID = l.LocationID
+        WHERE l.LocationName = 'mathisle' AND v.VariantName = 'growth_2045'
     ) THEN
 
         CREATE TEMP TABLE _m2045_base AS
@@ -253,7 +260,7 @@ BEGIN
         JOIN shared.Variants bv ON t.VariantID = bv.VariantID
         JOIN shared.Locations bl ON bv.LocationID = bl.LocationID
         LEFT JOIN trees.Stems st ON st.TreeID = t.TreeID AND st.StemNumber = 1
-        WHERE bl.LocationName = 'Mathisle' AND bv.VariantName = 'Growth_2035';
+        WHERE bl.LocationName = 'mathisle' AND bv.VariantName = 'growth_2035';
 
         -- ~6% mortality over the second decade
         CREATE TEMP TABLE _m2045_survivors AS
@@ -272,9 +279,9 @@ BEGIN
             )
             SELECT
                 b.TreeEntityID, b.base_tree_id,
-                (SELECT v.VariantID FROM shared.Variants v JOIN shared.Locations l ON v.LocationID = l.LocationID WHERE l.LocationName = 'Mathisle' AND v.VariantName = 'Growth_2045'),
+                (SELECT v.VariantID FROM shared.Variants v JOIN shared.Locations l ON v.LocationID = l.LocationID WHERE l.LocationName = 'mathisle' AND v.VariantName = 'growth_2045'),
                 b.LocationID, b.PlotID, b.CampaignID,
-                (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2045'),
+                (SELECT s.ScenarioID FROM shared.Scenarios s JOIN shared.Locations l ON s.LocationID = l.LocationID WHERE l.LocationName = 'mathisle' AND s.ScenarioName = 'natural_growth'),
                 (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
                 b.SpeciesID, b.TreeStatusID, b.BranchingPatternID, b.BarkCharacteristicID,
                 b.MeasurementDate + INTERVAL '10 years', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'simulated'),
@@ -306,7 +313,7 @@ BEGIN
             gen_random_uuid(),
             (SELECT VariantID FROM shared.Variants WHERE VariantName = 'Mathisle_2045_Baseline'),
             b.LocationID, b.PlotID, b.CampaignID,
-            (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Mathisle_Growth_2045'),
+            (SELECT s.ScenarioID FROM shared.Scenarios s JOIN shared.Locations l ON s.LocationID = l.LocationID WHERE l.LocationName = 'mathisle' AND s.ScenarioName = 'natural_growth'),
             (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
             b.SpeciesID, b.MeasurementDate + INTERVAL '10 years', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'simulated'),
             ROUND((2 + random() * 2)::numeric, 2),
@@ -330,6 +337,26 @@ END $$;
 -- SUMMARY
 -- ============================================================
 
+-- Timeline order + lineage within natural_growth; resync trees.ScenarioID
+WITH ordered AS (
+    SELECT v.VariantID,
+           row_number() OVER (PARTITION BY v.ScenarioID ORDER BY v.SimulationYear, v.VariantID) - 1 AS so,
+           lag(v.VariantID) OVER (PARTITION BY v.ScenarioID ORDER BY v.SimulationYear, v.VariantID) AS parent
+    FROM shared.Variants v
+    JOIN shared.Locations l ON v.LocationID = l.LocationID
+    WHERE l.LocationName = 'mathisle'
+)
+UPDATE shared.Variants v
+SET SortOrder = o.so, ParentVariantID = o.parent
+FROM ordered o WHERE v.VariantID = o.VariantID;
+
+UPDATE trees.Trees t
+SET ScenarioID = v.ScenarioID
+FROM shared.Variants v
+WHERE t.VariantID = v.VariantID
+  AND t.ScenarioID IS DISTINCT FROM v.ScenarioID
+  AND t.LocationID = (SELECT LocationID FROM shared.Locations WHERE LocationName = 'mathisle');
+
 DO $$
 DECLARE
     v_baseline INTEGER;
@@ -339,17 +366,17 @@ BEGIN
     SELECT COUNT(*) INTO v_baseline FROM trees.Trees t
     JOIN shared.Variants v ON t.VariantID = v.VariantID
     JOIN shared.Locations l ON v.LocationID = l.LocationID
-    WHERE l.LocationName = 'Mathisle' AND v.VariantName = 'Baseline_2025';
+    WHERE l.LocationName = 'mathisle' AND v.VariantName = 'baseline_2025';
 
     SELECT COUNT(*) INTO v_2035 FROM trees.Trees t
     JOIN shared.Variants v ON t.VariantID = v.VariantID
     JOIN shared.Locations l ON v.LocationID = l.LocationID
-    WHERE l.LocationName = 'Mathisle' AND v.VariantName = 'Growth_2035';
+    WHERE l.LocationName = 'mathisle' AND v.VariantName = 'growth_2035';
 
     SELECT COUNT(*) INTO v_2045 FROM trees.Trees t
     JOIN shared.Variants v ON t.VariantID = v.VariantID
     JOIN shared.Locations l ON v.LocationID = l.LocationID
-    WHERE l.LocationName = 'Mathisle' AND v.VariantName = 'Growth_2045';
+    WHERE l.LocationName = 'mathisle' AND v.VariantName = 'growth_2045';
 
     RAISE NOTICE 'Mathisle Baseline_2025 : % trees', v_baseline;
     RAISE NOTICE 'Mathisle Growth_2035   : % trees', v_2035;

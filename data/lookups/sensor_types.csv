@@ -1,15 +1,15 @@
 SensorTypeName,Description,TypicalUnit,TypicalRangeMin,TypicalRangeMax
-Temperature,Air or soil temperature sensor,°C,-50,60
-Humidity,Relative humidity sensor,%,0,100
-CO2,Carbon dioxide concentration sensor,ppm,200,2000
-Light,Light intensity or PAR sensor,lux,0,200000
-Soil_Moisture,Soil volumetric water content,%,0,100
-Wind_Speed,Wind speed anemometer,m/s,0,50
-Wind_Direction,Wind direction vane,degrees,0,360
-Precipitation,Rain gauge,mm,0,500
-Barometric_Pressure,Atmospheric pressure,hPa,900,1100
-Solar_Radiation,Solar irradiance,W/m²,0,1500
-Soil_Temperature,Subsurface soil temperature,°C,-20,40
-Leaf_Wetness,Leaf surface moisture,units,0,15
-Sap_Flow,Tree sap flow rate,g/h,0,10000
-Stem_Radial_Variation,Dendrometer readings for stem radial variation,mV,0,5000
+temperature,Air or soil temperature sensor,°C,-50,60
+humidity,Relative humidity sensor,%,0,100
+co2,Carbon dioxide concentration sensor,ppm,200,2000
+light,Light intensity or PAR sensor,lux,0,200000
+soil_moisture,Soil volumetric water content,%,0,100
+wind_speed,Wind speed anemometer,m/s,0,50
+wind_direction,Wind direction vane,degrees,0,360
+precipitation,Rain gauge,mm,0,500
+barometric_pressure,Atmospheric pressure,hPa,900,1100
+solar_radiation,Solar irradiance,W/m²,0,1500
+soil_temperature,Subsurface soil temperature,°C,-20,40
+leaf_wetness,Leaf surface moisture,units,0,15
+sap_flow,Tree sap flow rate,g/h,0,10000
+stem_radial_variation,Dendrometer readings for stem radial variation,mV,0,5000

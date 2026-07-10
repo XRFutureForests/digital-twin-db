@@ -1,5 +1,5 @@
 StraightnessName,Description,DeviationAngleMin,DeviationAngleMax
-Straight,Minimal deviation from vertical,0,5
-Slight_sweep,Minor curvature or lean,5,15
-Moderate_sweep,Noticeable curvature,15,30
-Severe_sweep,Significant curvature or lean,30,90
+straight,Minimal deviation from vertical,0,5
+slight_sweep,Minor curvature or lean,5,15
+moderate_sweep,Noticeable curvature,15,30
+severe_sweep,Significant curvature or lean,30,90

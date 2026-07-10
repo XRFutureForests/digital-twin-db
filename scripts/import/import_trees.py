@@ -48,6 +48,7 @@ else:
 
 # Standard template columns (the 24 core columns)
 TEMPLATE_COLUMNS = [
+    "LocationName",
     "LocationID",
     "PlotID",
     "TreeNumber",
@@ -162,25 +163,19 @@ def validate_foreign_keys(df, conn):
     cur = conn.cursor()
     warnings = []
 
-    # Check LocationIDs exist
-    location_ids = df["LocationID"].dropna().unique()
-    if len(location_ids) > 0:
-        cur.execute("SELECT LocationID, LocationName FROM shared.Locations")
-        valid_locations = {row[0]: row[1] for row in cur.fetchall()}
-        invalid_locs = [
-            int(lid) for lid in location_ids if int(lid) not in valid_locations
-        ]
-        if invalid_locs:
-            warnings.append(f"LocationIDs not found in database: {invalid_locs}")
-            cur.execute("SELECT LocationID, LocationName FROM shared.Locations")
-            print("  Available locations:")
-            for lid, name in valid_locations.items():
-                print(f"    {lid}: {name}")
+    # Check locations exist — resolved BY NAME (LocationName), robust to reset re-IDing.
+    cur.execute("SELECT LocationName FROM shared.Locations")
+    valid_location_names = {row[0] for row in cur.fetchall()}
+    if "LocationName" in df.columns:
+        names = df["LocationName"].dropna().unique()
+        invalid = [n for n in names if n not in valid_location_names]
+        if invalid:
+            warnings.append(f"LocationNames not found in database: {invalid}")
+            print(f"  Available locations: {', '.join(sorted(valid_location_names))}")
         else:
-            loc_names = [
-                f"{int(lid)}={valid_locations[int(lid)]}" for lid in location_ids
-            ]
-            print(f"  Locations: {', '.join(loc_names)}")
+            print(f"  Locations: {', '.join(names)}")
+    else:
+        warnings.append("No LocationName column — cannot resolve locations by name")
 
     # Check SpeciesIDs exist
     if "SpeciesID" in df.columns:
@@ -265,8 +260,41 @@ def import_trees(df, dry_run=False):
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # --- Resolve location & plot references BY NAME (robust to reset re-IDing) ---
+    # Import CSVs carry a LocationName (e.g. 'ecosense') and a PlotID that is really
+    # the plot NUMBER within that location; both are resolved to current DB ids here
+    # so a clean rebuild (which re-assigns serial ids) still imports correctly.
+    cur.execute("SELECT LocationName, LocationID FROM shared.Locations")
+    location_name_map = {name: lid for name, lid in cur.fetchall()}
+    cur.execute(
+        "SELECT LocationID, PlotNumber, PlotID FROM shared.Plots WHERE PlotNumber IS NOT NULL"
+    )
+    plot_number_map = {(lid, num): pid for lid, num, pid in cur.fetchall()}
+
+    def resolve_location(row):
+        name = row.get("LocationName")
+        if pd.notna(name) and str(name).strip():
+            lid = location_name_map.get(str(name).strip())
+            if lid is None:
+                raise SystemExit(
+                    f"LocationName '{name}' not found in shared.Locations — "
+                    f"known: {sorted(location_name_map)}"
+                )
+            return lid
+        return int(row["LocationID"]) if pd.notna(row.get("LocationID")) else None
+
+    df["_LocationID"] = df.apply(resolve_location, axis=1)
+
+    def resolve_plot(row):
+        num = row.get("PlotID")  # CSV 'PlotID' == plot number within the location
+        if pd.isna(num) or pd.isna(row.get("_LocationID")):
+            return None
+        return plot_number_map.get((int(row["_LocationID"]), int(num)))
+
+    df["_PlotID"] = df.apply(resolve_plot, axis=1)
+
     # Check existing trees for these locations
-    location_ids = df["LocationID"].dropna().unique()
+    location_ids = df["_LocationID"].dropna().unique()
     for loc_id in location_ids:
         cur.execute(
             "SELECT count(*) FROM trees.trees WHERE locationid = %s", (int(loc_id),)
@@ -289,12 +317,6 @@ def import_trees(df, dry_run=False):
     except psycopg2.errors.UndefinedTable:
         conn.rollback()
         print("  Warning: trees.DataSourceTypes not found — using legacy DataSourceType string column")
-
-    # Build scenario_id_map; create missing scenarios on the fly
-    scenario_id_map: dict[str, int] = {}
-    cur.execute("SELECT ScenarioName, ScenarioID FROM shared.Scenarios")
-    for scenario_name, scenario_id in cur.fetchall():
-        scenario_id_map[scenario_name] = scenario_id
 
     # Build insert values
     has_position_original = (
@@ -328,27 +350,16 @@ def import_trees(df, dry_run=False):
             # Legacy fallback: pass the string directly
             datasource_type_id = str(ds_name).lower() if pd.notna(ds_name) and ds_name else None
 
-        # Resolve ScenarioID, creating the scenario if it doesn't exist yet
-        scenario_name = row.get("ScenarioName")
-        if pd.notna(scenario_name) and scenario_name:
-            scenario_name = str(scenario_name)
-            if scenario_name not in scenario_id_map:
-                cur.execute(
-                    "INSERT INTO shared.Scenarios (ScenarioName, Description) "
-                    "VALUES (%s, NULL) RETURNING ScenarioID",
-                    (scenario_name,),
-                )
-                new_id = cur.fetchone()[0]
-                scenario_id_map[scenario_name] = new_id
-                print(f"  Created new scenario: '{scenario_name}' (ScenarioID={new_id})")
-            scenario_id = scenario_id_map[scenario_name]
-        else:
-            scenario_id = None
+        # ScenarioID is NOT set at tree-import time. Scenarios are location-scoped
+        # (Location -> Scenario -> Variant) and are created by the growth-variant
+        # seed scripts, which then assign each baseline tree to a variant and
+        # resync trees.ScenarioID from that variant.
+        scenario_id = None
 
         tree_values.append(
             (
-                int(row["LocationID"]),
-                int(row["PlotID"]) if pd.notna(row.get("PlotID")) else None,
+                int(row["_LocationID"]),
+                int(row["_PlotID"]) if pd.notna(row.get("_PlotID")) else None,
                 int(row["TreeNumber"]) if pd.notna(row.get("TreeNumber")) else None,
                 int(row["CampaignID"]) if pd.notna(row.get("CampaignID")) else None,
                 scenario_id,

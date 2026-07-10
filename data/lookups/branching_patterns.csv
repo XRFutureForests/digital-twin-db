@@ -1,6 +1,6 @@
 BranchingPatternName,Description
-Alternate,Branches arranged alternately along stem
-Opposite,Branches arranged in pairs at nodes
-Whorled,Multiple branches arising from same node
-Spiral,Branches arranged in spiral pattern
-Random,No clear branching pattern
+alternate,Branches arranged alternately along stem
+opposite,Branches arranged in pairs at nodes
+whorled,Multiple branches arising from same node
+spiral,Branches arranged in spiral pattern
+random,No clear branching pattern

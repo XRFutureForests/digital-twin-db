@@ -1,11 +1,11 @@
 GeometricSolidName,Description,RelativeLateralArea,RelativeVolume,RelativeDrag
-Cylinder,Square/cylindrical crown shape,1.00,0.80,1.00
-Round Edge Cylinder,Cylinder with rounded edges,0.90,0.70,0.84
-Elongated Spheroid,Vertically elongated sphere,0.80,0.60,0.68
-Spheroid,Standard spherical shape,0.70,0.50,0.53
-Expanded Paraboloid,Wide parabolic shape,0.60,0.50,0.54
-Paraboloid,Standard parabolic shape,0.50,0.40,0.42
-Fat Cone,Wide conical shape,0.40,0.30,0.29
-Cone,Standard conical shape,0.30,0.25,0.17
-Neiloid,Narrow tapered shape (reverse cone),0.20,0.20,0.08
-Thin Neiloid,Very narrow tapered shape,0.10,0.10,0.01
+cylinder,Square/cylindrical crown shape,1.00,0.80,1.00
+round_edge_cylinder,Cylinder with rounded edges,0.90,0.70,0.84
+elongated_spheroid,Vertically elongated sphere,0.80,0.60,0.68
+spheroid,Standard spherical shape,0.70,0.50,0.53
+expanded_paraboloid,Wide parabolic shape,0.60,0.50,0.54
+paraboloid,Standard parabolic shape,0.50,0.40,0.42
+fat_cone,Wide conical shape,0.40,0.30,0.29
+cone,Standard conical shape,0.30,0.25,0.17
+neiloid,Narrow tapered shape (reverse cone),0.20,0.20,0.08
+thin_neiloid,Very narrow tapered shape,0.10,0.10,0.01
