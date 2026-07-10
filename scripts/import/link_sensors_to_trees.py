@@ -107,12 +107,13 @@ def backfill_aquarius_names(conn, mappings):
     for m in mappings:
         cur.execute(
             """
-            SELECT t.treeid
+            SELECT t.tree_id
             FROM trees.trees t
-            JOIN shared.locations l ON t.locationid = l.locationid
-            WHERE l.locationname LIKE 'Ecosense_%%'
-              AND t.plotid = %s
-              AND t.treenumber = %s
+            JOIN shared.locations l ON t.location_id = l.location_id
+            JOIN shared.plots p ON t.plot_id = p.plot_id
+            WHERE l.location_name = 'ecosense'
+              AND p.plot_number = %s
+              AND t.tree_number = %s
             """,
             (m["plot_id"], m["tree_number"]),
         )
@@ -121,7 +122,7 @@ def backfill_aquarius_names(conn, mappings):
         if len(tree_ids) == 1:
             tree_id = tree_ids[0]
             cur.execute(
-                "UPDATE trees.trees SET aquariusname = %s WHERE treeid = %s",
+                "UPDATE trees.trees SET sensor_ref = %s WHERE tree_id = %s",
                 (m["aquarius_name"], tree_id),
             )
             resolved[m["aquarius_name"]] = (tree_id, m["full_id"])
@@ -149,11 +150,11 @@ def get_ecosense_sensors(conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT s.sensorid, s.serialnumber
+        SELECT s.sensor_id, s.serial_number
         FROM sensor.sensors s
-        JOIN shared.locations l ON s.locationid = l.locationid
-        WHERE l.locationname LIKE 'Ecosense_%'
-          AND s.serialnumber IS NOT NULL
+        JOIN shared.locations l ON s.location_id = l.location_id
+        WHERE l.location_name = 'ecosense'
+          AND s.serial_number IS NOT NULL
         """
     )
     sensors = [{"sensor_id": r[0], "label": r[1]} for r in cur.fetchall()]
@@ -241,11 +242,11 @@ def verify_links(conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT st.sensortypename, COUNT(*)
+        SELECT st.sensor_type_name, COUNT(*)
         FROM sensor.sensor_tree_links stl
-        JOIN sensor.sensors s ON stl.sensor_id = s.sensorid
-        JOIN sensor.sensortypes st ON s.sensortypeid = st.sensortypeid
-        GROUP BY st.sensortypename
+        JOIN sensor.sensors s ON stl.sensor_id = s.sensor_id
+        JOIN sensor.sensortypes st ON s.sensor_type_id = st.sensor_type_id
+        GROUP BY st.sensor_type_name
         ORDER BY COUNT(*) DESC
         """
     )

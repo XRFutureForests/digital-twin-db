@@ -128,7 +128,7 @@ def parse_metadata_xlsx(xlsx_path):
 def enrich(conn, meta):
     cur = conn.cursor()
     cur.execute(
-        "SELECT externalid FROM sensor.sensors WHERE externalid IS NOT NULL"
+        "SELECT external_id FROM sensor.sensors WHERE external_id IS NOT NULL"
     )
     db_ids = {r[0] for r in cur.fetchall()}
     matched = [eid for eid in db_ids if eid in meta]
@@ -147,12 +147,12 @@ def enrich(conn, meta):
         cur,
         """
         UPDATE sensor.sensors s SET
-            sensormodel = COALESCE(NULLIF(v.instrument, ''), s.sensormodel),
-            externalmetadata = COALESCE(s.externalmetadata, '{}'::jsonb) || v.meta::jsonb,
-            updatedby = 'enrich_sensor_metadata_script'
-        FROM (VALUES %s) AS v(externalid, instrument, meta)
-        WHERE s.externalid = v.externalid
-        RETURNING s.sensorid
+            sensor_model = COALESCE(NULLIF(v.instrument, ''), s.sensor_model),
+            external_metadata = COALESCE(s.external_metadata, '{}'::jsonb) || v.meta::jsonb,
+            updated_by = 'enrich_sensor_metadata_script'
+        FROM (VALUES %s) AS v(external_id, instrument, meta)
+        WHERE s.external_id = v.external_id
+        RETURNING s.sensor_id
         """,
         rows,
         template="(%s, %s, %s::jsonb)",
@@ -168,10 +168,10 @@ def verify(conn):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT sensormodel, COUNT(*)
+        SELECT sensor_model, COUNT(*)
         FROM sensor.sensors
-        WHERE externalmetadata ? 'Instrument'
-        GROUP BY sensormodel ORDER BY COUNT(*) DESC
+        WHERE external_metadata ? 'Instrument'
+        GROUP BY sensor_model ORDER BY COUNT(*) DESC
         """
     )
     print("\n📊 SensorModel distribution (enriched sensors):")
