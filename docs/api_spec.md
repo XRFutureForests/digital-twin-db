@@ -169,16 +169,16 @@ The domain data lives in the custom schemas (`shared`, `trees`, `sensor`, …); 
 2. **Composite / export views** — `silva_input` (SILVA model export), `growth_simulations` / `simulation_runs` (simulator output).
 3. **Unreal Engine views** (`ue_*`) — flat, join-free payloads shaped for UE Blueprint HTTP import. `ue_trees` (trees + variant + scenario + species + main-stem DBH, flattened) is defined in `25-forest-state-views.sql`; `ue_sensors` and `ue_sensorreadings` in `28-sensor-views.sql`.
 
-> **`ue_trees`** is the single flat tree endpoint. It replaced the former `forest_state` view (XRFF-240), which was consolidated into `ue_trees` — see `33-consolidate-ue-trees.sql`. Filter by `variantid` to load one time step: `GET /ue_trees?variantid=eq.<id>`.
+> **`ue_trees`** is the single flat tree endpoint. It replaced the former `forest_state` view (XRFF-240), which was consolidated into `ue_trees` — see `33-consolidate-ue-trees.sql`. Filter by `variant_id` to load one time step: `GET /ue_trees?variant_id=eq.<id>`.
 
 #### Linking trees ↔ sensors ↔ readings in Unreal Engine
 
 The three `ue_*` views form the complete chain UE needs; join on stable keys:
 
 ```
-GET /ue_trees?variantid=eq.<v>                              → tree catalogue (treeid, treeentityid)
-GET /ue_sensors?linked_tree_entity_id=eq.<treeentityid>     → all sensors on that physical tree
-GET /ue_sensorreadings?sensorid=eq.<sensorid>&order=timestamp.desc&limit=96   → that sensor's readings
+GET /ue_trees?variant_id=eq.<v>                              → tree catalogue (tree_id, tree_entity_id)
+GET /ue_sensors?linked_tree_entity_id=eq.<tree_entity_id>     → all sensors on that physical tree
+GET /ue_sensorreadings?sensor_id=eq.<sensor_id>&order=timestamp.desc&limit=96   → that sensor's readings
 ```
 
 Join sensors to trees by **`linked_tree_entity_id`** (the persistent physical-tree UUID), not `linked_tree_id` (a single variant row) — this keeps the link stable across growth variants. `ue_sensors` also carries the latest reading inline (plus `sensor_model` = real instrument and `data_owner`), so a per-tree sensor list needs no extra readings or `/sensors` call. `linked_tree_*` is populated by `scripts/import/link_sensors_to_trees.py` (see [database_schema.md §3.9](database_schema.md)); meteo/soil-station sensors have `NULL` tree fields.
@@ -199,7 +199,7 @@ Join sensors to trees by **`linked_tree_entity_id`** (the persistent physical-tr
 
 Request:
 ```
-GET /rest/v1/trees?locationid=eq.1&datasourcetype=eq.field&select=variantid,treeentityid,height_m,speciesid&limit=50
+GET /rest/v1/trees?location_id=eq.1&datasourcetype=eq.field&select=variant_id,tree_entity_id,height_m,species_id&limit=50
 apikey: <ANON_KEY>
 Authorization: Bearer <ANON_JWT>
 ```
@@ -208,10 +208,10 @@ Response (200 OK):
 ```json
 [
   {
-    "variantid": 42,
-    "treeentityid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "variant_id": 42,
+    "tree_entity_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "height_m": 28.5,
-    "speciesid": 3
+    "species_id": 3
   }
 ]
 ```
@@ -221,10 +221,10 @@ Response (200 OK):
 Request (POST `/rest/v1/trees`):
 ```json
 {
-  "locationid": 1,
-  "varianttypeid": 1,
-  "speciesid": 3,
-  "measurementdate": "2025-09-11",
+  "location_id": 1,
+  "variant_type_id": 1,
+  "species_id": 3,
+  "measurement_date": "2025-09-11",
   "datasourcetype": "field",
   "height_m": 22.4,
   "position": "SRID=4326;POINT(7.85 47.99)"
@@ -233,17 +233,17 @@ Request (POST `/rest/v1/trees`):
 
 Response (201 Created with `Prefer: return=representation`):
 ```json
-[{ "variantid": 101, "treeentityid": "b2c3d4e5-...", "height_m": 22.4, ... }]
+[{ "variant_id": 101, "tree_entity_id": "b2c3d4e5-...", "height_m": 22.4, ... }]
 ```
 
 ### 3.3 Sensor Readings (Time-Series Queries)
 
 | Pattern | Query String | Description |
 |---------|-------------|-------------|
-| Latest N readings | `?sensorid=eq.{id}&order=timestamp.desc&limit=100` | Most recent readings |
-| Time range | `?sensorid=eq.{id}&timestamp=gte.{iso8601}&timestamp=lte.{iso8601}` | Bounded time window |
-| Quality filter | `?sensorid=eq.{id}&quality=eq.good&order=timestamp.desc` | Good-quality only |
-| Active sensors | `?isactive=eq.true&locationid=eq.{id}` | Active sensors at a location |
+| Latest N readings | `?sensor_id=eq.{id}&order=timestamp.desc&limit=100` | Most recent readings |
+| Time range | `?sensor_id=eq.{id}&timestamp=gte.{iso8601}&timestamp=lte.{iso8601}` | Bounded time window |
+| Quality filter | `?sensor_id=eq.{id}&quality=eq.good&order=timestamp.desc` | Good-quality only |
+| Active sensors | `?is_active=eq.true&location_id=eq.{id}` | Active sensors at a location |
 
 ### 3.4 RPC Functions
 
@@ -251,8 +251,8 @@ SQL functions are exposed at `/rest/v1/rpc/{function_name}` via HTTP POST. All t
 
 | Function | Endpoint | Source File | Description |
 |----------|----------|-------------|-------------|
-| `bulk_upsert_sensors` | `POST /rest/v1/rpc/bulk_upsert_sensors` | `22-aquarius-integration.sql` | Upsert sensors from JSON array (conflict on `externalid`) |
-| `bulk_insert_readings` | `POST /rest/v1/rpc/bulk_insert_readings` | `22-aquarius-integration.sql` | Bulk insert readings, skip duplicates (unique on `sensorid`+`timestamp`) |
+| `bulk_upsert_sensors` | `POST /rest/v1/rpc/bulk_upsert_sensors` | `22-aquarius-integration.sql` | Upsert sensors from JSON array (conflict on `external_id`) |
+| `bulk_insert_readings` | `POST /rest/v1/rpc/bulk_insert_readings` | `22-aquarius-integration.sql` | Bulk insert readings, skip duplicates (unique on `sensor_id`+`timestamp`) |
 
 **RPC: bulk_insert_readings**
 
@@ -260,8 +260,8 @@ Request body:
 ```json
 {
   "readings": [
-    { "sensorid": 5, "timestamp": "2025-09-11T08:00:00Z", "value": 23.4, "quality": "good" },
-    { "sensorid": 5, "timestamp": "2025-09-11T08:15:00Z", "value": 23.7, "quality": "good" }
+    { "sensor_id": 5, "timestamp": "2025-09-11T08:00:00Z", "value": 23.4, "quality": "good" },
+    { "sensor_id": 5, "timestamp": "2025-09-11T08:15:00Z", "value": 23.7, "quality": "good" }
   ]
 }
 ```
@@ -278,17 +278,17 @@ Request body:
 {
   "p_sensors": [
     {
-      "locationid": 1,
-      "sensortypeid": 2,
-      "sensormodel": "DendroNet DN2",
-      "serialnumber": "DN2-001",
+      "location_id": 1,
+      "sensor_type_id": 2,
+      "sensor_model": "DendroNet DN2",
+      "serial_number": "DN2-001",
       "position": "POINT(7.85 47.99)",
-      "samplinginterval_seconds": 900,
+      "sampling_interval_seconds": 900,
       "unit": "mm",
-      "externalid": "Mathisle_DN2-001",
+      "external_id": "Mathisle_DN2-001",
       "externalmetadata": { "LocationIdentifier": "Mathisle.DN2-001.Var@01" },
-      "isactive": true,
-      "createdby": "aquarius_sync"
+      "is_active": true,
+      "created_by": "aquarius_sync"
     }
   ]
 }
@@ -307,7 +307,7 @@ Response (200 OK):
 
 | Parameter | Syntax | Description | Example |
 |-----------|--------|-------------|---------|
-| `select` | `col1,col2,col3` | Column projection | `?select=variantid,height_m,speciesid` |
+| `select` | `col1,col2,col3` | Column projection | `?select=variant_id,height_m,species_id` |
 | `order` | `col.asc` or `col.desc` | Sort order | `?order=timestamp.desc` |
 | `limit` | integer | Max rows returned | `?limit=100` |
 | `offset` | integer | Skip rows (for pagination) | `?offset=200` |
@@ -318,16 +318,16 @@ Filters are applied as query parameters in the form `?{column}={operator}.{value
 
 | Operator | Meaning | Example |
 |----------|---------|---------|
-| `eq` | Equal | `?sensorid=eq.5` |
+| `eq` | Equal | `?sensor_id=eq.5` |
 | `neq` | Not equal | `?quality=neq.bad` |
 | `lt` | Less than | `?height_m=lt.10` |
 | `gt` | Greater than | `?height_m=gt.30` |
 | `gte` | Greater than or equal | `?timestamp=gte.2025-01-01T00:00:00Z` |
 | `lte` | Less than or equal | `?timestamp=lte.2025-12-31T23:59:59Z` |
-| `like` | Pattern match (case-sensitive) | `?variantname=like.Ecosense*` |
-| `ilike` | Pattern match (case-insensitive) | `?scientificname=ilike.*fagus*` |
+| `like` | Pattern match (case-sensitive) | `?variant_name=like.Ecosense*` |
+| `ilike` | Pattern match (case-insensitive) | `?scientific_name=ilike.*fagus*` |
 | `in` | Match any value in list | `?datasourcetype=in.(lidar,field)` |
-| `is` | IS NULL / IS TRUE / IS FALSE | `?decommissiondate=is.null` |
+| `is` | IS NULL / IS TRUE / IS FALSE | `?decommission_date=is.null` |
 
 ### 4.3 Standard Response Structure
 
@@ -336,8 +336,8 @@ PostgREST returns plain JSON arrays. No envelope wrapper is added.
 **Success (list):**
 ```json
 [
-  { "variantid": 1, "height_m": 28.5, "speciesid": 3 },
-  { "variantid": 2, "height_m": 31.2, "speciesid": 3 }
+  { "variant_id": 1, "height_m": 28.5, "species_id": 3 },
+  { "variant_id": 2, "height_m": 31.2, "species_id": 3 }
 ]
 ```
 
@@ -362,7 +362,7 @@ Content-Range: 0-49/1200
 | 403 | Forbidden | JWT valid but RLS policy denies the operation |
 | 404 | Not Found | Resource (view) does not exist in `public` schema |
 | 406 | Not Acceptable | Invalid `Accept` header |
-| 409 | Conflict | Unique constraint violation (e.g., duplicate `sensorid`+`timestamp`) |
+| 409 | Conflict | Unique constraint violation (e.g., duplicate `sensor_id`+`timestamp`) |
 | 500 | Internal Server Error | Database error or unhandled constraint violation |
 
 ### 5.2 PostgREST Error Response Format
@@ -401,7 +401,7 @@ PostgREST uses `limit`/`offset` parameters. Total count is available via `Prefer
 
 **Request:**
 ```
-GET /rest/v1/sensorreadings?sensorid=eq.5&order=timestamp.desc&limit=100&offset=0
+GET /rest/v1/sensorreadings?sensor_id=eq.5&order=timestamp.desc&limit=100&offset=0
 Prefer: count=exact
 ```
 

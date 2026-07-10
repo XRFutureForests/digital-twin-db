@@ -85,7 +85,7 @@ python scripts/silva/silva_writeback.py \
     --location Ecosense_MixedPlot
 ```
 
-This generates a new `RunID` UUID and bulk-inserts all rows into `trees.GrowthSimulations`.
+This generates a new `run_id` UUID and bulk-inserts all rows into `trees.GrowthSimulations`.
 
 Dry-run (no insert, just inspect mapped columns):
 ```bash
@@ -98,14 +98,14 @@ python scripts/silva/silva_writeback.py --input silva_output.csv --scenario Clim
 
 ```
 # All trees projected to 2050 under climate scenario
-GET /growth_simulations?scenarioname=eq.Climate_Change_2050&projectionyear=eq.2050
+GET /growth_simulations?scenario_name=eq.Climate_Change_2050&projection_year=eq.2050
 
 # Time series for one tree entity
-GET /growth_simulations?treeentityid=eq.{uuid}&simulatorname=eq.SILVA&order=projectionyear
+GET /growth_simulations?tree_entity_id=eq.{uuid}&simulator_name=eq.SILVA&order=projection_year
 
 # List available simulation runs
 GET /simulation_runs
-GET /simulation_runs?scenarioname=eq.Climate_Change_2050
+GET /simulation_runs?scenario_name=eq.Climate_Change_2050
 ```
 
 ---
@@ -114,18 +114,18 @@ GET /simulation_runs?scenarioname=eq.Climate_Change_2050
 
 | SILVA output col | DB column                     | Unit     | Notes |
 |-----------------|-------------------------------|----------|-------|
-| `year`          | `projectionyear`              | year     | calendar year |
+| `year`          | `projection_year`              | year     | calendar year |
 | `h`             | `height_m`                    | m        | total height |
 | `d`             | `dbh_cm`                      | cm       | DBH at 1.3 m |
-| `hkb`           | `crownbaseheight_m`           | m        | Kronenbasis |
-| `kb`            | `crownwidth_m`                | m        | Kronenbreite |
-| `ba_m2`         | `basalarea_m2`                | m²       | per tree |
+| `hkb`           | `crown_base_height_m`           | m        | Kronenbasis |
+| `kb`            | `crown_width_m`                | m        | Kronenbreite |
+| `ba_m2`         | `basal_area_m2`                | m²       | per tree |
 | `vol`           | `volume_m3`                   | m³       | per tree |
 | `mort`          | `mortality`                   | bool     | 1 = dies this step |
-| `g_ha`          | `standbasalarea_m2ha`         | m²/ha    | stand aggregate |
-| `v_ha`          | `standvolume_m3ha`            | m³/ha    | stand aggregate |
-| `n_ha`          | `standstemcount_ha`           | /ha      | stand aggregate |
-| `tree_entity_id`| `treeentityid`                | UUID     | DB join key |
+| `g_ha`          | `stand_basal_area_m2ha`         | m²/ha    | stand aggregate |
+| `v_ha`          | `stand_volume_m3ha`            | m³/ha    | stand aggregate |
+| `n_ha`          | `stand_stem_count_ha`           | /ha      | stand aggregate |
+| `tree_entity_id`| `tree_entity_id`                | UUID     | DB join key |
 | `base_variant_id`| `basevariantid`              | integer  | DB join key |
 
 ---
@@ -134,7 +134,7 @@ GET /simulation_runs?scenarioname=eq.Climate_Change_2050
 
 Defined in `27-silva-input-view.sql`. Verify these match the in-house lookup:
 
-| ba | ScientificName         | German name  |
+| ba | scientific_name         | German name  |
 |----|------------------------|--------------|
 |  1 | Picea abies            | Fichte       |
 |  2 | Abies alba             | Weißtanne    |

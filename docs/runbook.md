@@ -188,7 +188,7 @@ python scripts/import/sync_aquarius_direct.py 45   # arg = days of history to fe
 
 **Link sensors to trees, then enrich sensor metadata (order matters):**
 ```bash
-python scripts/import/link_sensors_to_trees.py      # backfills trees.AquariusName + sensor_tree_links
+python scripts/import/link_sensors_to_trees.py      # backfills trees.aquarius_name + sensor_tree_links
 python scripts/import/enrich_sensor_metadata.py     # real instrument/owner — run AFTER every sync
 ```
 
