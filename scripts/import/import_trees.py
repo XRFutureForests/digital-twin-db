@@ -164,7 +164,7 @@ def validate_foreign_keys(df, conn):
     warnings = []
 
     # Check locations exist — resolved BY NAME (LocationName), robust to reset re-IDing.
-    cur.execute("SELECT LocationName FROM shared.Locations")
+    cur.execute("SELECT location_name FROM shared.Locations")
     valid_location_names = {row[0] for row in cur.fetchall()}
     if "LocationName" in df.columns:
         names = df["LocationName"].dropna().unique()
@@ -181,7 +181,7 @@ def validate_foreign_keys(df, conn):
     if "SpeciesID" in df.columns:
         species_ids = df["SpeciesID"].dropna().unique()
         if len(species_ids) > 0:
-            cur.execute("SELECT SpeciesID FROM shared.Species")
+            cur.execute("SELECT species_id FROM shared.Species")
             valid_species = {row[0] for row in cur.fetchall()}
             invalid_sp = [
                 int(sid) for sid in species_ids if int(sid) not in valid_species
@@ -193,13 +193,13 @@ def validate_foreign_keys(df, conn):
     if "PlotID" in df.columns:
         plot_ids = df["PlotID"].dropna().unique()
         if len(plot_ids) > 0:
-            cur.execute("SELECT PlotID, PlotName FROM shared.Plots")
+            cur.execute("SELECT plot_number, plot_name FROM shared.Plots WHERE plot_number IS NOT NULL")
             valid_plots = {row[0]: row[1] for row in cur.fetchall()}
             invalid_plots = [
                 int(pid) for pid in plot_ids if int(pid) not in valid_plots
             ]
             if invalid_plots:
-                warnings.append(f"PlotIDs not found in database: {invalid_plots}")
+                warnings.append(f"Plot numbers not found in database: {invalid_plots}")
             else:
                 plot_names = [f"{int(pid)}={valid_plots[int(pid)]}" for pid in plot_ids]
                 print(f"  Plots: {', '.join(plot_names)}")
@@ -209,7 +209,7 @@ def validate_foreign_keys(df, conn):
         ds_values = df["DataSourceType"].dropna().unique()
         if len(ds_values) > 0:
             cur.execute(
-                "SELECT DataSourceTypeName FROM trees.DataSourceTypes"
+                "SELECT data_source_type_name FROM trees.DataSourceTypes"
             )
             valid_ds_names = {row[0].lower() for row in cur.fetchall()}
             unknown_ds = [
@@ -224,7 +224,7 @@ def validate_foreign_keys(df, conn):
     if "ScenarioName" in df.columns:
         scenario_names = df["ScenarioName"].dropna().unique()
         if len(scenario_names) > 0:
-            cur.execute("SELECT ScenarioName FROM shared.Scenarios")
+            cur.execute("SELECT scenario_name FROM shared.Scenarios")
             valid_scenarios = {row[0] for row in cur.fetchall()}
             unknown_scenarios = [s for s in scenario_names if s not in valid_scenarios]
             if unknown_scenarios:
@@ -264,10 +264,10 @@ def import_trees(df, dry_run=False):
     # Import CSVs carry a LocationName (e.g. 'ecosense') and a PlotID that is really
     # the plot NUMBER within that location; both are resolved to current DB ids here
     # so a clean rebuild (which re-assigns serial ids) still imports correctly.
-    cur.execute("SELECT LocationName, LocationID FROM shared.Locations")
+    cur.execute("SELECT location_name, location_id FROM shared.Locations")
     location_name_map = {name: lid for name, lid in cur.fetchall()}
     cur.execute(
-        "SELECT LocationID, PlotNumber, PlotID FROM shared.Plots WHERE PlotNumber IS NOT NULL"
+        "SELECT location_id, plot_number, plot_id FROM shared.Plots WHERE plot_number IS NOT NULL"
     )
     plot_number_map = {(lid, num): pid for lid, num, pid in cur.fetchall()}
 
@@ -297,7 +297,7 @@ def import_trees(df, dry_run=False):
     location_ids = df["_LocationID"].dropna().unique()
     for loc_id in location_ids:
         cur.execute(
-            "SELECT count(*) FROM trees.trees WHERE locationid = %s", (int(loc_id),)
+            "SELECT count(*) FROM trees.trees WHERE location_id = %s", (int(loc_id),)
         )
         existing = cur.fetchone()[0]
         if existing > 0:
@@ -309,7 +309,7 @@ def import_trees(df, dry_run=False):
     datasource_type_id_map: dict[str, int] | None = None
     try:
         cur.execute(
-            "SELECT DataSourceTypeName, DataSourceTypeID FROM trees.DataSourceTypes"
+            "SELECT data_source_type_name, data_source_type_id FROM trees.DataSourceTypes"
         )
         datasource_type_id_map = {
             row[0].lower(): row[1] for row in cur.fetchall()
@@ -432,15 +432,15 @@ def import_trees(df, dry_run=False):
     # Insert trees
     insert_query = """
         INSERT INTO trees.Trees (
-            LocationID, PlotID, TreeNumber, CampaignID, ScenarioID, VariantTypeID, SpeciesID,
-            TreeStatusID, BranchingPatternID, BarkCharacteristicID,
-            MeasurementDate, DataSourceTypeID,
-            Height_m, CrownWidth_m, CrownBaseHeight_m,
-            Position, PositionOriginal, SourceCRS,
-            Age_years, HealthScore, FieldNotes, CreatedBy
+            location_id, plot_id, tree_number, campaign_id, scenario_id, variant_type_id, species_id,
+            tree_status_id, branching_pattern_id, bark_characteristic_id,
+            measurement_date, data_source_type_id,
+            height_m, crown_width_m, crown_base_height_m,
+            position, position_original, source_crs,
+            age_years, health_score, field_notes, created_by
         )
         VALUES %s
-        RETURNING TreeID
+        RETURNING tree_id
     """
 
     # Template: 22 tree columns (excluding the 3 stem columns at the end)
@@ -481,7 +481,7 @@ def import_trees(df, dry_run=False):
 
     if stems:
         stem_query = """
-            INSERT INTO trees.Stems (TreeID, StemNumber, DBH_cm, TaperTypeID, StraightnessTypeID)
+            INSERT INTO trees.Stems (tree_id, stem_number, dbh_cm, taper_type_id, straightness_type_id)
             VALUES %s
         """
         execute_values(cur, stem_query, stems)
@@ -625,16 +625,16 @@ def main():
         print("\nVerification:")
         for loc_id in location_ids:
             cur.execute(
-                "SELECT count(*) FROM trees.trees WHERE locationid = %s", (int(loc_id),)
+                "SELECT count(*) FROM trees.trees WHERE location_id = %s", (int(loc_id),)
             )
             total_trees = cur.fetchone()[0]
             cur.execute(
-                "SELECT count(*) FROM trees.stems s JOIN trees.trees t ON s.treeid = t.treeid WHERE t.locationid = %s",
+                "SELECT count(*) FROM trees.stems s JOIN trees.trees t ON s.tree_id = t.tree_id WHERE t.location_id = %s",
                 (int(loc_id),),
             )
             total_stems = cur.fetchone()[0]
             cur.execute(
-                "SELECT locationname FROM shared.locations WHERE locationid = %s",
+                "SELECT location_name FROM shared.locations WHERE location_id = %s",
                 (int(loc_id),),
             )
             loc_name = cur.fetchone()

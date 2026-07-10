@@ -10,19 +10,19 @@ SET search_path TO trees, shared, public;
 -- =============================================================================
 
 CREATE TABLE trees.PhanerophyteHeightClasses (
-    PhanerophyteHeightClassID SERIAL PRIMARY KEY,
-    HeightClassName VARCHAR(50) NOT NULL UNIQUE,
+    phanerophyte_height_class_id SERIAL PRIMARY KEY,
+    height_class_name VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT,
-    MinHeight_m NUMERIC(6, 2) CHECK (MinHeight_m >= 0),
-    MaxHeight_m NUMERIC(6, 2) CHECK (MaxHeight_m > 0),
-    CONSTRAINT chk_height_class_order CHECK (MinHeight_m IS NULL OR MaxHeight_m IS NULL OR MinHeight_m < MaxHeight_m)
+    min_height_m NUMERIC(6, 2) CHECK (min_height_m >= 0),
+    max_height_m NUMERIC(6, 2) CHECK (max_height_m > 0),
+    CONSTRAINT chk_height_class_order CHECK (min_height_m IS NULL OR max_height_m IS NULL OR min_height_m < max_height_m)
 );
 
 COMMENT ON TABLE trees.PhanerophyteHeightClasses IS 'Tree height classification (mega/meso/micro-phanerophyte)';
-COMMENT ON COLUMN trees.PhanerophyteHeightClasses.MinHeight_m IS 'Minimum height for this class (NULL = no lower bound)';
-COMMENT ON COLUMN trees.PhanerophyteHeightClasses.MaxHeight_m IS 'Maximum height for this class (NULL = no upper bound)';
+COMMENT ON COLUMN trees.PhanerophyteHeightClasses.min_height_m IS 'Minimum height for this class (NULL = no lower bound)';
+COMMENT ON COLUMN trees.PhanerophyteHeightClasses.max_height_m IS 'Maximum height for this class (NULL = no upper bound)';
 
-CREATE INDEX idx_height_classes_name ON trees.PhanerophyteHeightClasses(HeightClassName);
+CREATE INDEX idx_height_classes_name ON trees.PhanerophyteHeightClasses(height_class_name);
 
 -- =============================================================================
 -- CROWN ARCHITECTURES
@@ -30,16 +30,16 @@ CREATE INDEX idx_height_classes_name ON trees.PhanerophyteHeightClasses(HeightCl
 -- =============================================================================
 
 CREATE TABLE trees.CrownArchitectures (
-    CrownArchitectureID SERIAL PRIMARY KEY,
-    CrownArchitectureName VARCHAR(50) NOT NULL UNIQUE,
+    crown_architecture_id SERIAL PRIMARY KEY,
+    crown_architecture_name VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT,
-    TypicalExamples TEXT
+    typical_examples TEXT
 );
 
 COMMENT ON TABLE trees.CrownArchitectures IS 'Crown architecture classification (excurrent, decurrent, etc.)';
-COMMENT ON COLUMN trees.CrownArchitectures.TypicalExamples IS 'Example tree types with this architecture';
+COMMENT ON COLUMN trees.CrownArchitectures.typical_examples IS 'Example tree types with this architecture';
 
-CREATE INDEX idx_crown_architectures_name ON trees.CrownArchitectures(CrownArchitectureName);
+CREATE INDEX idx_crown_architectures_name ON trees.CrownArchitectures(crown_architecture_name);
 
 -- =============================================================================
 -- BRANCH ELONGATION HABITS
@@ -47,14 +47,14 @@ CREATE INDEX idx_crown_architectures_name ON trees.CrownArchitectures(CrownArchi
 -- =============================================================================
 
 CREATE TABLE trees.BranchElongationHabits (
-    BranchElongationHabitID SERIAL PRIMARY KEY,
-    ElongationHabitName VARCHAR(50) NOT NULL UNIQUE,
+    branch_elongation_habit_id SERIAL PRIMARY KEY,
+    elongation_habit_name VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT
 );
 
 COMMENT ON TABLE trees.BranchElongationHabits IS 'Branch elongation patterns determining crown shape (acrotony, mesotony, basitony)';
 
-CREATE INDEX idx_elongation_habits_name ON trees.BranchElongationHabits(ElongationHabitName);
+CREATE INDEX idx_elongation_habits_name ON trees.BranchElongationHabits(elongation_habit_name);
 
 -- =============================================================================
 -- GROWTH ORIENTATIONS
@@ -62,14 +62,14 @@ CREATE INDEX idx_elongation_habits_name ON trees.BranchElongationHabits(Elongati
 -- =============================================================================
 
 CREATE TABLE trees.GrowthOrientations (
-    GrowthOrientationID SERIAL PRIMARY KEY,
-    GrowthOrientationName VARCHAR(50) NOT NULL UNIQUE,
+    growth_orientation_id SERIAL PRIMARY KEY,
+    growth_orientation_name VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT
 );
 
 COMMENT ON TABLE trees.GrowthOrientations IS 'Shoot growth orientation (orthotropic=vertical, plagiotrophic=horizontal)';
 
-CREATE INDEX idx_growth_orientations_name ON trees.GrowthOrientations(GrowthOrientationName);
+CREATE INDEX idx_growth_orientations_name ON trees.GrowthOrientations(growth_orientation_name);
 
 -- =============================================================================
 -- SHOOT ELONGATION TYPES
@@ -77,14 +77,14 @@ CREATE INDEX idx_growth_orientations_name ON trees.GrowthOrientations(GrowthOrie
 -- =============================================================================
 
 CREATE TABLE trees.ShootElongationTypes (
-    ShootElongationTypeID SERIAL PRIMARY KEY,
-    ShootElongationTypeName VARCHAR(50) NOT NULL UNIQUE,
+    shoot_elongation_type_id SERIAL PRIMARY KEY,
+    shoot_elongation_type_name VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT
 );
 
 COMMENT ON TABLE trees.ShootElongationTypes IS 'Shoot elongation classification (long, short, spur shoots)';
 
-CREATE INDEX idx_shoot_elongation_types_name ON trees.ShootElongationTypes(ShootElongationTypeName);
+CREATE INDEX idx_shoot_elongation_types_name ON trees.ShootElongationTypes(shoot_elongation_type_name);
 
 -- =============================================================================
 -- CROWN SHAPES
@@ -92,14 +92,14 @@ CREATE INDEX idx_shoot_elongation_types_name ON trees.ShootElongationTypes(Shoot
 -- =============================================================================
 
 CREATE TABLE trees.CrownShapes (
-    CrownShapeID SERIAL PRIMARY KEY,
-    CrownShapeName VARCHAR(50) NOT NULL UNIQUE,
+    crown_shape_id SERIAL PRIMARY KEY,
+    crown_shape_name VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT
 );
 
 COMMENT ON TABLE trees.CrownShapes IS 'Common crown shape descriptions (pyramidal, conical, globose, etc.)';
 
-CREATE INDEX idx_crown_shapes_name ON trees.CrownShapes(CrownShapeName);
+CREATE INDEX idx_crown_shapes_name ON trees.CrownShapes(crown_shape_name);
 
 -- =============================================================================
 -- GEOMETRIC CROWN SOLIDS
@@ -107,20 +107,20 @@ CREATE INDEX idx_crown_shapes_name ON trees.CrownShapes(CrownShapeName);
 -- =============================================================================
 
 CREATE TABLE trees.GeometricCrownSolids (
-    GeometricSolidID SERIAL PRIMARY KEY,
-    GeometricSolidName VARCHAR(50) NOT NULL UNIQUE,
+    geometric_solid_id SERIAL PRIMARY KEY,
+    geometric_solid_name VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT,
-    RelativeLateralArea NUMERIC(4, 2) CHECK (RelativeLateralArea >= 0 AND RelativeLateralArea <= 1),
-    RelativeVolume NUMERIC(4, 2) CHECK (RelativeVolume >= 0 AND RelativeVolume <= 1),
-    RelativeDrag NUMERIC(4, 2) CHECK (RelativeDrag >= 0 AND RelativeDrag <= 1)
+    relative_lateral_area NUMERIC(4, 2) CHECK (relative_lateral_area >= 0 AND relative_lateral_area <= 1),
+    relative_volume NUMERIC(4, 2) CHECK (relative_volume >= 0 AND relative_volume <= 1),
+    relative_drag NUMERIC(4, 2) CHECK (relative_drag >= 0 AND relative_drag <= 1)
 );
 
 COMMENT ON TABLE trees.GeometricCrownSolids IS 'Geometric crown shape models for simulation (area, volume, drag calculations)';
-COMMENT ON COLUMN trees.GeometricCrownSolids.RelativeLateralArea IS 'Relative frontal/lateral area (1.0 = cylinder baseline)';
-COMMENT ON COLUMN trees.GeometricCrownSolids.RelativeVolume IS 'Relative crown volume (1.0 = cylinder baseline)';
-COMMENT ON COLUMN trees.GeometricCrownSolids.RelativeDrag IS 'Relative wind drag coefficient (1.0 = cylinder baseline)';
+COMMENT ON COLUMN trees.GeometricCrownSolids.relative_lateral_area IS 'Relative frontal/lateral area (1.0 = cylinder baseline)';
+COMMENT ON COLUMN trees.GeometricCrownSolids.relative_volume IS 'Relative crown volume (1.0 = cylinder baseline)';
+COMMENT ON COLUMN trees.GeometricCrownSolids.relative_drag IS 'Relative wind drag coefficient (1.0 = cylinder baseline)';
 
-CREATE INDEX idx_geometric_solids_name ON trees.GeometricCrownSolids(GeometricSolidName);
+CREATE INDEX idx_geometric_solids_name ON trees.GeometricCrownSolids(geometric_solid_name);
 
 -- =============================================================================
 -- AXIS STRUCTURES
@@ -128,14 +128,14 @@ CREATE INDEX idx_geometric_solids_name ON trees.GeometricCrownSolids(GeometricSo
 -- =============================================================================
 
 CREATE TABLE trees.AxisStructures (
-    AxisStructureID SERIAL PRIMARY KEY,
-    AxisStructureName VARCHAR(50) NOT NULL UNIQUE,
+    axis_structure_id SERIAL PRIMARY KEY,
+    axis_structure_name VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT
 );
 
 COMMENT ON TABLE trees.AxisStructures IS 'Main axis configuration (single leader vs polycormic)';
 
-CREATE INDEX idx_axis_structures_name ON trees.AxisStructures(AxisStructureName);
+CREATE INDEX idx_axis_structures_name ON trees.AxisStructures(axis_structure_name);
 
 -- =============================================================================
 -- GROWTH FORMS
@@ -143,59 +143,59 @@ CREATE INDEX idx_axis_structures_name ON trees.AxisStructures(AxisStructureName)
 -- =============================================================================
 
 CREATE TABLE trees.GrowthForms (
-    GrowthFormID SERIAL PRIMARY KEY,
-    GrowthFormName VARCHAR(50) NOT NULL UNIQUE,
+    growth_form_id SERIAL PRIMARY KEY,
+    growth_form_name VARCHAR(50) NOT NULL UNIQUE,
     Description TEXT
 );
 
 COMMENT ON TABLE trees.GrowthForms IS 'General growth form classification (dendroid, arborescent, etc.)';
 
-CREATE INDEX idx_growth_forms_name ON trees.GrowthForms(GrowthFormName);
+CREATE INDEX idx_growth_forms_name ON trees.GrowthForms(growth_form_name);
 
 -- =============================================================================
 -- ADD MORPHOLOGY COLUMNS TO TREES TABLE
 -- =============================================================================
 
 ALTER TABLE trees.Trees
-    ADD COLUMN IF NOT EXISTS HeightClassID INTEGER REFERENCES trees.PhanerophyteHeightClasses(PhanerophyteHeightClassID),
-    ADD COLUMN IF NOT EXISTS CrownArchitectureID INTEGER REFERENCES trees.CrownArchitectures(CrownArchitectureID),
-    ADD COLUMN IF NOT EXISTS ElongationHabitID INTEGER REFERENCES trees.BranchElongationHabits(BranchElongationHabitID),
-    ADD COLUMN IF NOT EXISTS GrowthOrientationID INTEGER REFERENCES trees.GrowthOrientations(GrowthOrientationID),
-    ADD COLUMN IF NOT EXISTS ShootElongationTypeID INTEGER REFERENCES trees.ShootElongationTypes(ShootElongationTypeID),
-    ADD COLUMN IF NOT EXISTS CrownShapeID INTEGER REFERENCES trees.CrownShapes(CrownShapeID),
-    ADD COLUMN IF NOT EXISTS GeometricSolidID INTEGER REFERENCES trees.GeometricCrownSolids(GeometricSolidID),
-    ADD COLUMN IF NOT EXISTS AxisStructureID INTEGER REFERENCES trees.AxisStructures(AxisStructureID),
-    ADD COLUMN IF NOT EXISTS GrowthFormID INTEGER REFERENCES trees.GrowthForms(GrowthFormID),
-    ADD COLUMN IF NOT EXISTS LiveCrownRatio NUMERIC(4, 3) GENERATED ALWAYS AS (
+    ADD COLUMN IF NOT EXISTS height_class_id INTEGER REFERENCES trees.PhanerophyteHeightClasses(phanerophyte_height_class_id),
+    ADD COLUMN IF NOT EXISTS crown_architecture_id INTEGER REFERENCES trees.CrownArchitectures(crown_architecture_id),
+    ADD COLUMN IF NOT EXISTS elongation_habit_id INTEGER REFERENCES trees.BranchElongationHabits(branch_elongation_habit_id),
+    ADD COLUMN IF NOT EXISTS growth_orientation_id INTEGER REFERENCES trees.GrowthOrientations(growth_orientation_id),
+    ADD COLUMN IF NOT EXISTS shoot_elongation_type_id INTEGER REFERENCES trees.ShootElongationTypes(shoot_elongation_type_id),
+    ADD COLUMN IF NOT EXISTS crown_shape_id INTEGER REFERENCES trees.CrownShapes(crown_shape_id),
+    ADD COLUMN IF NOT EXISTS geometric_solid_id INTEGER REFERENCES trees.GeometricCrownSolids(geometric_solid_id),
+    ADD COLUMN IF NOT EXISTS axis_structure_id INTEGER REFERENCES trees.AxisStructures(axis_structure_id),
+    ADD COLUMN IF NOT EXISTS growth_form_id INTEGER REFERENCES trees.GrowthForms(growth_form_id),
+    ADD COLUMN IF NOT EXISTS live_crown_ratio NUMERIC(4, 3) GENERATED ALWAYS AS (
         CASE 
-            WHEN Height_m IS NOT NULL AND Height_m > 0 AND CrownBaseHeight_m IS NOT NULL 
-            THEN (Height_m - CrownBaseHeight_m) / Height_m 
+            WHEN Height_m IS NOT NULL AND Height_m > 0 AND crown_base_height_m IS NOT NULL 
+            THEN (Height_m - crown_base_height_m) / Height_m 
             ELSE NULL 
         END
     ) STORED;
 
-COMMENT ON COLUMN trees.Trees.HeightClassID IS 'Phanerophyte height classification';
-COMMENT ON COLUMN trees.Trees.CrownArchitectureID IS 'Crown architecture type (excurrent, decurrent, etc.)';
-COMMENT ON COLUMN trees.Trees.ElongationHabitID IS 'Branch elongation pattern (acrotony, mesotony, basitony)';
-COMMENT ON COLUMN trees.Trees.GrowthOrientationID IS 'Predominant growth orientation (orthotropic/plagiotrophic)';
-COMMENT ON COLUMN trees.Trees.ShootElongationTypeID IS 'Typical shoot elongation type';
-COMMENT ON COLUMN trees.Trees.CrownShapeID IS 'Observed crown shape';
-COMMENT ON COLUMN trees.Trees.GeometricSolidID IS 'Geometric model for crown volume/drag calculations';
-COMMENT ON COLUMN trees.Trees.AxisStructureID IS 'Main axis structure (single leader/polycormic)';
-COMMENT ON COLUMN trees.Trees.GrowthFormID IS 'General growth form classification';
-COMMENT ON COLUMN trees.Trees.LiveCrownRatio IS 'Computed ratio of live crown height to total tree height';
+COMMENT ON COLUMN trees.Trees.height_class_id IS 'Phanerophyte height classification';
+COMMENT ON COLUMN trees.Trees.crown_architecture_id IS 'Crown architecture type (excurrent, decurrent, etc.)';
+COMMENT ON COLUMN trees.Trees.elongation_habit_id IS 'Branch elongation pattern (acrotony, mesotony, basitony)';
+COMMENT ON COLUMN trees.Trees.growth_orientation_id IS 'Predominant growth orientation (orthotropic/plagiotrophic)';
+COMMENT ON COLUMN trees.Trees.shoot_elongation_type_id IS 'Typical shoot elongation type';
+COMMENT ON COLUMN trees.Trees.crown_shape_id IS 'Observed crown shape';
+COMMENT ON COLUMN trees.Trees.geometric_solid_id IS 'Geometric model for crown volume/drag calculations';
+COMMENT ON COLUMN trees.Trees.axis_structure_id IS 'Main axis structure (single leader/polycormic)';
+COMMENT ON COLUMN trees.Trees.growth_form_id IS 'General growth form classification';
+COMMENT ON COLUMN trees.Trees.live_crown_ratio IS 'Computed ratio of live crown height to total tree height';
 
 -- Create indexes for the new foreign keys
-CREATE INDEX IF NOT EXISTS idx_trees_height_class ON trees.Trees(HeightClassID);
-CREATE INDEX IF NOT EXISTS idx_trees_crown_architecture ON trees.Trees(CrownArchitectureID);
-CREATE INDEX IF NOT EXISTS idx_trees_elongation_habit ON trees.Trees(ElongationHabitID);
-CREATE INDEX IF NOT EXISTS idx_trees_growth_orientation ON trees.Trees(GrowthOrientationID);
-CREATE INDEX IF NOT EXISTS idx_trees_shoot_elongation ON trees.Trees(ShootElongationTypeID);
-CREATE INDEX IF NOT EXISTS idx_trees_crown_shape ON trees.Trees(CrownShapeID);
-CREATE INDEX IF NOT EXISTS idx_trees_geometric_solid ON trees.Trees(GeometricSolidID);
-CREATE INDEX IF NOT EXISTS idx_trees_axis_structure ON trees.Trees(AxisStructureID);
-CREATE INDEX IF NOT EXISTS idx_trees_growth_form ON trees.Trees(GrowthFormID);
-CREATE INDEX IF NOT EXISTS idx_trees_live_crown_ratio ON trees.Trees(LiveCrownRatio);
+CREATE INDEX IF NOT EXISTS idx_trees_height_class ON trees.Trees(height_class_id);
+CREATE INDEX IF NOT EXISTS idx_trees_crown_architecture ON trees.Trees(crown_architecture_id);
+CREATE INDEX IF NOT EXISTS idx_trees_elongation_habit ON trees.Trees(elongation_habit_id);
+CREATE INDEX IF NOT EXISTS idx_trees_growth_orientation ON trees.Trees(growth_orientation_id);
+CREATE INDEX IF NOT EXISTS idx_trees_shoot_elongation ON trees.Trees(shoot_elongation_type_id);
+CREATE INDEX IF NOT EXISTS idx_trees_crown_shape ON trees.Trees(crown_shape_id);
+CREATE INDEX IF NOT EXISTS idx_trees_geometric_solid ON trees.Trees(geometric_solid_id);
+CREATE INDEX IF NOT EXISTS idx_trees_axis_structure ON trees.Trees(axis_structure_id);
+CREATE INDEX IF NOT EXISTS idx_trees_growth_form ON trees.Trees(growth_form_id);
+CREATE INDEX IF NOT EXISTS idx_trees_live_crown_ratio ON trees.Trees(live_crown_ratio);
 
 -- =============================================================================
 -- FUNCTION: Auto-assign height class based on tree height
@@ -204,11 +204,11 @@ CREATE INDEX IF NOT EXISTS idx_trees_live_crown_ratio ON trees.Trees(LiveCrownRa
 CREATE OR REPLACE FUNCTION trees.assign_height_class()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.Height_m IS NOT NULL AND NEW.HeightClassID IS NULL THEN
-        SELECT PhanerophyteHeightClassID INTO NEW.HeightClassID
+    IF NEW.Height_m IS NOT NULL AND NEW.height_class_id IS NULL THEN
+        SELECT phanerophyte_height_class_id INTO NEW.height_class_id
         FROM trees.PhanerophyteHeightClasses
-        WHERE (MinHeight_m IS NULL OR NEW.Height_m >= MinHeight_m)
-          AND (MaxHeight_m IS NULL OR NEW.Height_m < MaxHeight_m)
+        WHERE (min_height_m IS NULL OR NEW.Height_m >= min_height_m)
+          AND (max_height_m IS NULL OR NEW.Height_m < max_height_m)
         LIMIT 1;
     END IF;
     RETURN NEW;

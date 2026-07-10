@@ -19,58 +19,58 @@ COMMENT ON VIEW public.sensor_tree_links IS 'Public API view for sensor-tree lin
 -- Meteo / soil sensors have NULL tree fields.
 --
 -- Note: sensor→tree mapping requires a manual lookup table (Aquarius label
--- numbering is independent from the DB plot×treenumber scheme). Populate
+-- numbering is independent from the DB plot×tree_number scheme). Populate
 -- sensor.sensor_tree_links to activate tree fields.
 --
 -- Example queries:
 --   GET /ue_sensors                                         → all sensors
---   GET /ue_sensors?isactive=eq.true                       → active only
+--   GET /ue_sensors?is_active=eq.true                       → active only
 --   GET /ue_sensors?sensor_type=eq.Stem_Radial_Variation   → dendrometers
 --   GET /ue_sensors?linked_tree_id=eq.42                   → sensors on tree 42
 
 CREATE OR REPLACE VIEW public.ue_sensors AS
 SELECT
-    s.sensorid,
-    s.externalid                              AS aquarius_id,
-    s.serialnumber                            AS sensor_label,
-    s.externalmetadata->>'Parameter'          AS aquarius_parameter,
+    s.sensor_id,
+    s.external_id                              AS aquarius_id,
+    s.serial_number                            AS sensor_label,
+    s.external_metadata->>'Parameter'          AS aquarius_parameter,
     -- Sensor classification
-    st.sensortypeid,
-    st.sensortypename                         AS sensor_type,
+    st.sensor_type_id,
+    st.sensor_type_name                         AS sensor_type,
     s.unit,
-    s.isactive,
-    s.installationheight_m,
-    s.samplinginterval_seconds,
-    s.installationdate,
+    s.is_active,
+    s.installation_height_m,
+    s.sampling_interval_seconds,
+    s.installation_date,
     -- Location
-    l.locationid,
-    l.locationname,
+    l.location_id,
+    l.location_name,
     -- Latest reading (LATERAL backed by idx_sensor_readings_sensor_timestamp)
     lr.timestamp                              AS latest_timestamp,
     lr.value                                  AS latest_value,
     lr.quality                                AS latest_quality,
     -- Linked tree (NULL for meteo/soil sensors or unlinked tree sensors)
-    t.treeid                                  AS linked_tree_id,
-    t.treeentityid                            AS linked_tree_entity_id,
-    sp.commonname                             AS linked_tree_species,
-    sp.scientificname                         AS linked_tree_scientificname,
+    t.tree_id                                  AS linked_tree_id,
+    t.tree_entity_id                            AS linked_tree_entity_id,
+    sp.common_name                             AS linked_tree_species,
+    sp.scientific_name                         AS linked_tree_scientificname,
     t.height_m                                AS linked_tree_height_m,
     -- Position — flat lat/lon avoids PostGIS parsing in UE Blueprint
     extensions.ST_Y(s.position)              AS latitude,
     extensions.ST_X(s.position)              AS longitude
 FROM sensor.sensors s
-JOIN  sensor.sensortypes         st  ON s.sensortypeid  = st.sensortypeid
-JOIN  shared.locations           l   ON s.locationid    = l.locationid
+JOIN  sensor.sensortypes         st  ON s.sensor_type_id  = st.sensor_type_id
+JOIN  shared.locations           l   ON s.location_id    = l.location_id
 LEFT JOIN LATERAL (
     SELECT sr.timestamp, sr.value, sr.quality
     FROM   sensor.sensorreadings sr
-    WHERE  sr.sensorid = s.sensorid
+    WHERE  sr.sensor_id = s.sensor_id
     ORDER  BY sr.timestamp DESC
     LIMIT  1
 ) lr ON TRUE
-LEFT JOIN sensor.sensor_tree_links stl ON stl.sensor_id = s.sensorid
-LEFT JOIN trees.trees              t   ON stl.tree_id   = t.treeid
-LEFT JOIN shared.species           sp  ON t.speciesid   = sp.speciesid;
+LEFT JOIN sensor.sensor_tree_links stl ON stl.sensor_id = s.sensor_id
+LEFT JOIN trees.trees              t   ON stl.tree_id   = t.tree_id
+LEFT JOIN shared.species           sp  ON t.species_id   = sp.species_id;
 
 COMMENT ON VIEW public.ue_sensors IS
     'Flat sensor catalogue for UE Blueprint. One row per sensor with type, location, '
@@ -81,29 +81,29 @@ COMMENT ON VIEW public.ue_sensors IS
 -- UE_SENSORREADINGS — enriched time-series view for UE Blueprint
 -- =============================================================================
 -- Joins sensor type + unit onto raw readings so UE does not need a separate
--- sensor metadata lookup per reading batch. Keyed by sensorid only — the
+-- sensor metadata lookup per reading batch. Keyed by sensor_id only — the
 -- sensor→tree relationship is looked up once via ue_sensors, not repeated
 -- on every reading row.
 --
--- Example: GET /ue_sensorreadings?sensorid=eq.7&order=timestamp.desc&limit=96
+-- Example: GET /ue_sensorreadings?sensor_id=eq.7&order=timestamp.desc&limit=96
 
 CREATE OR REPLACE VIEW public.ue_sensorreadings AS
 SELECT
-    sr.sensorreadingid,
-    sr.sensorid,
-    st.sensortypename   AS sensor_type,
+    sr.sensor_reading_id,
+    sr.sensor_id,
+    st.sensor_type_name   AS sensor_type,
     s.unit,
     sr.timestamp,
     sr.value,
     sr.quality
 FROM sensor.sensorreadings   sr
-JOIN  sensor.sensors         s   ON sr.sensorid       = s.sensorid
-JOIN  sensor.sensortypes     st  ON s.sensortypeid    = st.sensortypeid;
+JOIN  sensor.sensors         s   ON sr.sensor_id       = s.sensor_id
+JOIN  sensor.sensortypes     st  ON s.sensor_type_id    = st.sensor_type_id;
 
 COMMENT ON VIEW public.ue_sensorreadings IS
     'Enriched sensor time-series for UE Blueprint. Includes sensor type and unit, '
-    'keyed by sensorid. Look up the linked tree once via ue_sensors, not per reading. '
-    'GET /ue_sensorreadings?sensorid=eq.<id>&order=timestamp.desc&limit=96';
+    'keyed by sensor_id. Look up the linked tree once via ue_sensors, not per reading. '
+    'GET /ue_sensorreadings?sensor_id=eq.<id>&order=timestamp.desc&limit=96';
 
 -- =============================================================================
 -- GRANTS
@@ -148,5 +148,5 @@ FOR EACH ROW EXECUTE FUNCTION public.sensor_tree_links_insert();
 -- NOTES ON PERFORMANCE
 -- =============================================================================
 -- ue_sensors LATERAL lookup: backed by idx_sensor_readings_sensor_timestamp
---   (sensorid, timestamp DESC) from 14-sensor-schema.sql.
--- ue_sensorreadings: filter always by sensorid; same index covers it.
+--   (sensor_id, timestamp DESC) from 14-sensor-schema.sql.
+-- ue_sensorreadings: filter always by sensor_id; same index covers it.

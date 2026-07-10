@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS sensor.sensor_tree_links (
     end_date DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(sensor_id, tree_id),
-    FOREIGN KEY (sensor_id) REFERENCES sensor.sensors(sensorid) ON DELETE CASCADE,
-    FOREIGN KEY (tree_id) REFERENCES trees.trees(treeid) ON DELETE CASCADE
+    FOREIGN KEY (sensor_id) REFERENCES sensor.sensors(sensor_id) ON DELETE CASCADE,
+    FOREIGN KEY (tree_id) REFERENCES trees.trees(tree_id) ON DELETE CASCADE
 );
 
 COMMENT ON TABLE sensor.sensor_tree_links IS 'Links sensors to specific tree records';
@@ -52,52 +52,52 @@ BEGIN
     -- Loop through all dendrometer and sap flow sensors
     FOR sensor_rec IN
         SELECT
-            s.sensorid,
-            s.serialnumber,
-            s.externalmetadata->>'LocationIdentifier' as location,
-            st.sensortypename
+            s.sensor_id,
+            s.serial_number,
+            s.external_metadata->>'LocationIdentifier' as location,
+            st.sensor_type_name
         FROM sensor.sensors s
-        JOIN sensor.sensortypes st ON s.sensortypeid = st.sensortypeid
-        WHERE s.externalid IS NOT NULL
-        AND st.sensortypename IN ('Stem_Radial_Variation', 'Sap_Flow')
-        ORDER BY s.serialnumber
+        JOIN sensor.sensortypes st ON s.sensor_type_id = st.sensor_type_id
+        WHERE s.external_id IS NOT NULL
+        AND st.sensor_type_name IN ('Stem_Radial_Variation', 'Sap_Flow')
+        ORDER BY s.serial_number
     LOOP
         tree_number := NULL;
 
         -- Extract tree number from sensor name patterns
-        IF sensor_rec.serialnumber ~* '.*_([0-9]+)_(Dendrometer|SapFlow)$' THEN
-            tree_number := substring(sensor_rec.serialnumber from '.*_([0-9]+)_(Dendrometer|SapFlow)$');
-        ELSIF sensor_rec.serialnumber ~* '.*_([0-9]+)_(Drought|Control)$' THEN
-            tree_number := substring(sensor_rec.serialnumber from '.*_([0-9]+)_(Drought|Control)$');
+        IF sensor_rec.serial_number ~* '.*_([0-9]+)_(Dendrometer|SapFlow)$' THEN
+            tree_number := substring(sensor_rec.serial_number from '.*_([0-9]+)_(Dendrometer|SapFlow)$');
+        ELSIF sensor_rec.serial_number ~* '.*_([0-9]+)_(Drought|Control)$' THEN
+            tree_number := substring(sensor_rec.serial_number from '.*_([0-9]+)_(Drought|Control)$');
         END IF;
 
         IF tree_number IS NOT NULL THEN
-            SELECT t.treeid, t.fieldnotes
+            SELECT t.tree_id, t.field_notes
             INTO tree_rec
             FROM trees.trees t
-            WHERE t.fieldnotes IS NOT NULL
+            WHERE t.field_notes IS NOT NULL
             AND (
-                t.fieldnotes ~* ('TreeID: [0-9_]*' || tree_number || '[^0-9]')
-                OR t.fieldnotes ~* ('FID: ' || tree_number || ' ')
+                t.field_notes ~* ('tree_id: [0-9_]*' || tree_number || '[^0-9]')
+                OR t.field_notes ~* ('FID: ' || tree_number || ' ')
             )
             LIMIT 1;
 
-            IF tree_rec.treeid IS NOT NULL THEN
+            IF tree_rec.tree_id IS NOT NULL THEN
                 BEGIN
                     INSERT INTO sensor.sensor_tree_links (sensor_id, tree_id, description)
                     VALUES (
-                        sensor_rec.sensorid,
-                        tree_rec.treeid,
-                        'Auto-linked based on sensor name: ' || sensor_rec.serialnumber
+                        sensor_rec.sensor_id,
+                        tree_rec.tree_id,
+                        'Auto-linked based on sensor name: ' || sensor_rec.serial_number
                     )
                     ON CONFLICT (sensor_id, tree_id) DO NOTHING;
 
                     links_created := links_created + 1;
 
-                    sensor_id := sensor_rec.sensorid;
-                    sensor_name := sensor_rec.serialnumber;
-                    tree_id := tree_rec.treeid;
-                    tree_info := tree_rec.fieldnotes;
+                    sensor_id := sensor_rec.sensor_id;
+                    sensor_name := sensor_rec.serial_number;
+                    tree_id := tree_rec.tree_id;
+                    tree_info := tree_rec.field_notes;
                     link_created := TRUE;
 
                     RETURN NEXT;
@@ -120,27 +120,27 @@ COMMENT ON FUNCTION sensor.link_sensors_to_trees_by_pattern IS 'Auto-links senso
 
 CREATE OR REPLACE VIEW sensor.sensor_tree_view AS
 SELECT 
-    s.sensorid AS sensor_id,
-    s.serialnumber AS sensor_name,
-    st.sensortypename AS sensor_type,
+    s.sensor_id AS sensor_id,
+    s.serial_number AS sensor_name,
+    st.sensor_type_name AS sensor_type,
     s.unit AS sensor_unit,
-    s.isactive AS sensor_active,
+    s.is_active AS sensor_active,
     stl.description AS link_description,
     stl.created_at AS link_created_at,
-    t.treeid AS tree_id,
-    sp.commonname AS tree_species,
+    t.tree_id AS tree_id,
+    sp.common_name AS tree_species,
     t.height_m AS tree_height_m,
-    substring(t.fieldnotes from 'TreeID: [^|]+') AS tree_identifier,
-    substring(t.fieldnotes from 'FID: [0-9]+') AS tree_fid,
-    l.locationname AS tree_location,
+    substring(t.field_notes from 'tree_id: [^|]+') AS tree_identifier,
+    substring(t.field_notes from 'FID: [0-9]+') AS tree_fid,
+    l.location_name AS tree_location,
     extensions.ST_X(t.position) AS tree_longitude,
     extensions.ST_Y(t.position) AS tree_latitude
 FROM sensor.sensor_tree_links stl
-JOIN sensor.sensors s ON stl.sensor_id = s.sensorid
-JOIN sensor.sensortypes st ON s.sensortypeid = st.sensortypeid
-LEFT JOIN trees.trees t ON stl.tree_id = t.treeid
-LEFT JOIN shared.species sp ON t.speciesid = sp.speciesid
-LEFT JOIN shared.locations l ON t.locationid = l.locationid;
+JOIN sensor.sensors s ON stl.sensor_id = s.sensor_id
+JOIN sensor.sensortypes st ON s.sensor_type_id = st.sensor_type_id
+LEFT JOIN trees.trees t ON stl.tree_id = t.tree_id
+LEFT JOIN shared.species sp ON t.species_id = sp.species_id
+LEFT JOIN shared.locations l ON t.location_id = l.location_id;
 
 COMMENT ON VIEW sensor.sensor_tree_view IS 'View showing relationships between sensors and trees with detailed information';
 

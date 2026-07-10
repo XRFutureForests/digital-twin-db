@@ -12,13 +12,13 @@ SET search_path TO sensor, shared, public;
 -- =============================================================================
 
 CREATE TABLE sensor.SensorTypes (
-    SensorTypeID SERIAL PRIMARY KEY,
-    SensorTypeName VARCHAR(100) NOT NULL UNIQUE,
+    sensor_type_id SERIAL PRIMARY KEY,
+    sensor_type_name VARCHAR(100) NOT NULL UNIQUE,
     Description TEXT,
-    TypicalUnit VARCHAR(50),
-    TypicalRangeMin NUMERIC(12, 4),
-    TypicalRangeMax NUMERIC(12, 4),
-    CONSTRAINT chk_typical_range CHECK (TypicalRangeMin IS NULL OR TypicalRangeMax IS NULL OR TypicalRangeMin <= TypicalRangeMax)
+    typical_unit VARCHAR(50),
+    typical_range_min NUMERIC(12, 4),
+    typical_range_max NUMERIC(12, 4),
+    CONSTRAINT chk_typical_range CHECK (typical_range_min IS NULL OR typical_range_max IS NULL OR typical_range_min <= typical_range_max)
 );
 
 COMMENT ON TABLE sensor.SensorTypes IS 'Environmental sensor type classifications';
@@ -28,91 +28,91 @@ COMMENT ON TABLE sensor.SensorTypes IS 'Environmental sensor type classification
 -- by 30-load-lookup-tables.sql
 -- =============================================================================
 
-CREATE INDEX idx_sensor_types_name ON sensor.SensorTypes(SensorTypeName);
+CREATE INDEX idx_sensor_types_name ON sensor.SensorTypes(sensor_type_name);
 
 -- =============================================================================
 -- SENSORS TABLE
 -- =============================================================================
 
 CREATE TABLE sensor.Sensors (
-    SensorID SERIAL PRIMARY KEY,
-    LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
-    SensorTypeID INTEGER NOT NULL REFERENCES sensor.SensorTypes(SensorTypeID),
-    CampaignID INTEGER REFERENCES shared.Campaigns(CampaignID) ON DELETE SET NULL,
-    SensorModel VARCHAR(200) NOT NULL,
-    SerialNumber VARCHAR(100),
+    sensor_id SERIAL PRIMARY KEY,
+    location_id INTEGER NOT NULL REFERENCES shared.Locations(location_id) ON DELETE CASCADE,
+    sensor_type_id INTEGER NOT NULL REFERENCES sensor.SensorTypes(sensor_type_id),
+    campaign_id INTEGER REFERENCES shared.Campaigns(campaign_id) ON DELETE SET NULL,
+    sensor_model VARCHAR(200) NOT NULL,
+    serial_number VARCHAR(100),
     Position extensions.GEOMETRY(Point, 4326) NOT NULL,
-    PositionOriginal extensions.GEOMETRY,
-    SourceCRS INTEGER,
-    InstallationDate TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    InstallationHeight_m NUMERIC(5, 2) CHECK (InstallationHeight_m >= 0),
-    DecommissionDate TIMESTAMPTZ,
-    CalibrationDate TIMESTAMPTZ,
-    NextCalibrationDate TIMESTAMPTZ,
-    SamplingInterval_seconds INTEGER NOT NULL CHECK (SamplingInterval_seconds > 0),
-    ReadingType VARCHAR(100),
+    position_original extensions.GEOMETRY,
+    source_crs INTEGER,
+    installation_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    installation_height_m NUMERIC(5, 2) CHECK (installation_height_m >= 0),
+    decommission_date TIMESTAMPTZ,
+    calibration_date TIMESTAMPTZ,
+    next_calibration_date TIMESTAMPTZ,
+    sampling_interval_seconds INTEGER NOT NULL CHECK (sampling_interval_seconds > 0),
+    reading_type VARCHAR(100),
     Unit VARCHAR(50),
-    MinValue NUMERIC(12, 4),
-    MaxValue NUMERIC(12, 4),
+    min_value NUMERIC(12, 4),
+    max_value NUMERIC(12, 4),
     Accuracy NUMERIC(8, 4),
-    BatteryLevel_percent NUMERIC(5, 2) CHECK (BatteryLevel_percent >= 0 AND BatteryLevel_percent <= 100),
-    IsActive BOOLEAN DEFAULT TRUE,
-    MaintenanceNotes TEXT,
-    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
-    UpdatedAt TIMESTAMPTZ,
-    CreatedBy VARCHAR(200),
-    UpdatedBy VARCHAR(200),
-    CONSTRAINT chk_value_range CHECK (MinValue IS NULL OR MaxValue IS NULL OR MinValue <= MaxValue),
-    CONSTRAINT chk_decommission_date CHECK (DecommissionDate IS NULL OR DecommissionDate >= InstallationDate)
+    battery_level_percent NUMERIC(5, 2) CHECK (battery_level_percent >= 0 AND battery_level_percent <= 100),
+    is_active BOOLEAN DEFAULT TRUE,
+    maintenance_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    created_by VARCHAR(200),
+    updated_by VARCHAR(200),
+    CONSTRAINT chk_value_range CHECK (min_value IS NULL OR max_value IS NULL OR min_value <= max_value),
+    CONSTRAINT chk_decommission_date CHECK (decommission_date IS NULL OR decommission_date >= installation_date)
 );
 
 COMMENT ON TABLE sensor.Sensors IS 'Physical sensor installations with metadata and configuration';
 COMMENT ON COLUMN sensor.Sensors.Position IS 'PostGIS point for sensor location in WGS84';
-COMMENT ON COLUMN sensor.Sensors.PositionOriginal IS 'Original coordinates in source CRS before WGS84 transformation';
-COMMENT ON COLUMN sensor.Sensors.SamplingInterval_seconds IS 'Frequency of sensor measurements in seconds';
-COMMENT ON COLUMN sensor.Sensors.IsActive IS 'Whether sensor is currently collecting data';
-COMMENT ON COLUMN sensor.Sensors.CampaignID IS 'Deployment campaign this sensor was installed during';
-COMMENT ON COLUMN sensor.Sensors.SourceCRS IS 'EPSG code of original coordinate reference system for PositionOriginal';
-COMMENT ON COLUMN sensor.Sensors.InstallationHeight_m IS 'Height of sensor installation above ground in meters';
+COMMENT ON COLUMN sensor.Sensors.position_original IS 'Original coordinates in source CRS before WGS84 transformation';
+COMMENT ON COLUMN sensor.Sensors.sampling_interval_seconds IS 'Frequency of sensor measurements in seconds';
+COMMENT ON COLUMN sensor.Sensors.is_active IS 'Whether sensor is currently collecting data';
+COMMENT ON COLUMN sensor.Sensors.campaign_id IS 'Deployment campaign this sensor was installed during';
+COMMENT ON COLUMN sensor.Sensors.source_crs IS 'EPSG code of original coordinate reference system for position_original';
+COMMENT ON COLUMN sensor.Sensors.installation_height_m IS 'Height of sensor installation above ground in meters';
 
 -- Create indexes
-CREATE INDEX idx_sensors_location ON sensor.Sensors(LocationID);
-CREATE INDEX idx_sensors_sensor_type ON sensor.Sensors(SensorTypeID);
+CREATE INDEX idx_sensors_location ON sensor.Sensors(location_id);
+CREATE INDEX idx_sensors_sensor_type ON sensor.Sensors(sensor_type_id);
 CREATE INDEX idx_sensors_position ON sensor.Sensors USING GIST (Position);
-CREATE INDEX idx_sensors_is_active ON sensor.Sensors(IsActive);
-CREATE INDEX idx_sensors_installation_date ON sensor.Sensors(InstallationDate DESC);
-CREATE INDEX idx_sensors_serial_number ON sensor.Sensors(SerialNumber);
-CREATE INDEX idx_sensors_created_by ON sensor.Sensors(CreatedBy);
-CREATE INDEX idx_sensors_campaign ON sensor.Sensors(CampaignID);
+CREATE INDEX idx_sensors_is_active ON sensor.Sensors(is_active);
+CREATE INDEX idx_sensors_installation_date ON sensor.Sensors(installation_date DESC);
+CREATE INDEX idx_sensors_serial_number ON sensor.Sensors(serial_number);
+CREATE INDEX idx_sensors_created_by ON sensor.Sensors(created_by);
+CREATE INDEX idx_sensors_campaign ON sensor.Sensors(campaign_id);
 
 -- =============================================================================
 -- SENSOR READINGS TABLE (TIME-SERIES DATA)
 -- =============================================================================
 
 CREATE TABLE sensor.SensorReadings (
-    SensorReadingID BIGSERIAL PRIMARY KEY,
-    SensorID INTEGER NOT NULL REFERENCES sensor.Sensors(SensorID) ON DELETE CASCADE,
+    sensor_reading_id BIGSERIAL PRIMARY KEY,
+    sensor_id INTEGER NOT NULL REFERENCES sensor.Sensors(sensor_id) ON DELETE CASCADE,
     Timestamp TIMESTAMPTZ NOT NULL,
     Value NUMERIC(12, 4) NOT NULL,
     Quality VARCHAR(50) CHECK (Quality IN ('good', 'suspect', 'bad', 'missing', 'calibration')),
-    ScenarioID INTEGER REFERENCES shared.Scenarios(ScenarioID) ON DELETE SET NULL,
-    BatteryVoltage NUMERIC(4, 2),
-    SignalStrength NUMERIC(6, 2),
+    scenario_id INTEGER REFERENCES shared.Scenarios(scenario_id) ON DELETE SET NULL,
+    battery_voltage NUMERIC(4, 2),
+    signal_strength NUMERIC(6, 2),
     Notes TEXT,
-    CreatedAt TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 COMMENT ON TABLE sensor.SensorReadings IS 'Time-series environmental sensor measurements';
 COMMENT ON COLUMN sensor.SensorReadings.Quality IS 'Data quality flag (good, suspect, bad, missing, calibration)';
-COMMENT ON COLUMN sensor.SensorReadings.ScenarioID IS 'NULL for real readings, references scenario for simulated data';
-COMMENT ON COLUMN sensor.SensorReadings.SignalStrength IS 'Wireless signal strength in dBm';
+COMMENT ON COLUMN sensor.SensorReadings.scenario_id IS 'NULL for real readings, references scenario for simulated data';
+COMMENT ON COLUMN sensor.SensorReadings.signal_strength IS 'Wireless signal strength in dBm';
 
 -- Create indexes optimized for time-series queries
-CREATE INDEX idx_sensor_readings_sensor_id ON sensor.SensorReadings(SensorID);
+CREATE INDEX idx_sensor_readings_sensor_id ON sensor.SensorReadings(sensor_id);
 CREATE INDEX idx_sensor_readings_timestamp ON sensor.SensorReadings(Timestamp DESC);
-CREATE INDEX idx_sensor_readings_sensor_timestamp ON sensor.SensorReadings(SensorID, Timestamp DESC);
+CREATE INDEX idx_sensor_readings_sensor_timestamp ON sensor.SensorReadings(sensor_id, Timestamp DESC);
 CREATE INDEX idx_sensor_readings_quality ON sensor.SensorReadings(Quality);
-CREATE INDEX idx_sensor_readings_scenario ON sensor.SensorReadings(ScenarioID);
+CREATE INDEX idx_sensor_readings_scenario ON sensor.SensorReadings(scenario_id);
 
 -- Note: idx_sensor_readings_sensor_timestamp already covers recent reading queries
 
@@ -123,7 +123,7 @@ CREATE INDEX idx_sensor_readings_scenario ON sensor.SensorReadings(ScenarioID);
 -- Function to get latest reading for a sensor
 CREATE OR REPLACE FUNCTION sensor.get_latest_reading(sensor_id_param INTEGER)
 RETURNS TABLE (
-    SensorReadingID BIGINT,
+    sensor_reading_id BIGINT,
     reading_timestamp TIMESTAMPTZ,
     Value NUMERIC,
     Quality VARCHAR
@@ -131,12 +131,12 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     SELECT
-        sr.SensorReadingID,
+        sr.sensor_reading_id,
         sr."Timestamp",
         sr.Value,
         sr.Quality
     FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = sensor_id_param
+    WHERE sr.sensor_id = sensor_id_param
     ORDER BY sr."Timestamp" DESC
     LIMIT 1;
 END;
@@ -168,7 +168,7 @@ BEGIN
         MAX(sr.Value) AS max_value,
         COUNT(*) AS reading_count
     FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = sensor_id_param
+    WHERE sr.sensor_id = sensor_id_param
         AND sr."Timestamp" >= start_time
         AND sr."Timestamp" <= end_time
         AND sr.Quality IN ('good', 'suspect')
@@ -185,7 +185,7 @@ CREATE OR REPLACE FUNCTION sensor.check_sensor_health(
     hours_back INTEGER DEFAULT 24
 )
 RETURNS TABLE (
-    SensorID INTEGER,
+    sensor_id INTEGER,
     IsHealthy BOOLEAN,
     LastReading TIMESTAMPTZ,
     ReadingsCount BIGINT,
@@ -201,11 +201,11 @@ DECLARE
     health_issues TEXT := '';
 BEGIN
     -- Get sensor sampling interval
-    SELECT s.SamplingInterval_seconds, sr.Timestamp
+    SELECT s.sampling_interval_seconds, sr.Timestamp
     INTO sampling_interval, last_reading
     FROM sensor.Sensors s
-    LEFT JOIN sensor.SensorReadings sr ON s.SensorID = sr.SensorID
-    WHERE s.SensorID = sensor_id_param
+    LEFT JOIN sensor.SensorReadings sr ON s.sensor_id = sr.sensor_id
+    WHERE s.sensor_id = sensor_id_param
     ORDER BY sr.Timestamp DESC
     LIMIT 1;
 
@@ -216,7 +216,7 @@ BEGIN
     SELECT COUNT(*), COUNT(*) FILTER (WHERE Quality = 'good')
     INTO actual_readings, good_readings
     FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = sensor_id_param
+    WHERE sr.sensor_id = sensor_id_param
         AND sr.Timestamp > NOW() - (hours_back || ' hours')::INTERVAL;
 
     -- Check for issues
@@ -254,7 +254,7 @@ COMMENT ON FUNCTION sensor.check_sensor_health IS 'Checks sensor health based on
 CREATE OR REPLACE FUNCTION sensor.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.UpdatedAt = NOW();
+    NEW.updated_at = NOW();
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -271,24 +271,24 @@ CREATE TRIGGER trigger_sensors_updated_at
 -- View: Active sensors with latest readings
 CREATE OR REPLACE VIEW sensor.active_sensors_status AS
 SELECT
-    s.SensorID,
-    s.LocationID,
-    st.SensorTypeName,
-    s.SensorModel,
-    s.IsActive,
-    s.BatteryLevel_percent,
+    s.sensor_id,
+    s.location_id,
+    st.sensor_type_name,
+    s.sensor_model,
+    s.is_active,
+    s.battery_level_percent,
     (SELECT sr.Timestamp FROM sensor.SensorReadings sr
-     WHERE sr.SensorID = s.SensorID
+     WHERE sr.sensor_id = s.sensor_id
      ORDER BY sr.Timestamp DESC LIMIT 1) AS last_reading_time,
     (SELECT sr.Value FROM sensor.SensorReadings sr
-     WHERE sr.SensorID = s.SensorID
+     WHERE sr.sensor_id = s.sensor_id
      ORDER BY sr.Timestamp DESC LIMIT 1) AS last_reading_value,
     (SELECT sr.Quality FROM sensor.SensorReadings sr
-     WHERE sr.SensorID = s.SensorID
+     WHERE sr.sensor_id = s.sensor_id
      ORDER BY sr.Timestamp DESC LIMIT 1) AS last_reading_quality
 FROM sensor.Sensors s
-JOIN sensor.SensorTypes st ON s.SensorTypeID = st.SensorTypeID
-WHERE s.IsActive = TRUE;
+JOIN sensor.SensorTypes st ON s.sensor_type_id = st.sensor_type_id
+WHERE s.is_active = TRUE;
 
 COMMENT ON VIEW sensor.active_sensors_status IS 'Active sensors with their latest reading information';
 

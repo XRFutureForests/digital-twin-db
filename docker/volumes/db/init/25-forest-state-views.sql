@@ -29,46 +29,46 @@ COMMENT ON VIEW public.datasourcetypes IS 'Data source type classifications (fie
 -- =============================================================================
 -- Flat view of all tree records with variant, scenario, species, main-stem DBH,
 -- and position joined in — one row per tree, no PostGIS parsing needed in UE
--- Blueprint (pre-flattened latitude/longitude). Filter by variantid to load all
--- trees at one time step: GET /ue_trees?variantid=eq.<id>
+-- Blueprint (pre-flattened latitude/longitude). Filter by variant_id to load all
+-- trees at one time step: GET /ue_trees?variant_id=eq.<id>
 --
 -- Naming convention: ue_* prefix groups all Unreal Engine query views.
 
 CREATE OR REPLACE VIEW public.ue_trees AS
 SELECT
-    t.treeid,
-    t.treeentityid,
-    t.parenttreeid,
-    t.locationid,
-    t.plotid,
-    -- Variant info (use variantid to load all trees at one time step)
-    t.variantid,
-    v.variantname,
-    v.simulationyear,
-    v.timedelta_yrs,
-    v.sortorder         AS variant_sortorder,
+    t.tree_id,
+    t.tree_entity_id,
+    t.parent_tree_id,
+    t.location_id,
+    t.plot_id,
+    -- Variant info (use variant_id to load all trees at one time step)
+    t.variant_id,
+    v.variant_name,
+    v.simulation_year,
+    v.time_delta_yrs,
+    v.sort_order         AS variant_sortorder,
     -- Scenario info (allows UE to filter by name, not just ID)
-    s.scenarioid,
-    s.scenarioname,
+    s.scenario_id,
+    s.scenario_name,
     -- Variant type comes from the variant, not the individual tree row
-    v.varianttypeid,
-    vt.varianttypename,
+    v.variant_type_id,
+    vt.variant_type_name,
     -- Species info (common name is the UE asset lookup key)
-    sp.speciesid,
-    sp.commonname       AS speciesname,
-    sp.scientificname,
+    sp.species_id,
+    sp.common_name       AS species_name,
+    sp.scientific_name,
     -- Tree measurements
     t.height_m,
-    t.crownwidth_m,
-    t.crownbaseheight_m,
-    st.dbh_cm,          -- main stem (StemNumber=1), flattened
+    t.crown_width_m,
+    t.crown_base_height_m,
+    st.dbh_cm,          -- main stem (stem_number=1), flattened
     t.age_years,
-    t.healthscore,
-    t.measurementdate,
-    dst.datasourcetypename AS datasourcetype,
+    t.health_score,
+    t.measurement_date,
+    dst.data_source_type_name AS datasourcetype,
     -- Competition proxy: crown starts above 60% of tree height → high pressure
-    COALESCE((t.crownbaseheight_m / NULLIF(t.height_m, 0)) > 0.6, false) AS competition,
-    -- NOTE: trees.AquariusName (added by migration 32) and has_sensors are added
+    COALESCE((t.crown_base_height_m / NULLIF(t.height_m, 0)) > 0.6, false) AS competition,
+    -- NOTE: trees.aquarius_name (added by migration 32) and has_sensors are added
     -- to ue_trees later, by 33/34 — do not reference them here, 25 runs first.
     -- Flat lat/lon for UE JSON parsing (no PostGIS parsing needed in Blueprint)
     ST_Y(t.position)    AS latitude,
@@ -76,31 +76,31 @@ SELECT
     -- Full geometry for PostGIS queries if needed
     t.position
 FROM trees.trees t
-LEFT JOIN shared.variants     v   ON t.variantid       = v.variantid
-LEFT JOIN shared.scenarios    s   ON v.scenarioid      = s.scenarioid
-LEFT JOIN shared.varianttypes vt  ON v.varianttypeid   = vt.varianttypeid
-LEFT JOIN shared.species      sp  ON t.speciesid       = sp.speciesid
-LEFT JOIN trees.stems         st  ON st.treeid = t.treeid AND st.stemnumber = 1
-LEFT JOIN trees.datasourcetypes dst ON t.datasourcetypeid = dst.datasourcetypeid;
+LEFT JOIN shared.variants     v   ON t.variant_id       = v.variant_id
+LEFT JOIN shared.scenarios    s   ON v.scenario_id      = s.scenario_id
+LEFT JOIN shared.varianttypes vt  ON v.variant_type_id   = vt.variant_type_id
+LEFT JOIN shared.species      sp  ON t.species_id       = sp.species_id
+LEFT JOIN trees.stems         st  ON st.tree_id = t.tree_id AND st.stem_number = 1
+LEFT JOIN trees.datasourcetypes dst ON t.data_source_type_id = dst.data_source_type_id;
 
 COMMENT ON VIEW public.ue_trees IS
     'Flat tree catalogue for UE Blueprint import. One row per tree with variant, '
     'scenario, species, main-stem DBH, pre-flattened latitude/longitude, and the '
-    'Aquarius sensor anchor. Filter by variantid to load one time step: '
-    'GET /ue_trees?variantid=eq.<id>. For a tree''s sensors: '
-    'GET /ue_sensors?linked_tree_entity_id=eq.<treeentityid>.';
+    'Aquarius sensor anchor. Filter by variant_id to load one time step: '
+    'GET /ue_trees?variant_id=eq.<id>. For a tree''s sensors: '
+    'GET /ue_sensors?linked_tree_entity_id=eq.<tree_entity_id>.';
 
 -- =============================================================================
 -- PERFORMANCE INDEXES
 -- =============================================================================
 
--- ScenarioID on trees — critical for variant switching performance
+-- scenario_id on trees — critical for variant switching performance
 CREATE INDEX IF NOT EXISTS idx_trees_scenario_id
-    ON trees.trees (scenarioid);
+    ON trees.trees (scenario_id);
 
--- LocationID + ScenarioID composite — common UE query pattern
+-- location_id + scenario_id composite — common UE query pattern
 CREATE INDEX IF NOT EXISTS idx_trees_location_scenario
-    ON trees.trees (locationid, scenarioid);
+    ON trees.trees (location_id, scenario_id);
 
 -- =============================================================================
 -- GRANTS

@@ -9,32 +9,32 @@ SET search_path TO shared, public;
 -- =============================================================================
 
 CREATE TABLE shared.ProcessingJobs (
-    ProcessingJobID SERIAL PRIMARY KEY,
-    ExternalJobID VARCHAR(200) UNIQUE,
-    WorkflowName VARCHAR(200) NOT NULL,
-    WorkflowVersion VARCHAR(50),
+    processing_job_id SERIAL PRIMARY KEY,
+    external_job_id VARCHAR(200) UNIQUE,
+    workflow_name VARCHAR(200) NOT NULL,
+    workflow_version VARCHAR(50),
     Status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (Status IN ('pending', 'running', 'completed', 'failed')),
-    SubmittedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CompletedAt TIMESTAMPTZ,
-    InputData JSONB,
-    OutputData JSONB,
-    ErrorMessage TEXT,
-    SubmittedBy VARCHAR(200),
-    CONSTRAINT chk_completed_date CHECK (CompletedAt IS NULL OR CompletedAt >= SubmittedAt)
+    submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ,
+    input_data JSONB,
+    output_data JSONB,
+    error_message TEXT,
+    submitted_by VARCHAR(200),
+    CONSTRAINT chk_completed_date CHECK (completed_at IS NULL OR completed_at >= submitted_at)
 );
 
 COMMENT ON TABLE shared.ProcessingJobs IS 'Tracks external processing jobs and compute workflows';
-COMMENT ON COLUMN shared.ProcessingJobs.ExternalJobID IS 'Unique identifier from external processing system';
+COMMENT ON COLUMN shared.ProcessingJobs.external_job_id IS 'Unique identifier from external processing system';
 COMMENT ON COLUMN shared.ProcessingJobs.Status IS 'Job status: pending, running, completed, failed';
-COMMENT ON COLUMN shared.ProcessingJobs.InputData IS 'JSON representation of input parameters and data references';
-COMMENT ON COLUMN shared.ProcessingJobs.OutputData IS 'JSON representation of output data references and results';
+COMMENT ON COLUMN shared.ProcessingJobs.input_data IS 'JSON representation of input parameters and data references';
+COMMENT ON COLUMN shared.ProcessingJobs.output_data IS 'JSON representation of output data references and results';
 
 -- Create indexes
 CREATE INDEX idx_processing_jobs_status ON shared.ProcessingJobs(Status);
-CREATE INDEX idx_processing_jobs_external_id ON shared.ProcessingJobs(ExternalJobID);
-CREATE INDEX idx_processing_jobs_workflow ON shared.ProcessingJobs(WorkflowName);
-CREATE INDEX idx_processing_jobs_submitted_at ON shared.ProcessingJobs(SubmittedAt DESC);
-CREATE INDEX idx_processing_jobs_submitted_by ON shared.ProcessingJobs(SubmittedBy);
+CREATE INDEX idx_processing_jobs_external_id ON shared.ProcessingJobs(external_job_id);
+CREATE INDEX idx_processing_jobs_workflow ON shared.ProcessingJobs(workflow_name);
+CREATE INDEX idx_processing_jobs_submitted_at ON shared.ProcessingJobs(submitted_at DESC);
+CREATE INDEX idx_processing_jobs_submitted_by ON shared.ProcessingJobs(submitted_by);
 
 -- =============================================================================
 -- ROW LEVEL SECURITY
@@ -61,7 +61,7 @@ CREATE POLICY "Enable read for authenticated users" ON shared.ProcessingJobs
 
 GRANT ALL ON shared.ProcessingJobs TO service_role;
 GRANT SELECT ON shared.ProcessingJobs TO authenticated, anon;
-GRANT USAGE, SELECT ON SEQUENCE shared.ProcessingJobs_ProcessingJobID_seq TO service_role, authenticated;
+GRANT USAGE, SELECT ON SEQUENCE shared.processingjobs_processing_job_id_seq TO service_role, authenticated;
 
 -- =============================================================================
 -- SUMMARY

@@ -173,7 +173,7 @@ ALTER TABLE shared.AuditLog ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own audit logs"
     ON shared.AuditLog FOR SELECT
     TO authenticated
-    USING (UserID = auth.uid()::TEXT OR UserID IS NULL);
+    USING (user_id = auth.uid()::TEXT OR user_id IS NULL);
 
 CREATE POLICY "Service role can manage audit logs"
     ON shared.AuditLog FOR ALL
@@ -249,8 +249,8 @@ CREATE POLICY "Authenticated users can create point clouds"
 CREATE POLICY "Users can update their own point clouds"
     ON pointclouds.PointClouds FOR UPDATE
     TO authenticated
-    USING (CreatedBy = auth.uid()::TEXT OR CreatedBy IS NULL)
-    WITH CHECK (CreatedBy = auth.uid()::TEXT OR CreatedBy IS NULL);
+    USING (created_by = auth.uid()::TEXT OR created_by IS NULL)
+    WITH CHECK (created_by = auth.uid()::TEXT OR created_by IS NULL);
 
 CREATE POLICY "Service role can manage all point clouds"
     ON pointclouds.PointClouds FOR ALL
@@ -363,8 +363,8 @@ CREATE POLICY "Authenticated users can create trees"
 CREATE POLICY "Users can update their own trees or unowned trees"
     ON trees.Trees FOR UPDATE
     TO authenticated
-    USING (CreatedBy = auth.uid()::TEXT OR CreatedBy IS NULL)
-    WITH CHECK (CreatedBy = auth.uid()::TEXT OR CreatedBy IS NULL);
+    USING (created_by = auth.uid()::TEXT OR created_by IS NULL)
+    WITH CHECK (created_by = auth.uid()::TEXT OR created_by IS NULL);
 
 CREATE POLICY "Service role can manage all trees"
     ON trees.Trees FOR ALL
@@ -456,8 +456,8 @@ CREATE POLICY "Authenticated users can create environments"
 CREATE POLICY "Users can update their own environments"
     ON environments.Environments FOR UPDATE
     TO authenticated
-    USING (CreatedBy = auth.uid()::TEXT OR CreatedBy IS NULL)
-    WITH CHECK (CreatedBy = auth.uid()::TEXT OR CreatedBy IS NULL);
+    USING (created_by = auth.uid()::TEXT OR created_by IS NULL)
+    WITH CHECK (created_by = auth.uid()::TEXT OR created_by IS NULL);
 
 CREATE POLICY "Service role can manage all environments"
     ON environments.Environments FOR ALL
@@ -660,8 +660,8 @@ CREATE POLICY "Authenticated users can create images"
 CREATE POLICY "Users can update their own images"
     ON imagery.Images FOR UPDATE
     TO authenticated
-    USING (CreatedBy = auth.uid()::TEXT OR CreatedBy IS NULL)
-    WITH CHECK (CreatedBy = auth.uid()::TEXT OR CreatedBy IS NULL);
+    USING (created_by = auth.uid()::TEXT OR created_by IS NULL)
+    WITH CHECK (created_by = auth.uid()::TEXT OR created_by IS NULL);
 
 CREATE POLICY "Service role can manage all images"
     ON imagery.Images FOR ALL
@@ -701,15 +701,15 @@ COMMENT ON FUNCTION shared.current_user_id IS 'Returns current authenticated use
 -- TRIGGERS FOR AUTOMATIC USER ATTRIBUTION
 -- =============================================================================
 
--- Function to set CreatedBy on insert
+-- Function to set created_by on insert
 CREATE OR REPLACE FUNCTION shared.set_created_by()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Try to set CreatedBy if it exists and is NULL
+    -- Try to set created_by if it exists and is NULL
     -- Use exception handling to gracefully skip if column doesn't exist in NEW record
     BEGIN
-        IF (to_jsonb(NEW)->>'createdby') IS NULL THEN
-            NEW.CreatedBy := COALESCE(auth.uid()::TEXT, 'system');
+        IF (to_jsonb(NEW)->>'created_by') IS NULL THEN
+            NEW.created_by := COALESCE(auth.uid()::TEXT, 'system');
         END IF;
     EXCEPTION
         WHEN undefined_column THEN
@@ -720,11 +720,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to set UpdatedBy on update
+-- Function to set updated_by on update
 CREATE OR REPLACE FUNCTION shared.set_updated_by()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.UpdatedBy := auth.uid()::TEXT;
+    NEW.updated_by := auth.uid()::TEXT;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

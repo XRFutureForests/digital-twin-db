@@ -16,7 +16,7 @@
 --   • 4 sensors (2 × Sap_Flow, 2 × Soil_Moisture)
 --   • ~168 hourly readings per sensor (7 days) for Current_Conditions and Climate_Change_2050
 --
--- Idempotent: guarded by NOT EXISTS checks on CampaignName and TreeEntityID/ScenarioID.
+-- Idempotent: guarded by NOT EXISTS checks on campaign_name and tree_entity_id/scenario_id.
 -- Scenarios used: Current_Conditions (field), Climate_Change_2050 (simulated), Management_Thinning (model)
 
 SET search_path TO shared, trees, sensor, public;
@@ -26,18 +26,18 @@ SET search_path TO shared, trees, sensor, public;
 -- ============================================================
 
 INSERT INTO shared.Campaigns (
-    CampaignName, CampaignType, LocationID, StartDate, EndDate, Description, CreatedBy
+    campaign_name, campaign_type, location_id, start_date, end_date, Description, created_by
 )
 SELECT
     'Ecosense_Field_Inventory_2024',
     'field_inventory',
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Ecosense_MixedPlot'),
+    (SELECT location_id FROM shared.Locations WHERE location_name = 'Ecosense_MixedPlot'),
     '2024-09-15',
     '2024-09-17',
     'Manual field inventory: height, DBH, crown dimensions at Ecosense mixed plot',
     'demo_seed'
 WHERE NOT EXISTS (
-    SELECT 1 FROM shared.Campaigns WHERE CampaignName = 'Ecosense_Field_Inventory_2024'
+    SELECT 1 FROM shared.Campaigns WHERE campaign_name = 'Ecosense_Field_Inventory_2024'
 );
 
 -- ============================================================
@@ -78,10 +78,10 @@ SELECT * FROM (VALUES
     (gen_random_uuid(), 'Betula pendula',    7.8727, 47.9921,  16.2,  7.2,  5.5,  28, 0.90, true)
 ) v(entity_uuid, species_sci, lon, lat, height_m, crown_m, crown_base_m, age_years, health, thin)
 WHERE NOT EXISTS (
-    SELECT 1 FROM shared.Campaigns WHERE CampaignName = 'Ecosense_Field_Inventory_2024'
+    SELECT 1 FROM shared.Campaigns WHERE campaign_name = 'Ecosense_Field_Inventory_2024'
         AND (SELECT COUNT(*) FROM trees.Trees
-             WHERE CampaignID = (SELECT CampaignID FROM shared.Campaigns
-                                 WHERE CampaignName = 'Ecosense_Field_Inventory_2024')) > 0
+             WHERE campaign_id = (SELECT campaign_id FROM shared.Campaigns
+                                 WHERE campaign_name = 'Ecosense_Field_Inventory_2024')) > 0
 );
 
 -- ============================================================
@@ -89,20 +89,20 @@ WHERE NOT EXISTS (
 -- ============================================================
 
 INSERT INTO trees.Trees (
-    TreeEntityID, LocationID, SpeciesID, ScenarioID, VariantTypeID, CampaignID,
-    Position, Height_m, CrownWidth_m, CrownBaseHeight_m, Age_years, HealthScore,
-    MeasurementDate, DataSourceTypeID
+    tree_entity_id, location_id, species_id, scenario_id, variant_type_id, campaign_id,
+    Position, Height_m, crown_width_m, crown_base_height_m, Age_years, health_score,
+    measurement_date, data_source_type_id
 )
 SELECT
     b.entity_uuid,
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Ecosense_MixedPlot'),
-    (SELECT SpeciesID FROM shared.Species WHERE ScientificName = b.species_sci),
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions'),
-    (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'original'),
-    (SELECT CampaignID FROM shared.Campaigns WHERE CampaignName = 'Ecosense_Field_Inventory_2024'),
+    (SELECT location_id FROM shared.Locations WHERE location_name = 'Ecosense_MixedPlot'),
+    (SELECT species_id FROM shared.Species WHERE scientific_name = b.species_sci),
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Current_Conditions'),
+    (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'original'),
+    (SELECT campaign_id FROM shared.Campaigns WHERE campaign_name = 'Ecosense_Field_Inventory_2024'),
     extensions.ST_SetSRID(extensions.ST_MakePoint(b.lon, b.lat), 4326),
     b.height_m, b.crown_m, b.crown_base_m, b.age_years, b.health,
-    '2024-09-15', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'field')
+    '2024-09-15', (SELECT data_source_type_id FROM trees.DataSourceTypes WHERE data_source_type_name = 'field')
 FROM _demo_tree_bases b;
 
 -- ============================================================
@@ -111,16 +111,16 @@ FROM _demo_tree_bases b;
 -- ============================================================
 
 INSERT INTO trees.Trees (
-    TreeEntityID, LocationID, SpeciesID, ScenarioID, VariantTypeID,
-    Position, Height_m, CrownWidth_m, CrownBaseHeight_m, Age_years, HealthScore,
-    MeasurementDate, DataSourceTypeID
+    tree_entity_id, location_id, species_id, scenario_id, variant_type_id,
+    Position, Height_m, crown_width_m, crown_base_height_m, Age_years, health_score,
+    measurement_date, data_source_type_id
 )
 SELECT
     b.entity_uuid,
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Ecosense_MixedPlot'),
-    (SELECT SpeciesID FROM shared.Species WHERE ScientificName = b.species_sci),
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Climate_Change_2050'),
-    (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'simulated_growth'),
+    (SELECT location_id FROM shared.Locations WHERE location_name = 'Ecosense_MixedPlot'),
+    (SELECT species_id FROM shared.Species WHERE scientific_name = b.species_sci),
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Climate_Change_2050'),
+    (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'simulated_growth'),
     extensions.ST_SetSRID(extensions.ST_MakePoint(b.lon, b.lat), 4326),
     ROUND(b.height_m * 1.20, 2),
     ROUND(b.crown_m  * 1.15, 2),
@@ -131,7 +131,7 @@ SELECT
         WHEN b.species_sci = 'Betula pendula' THEN GREATEST(b.health - 0.12, 0.50)
         ELSE GREATEST(b.health - 0.05, 0.60)
     END,
-    '2050-06-01', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'simulated')
+    '2050-06-01', (SELECT data_source_type_id FROM trees.DataSourceTypes WHERE data_source_type_name = 'simulated')
 FROM _demo_tree_bases b;
 
 -- ============================================================
@@ -140,19 +140,19 @@ FROM _demo_tree_bases b;
 -- ============================================================
 
 INSERT INTO trees.Trees (
-    TreeEntityID, LocationID, SpeciesID, ScenarioID, VariantTypeID,
-    Position, Height_m, CrownWidth_m, CrownBaseHeight_m, Age_years, HealthScore,
-    MeasurementDate, DataSourceTypeID
+    tree_entity_id, location_id, species_id, scenario_id, variant_type_id,
+    Position, Height_m, crown_width_m, crown_base_height_m, Age_years, health_score,
+    measurement_date, data_source_type_id
 )
 SELECT
     b.entity_uuid,
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Ecosense_MixedPlot'),
-    (SELECT SpeciesID FROM shared.Species WHERE ScientificName = b.species_sci),
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Management_Thinning'),
-    (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'model_output'),
+    (SELECT location_id FROM shared.Locations WHERE location_name = 'Ecosense_MixedPlot'),
+    (SELECT species_id FROM shared.Species WHERE scientific_name = b.species_sci),
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Management_Thinning'),
+    (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'model_output'),
     extensions.ST_SetSRID(extensions.ST_MakePoint(b.lon, b.lat), 4326),
     b.height_m, b.crown_m, b.crown_base_m, b.age_years, b.health,
-    '2024-09-15', (SELECT DataSourceTypeID FROM trees.DataSourceTypes WHERE DataSourceTypeName = 'simulated')
+    '2024-09-15', (SELECT data_source_type_id FROM trees.DataSourceTypes WHERE data_source_type_name = 'simulated')
 FROM _demo_tree_bases b
 WHERE b.thin = false;    -- thinned trees are absent from this scenario entirely
 
@@ -161,13 +161,13 @@ WHERE b.thin = false;    -- thinned trees are absent from this scenario entirely
 -- ============================================================
 
 INSERT INTO sensor.Sensors (
-    LocationID, SensorTypeID, SensorModel, SerialNumber,
-    Position, InstallationDate, InstallationHeight_m,
-    SamplingInterval_seconds, Unit, IsActive, CreatedBy
+    location_id, sensor_type_id, sensor_model, serial_number,
+    Position, installation_date, installation_height_m,
+    sampling_interval_seconds, Unit, is_active, created_by
 )
 SELECT
-    (SELECT LocationID FROM shared.Locations WHERE LocationName = 'Ecosense_MixedPlot'),
-    (SELECT SensorTypeID FROM sensor.SensorTypes WHERE SensorTypeName = s.type_name),
+    (SELECT location_id FROM shared.Locations WHERE location_name = 'Ecosense_MixedPlot'),
+    (SELECT sensor_type_id FROM sensor.SensorTypes WHERE sensor_type_name = s.type_name),
     s.model, s.serial,
     extensions.ST_SetSRID(extensions.ST_MakePoint(s.lon, s.lat), 4326),
     '2024-04-01'::timestamptz,
@@ -183,7 +183,7 @@ FROM (VALUES
     ('Soil_Moisture','Decagon 5TM',    'SM-002', 7.8736, 47.9921, 0.0, '%')
 ) s(type_name, model, serial, lon, lat, install_h, unit)
 WHERE NOT EXISTS (
-    SELECT 1 FROM sensor.Sensors WHERE SerialNumber = s.serial
+    SELECT 1 FROM sensor.Sensors WHERE serial_number = s.serial
 );
 
 -- ============================================================
@@ -193,16 +193,16 @@ WHERE NOT EXISTS (
 -- ============================================================
 
 -- SF-001 (Beech 1) — Current_Conditions
-INSERT INTO sensor.SensorReadings (SensorID, Timestamp, Value, Quality, ScenarioID)
+INSERT INTO sensor.SensorReadings (sensor_id, Timestamp, Value, Quality, scenario_id)
 SELECT
-    (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SF-001'),
+    (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SF-001'),
     ts,
     GREATEST(0, ROUND(CAST(
         480 + 360 * sin((extract(hour from ts at time zone 'Europe/Berlin') - 6) * pi() / 12)
         + (random() - 0.5) * 60
     AS NUMERIC), 2)),
     'good',
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions')
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Current_Conditions')
 FROM generate_series(
     '2024-09-15 00:00:00+02'::timestamptz,
     '2024-09-21 23:00:00+02'::timestamptz,
@@ -210,21 +210,21 @@ FROM generate_series(
 ) ts
 WHERE NOT EXISTS (
     SELECT 1 FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SF-001')
-    AND sr.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions')
+    WHERE sr.sensor_id = (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SF-001')
+    AND sr.scenario_id = (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Current_Conditions')
 );
 
 -- SF-002 (Spruce 1) — Current_Conditions (lower baseline, shallower diurnal swing)
-INSERT INTO sensor.SensorReadings (SensorID, Timestamp, Value, Quality, ScenarioID)
+INSERT INTO sensor.SensorReadings (sensor_id, Timestamp, Value, Quality, scenario_id)
 SELECT
-    (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SF-002'),
+    (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SF-002'),
     ts,
     GREATEST(0, ROUND(CAST(
         310 + 220 * sin((extract(hour from ts at time zone 'Europe/Berlin') - 7) * pi() / 12)
         + (random() - 0.5) * 40
     AS NUMERIC), 2)),
     'good',
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions')
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Current_Conditions')
 FROM generate_series(
     '2024-09-15 00:00:00+02'::timestamptz,
     '2024-09-21 23:00:00+02'::timestamptz,
@@ -232,21 +232,21 @@ FROM generate_series(
 ) ts
 WHERE NOT EXISTS (
     SELECT 1 FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SF-002')
-    AND sr.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions')
+    WHERE sr.sensor_id = (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SF-002')
+    AND sr.scenario_id = (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Current_Conditions')
 );
 
 -- SM-001 — Current_Conditions (steady 30–38 %, minor weekly variation)
-INSERT INTO sensor.SensorReadings (SensorID, Timestamp, Value, Quality, ScenarioID)
+INSERT INTO sensor.SensorReadings (sensor_id, Timestamp, Value, Quality, scenario_id)
 SELECT
-    (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SM-001'),
+    (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SM-001'),
     ts,
     ROUND(CAST(
         34.0 + 4.0 * sin(extract(epoch from ts) / 604800.0 * 2 * pi())
         + (random() - 0.5) * 1.5
     AS NUMERIC), 2),
     'good',
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions')
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Current_Conditions')
 FROM generate_series(
     '2024-09-15 00:00:00+02'::timestamptz,
     '2024-09-21 23:00:00+02'::timestamptz,
@@ -254,21 +254,21 @@ FROM generate_series(
 ) ts
 WHERE NOT EXISTS (
     SELECT 1 FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SM-001')
-    AND sr.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions')
+    WHERE sr.sensor_id = (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SM-001')
+    AND sr.scenario_id = (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Current_Conditions')
 );
 
 -- SM-002 — Current_Conditions (slightly drier plot)
-INSERT INTO sensor.SensorReadings (SensorID, Timestamp, Value, Quality, ScenarioID)
+INSERT INTO sensor.SensorReadings (sensor_id, Timestamp, Value, Quality, scenario_id)
 SELECT
-    (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SM-002'),
+    (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SM-002'),
     ts,
     ROUND(CAST(
         28.0 + 3.5 * sin(extract(epoch from ts) / 604800.0 * 2 * pi())
         + (random() - 0.5) * 1.5
     AS NUMERIC), 2),
     'good',
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions')
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Current_Conditions')
 FROM generate_series(
     '2024-09-15 00:00:00+02'::timestamptz,
     '2024-09-21 23:00:00+02'::timestamptz,
@@ -276,8 +276,8 @@ FROM generate_series(
 ) ts
 WHERE NOT EXISTS (
     SELECT 1 FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SM-002')
-    AND sr.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Current_Conditions')
+    WHERE sr.sensor_id = (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SM-002')
+    AND sr.scenario_id = (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Current_Conditions')
 );
 
 -- ============================================================
@@ -286,9 +286,9 @@ WHERE NOT EXISTS (
 -- ============================================================
 
 -- SF-001 — Climate_Change_2050
-INSERT INTO sensor.SensorReadings (SensorID, Timestamp, Value, Quality, ScenarioID)
+INSERT INTO sensor.SensorReadings (sensor_id, Timestamp, Value, Quality, scenario_id)
 SELECT
-    (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SF-001'),
+    (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SF-001'),
     ts,
     GREATEST(0, ROUND(CAST(
         580 + 420 * sin((extract(hour from ts at time zone 'Europe/Berlin') - 6) * pi() / 12)
@@ -296,7 +296,7 @@ SELECT
         + (random() - 0.5) * 70
     AS NUMERIC), 2)),
     'good',
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Climate_Change_2050')
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Climate_Change_2050')
 FROM generate_series(
     '2050-06-15 00:00:00+02'::timestamptz,
     '2050-06-21 23:00:00+02'::timestamptz,
@@ -304,21 +304,21 @@ FROM generate_series(
 ) ts
 WHERE NOT EXISTS (
     SELECT 1 FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SF-001')
-    AND sr.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Climate_Change_2050')
+    WHERE sr.sensor_id = (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SF-001')
+    AND sr.scenario_id = (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Climate_Change_2050')
 );
 
 -- SF-002 — Climate_Change_2050 (spruce severely stressed)
-INSERT INTO sensor.SensorReadings (SensorID, Timestamp, Value, Quality, ScenarioID)
+INSERT INTO sensor.SensorReadings (sensor_id, Timestamp, Value, Quality, scenario_id)
 SELECT
-    (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SF-002'),
+    (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SF-002'),
     ts,
     GREATEST(0, ROUND(CAST(
         180 + 120 * sin((extract(hour from ts at time zone 'Europe/Berlin') - 7) * pi() / 12)
         + (random() - 0.5) * 30
     AS NUMERIC), 2)),
     'good',
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Climate_Change_2050')
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Climate_Change_2050')
 FROM generate_series(
     '2050-06-15 00:00:00+02'::timestamptz,
     '2050-06-21 23:00:00+02'::timestamptz,
@@ -326,21 +326,21 @@ FROM generate_series(
 ) ts
 WHERE NOT EXISTS (
     SELECT 1 FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SF-002')
-    AND sr.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Climate_Change_2050')
+    WHERE sr.sensor_id = (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SF-002')
+    AND sr.scenario_id = (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Climate_Change_2050')
 );
 
 -- SM-001 — Climate_Change_2050 (drier: ~22–26 %)
-INSERT INTO sensor.SensorReadings (SensorID, Timestamp, Value, Quality, ScenarioID)
+INSERT INTO sensor.SensorReadings (sensor_id, Timestamp, Value, Quality, scenario_id)
 SELECT
-    (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SM-001'),
+    (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SM-001'),
     ts,
     ROUND(CAST(
         24.0 + 2.5 * sin(extract(epoch from ts) / 604800.0 * 2 * pi())
         + (random() - 0.5) * 1.0
     AS NUMERIC), 2),
     'good',
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Climate_Change_2050')
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Climate_Change_2050')
 FROM generate_series(
     '2050-06-15 00:00:00+02'::timestamptz,
     '2050-06-21 23:00:00+02'::timestamptz,
@@ -348,21 +348,21 @@ FROM generate_series(
 ) ts
 WHERE NOT EXISTS (
     SELECT 1 FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SM-001')
-    AND sr.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Climate_Change_2050')
+    WHERE sr.sensor_id = (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SM-001')
+    AND sr.scenario_id = (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Climate_Change_2050')
 );
 
 -- SM-002 — Climate_Change_2050
-INSERT INTO sensor.SensorReadings (SensorID, Timestamp, Value, Quality, ScenarioID)
+INSERT INTO sensor.SensorReadings (sensor_id, Timestamp, Value, Quality, scenario_id)
 SELECT
-    (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SM-002'),
+    (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SM-002'),
     ts,
     ROUND(CAST(
         19.5 + 2.0 * sin(extract(epoch from ts) / 604800.0 * 2 * pi())
         + (random() - 0.5) * 1.0
     AS NUMERIC), 2),
     'good',
-    (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Climate_Change_2050')
+    (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Climate_Change_2050')
 FROM generate_series(
     '2050-06-15 00:00:00+02'::timestamptz,
     '2050-06-21 23:00:00+02'::timestamptz,
@@ -370,8 +370,8 @@ FROM generate_series(
 ) ts
 WHERE NOT EXISTS (
     SELECT 1 FROM sensor.SensorReadings sr
-    WHERE sr.SensorID = (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber = 'SM-002')
-    AND sr.ScenarioID = (SELECT ScenarioID FROM shared.Scenarios WHERE ScenarioName = 'Climate_Change_2050')
+    WHERE sr.sensor_id = (SELECT sensor_id FROM sensor.Sensors WHERE serial_number = 'SM-002')
+    AND sr.scenario_id = (SELECT scenario_id FROM shared.Scenarios WHERE scenario_name = 'Climate_Change_2050')
 );
 
 -- ============================================================
@@ -386,10 +386,10 @@ DECLARE
     v_reads  INTEGER;
 BEGIN
     SELECT COUNT(*) INTO v_trees FROM trees.Trees t
-    WHERE t.CampaignID = (SELECT CampaignID FROM shared.Campaigns
-                          WHERE CampaignName = 'Ecosense_Field_Inventory_2024');
+    WHERE t.campaign_id = (SELECT campaign_id FROM shared.Campaigns
+                          WHERE campaign_name = 'Ecosense_Field_Inventory_2024');
     SELECT COUNT(*) INTO v_reads FROM sensor.SensorReadings sr
-    WHERE sr.SensorID IN (SELECT SensorID FROM sensor.Sensors WHERE SerialNumber IN ('SF-001','SF-002','SM-001','SM-002'));
+    WHERE sr.sensor_id IN (SELECT sensor_id FROM sensor.Sensors WHERE serial_number IN ('SF-001','SF-002','SM-001','SM-002'));
 
     RAISE NOTICE 'XRFF-241 demo seed: % tree variant rows, % sensor readings', v_trees, v_reads;
 END $$;
