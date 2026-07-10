@@ -105,4 +105,4 @@ Required in `docker/.env` (never commit):
 - [ ] Commands match current Docker Compose setup
 - [ ] Environment variable list matches `docker/.env.example` or deployment guide
 
-**Last Updated:** 2026-05-11
+**Last Updated:** 2026-07-10

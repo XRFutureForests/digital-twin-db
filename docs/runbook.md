@@ -203,7 +203,7 @@ schema change — a bare `up -d` reuses the old baked SQL.
 docker exec dftdb-db pg_dump -U postgres -d postgres -Fc -f /tmp/backup.dump
 docker cp dftdb-db:/tmp/backup.dump ./backup.dump
 
-# 1. Wipe volumes, rebuild the baked image, boot (init scripts 10→34 run on first boot)
+# 1. Wipe volumes, rebuild the baked image, boot (init scripts 10→37 run on first boot)
 cd docker
 docker compose down -v --remove-orphans
 docker compose build db

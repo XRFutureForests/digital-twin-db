@@ -168,10 +168,10 @@ Central reference tables used across all domains.
 
 | Table | Purpose |
 |-------|---------|
-| **Locations** | Forest plots with PostGIS boundaries, elevation, slope, soil type |
-| **Plots** | Sub-plot divisions within locations with PostGIS boundaries |
+| **Locations** | Research sites (`ecosense`, `mathisle`) with PostGIS boundaries, elevation, slope, soil type |
+| **Plots** | Named monitoring sub-areas within a location (e.g. `douglas_fir_plot`, tree subplots) |
 | **Species** | Tree species (common name, scientific name, growth characteristics, is_deciduous) |
-| **Scenarios** | Named analysis variants (Current_Conditions, Climate_Change_2050) |
+| **Scenarios** | Location-scoped management regimes (Location → Scenario → Variant); e.g. `natural_growth` per site |
 | **VariantTypes** | How a variant's data was produced: original, processed, manual, simulated_growth, user_input, sensor_derived, model_output, repeat_measurement |
 | **Campaigns** | Data collection events (LiDAR flights, field inventories) with methodology |
 | **Processes** | Algorithm/processing metadata with citations |

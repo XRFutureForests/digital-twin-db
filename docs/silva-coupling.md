@@ -43,8 +43,8 @@ con <- dbConnect(Postgres(),
 
 silva_trees <- dbGetQuery(con,
   "SELECT * FROM silva_input
-   WHERE scenario_name = 'Current_Conditions'
-   AND   location_name = 'Ecosense_MixedPlot'"
+   WHERE scenario_name = 'natural_growth'
+   AND   location_name = 'ecosense'"
 )
 ```
 
@@ -79,17 +79,17 @@ Optional but useful:
 ```bash
 python scripts/silva/silva_writeback.py \
     --input   silva_output.csv \
-    --scenario Climate_Change_2050 \
+    --scenario natural_growth \
     --simulator SILVA \
     --version 4.5 \
-    --location Ecosense_MixedPlot
+    --location ecosense
 ```
 
 This generates a new `run_id` UUID and bulk-inserts all rows into `trees.GrowthSimulations`.
 
 Dry-run (no insert, just inspect mapped columns):
 ```bash
-python scripts/silva/silva_writeback.py --input silva_output.csv --scenario Climate_Change_2050 --dry-run
+python scripts/silva/silva_writeback.py --input silva_output.csv --scenario natural_growth --dry-run
 ```
 
 ---
@@ -98,14 +98,14 @@ python scripts/silva/silva_writeback.py --input silva_output.csv --scenario Clim
 
 ```
 # All trees projected to 2050 under climate scenario
-GET /growth_simulations?scenario_name=eq.Climate_Change_2050&projection_year=eq.2050
+GET /growth_simulations?scenario_name=eq.natural_growth&projection_year=eq.2050
 
 # Time series for one tree entity
 GET /growth_simulations?tree_entity_id=eq.{uuid}&simulator_name=eq.SILVA&order=projection_year
 
 # List available simulation runs
 GET /simulation_runs
-GET /simulation_runs?scenario_name=eq.Climate_Change_2050
+GET /simulation_runs?scenario_name=eq.natural_growth
 ```
 
 ---
