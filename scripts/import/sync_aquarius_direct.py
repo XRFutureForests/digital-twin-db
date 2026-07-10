@@ -15,6 +15,7 @@ Requires: University network access for Aquarius connectivity
 
 import json
 import os
+import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -42,11 +43,11 @@ API_TIMEOUT = 60
 
 # Parameter to SensorType mapping
 PARAM_MAPPING = {
-    "Sapflow": "Sap_Flow",
-    "StemRadialVar_Volt": "Stem_Radial_Variation",
-    "BarPressure": "Barometric_Pressure",
-    "SoilMoisture": "Soil_Moisture",
-    "SoilTemp": "Soil_Temperature",
+    "Sapflow": "sap_flow",
+    "StemRadialVar_Volt": "stem_radial_variation",
+    "BarPressure": "barometric_pressure",
+    "SoilMoisture": "soil_moisture",
+    "SoilTemp": "soil_temperature",
 }
 
 # Aquarius session token (set during connect)
@@ -203,7 +204,7 @@ def main():
         # Check Supabase connectivity
         print("Checking Supabase connectivity...")
         try:
-            sensor_types = supabase_get("sensortypes", "sensortypeid,sensortypename")
+            sensor_types = supabase_get("sensortypes", "sensor_type_id,sensor_type_name")
             print(f"✓ Connected to Supabase ({len(sensor_types)} sensor types)")
         except requests.exceptions.ConnectionError as e:
             print(f"❌ Cannot connect to Supabase: {e}")
@@ -228,11 +229,52 @@ def main():
 
         # Build lookup maps
         sensor_type_map = {
-            st["sensortypename"]: st["sensortypeid"] for st in sensor_types
+            st["sensor_type_name"]: st["sensor_type_id"] for st in sensor_types
         }
 
-        locations = supabase_get("locations", "locationid,locationname")
-        location_map = {loc["locationname"]: loc["locationid"] for loc in locations}
+        # Sensors live under the single 'ecosense' site; the Aquarius
+        # LocationIdentifier (e.g. Ecosense_DouglasFirPlot) maps to a named plot
+        # (douglas_fir_plot). 'aquarius' is recorded in the generic source column
+        # so the DB stays source-agnostic (one of many possible providers).
+        locations = supabase_get("locations", "location_id,location_name")
+        location_map = {loc["location_name"]: loc["location_id"] for loc in locations}
+        ecosense_id = location_map.get("ecosense")
+        if not ecosense_id:
+            print("❌ 'ecosense' location not found — rebuild the DB first")
+            sys.exit(1)
+        plots = supabase_get(
+            "plots", "plot_id,plot_name", {"location_id": f"eq.{ecosense_id}"}
+        )
+        plot_map = {p["plot_name"]: p["plot_id"] for p in plots}
+
+        def plot_name_for(location_identifier: str) -> str:
+            # 'Ecosense_DouglasFirPlot' -> 'douglas_fir_plot'
+            stem = location_identifier
+            if stem.startswith("Ecosense_"):
+                stem = stem[len("Ecosense_"):]
+            s = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", stem)
+            s = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", "_", s)
+            return re.sub(r"_+", "_", s).lower().strip("_")
+
+        def resolve_plot_id(location_identifier: str):
+            name = plot_name_for(location_identifier)
+            if name in plot_map:
+                return plot_map[name]
+            # create the plot under ecosense on the fly (robust to new sub-areas)
+            try:
+                resp = requests.post(
+                    f"{SUPABASE_URL}/rest/v1/plots",
+                    headers=supabase_headers(),
+                    json={"location_id": ecosense_id, "plot_name": name},
+                    timeout=30,
+                )
+                resp.raise_for_status()
+                pid = resp.json()[0]["plot_id"]
+                plot_map[name] = pid
+                return pid
+            except Exception as e:
+                print(f"  ⚠️  Could not resolve/create plot '{name}': {e}")
+                return None
 
         # Prepare sensors for upsert
         print("\nPreparing sensor metadata...")
@@ -246,47 +288,25 @@ def main():
                 print(f"  ⚠️  Sensor type not found: {mapped_type}")
                 continue
 
-            location_id = location_map.get(ts["LocationIdentifier"])
-
-            # Create location if it doesn't exist
-            if not location_id:
-                try:
-                    url = f"{SUPABASE_URL}/rest/v1/locations"
-                    new_loc = {
-                        "locationname": ts["LocationIdentifier"],
-                        "centerpoint": "POINT(0 0)",
-                    }
-                    response = requests.post(
-                        url, headers=supabase_headers(), json=new_loc, timeout=30
-                    )
-                    response.raise_for_status()
-                    result = response.json()
-                    if result:
-                        location_id = result[0]["locationid"]
-                        location_map[ts["LocationIdentifier"]] = location_id
-                except Exception as e:
-                    print(
-                        f"  ⚠️  Failed to create location {ts['LocationIdentifier']}: {e}"
-                    )
-                    continue
-
             sensors_to_upsert.append(
                 {
-                    "locationid": location_id,
-                    "sensortypeid": sensor_type_id,
-                    "sensormodel": "Ecosense Node",
-                    "serialnumber": ts.get("Label", ""),
+                    "location_id": ecosense_id,
+                    "plot_id": resolve_plot_id(ts["LocationIdentifier"]),
+                    "source": "aquarius",
+                    "sensor_type_id": sensor_type_id,
+                    "sensor_model": "Ecosense Node",
+                    "serial_number": ts.get("Label", ""),
                     "position": "POINT(0 0)",
-                    "samplinginterval_seconds": 900,
+                    "sampling_interval_seconds": 900,
                     "unit": ts.get("Unit", ""),
-                    "externalid": ts["UniqueId"],
-                    "externalmetadata": {
+                    "external_id": ts["UniqueId"],
+                    "external_metadata": {
                         "LocationIdentifier": ts["LocationIdentifier"],
                         "Parameter": ts["Parameter"],
                         "Label": ts.get("Label", ""),
                     },
-                    "isactive": True,
-                    "createdby": "sync_aquarius_direct.py",
+                    "is_active": True,
+                    "created_by": "sync_aquarius_direct.py",
                 }
             )
 
@@ -314,10 +334,10 @@ def main():
             batch = external_ids[i : i + batch_size]
             filter_str = ",".join(f'"{eid}"' for eid in batch)
             sensors = supabase_get(
-                "sensors", "sensorid,externalid", {"externalid": f"in.({filter_str})"}
+                "sensors", "sensor_id,external_id", {"external_id": f"in.({filter_str})"}
             )
             for s in sensors:
-                sensor_id_map[s["externalid"]] = s["sensorid"]
+                sensor_id_map[s["external_id"]] = s["sensor_id"]
 
         print(f"✓ Mapped {len(sensor_id_map)} sensors")
 
@@ -352,7 +372,7 @@ def main():
                 # Prepare readings
                 readings = [
                     {
-                        "sensorid": sensor_id,
+                        "sensor_id": sensor_id,
                         "timestamp": p["Timestamp"],
                         "value": p["Value"]["Numeric"],
                         "quality": "good",

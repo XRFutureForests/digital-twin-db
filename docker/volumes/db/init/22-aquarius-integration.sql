@@ -41,12 +41,14 @@ BEGIN
         END IF;
 
         INSERT INTO sensor.sensors (
-            location_id, sensor_type_id, sensor_model, serial_number, 
+            location_id, plot_id, source, sensor_type_id, sensor_model, serial_number,
             position, sampling_interval_seconds, unit, external_id,
             external_metadata, is_active, created_by
         )
         VALUES (
             (sensor_rec->>'location_id')::INT,
+            (sensor_rec->>'plot_id')::INT,
+            sensor_rec->>'source',
             (sensor_rec->>'sensor_type_id')::INT,
             sensor_rec->>'sensor_model',
             sensor_rec->>'serial_number',
@@ -60,6 +62,8 @@ BEGIN
         )
         ON CONFLICT (external_id) DO UPDATE SET
             location_id = EXCLUDED.location_id,
+            plot_id = EXCLUDED.plot_id,
+            source = EXCLUDED.source,
             sensor_type_id = EXCLUDED.sensor_type_id,
             sensor_model = EXCLUDED.sensor_model,
             serial_number = EXCLUDED.serial_number,
