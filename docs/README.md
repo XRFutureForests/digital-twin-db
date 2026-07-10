@@ -34,11 +34,9 @@ The importer validates, deduplicates, and upserts to `trees.Trees` + `trees.Stem
 
 ### Add scenarios and growth variants
 
-Scenarios (Current_Conditions, Forest_Fire, Thinning_2035, …) and VariantTypes (original, growth, post-disturbance) are defined in `data/lookups/` CSVs and loaded automatically on DB init.
+Scenarios are **location-scoped management regimes** in a strict Location → Scenario → Variant hierarchy: each site (`ecosense`, `mathisle`) owns its scenarios, and each scenario owns its baseline. They are **created per-site by the growth-variant seed scripts**, not loaded from a global CSV. VariantTypes (original, simulated_growth, …) are loaded from `data/lookups/variant_types.csv` on init.
 
-To **add a new scenario**: insert a row in `data/lookups/scenarios.csv`, then run `python scripts/admin/reset_database.py` (wipes and reinitializes) or use the `refresh_lookup_functions` SQL functions to add it without a full reset.
-
-To **create growth variants** from an existing baseline: copy the pattern in `scripts/seed/ecosense_growth_variants.sql` — it clones all trees from a baseline VariantType and assigns the new variant_type_id.
+To **add a scenario + its variants**: copy the pattern in `scripts/seed/ecosense_growth_variants.sql` — it creates the location-scoped scenario, assigns the baseline trees to `baseline_2025`, and chains growth variants (`growth_2035`, `growth_2045`) with `parent_variant_id` lineage. See [variant-scenario-model.md](variant-scenario-model.md).
 
 Full model explanation and API query patterns: [variant-scenario-model.md](variant-scenario-model.md)
 

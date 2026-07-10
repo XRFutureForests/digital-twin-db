@@ -41,7 +41,7 @@ trees.GrowthSimulations
 ├── base_tree_id        → trees.Trees.tree_id (input measurement)
 ├── location_id        → shared.Locations
 ├── plot_id            → shared.Plots
-├── scenario_id        → shared.Scenarios (e.g. Climate_Change_2050)
+├── scenario_id        → shared.Scenarios (location-scoped, e.g. natural_growth)
 ├── species_id         → shared.Species
 ├── simulator_name     SILVA | FVS | iLand | manual | other
 ├── simulator_version  free text
@@ -49,11 +49,11 @@ trees.GrowthSimulations
 ├── time_delta_yrs     years since BaseVariant measurement date
 │
 ├── Per-tree dimensions
-│   ├── Height_m, DBH_cm, basal_area_m2
+│   ├── height_m, dbh_cm, basal_area_m2
 │   ├── crown_width_m, crown_base_height_m
-│   ├── Volume_m3, Biomass_kg, carbon_content_kg
+│   ├── volume_m3, biomass_kg, carbon_content_kg
 │   ├── health_score (0–1)
-│   └── Mortality (boolean)
+│   └── mortality (boolean)
 │
 └── Stand-level aggregates (repeated across all trees in a run_id+Year)
     ├── stand_basal_area_m2ha
@@ -71,8 +71,8 @@ trees.GrowthSimulations
 Flat view with `scenario_name` and `species_name` pre-resolved. Primary UE query target.
 
 ```
-# Get all trees in a scenario at a projected year
-GET /growth_simulations?scenario_name=eq.Climate_Change_2050&projection_year=eq.2050
+# Get all trees in a scenario at a projected year (scenario_name is per-location)
+GET /growth_simulations?location_id=eq.1&scenario_name=eq.natural_growth&projection_year=eq.2050
 
 # Time series for one tree
 GET /growth_simulations?tree_entity_id=eq.{uuid}&simulator_name=eq.SILVA&order=projection_year
@@ -87,7 +87,7 @@ One row per `run_id` — summary of the run (simulator, scenario, year range, tr
 
 ```
 GET /simulation_runs
-GET /simulation_runs?scenario_name=eq.Climate_Change_2050
+GET /simulation_runs?scenario_name=eq.natural_growth
 ```
 
 ---

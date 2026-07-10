@@ -61,7 +61,7 @@ The database is organized into **seven domain schemas** plus `public` (PostgREST
 
 ### 1.4 Normalization
 
-Third Normal Form (3NF) throughout. Selective use of JSONB (`ExternalMetadata` on `sensor.Sensors`, `input_data`/`output_data` on `shared.ProcessingJobs`) for semi-structured external system payloads. All spatial data uses PostGIS geometry columns rather than separate lat/lon columns.
+Third Normal Form (3NF) throughout. Selective use of JSONB (`external_metadata` on `sensor.Sensors`, `input_data`/`output_data` on `shared.ProcessingJobs`) for semi-structured external system payloads. All spatial data uses PostGIS geometry columns rather than separate lat/lon columns.
 
 ---
 
@@ -110,9 +110,9 @@ erDiagram
     SHARED_LOCATIONS {
         int location_id PK
         varchar location_name
-        geometry Boundary
+        geometry boundary
         geometry center_point
-        numeric Elevation_m
+        numeric elevation_m
         int soil_type_id FK
         int climate_zone_id FK
     }
@@ -125,18 +125,18 @@ erDiagram
         int location_id FK
         int species_id FK
         date measurement_date
-        varchar DataSourceType
-        numeric Height_m
-        geometry Position
+        varchar data_source_type
+        numeric height_m
+        geometry position
         geometry crown_boundary
     }
 
     SENSOR_SENSORREADINGS {
         bigint sensor_reading_id PK
         int sensor_id FK
-        timestamptz Timestamp
-        numeric Value
-        varchar Quality
+        timestamptz timestamp
+        numeric value
+        varchar quality
     }
 
     POINTCLOUDS_POINTCLOUDS {
@@ -271,7 +271,7 @@ erDiagram
 | `position_confidence` | NUMERIC(3,2) | YES | 0–1 | Position accuracy confidence |
 | `height_confidence` | NUMERIC(3,2) | YES | 0–1 | Height measurement confidence |
 | `tree_number` | INTEGER | YES | — | Local tree ID within location/plot |
-| `sensor_ref` | VARCHAR(100) | YES | — | Aquarius sensor-name prefix (`{Species}_{PlotType}_{Seq}`, e.g. `Beech_Mixed_8`) identifying the sensor cluster on this tree; matches the prefix of `sensor.Sensors.serial_number`. Populated for instrumented Ecosense trees only. See §3.x linking notes. |
+| `sensor_ref` | VARCHAR(100) | YES | — | Source-agnostic reference to the sensor cluster on this tree; matches the prefix of `sensor.Sensors.serial_number` so all of a tree's sensors resolve from it. Carries no provider semantics (for current Ecosense data the value is the external name prefix, e.g. `Beech_Mixed_8`). NULL if not instrumented. See §3.9 linking notes. |
 | `crown_class_id` | INTEGER | YES | FK → `trees.CrownClasses` | Crown competitive/social position (dominant/co_dominant/intermediate/overtopped/open_grown) — FIA `CCLCD` / NEON `canopyPosition` analog |
 | `damage_agent_id` | INTEGER | YES | FK → `trees.DamageAgents` | Primary agent responsible for observed damage or decline — FIA `AGENTCD` analog |
 | `Defoliation_percent` | NUMERIC(5,2) | YES | 0–100 | ICP Forests-style defoliation assessment |
@@ -343,12 +343,14 @@ erDiagram
 
 ### 3.7 `sensor.Sensors`
 
-**Description:** Physical sensor installations with hardware metadata, spatial position, and Aquarius integration support.
+**Description:** Physical sensor installations with hardware metadata, spatial position, and generic external-source fields (source-agnostic; Aquarius is one of many possible providers).
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
 | `sensor_id` | SERIAL | NO | PRIMARY KEY | — |
-| `location_id` | INTEGER | NO | FK → `shared.Locations` ON DELETE CASCADE | — |
+| `location_id` | INTEGER | NO | FK → `shared.Locations` ON DELETE CASCADE | Research site |
+| `plot_id` | INTEGER | YES | FK → `shared.Plots` ON DELETE SET NULL | Named monitoring sub-area within the location |
+| `source` | VARCHAR(50) | YES | — | External provider this data comes from, e.g. `aquarius` (one of many) |
 | `sensor_type_id` | INTEGER | NO | FK → `sensor.SensorTypes` | Sensor classification |
 | `campaign_id` | INTEGER | YES | FK → `shared.Campaigns` | Deployment campaign |
 | `sensor_model` | VARCHAR(200) | NO | — | Hardware model name |
@@ -360,10 +362,10 @@ erDiagram
 | `sampling_interval_seconds` | INTEGER | NO | > 0 | Measurement frequency |
 | `Unit` | VARCHAR(50) | YES | — | Measurement unit |
 | `is_active` | BOOLEAN | NO | TRUE | Currently collecting data |
-| `external_id` | VARCHAR(200) | YES | UNIQUE | Aquarius TimeSeriesIdentifier |
-| `ExternalMetadata` | JSONB | YES | DEFAULT `{}` | Additional Aquarius metadata: `Label`, `Parameter`, `LocationIdentifier`, and (after enrichment) `Instrument`, `DataOwner`, `TypeOfMeasurement`, `GapTolerance` |
+| `external_id` | VARCHAR(200) | YES | UNIQUE | Identifier within the source system (see `source`) |
+| `external_metadata` | JSONB | YES | DEFAULT `{}` | Raw source-specific payload: `Label`, `Parameter`, `LocationIdentifier`, and (after enrichment) `Instrument`, `DataOwner`, `TypeOfMeasurement`, `GapTolerance` |
 
-**Metadata enrichment.** `sensor_model` defaults to a generic `Ecosense Node` from the API sync. `scripts/import/enrich_sensor_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `external_id` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `sensor_model`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `ExternalMetadata`. Re-run it **after** every Aquarius sync — the sync upsert resets these fields.
+**Metadata enrichment.** `sensor_model` defaults to a generic `Ecosense Node` from the API sync. `scripts/import/enrich_sensor_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `external_id` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `sensor_model`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `external_metadata`. Re-run it **after** every Aquarius sync — the sync upsert resets these fields.
 
 ---
 
@@ -614,7 +616,7 @@ Plain SQL migration files applied in numeric order by the PostgreSQL Docker init
 | `19-tree-condition-fields-schema.sql` | trees.CrownClasses, trees.DamageAgents lookups; adds crown_class_id/damage_agent_id/Defoliation_percent/Discolouration_percent/CrownTransparency_percent to trees.Trees; extends TreeStatus CHECK constraint with downed/broken (FIA/NEON/ICP Forests-aligned) |
 | `20-rls-policies.sql` | Row Level Security policies for all tables |
 | `21-audit-functions.sql` | Audit trigger functions |
-| `22-aquarius-integration.sql` | Adds `external_id`/`ExternalMetadata` to Sensors; bulk upsert/insert RPC functions |
+| `22-aquarius-integration.sql` | Adds `external_id`/`external_metadata` to Sensors; bulk upsert/insert RPC functions |
 | `23-processing-jobs.sql` | shared.ProcessingJobs for external workflow tracking |
 | `24-public-api-views.sql` | Public schema views exposing all domain tables to PostgREST |
 | `30-load-lookup-tables.sql` | Seeds lookup tables from `data/lookups/*.csv` |
