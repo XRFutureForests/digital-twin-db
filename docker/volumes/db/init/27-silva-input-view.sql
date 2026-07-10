@@ -52,14 +52,14 @@ SELECT
     -- -------------------------------------------------------
     -- Stand / plot identifiers (SILVA: bid, bid2, nr)
     -- -------------------------------------------------------
-    t.LocationID                                            AS bid,
-    COALESCE(t.PlotID, t.LocationID)                       AS bid2,
-    COALESCE(t.TreeNumber, t.TreeID)                       AS nr,
+    t.location_id                                            AS bid,
+    COALESCE(t.plot_id, t.location_id)                       AS bid2,
+    COALESCE(t.tree_number, t.tree_id)                       AS nr,
 
     -- -------------------------------------------------------
     -- SILVA Baumart code  (SILVA: ba)
     -- -------------------------------------------------------
-    CASE sp.ScientificName
+    CASE sp.scientific_name
         WHEN 'Picea abies'             THEN 1
         WHEN 'Abies alba'              THEN 2
         WHEN 'Pinus sylvestris'        THEN 3
@@ -83,17 +83,17 @@ SELECT
     -- Position: local Cartesian (m from plot centre, UTM 32N)
     -- SILVA expects x/y in metres relative to stand centre.
     -- We project WGS84 → UTM 32N (EPSG:32632) and subtract
-    -- the location centre point.  Assumes location CenterPoint
+    -- the location centre point.  Assumes location center_point
     -- is set (non-NULL) — rows with NULL centre are excluded.
     -- -------------------------------------------------------
     ROUND(CAST(
         extensions.ST_X(extensions.ST_Transform(t.Position, 32632))
-        - extensions.ST_X(extensions.ST_Transform(l.CenterPoint, 32632))
+        - extensions.ST_X(extensions.ST_Transform(l.center_point, 32632))
     AS NUMERIC), 2)                                         AS x,
 
     ROUND(CAST(
         extensions.ST_Y(extensions.ST_Transform(t.Position, 32632))
-        - extensions.ST_Y(extensions.ST_Transform(l.CenterPoint, 32632))
+        - extensions.ST_Y(extensions.ST_Transform(l.center_point, 32632))
     AS NUMERIC), 2)                                         AS y,
 
     -- -------------------------------------------------------
@@ -101,14 +101,14 @@ SELECT
     -- -------------------------------------------------------
     t.Height_m                                              AS h,       -- total height (m)
     st.DBH_cm                                               AS d,       -- DBH at 1.3 m (cm)
-    t.CrownBaseHeight_m                                     AS hkb,     -- Kronenbasis (m)
-    t.CrownWidth_m                                          AS kb,      -- Kronenbreite (m)
+    t.crown_base_height_m                                     AS hkb,     -- Kronenbasis (m)
+    t.crown_width_m                                          AS kb,      -- Kronenbreite (m)
     t.Age_years                                             AS age,
 
     -- -------------------------------------------------------
     -- Simulation base year
     -- -------------------------------------------------------
-    EXTRACT(YEAR FROM t.MeasurementDate)::INTEGER           AS base_year,
+    EXTRACT(YEAR FROM t.measurement_date)::INTEGER           AS base_year,
 
     -- -------------------------------------------------------
     -- Site context (optional SILVA inputs; verify with colleagues)
@@ -122,42 +122,42 @@ SELECT
     -- The R script should carry these through to the output
     -- so silva_writeback.py can match rows back to DB entities.
     -- -------------------------------------------------------
-    t.TreeEntityID                                          AS tree_entity_id,
-    t.TreeID                                                AS base_tree_id,
-    t.ScenarioID                                            AS scenario_id,
-    sc.ScenarioName                                         AS scenario_name,
-    t.LocationID                                            AS location_id,
-    t.PlotID                                                AS plot_id,
-    t.SpeciesID                                             AS species_id,
-    sp.CommonName                                           AS species_common,
-    sp.ScientificName                                       AS species_sci,
-    t.HealthScore                                           AS health_score
+    t.tree_entity_id                                          AS tree_entity_id,
+    t.tree_id                                                AS base_tree_id,
+    t.scenario_id                                            AS scenario_id,
+    sc.scenario_name                                         AS scenario_name,
+    t.location_id                                            AS location_id,
+    t.plot_id                                                AS plot_id,
+    t.species_id                                             AS species_id,
+    sp.common_name                                           AS species_common,
+    sp.scientific_name                                       AS species_sci,
+    t.health_score                                           AS health_score
 
 FROM trees.Trees       t
-LEFT JOIN shared.Locations   l  ON t.LocationID  = l.LocationID
-LEFT JOIN shared.Species     sp ON t.SpeciesID   = sp.SpeciesID
-LEFT JOIN shared.Scenarios   sc ON t.ScenarioID  = sc.ScenarioID
--- Join to main stem only (StemNumber = 1) for DBH
-LEFT JOIN trees.Stems        st ON st.TreeID = t.TreeID
-                                AND st.StemNumber = 1
-LEFT JOIN trees.DataSourceTypes  dst ON t.DataSourceTypeID = dst.DataSourceTypeID
+LEFT JOIN shared.Locations   l  ON t.location_id  = l.location_id
+LEFT JOIN shared.Species     sp ON t.species_id   = sp.species_id
+LEFT JOIN shared.Scenarios   sc ON t.scenario_id  = sc.scenario_id
+-- Join to main stem only (stem_number = 1) for DBH
+LEFT JOIN trees.Stems        st ON st.tree_id = t.tree_id
+                                AND st.stem_number = 1
+LEFT JOIN trees.DataSourceTypes  dst ON t.data_source_type_id = dst.data_source_type_id
 WHERE
     -- Only field/LiDAR measurements — not simulated or estimated rows
-    dst.DataSourceTypeName IN ('field', 'lidar', 'photogrammetry')
+    dst.data_source_type_name IN ('field', 'lidar', 'photogrammetry')
     -- Must have height (mandatory SILVA input)
     AND t.Height_m IS NOT NULL
     -- Must have a known location centre for coordinate conversion
-    AND l.CenterPoint IS NOT NULL
+    AND l.center_point IS NOT NULL
     -- Exclude rows that are themselves simulator output
-    AND t.VariantTypeID NOT IN (
-        SELECT VariantTypeID FROM shared.VariantTypes
-        WHERE VariantTypeName IN ('simulated_growth', 'model_output', 'sensor_derived')
+    AND t.variant_type_id NOT IN (
+        SELECT variant_type_id FROM shared.VariantTypes
+        WHERE variant_type_name IN ('simulated_growth', 'model_output', 'sensor_derived')
     );
 
 COMMENT ON VIEW public.silva_input IS
     'DRAFT: SILVA 4.5 single-tree input view. '
     'Filter by scenario_name + location_name before passing to R. '
-    'Positions are in metres relative to location CenterPoint (UTM 32N). '
+    'Positions are in metres relative to location center_point (UTM 32N). '
     'Verify ba codes and column names against the Freiburg R implementation (XRFF-244).';
 
 -- =============================================================================

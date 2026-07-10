@@ -20,13 +20,13 @@ DECLARE
     audit_id BIGINT;
 BEGIN
     INSERT INTO shared.AuditLog (
-        FieldName,
-        OldValue,
-        NewValue,
-        ChangeReason,
-        UserID,
-        ChangeType,
-        IPAddress
+        field_name,
+        old_value,
+        new_value,
+        change_reason,
+        user_id,
+        change_type,
+        ip_address
     ) VALUES (
         field_name_param,
         old_value_param,
@@ -36,21 +36,21 @@ BEGIN
         change_type_param,
         inet_client_addr()
     )
-    RETURNING AuditID INTO audit_id;
+    RETURNING audit_id INTO audit_id;
 
     -- Create junction table entry based on table name
     CASE table_name_param
         WHEN 'PointClouds' THEN
-            INSERT INTO shared.AuditLog_PointClouds (AuditID, PointCloudID)
+            INSERT INTO shared.AuditLog_PointClouds (audit_id, point_cloud_id)
             VALUES (audit_id, variant_id_param);
         WHEN 'Trees' THEN
-            INSERT INTO shared.AuditLog_Trees (AuditID, TreeID)
+            INSERT INTO shared.AuditLog_Trees (audit_id, tree_id)
             VALUES (audit_id, variant_id_param);
         WHEN 'Environments' THEN
-            INSERT INTO shared.AuditLog_Environments (AuditID, EnvironmentID)
+            INSERT INTO shared.AuditLog_Environments (audit_id, environment_id)
             VALUES (audit_id, variant_id_param);
         WHEN 'Stems' THEN
-            INSERT INTO shared.AuditLog_Stems (AuditID, StemID)
+            INSERT INTO shared.AuditLog_Stems (audit_id, stem_id)
             VALUES (audit_id, variant_id_param);
     END CASE;
 
@@ -67,78 +67,78 @@ CREATE OR REPLACE FUNCTION shared.get_audit_history(
     limit_param INTEGER DEFAULT 100
 )
 RETURNS TABLE (
-    AuditID BIGINT,
-    FieldName VARCHAR,
-    OldValue TEXT,
-    NewValue TEXT,
-    ChangeReason TEXT,
-    UserID VARCHAR,
+    audit_id BIGINT,
+    field_name VARCHAR,
+    old_value TEXT,
+    new_value TEXT,
+    change_reason TEXT,
+    user_id VARCHAR,
     "Timestamp" TIMESTAMPTZ,
-    ChangeType VARCHAR
+    change_type VARCHAR
 ) AS $$
 BEGIN
     IF table_name_param = 'PointClouds' THEN
         RETURN QUERY
             SELECT
-                al.AuditID,
-                al.FieldName,
-                al.OldValue,
-                al.NewValue,
-                al.ChangeReason,
-                al.UserID,
+                al.audit_id,
+                al.field_name,
+                al.old_value,
+                al.new_value,
+                al.change_reason,
+                al.user_id,
                 al.Timestamp,
-                al.ChangeType
+                al.change_type
             FROM shared.AuditLog al
-            JOIN shared.AuditLog_PointClouds alpc ON al.AuditID = alpc.AuditID
-            WHERE alpc.PointCloudID = variant_id_param
+            JOIN shared.AuditLog_PointClouds alpc ON al.audit_id = alpc.audit_id
+            WHERE alpc.point_cloud_id = variant_id_param
             ORDER BY al.Timestamp DESC
             LIMIT limit_param;
     ELSIF table_name_param = 'Trees' THEN
         RETURN QUERY
             SELECT
-                al.AuditID,
-                al.FieldName,
-                al.OldValue,
-                al.NewValue,
-                al.ChangeReason,
-                al.UserID,
+                al.audit_id,
+                al.field_name,
+                al.old_value,
+                al.new_value,
+                al.change_reason,
+                al.user_id,
                 al.Timestamp,
-                al.ChangeType
+                al.change_type
             FROM shared.AuditLog al
-            JOIN shared.AuditLog_Trees alt ON al.AuditID = alt.AuditID
-            WHERE alt.TreeID = variant_id_param
+            JOIN shared.AuditLog_Trees alt ON al.audit_id = alt.audit_id
+            WHERE alt.tree_id = variant_id_param
             ORDER BY al.Timestamp DESC
             LIMIT limit_param;
     ELSIF table_name_param = 'Environments' THEN
         RETURN QUERY
             SELECT
-                al.AuditID,
-                al.FieldName,
-                al.OldValue,
-                al.NewValue,
-                al.ChangeReason,
-                al.UserID,
+                al.audit_id,
+                al.field_name,
+                al.old_value,
+                al.new_value,
+                al.change_reason,
+                al.user_id,
                 al.Timestamp,
-                al.ChangeType
+                al.change_type
             FROM shared.AuditLog al
-            JOIN shared.AuditLog_Environments ale ON al.AuditID = ale.AuditID
-            WHERE ale.EnvironmentID = variant_id_param
+            JOIN shared.AuditLog_Environments ale ON al.audit_id = ale.audit_id
+            WHERE ale.environment_id = variant_id_param
             ORDER BY al.Timestamp DESC
             LIMIT limit_param;
     ELSIF table_name_param = 'Stems' THEN
         RETURN QUERY
             SELECT
-                al.AuditID,
-                al.FieldName,
-                al.OldValue,
-                al.NewValue,
-                al.ChangeReason,
-                al.UserID,
+                al.audit_id,
+                al.field_name,
+                al.old_value,
+                al.new_value,
+                al.change_reason,
+                al.user_id,
                 al.Timestamp,
-                al.ChangeType
+                al.change_type
             FROM shared.AuditLog al
-            JOIN shared.AuditLog_Stems als ON al.AuditID = als.AuditID
-            WHERE als.StemID = variant_id_param
+            JOIN shared.AuditLog_Stems als ON al.audit_id = als.audit_id
+            WHERE als.stem_id = variant_id_param
             ORDER BY al.Timestamp DESC
             LIMIT limit_param;
     END IF;
@@ -165,38 +165,38 @@ BEGIN
     -- Get audit record
     SELECT * INTO audit_record
     FROM shared.AuditLog
-    WHERE AuditID = audit_id_param;
+    WHERE audit_id = audit_id_param;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Audit record % not found', audit_id_param;
     END IF;
 
     -- Determine table and variant from junction tables
-    IF EXISTS (SELECT 1 FROM shared.AuditLog_PointClouds WHERE AuditID = audit_id_param) THEN
+    IF EXISTS (SELECT 1 FROM shared.AuditLog_PointClouds WHERE audit_id = audit_id_param) THEN
         table_name := 'PointClouds';
-        SELECT PointCloudID INTO variant_id FROM shared.AuditLog_PointClouds WHERE AuditID = audit_id_param;
-    ELSIF EXISTS (SELECT 1 FROM shared.AuditLog_Trees WHERE AuditID = audit_id_param) THEN
+        SELECT point_cloud_id INTO variant_id FROM shared.AuditLog_PointClouds WHERE audit_id = audit_id_param;
+    ELSIF EXISTS (SELECT 1 FROM shared.AuditLog_Trees WHERE audit_id = audit_id_param) THEN
         table_name := 'Trees';
-        SELECT TreeID INTO variant_id FROM shared.AuditLog_Trees WHERE AuditID = audit_id_param;
-    ELSIF EXISTS (SELECT 1 FROM shared.AuditLog_Environments WHERE AuditID = audit_id_param) THEN
+        SELECT tree_id INTO variant_id FROM shared.AuditLog_Trees WHERE audit_id = audit_id_param;
+    ELSIF EXISTS (SELECT 1 FROM shared.AuditLog_Environments WHERE audit_id = audit_id_param) THEN
         table_name := 'Environments';
-        SELECT EnvironmentID INTO variant_id FROM shared.AuditLog_Environments WHERE AuditID = audit_id_param;
-    ELSIF EXISTS (SELECT 1 FROM shared.AuditLog_Stems WHERE AuditID = audit_id_param) THEN
+        SELECT environment_id INTO variant_id FROM shared.AuditLog_Environments WHERE audit_id = audit_id_param;
+    ELSIF EXISTS (SELECT 1 FROM shared.AuditLog_Stems WHERE audit_id = audit_id_param) THEN
         table_name := 'Stems';
-        SELECT StemID INTO variant_id FROM shared.AuditLog_Stems WHERE AuditID = audit_id_param;
+        SELECT stem_id INTO variant_id FROM shared.AuditLog_Stems WHERE audit_id = audit_id_param;
     ELSE
         RAISE EXCEPTION 'Could not determine table for audit record %', audit_id_param;
     END IF;
 
-    field_name := audit_record.FieldName;
-    old_value := audit_record.OldValue;
+    field_name := audit_record.field_name;
+    old_value := audit_record.old_value;
 
     -- Create revert audit log
     SELECT shared.create_audit_log(
         table_name,
         variant_id,
         field_name,
-        audit_record.NewValue,  -- Current value becomes old value
+        audit_record.new_value,  -- Current value becomes old value
         old_value,              -- Old value becomes new value
         change_reason_param,
         'revert'
@@ -230,13 +230,13 @@ BEGIN
     table_name := TG_TABLE_NAME;
     CASE TG_TABLE_NAME
         WHEN 'pointclouds' THEN
-            record_id := NEW.PointCloudID;
+            record_id := NEW.point_cloud_id;
         WHEN 'trees' THEN
-            record_id := NEW.TreeID;
+            record_id := NEW.tree_id;
         WHEN 'environments' THEN
-            record_id := NEW.EnvironmentID;
+            record_id := NEW.environment_id;
         WHEN 'stems' THEN
-            record_id := NEW.StemID;
+            record_id := NEW.stem_id;
         ELSE
             record_id := NULL;
     END CASE;
@@ -257,24 +257,24 @@ BEGIN
                     NULL, 'field_update'
                 );
             END IF;
-            IF OLD.CrownWidth_m IS DISTINCT FROM NEW.CrownWidth_m THEN
+            IF OLD.crown_width_m IS DISTINCT FROM NEW.crown_width_m THEN
                 PERFORM shared.create_audit_log(
-                    'Trees', record_id, 'CrownWidth_m',
-                    OLD.CrownWidth_m::TEXT, NEW.CrownWidth_m::TEXT,
+                    'Trees', record_id, 'crown_width_m',
+                    OLD.crown_width_m::TEXT, NEW.crown_width_m::TEXT,
                     NULL, 'field_update'
                 );
             END IF;
-            IF OLD.HealthScore IS DISTINCT FROM NEW.HealthScore THEN
+            IF OLD.health_score IS DISTINCT FROM NEW.health_score THEN
                 PERFORM shared.create_audit_log(
-                    'Trees', record_id, 'HealthScore',
-                    OLD.HealthScore::TEXT, NEW.HealthScore::TEXT,
+                    'Trees', record_id, 'health_score',
+                    OLD.health_score::TEXT, NEW.health_score::TEXT,
                     NULL, 'field_update'
                 );
             END IF;
-            IF OLD.TreeStatusID IS DISTINCT FROM NEW.TreeStatusID THEN
+            IF OLD.tree_status_id IS DISTINCT FROM NEW.tree_status_id THEN
                 PERFORM shared.create_audit_log(
-                    'Trees', record_id, 'TreeStatusID',
-                    OLD.TreeStatusID::TEXT, NEW.TreeStatusID::TEXT,
+                    'Trees', record_id, 'tree_status_id',
+                    OLD.tree_status_id::TEXT, NEW.tree_status_id::TEXT,
                     NULL, 'field_update'
                 );
             END IF;
@@ -288,37 +288,37 @@ BEGIN
                     NULL, 'field_update'
                 );
             END IF;
-            IF OLD.StemHeight_m IS DISTINCT FROM NEW.StemHeight_m THEN
+            IF OLD.stem_height_m IS DISTINCT FROM NEW.stem_height_m THEN
                 PERFORM shared.create_audit_log(
-                    'Stems', record_id, 'StemHeight_m',
-                    OLD.StemHeight_m::TEXT, NEW.StemHeight_m::TEXT,
+                    'Stems', record_id, 'stem_height_m',
+                    OLD.stem_height_m::TEXT, NEW.stem_height_m::TEXT,
                     NULL, 'field_update'
                 );
             END IF;
 
         WHEN 'environments' THEN
             -- Audit environmental parameters
-            IF OLD.AvgTemperature_C IS DISTINCT FROM NEW.AvgTemperature_C THEN
+            IF OLD.avg_temperature_c IS DISTINCT FROM NEW.avg_temperature_c THEN
                 PERFORM shared.create_audit_log(
-                    'Environments', record_id, 'AvgTemperature_C',
-                    OLD.AvgTemperature_C::TEXT, NEW.AvgTemperature_C::TEXT,
+                    'Environments', record_id, 'avg_temperature_c',
+                    OLD.avg_temperature_c::TEXT, NEW.avg_temperature_c::TEXT,
                     NULL, 'field_update'
                 );
             END IF;
-            IF OLD.StressFactor IS DISTINCT FROM NEW.StressFactor THEN
+            IF OLD.stress_factor IS DISTINCT FROM NEW.stress_factor THEN
                 PERFORM shared.create_audit_log(
-                    'Environments', record_id, 'StressFactor',
-                    OLD.StressFactor::TEXT, NEW.StressFactor::TEXT,
+                    'Environments', record_id, 'stress_factor',
+                    OLD.stress_factor::TEXT, NEW.stress_factor::TEXT,
                     NULL, 'field_update'
                 );
             END IF;
 
         WHEN 'pointclouds' THEN
             -- Audit processing status changes
-            IF OLD.ProcessingStatus IS DISTINCT FROM NEW.ProcessingStatus THEN
+            IF OLD.processing_status IS DISTINCT FROM NEW.processing_status THEN
                 PERFORM shared.create_audit_log(
-                    'PointClouds', record_id, 'ProcessingStatus',
-                    OLD.ProcessingStatus::TEXT, NEW.ProcessingStatus::TEXT,
+                    'PointClouds', record_id, 'processing_status',
+                    OLD.processing_status::TEXT, NEW.processing_status::TEXT,
                     NULL, 'field_update'
                 );
             END IF;
@@ -358,27 +358,27 @@ CREATE TRIGGER trigger_pointclouds_audit
 -- View: Recent changes across all tables
 CREATE OR REPLACE VIEW shared.recent_changes AS
 SELECT
-    al.AuditID,
+    al.audit_id,
     COALESCE(
-        CASE WHEN alpc.PointCloudID IS NOT NULL THEN 'PointClouds'
-             WHEN alt.TreeID IS NOT NULL THEN 'Trees'
-             WHEN ale.EnvironmentID IS NOT NULL THEN 'Environments'
-             WHEN als.StemID IS NOT NULL THEN 'Stems'
+        CASE WHEN alpc.point_cloud_id IS NOT NULL THEN 'PointClouds'
+             WHEN alt.tree_id IS NOT NULL THEN 'Trees'
+             WHEN ale.environment_id IS NOT NULL THEN 'Environments'
+             WHEN als.stem_id IS NOT NULL THEN 'Stems'
         END
     ) AS table_name,
-    COALESCE(alpc.PointCloudID, alt.TreeID, ale.EnvironmentID, als.StemID) AS record_id,
-    al.FieldName,
-    al.OldValue,
-    al.NewValue,
-    al.ChangeType,
-    al.UserID,
+    COALESCE(alpc.point_cloud_id, alt.tree_id, ale.environment_id, als.stem_id) AS record_id,
+    al.field_name,
+    al.old_value,
+    al.new_value,
+    al.change_type,
+    al.user_id,
     al.Timestamp,
-    al.ChangeReason
+    al.change_reason
 FROM shared.AuditLog al
-LEFT JOIN shared.AuditLog_PointClouds alpc ON al.AuditID = alpc.AuditID
-LEFT JOIN shared.AuditLog_Trees alt ON al.AuditID = alt.AuditID
-LEFT JOIN shared.AuditLog_Environments ale ON al.AuditID = ale.AuditID
-LEFT JOIN shared.AuditLog_Stems als ON al.AuditID = als.AuditID
+LEFT JOIN shared.AuditLog_PointClouds alpc ON al.audit_id = alpc.audit_id
+LEFT JOIN shared.AuditLog_Trees alt ON al.audit_id = alt.audit_id
+LEFT JOIN shared.AuditLog_Environments ale ON al.audit_id = ale.audit_id
+LEFT JOIN shared.AuditLog_Stems als ON al.audit_id = als.audit_id
 ORDER BY al.Timestamp DESC;
 
 COMMENT ON VIEW shared.recent_changes IS 'Unified view of recent changes across all audited tables';
@@ -386,16 +386,16 @@ COMMENT ON VIEW shared.recent_changes IS 'Unified view of recent changes across 
 -- View: User activity summary
 CREATE OR REPLACE VIEW shared.user_activity_summary AS
 SELECT
-    UserID,
+    user_id,
     COUNT(*) AS total_changes,
     COUNT(DISTINCT DATE(Timestamp)) AS active_days,
     MIN(Timestamp) AS first_change,
     MAX(Timestamp) AS last_change,
-    COUNT(*) FILTER (WHERE ChangeType = 'field_update') AS field_updates,
-    COUNT(*) FILTER (WHERE ChangeType = 'bulk_update') AS bulk_updates,
-    COUNT(*) FILTER (WHERE ChangeType = 'revert') AS reverts
+    COUNT(*) FILTER (WHERE change_type = 'field_update') AS field_updates,
+    COUNT(*) FILTER (WHERE change_type = 'bulk_update') AS bulk_updates,
+    COUNT(*) FILTER (WHERE change_type = 'revert') AS reverts
 FROM shared.AuditLog
-GROUP BY UserID;
+GROUP BY user_id;
 
 COMMENT ON VIEW shared.user_activity_summary IS 'Summary of user activity and change patterns';
 

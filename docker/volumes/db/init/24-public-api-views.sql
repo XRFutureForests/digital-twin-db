@@ -41,15 +41,15 @@ COMMENT ON VIEW public.scenarios IS 'Public API view for scenarios reference tab
 CREATE OR REPLACE VIEW public.variants AS
 SELECT
     v.*,
-    l.locationname,
-    s.scenarioname,
-    vt.varianttypename
+    l.location_name,
+    s.scenario_name,
+    vt.variant_type_name
 FROM shared.variants v
-LEFT JOIN shared.locations  l  ON v.locationid  = l.locationid
-LEFT JOIN shared.scenarios  s  ON v.scenarioid  = s.scenarioid
-LEFT JOIN shared.varianttypes vt ON v.varianttypeid = vt.varianttypeid;
+LEFT JOIN shared.locations  l  ON v.location_id  = l.location_id
+LEFT JOIN shared.scenarios  s  ON v.scenario_id  = s.scenario_id
+LEFT JOIN shared.varianttypes vt ON v.variant_type_id = vt.variant_type_id;
 
-COMMENT ON VIEW public.variants IS 'Forest state variants with location, scenario, and type names joined. Filter by locationid+scenarioid to get the time-step list for a site+scenario combination.';
+COMMENT ON VIEW public.variants IS 'Forest state variants with location, scenario, and type names joined. Filter by location_id+scenario_id to get the time-step list for a site+scenario combination.';
 
 -- ManagementEvents view
 CREATE OR REPLACE VIEW public.managementevents AS
@@ -305,14 +305,14 @@ CREATE OR REPLACE FUNCTION public.campaigns_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO shared.campaigns (
-        campaignname, campaigntype, locationid, startdate, enddate,
+        campaign_name, campaign_type, location_id, start_date, end_date,
         description, methodology, equipment, personnel,
-        createdby, updatedby
+        created_by, updated_by
     ) VALUES (
-        NEW.campaignname, NEW.campaigntype, NEW.locationid, NEW.startdate, NEW.enddate,
+        NEW.campaign_name, NEW.campaign_type, NEW.location_id, NEW.start_date, NEW.end_date,
         NEW.description, NEW.methodology, NEW.equipment, NEW.personnel,
-        NEW.createdby, NEW.updatedby
-    ) RETURNING campaignid INTO NEW.campaignid;
+        NEW.created_by, NEW.updated_by
+    ) RETURNING campaign_id INTO NEW.campaign_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -326,18 +326,18 @@ CREATE OR REPLACE FUNCTION public.campaigns_update()
 RETURNS TRIGGER AS $$
 BEGIN
     UPDATE shared.campaigns SET
-        campaignname = NEW.campaignname,
-        campaigntype = NEW.campaigntype,
-        locationid = NEW.locationid,
-        startdate = NEW.startdate,
-        enddate = NEW.enddate,
+        campaign_name = NEW.campaign_name,
+        campaign_type = NEW.campaign_type,
+        location_id = NEW.location_id,
+        start_date = NEW.start_date,
+        end_date = NEW.end_date,
         description = NEW.description,
         methodology = NEW.methodology,
         equipment = NEW.equipment,
         personnel = NEW.personnel,
-        updatedat = NOW(),
-        updatedby = NEW.updatedby
-    WHERE campaignid = OLD.campaignid;
+        updated_at = NOW(),
+        updated_by = NEW.updated_by
+    WHERE campaign_id = OLD.campaign_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -350,7 +350,7 @@ FOR EACH ROW EXECUTE FUNCTION public.campaigns_update();
 CREATE OR REPLACE FUNCTION public.campaigns_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-    DELETE FROM shared.campaigns WHERE campaignid = OLD.campaignid;
+    DELETE FROM shared.campaigns WHERE campaign_id = OLD.campaign_id;
     RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;
@@ -364,32 +364,32 @@ CREATE OR REPLACE FUNCTION public.trees_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO trees.trees (
-        treeentityid, variantid, parenttreeid, pointcloudid, campaignid,
-        locationid, plotid, scenarioid, varianttypeid, processid,
-        speciesid, treestatusid, branchingpatternid, barkcharacteristicid,
-        measurementdate, datasourcetypeid,
-        height_m, crownwidth_m, crownbaseheight_m, crownboundary,
-        crownoffsetx_m, crownoffsety_m, volume_m3,
-        position, positionoriginal, sourcecrs,
-        leanangle_deg, leandirection_azimuth, timedelta_yrs, age_years,
-        healthscore, biomass_kg, carboncontent_kg,
-        speciesconfidence, positionconfidence, heightconfidence,
-        crownclassid, damageagentid, defoliation_percent, discolouration_percent, crowntransparency_percent,
-        statuschangedate, fieldnotes, createdby, updatedby
+        tree_entity_id, variant_id, parent_tree_id, point_cloud_id, campaign_id,
+        location_id, plot_id, scenario_id, variant_type_id, process_id,
+        species_id, tree_status_id, branching_pattern_id, bark_characteristic_id,
+        measurement_date, data_source_type_id,
+        height_m, crown_width_m, crown_base_height_m, crown_boundary,
+        crown_offset_x_m, crown_offset_y_m, volume_m3,
+        position, position_original, source_crs,
+        lean_angle_deg, lean_direction_azimuth, time_delta_yrs, age_years,
+        health_score, biomass_kg, carbon_content_kg,
+        species_confidence, position_confidence, height_confidence,
+        crown_class_id, damage_agent_id, defoliation_percent, discolouration_percent, crown_transparency_percent,
+        status_change_date, field_notes, created_by, updated_by
     ) VALUES (
-        COALESCE(NEW.treeentityid, gen_random_uuid()), NEW.variantid, NEW.parenttreeid, NEW.pointcloudid, NEW.campaignid,
-        NEW.locationid, NEW.plotid, NEW.scenarioid, NEW.varianttypeid, NEW.processid,
-        NEW.speciesid, NEW.treestatusid, NEW.branchingpatternid, NEW.barkcharacteristicid,
-        NEW.measurementdate, NEW.datasourcetypeid,
-        NEW.height_m, NEW.crownwidth_m, NEW.crownbaseheight_m, NEW.crownboundary,
-        NEW.crownoffsetx_m, NEW.crownoffsety_m, NEW.volume_m3,
-        NEW.position, NEW.positionoriginal, NEW.sourcecrs,
-        NEW.leanangle_deg, NEW.leandirection_azimuth, NEW.timedelta_yrs, NEW.age_years,
-        NEW.healthscore, NEW.biomass_kg, NEW.carboncontent_kg,
-        NEW.speciesconfidence, NEW.positionconfidence, NEW.heightconfidence,
-        NEW.crownclassid, NEW.damageagentid, NEW.defoliation_percent, NEW.discolouration_percent, NEW.crowntransparency_percent,
-        NEW.statuschangedate, NEW.fieldnotes, NEW.createdby, NEW.updatedby
-    ) RETURNING treeid INTO NEW.treeid;
+        COALESCE(NEW.tree_entity_id, gen_random_uuid()), NEW.variant_id, NEW.parent_tree_id, NEW.point_cloud_id, NEW.campaign_id,
+        NEW.location_id, NEW.plot_id, NEW.scenario_id, NEW.variant_type_id, NEW.process_id,
+        NEW.species_id, NEW.tree_status_id, NEW.branching_pattern_id, NEW.bark_characteristic_id,
+        NEW.measurement_date, NEW.data_source_type_id,
+        NEW.height_m, NEW.crown_width_m, NEW.crown_base_height_m, NEW.crown_boundary,
+        NEW.crown_offset_x_m, NEW.crown_offset_y_m, NEW.volume_m3,
+        NEW.position, NEW.position_original, NEW.source_crs,
+        NEW.lean_angle_deg, NEW.lean_direction_azimuth, NEW.time_delta_yrs, NEW.age_years,
+        NEW.health_score, NEW.biomass_kg, NEW.carbon_content_kg,
+        NEW.species_confidence, NEW.position_confidence, NEW.height_confidence,
+        NEW.crown_class_id, NEW.damage_agent_id, NEW.defoliation_percent, NEW.discolouration_percent, NEW.crown_transparency_percent,
+        NEW.status_change_date, NEW.field_notes, NEW.created_by, NEW.updated_by
+    ) RETURNING tree_id INTO NEW.tree_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -403,52 +403,52 @@ CREATE OR REPLACE FUNCTION public.trees_update()
 RETURNS TRIGGER AS $$
 BEGIN
     UPDATE trees.trees SET
-        treeentityid = NEW.treeentityid,
-        variantid = NEW.variantid,
-        parenttreeid = NEW.parenttreeid,
-        pointcloudid = NEW.pointcloudid,
-        campaignid = NEW.campaignid,
-        locationid = NEW.locationid,
-        plotid = NEW.plotid,
-        scenarioid = NEW.scenarioid,
-        varianttypeid = NEW.varianttypeid,
-        processid = NEW.processid,
-        speciesid = NEW.speciesid,
-        treestatusid = NEW.treestatusid,
-        branchingpatternid = NEW.branchingpatternid,
-        barkcharacteristicid = NEW.barkcharacteristicid,
-        measurementdate = NEW.measurementdate,
-        datasourcetypeid = NEW.datasourcetypeid,
+        tree_entity_id = NEW.tree_entity_id,
+        variant_id = NEW.variant_id,
+        parent_tree_id = NEW.parent_tree_id,
+        point_cloud_id = NEW.point_cloud_id,
+        campaign_id = NEW.campaign_id,
+        location_id = NEW.location_id,
+        plot_id = NEW.plot_id,
+        scenario_id = NEW.scenario_id,
+        variant_type_id = NEW.variant_type_id,
+        process_id = NEW.process_id,
+        species_id = NEW.species_id,
+        tree_status_id = NEW.tree_status_id,
+        branching_pattern_id = NEW.branching_pattern_id,
+        bark_characteristic_id = NEW.bark_characteristic_id,
+        measurement_date = NEW.measurement_date,
+        data_source_type_id = NEW.data_source_type_id,
         height_m = NEW.height_m,
-        crownwidth_m = NEW.crownwidth_m,
-        crownbaseheight_m = NEW.crownbaseheight_m,
-        crownboundary = NEW.crownboundary,
-        crownoffsetx_m = NEW.crownoffsetx_m,
-        crownoffsety_m = NEW.crownoffsety_m,
+        crown_width_m = NEW.crown_width_m,
+        crown_base_height_m = NEW.crown_base_height_m,
+        crown_boundary = NEW.crown_boundary,
+        crown_offset_x_m = NEW.crown_offset_x_m,
+        crown_offset_y_m = NEW.crown_offset_y_m,
         volume_m3 = NEW.volume_m3,
         position = NEW.position,
-        positionoriginal = NEW.positionoriginal,
-        sourcecrs = NEW.sourcecrs,
-        leanangle_deg = NEW.leanangle_deg,
-        leandirection_azimuth = NEW.leandirection_azimuth,
-        timedelta_yrs = NEW.timedelta_yrs,
+        position_original = NEW.position_original,
+        source_crs = NEW.source_crs,
+        lean_angle_deg = NEW.lean_angle_deg,
+        lean_direction_azimuth = NEW.lean_direction_azimuth,
+        time_delta_yrs = NEW.time_delta_yrs,
         age_years = NEW.age_years,
-        healthscore = NEW.healthscore,
+        health_score = NEW.health_score,
         biomass_kg = NEW.biomass_kg,
-        carboncontent_kg = NEW.carboncontent_kg,
-        speciesconfidence = NEW.speciesconfidence,
-        positionconfidence = NEW.positionconfidence,
-        heightconfidence = NEW.heightconfidence,
-        crownclassid = NEW.crownclassid,
-        damageagentid = NEW.damageagentid,
+        carbon_content_kg = NEW.carbon_content_kg,
+        species_confidence = NEW.species_confidence,
+        position_confidence = NEW.position_confidence,
+        height_confidence = NEW.height_confidence,
+        crown_class_id = NEW.crown_class_id,
+        damage_agent_id = NEW.damage_agent_id,
         defoliation_percent = NEW.defoliation_percent,
         discolouration_percent = NEW.discolouration_percent,
-        crowntransparency_percent = NEW.crowntransparency_percent,
-        statuschangedate = NEW.statuschangedate,
-        fieldnotes = NEW.fieldnotes,
-        updatedat = NOW(),
-        updatedby = NEW.updatedby
-    WHERE treeid = OLD.treeid;
+        crown_transparency_percent = NEW.crown_transparency_percent,
+        status_change_date = NEW.status_change_date,
+        field_notes = NEW.field_notes,
+        updated_at = NOW(),
+        updated_by = NEW.updated_by
+    WHERE tree_id = OLD.tree_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -461,7 +461,7 @@ FOR EACH ROW EXECUTE FUNCTION public.trees_update();
 CREATE OR REPLACE FUNCTION public.trees_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-    DELETE FROM trees.trees WHERE treeid = OLD.treeid;
+    DELETE FROM trees.trees WHERE tree_id = OLD.tree_id;
     RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;
@@ -488,33 +488,33 @@ CREATE OR REPLACE FUNCTION public.sensors_update()
 RETURNS TRIGGER AS $$
 BEGIN
     UPDATE sensor.sensors SET
-        locationid = NEW.locationid,
-        sensortypeid = NEW.sensortypeid,
-        campaignid = NEW.campaignid,
-        sensormodel = NEW.sensormodel,
-        serialnumber = NEW.serialnumber,
+        location_id = NEW.location_id,
+        sensor_type_id = NEW.sensor_type_id,
+        campaign_id = NEW.campaign_id,
+        sensor_model = NEW.sensor_model,
+        serial_number = NEW.serial_number,
         position = NEW.position,
-        positionoriginal = NEW.positionoriginal,
-        sourcecrs = NEW.sourcecrs,
-        installationdate = NEW.installationdate,
-        installationheight_m = NEW.installationheight_m,
-        decommissiondate = NEW.decommissiondate,
-        calibrationdate = NEW.calibrationdate,
-        nextcalibrationdate = NEW.nextcalibrationdate,
-        samplinginterval_seconds = NEW.samplinginterval_seconds,
-        readingtype = NEW.readingtype,
+        position_original = NEW.position_original,
+        source_crs = NEW.source_crs,
+        installation_date = NEW.installation_date,
+        installation_height_m = NEW.installation_height_m,
+        decommission_date = NEW.decommission_date,
+        calibration_date = NEW.calibration_date,
+        next_calibration_date = NEW.next_calibration_date,
+        sampling_interval_seconds = NEW.sampling_interval_seconds,
+        reading_type = NEW.reading_type,
         unit = NEW.unit,
-        minvalue = NEW.minvalue,
-        maxvalue = NEW.maxvalue,
+        min_value = NEW.min_value,
+        max_value = NEW.max_value,
         accuracy = NEW.accuracy,
-        batterylevel_percent = NEW.batterylevel_percent,
-        isactive = NEW.isactive,
-        maintenancenotes = NEW.maintenancenotes,
-        externalid = NEW.externalid,
-        externalmetadata = NEW.externalmetadata,
-        updatedat = NOW(),
-        updatedby = NEW.updatedby
-    WHERE sensorid = OLD.sensorid;
+        battery_level_percent = NEW.battery_level_percent,
+        is_active = NEW.is_active,
+        maintenance_notes = NEW.maintenance_notes,
+        external_id = NEW.external_id,
+        external_metadata = NEW.external_metadata,
+        updated_at = NOW(),
+        updated_by = NEW.updated_by
+    WHERE sensor_id = OLD.sensor_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -527,7 +527,7 @@ FOR EACH ROW EXECUTE FUNCTION public.sensors_update();
 CREATE OR REPLACE FUNCTION public.sensors_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-    DELETE FROM sensor.sensors WHERE sensorid = OLD.sensorid;
+    DELETE FROM sensor.sensors WHERE sensor_id = OLD.sensor_id;
     RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;
@@ -540,8 +540,8 @@ FOR EACH ROW EXECUTE FUNCTION public.sensors_delete();
 CREATE OR REPLACE FUNCTION public.sensorreadings_insert()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO sensor.sensorreadings (sensorid, timestamp, value, quality, scenarioid, batteryvoltage, signalstrength, notes)
-    VALUES (NEW.sensorid, NEW.timestamp, NEW.value, NEW.quality, NEW.scenarioid, NEW.batteryvoltage, NEW.signalstrength, NEW.notes);
+    INSERT INTO sensor.sensorreadings (sensor_id, timestamp, value, quality, scenario_id, battery_voltage, signal_strength, notes)
+    VALUES (NEW.sensor_id, NEW.timestamp, NEW.value, NEW.quality, NEW.scenario_id, NEW.battery_voltage, NEW.signal_strength, NEW.notes);
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -594,14 +594,14 @@ CREATE OR REPLACE FUNCTION public.plots_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO shared.plots (
-        locationid, plotname, plotnumber, area_m2,
-        boundary, centerpoint, description,
-        createdby, updatedby
+        location_id, plot_name, plot_number, area_m2,
+        boundary, center_point, description,
+        created_by, updated_by
     ) VALUES (
-        NEW.locationid, NEW.plotname, NEW.plotnumber, NEW.area_m2,
-        NEW.boundary, NEW.centerpoint, NEW.description,
-        NEW.createdby, NEW.updatedby
-    ) RETURNING plotid INTO NEW.plotid;
+        NEW.location_id, NEW.plot_name, NEW.plot_number, NEW.area_m2,
+        NEW.boundary, NEW.center_point, NEW.description,
+        NEW.created_by, NEW.updated_by
+    ) RETURNING plot_id INTO NEW.plot_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -615,14 +615,14 @@ CREATE OR REPLACE FUNCTION public.managementevents_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO shared.managementevents (
-        locationid, plotid, eventtype, eventdate, enddate,
-        description, affectedarea_m2, performedby, notes,
-        createdby, updatedby
+        location_id, plot_id, event_type, event_date, end_date,
+        description, affected_area_m2, performed_by, notes,
+        created_by, updated_by
     ) VALUES (
-        NEW.locationid, NEW.plotid, NEW.eventtype, NEW.eventdate, NEW.enddate,
-        NEW.description, NEW.affectedarea_m2, NEW.performedby, NEW.notes,
-        NEW.createdby, NEW.updatedby
-    ) RETURNING managementeventid INTO NEW.managementeventid;
+        NEW.location_id, NEW.plot_id, NEW.event_type, NEW.event_date, NEW.end_date,
+        NEW.description, NEW.affected_area_m2, NEW.performed_by, NEW.notes,
+        NEW.created_by, NEW.updated_by
+    ) RETURNING management_event_id INTO NEW.management_event_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -636,14 +636,14 @@ CREATE OR REPLACE FUNCTION public.disturbanceevents_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO shared.disturbanceevents (
-        locationid, plotid, disturbancetype, eventdate, enddate,
-        severity, affectedarea_m2, description, notes,
-        createdby, updatedby
+        location_id, plot_id, disturbance_type, event_date, end_date,
+        severity, affected_area_m2, description, notes,
+        created_by, updated_by
     ) VALUES (
-        NEW.locationid, NEW.plotid, NEW.disturbancetype, NEW.eventdate, NEW.enddate,
-        NEW.severity, NEW.affectedarea_m2, NEW.description, NEW.notes,
-        NEW.createdby, NEW.updatedby
-    ) RETURNING disturbanceeventid INTO NEW.disturbanceeventid;
+        NEW.location_id, NEW.plot_id, NEW.disturbance_type, NEW.event_date, NEW.end_date,
+        NEW.severity, NEW.affected_area_m2, NEW.description, NEW.notes,
+        NEW.created_by, NEW.updated_by
+    ) RETURNING disturbance_event_id INTO NEW.disturbance_event_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -657,12 +657,12 @@ CREATE OR REPLACE FUNCTION public.phenologyobservations_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO trees.phenologyobservations (
-        treeid, observationdate, phenophasetype,
-        phenophasestatus, intensity_percent, observer, notes, createdby
+        tree_id, observation_date, phenophase_type,
+        phenophase_status, intensity_percent, observer, notes, created_by
     ) VALUES (
-        NEW.treeid, NEW.observationdate, NEW.phenophasetype,
-        NEW.phenophasestatus, NEW.intensity_percent, NEW.observer, NEW.notes, NEW.createdby
-    ) RETURNING phenologyobservationid INTO NEW.phenologyobservationid;
+        NEW.tree_id, NEW.observation_date, NEW.phenophase_type,
+        NEW.phenophase_status, NEW.intensity_percent, NEW.observer, NEW.notes, NEW.created_by
+    ) RETURNING phenology_observation_id INTO NEW.phenology_observation_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -676,14 +676,14 @@ CREATE OR REPLACE FUNCTION public.deadwood_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO trees.deadwood (
-        locationid, plotid, treeid, speciesid,
-        woodtype, length_m, diameter_cm, decayclass,
-        volume_m3, position, measurementdate, notes, createdby
+        location_id, plot_id, tree_id, species_id,
+        wood_type, length_m, diameter_cm, decay_class,
+        volume_m3, position, measurement_date, notes, created_by
     ) VALUES (
-        NEW.locationid, NEW.plotid, NEW.treeid, NEW.speciesid,
-        NEW.woodtype, NEW.length_m, NEW.diameter_cm, NEW.decayclass,
-        NEW.volume_m3, NEW.position, NEW.measurementdate, NEW.notes, NEW.createdby
-    ) RETURNING deadwoodid INTO NEW.deadwoodid;
+        NEW.location_id, NEW.plot_id, NEW.tree_id, NEW.species_id,
+        NEW.wood_type, NEW.length_m, NEW.diameter_cm, NEW.decay_class,
+        NEW.volume_m3, NEW.position, NEW.measurement_date, NEW.notes, NEW.created_by
+    ) RETURNING deadwood_id INTO NEW.deadwood_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -697,12 +697,12 @@ CREATE OR REPLACE FUNCTION public.groundvegetation_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO trees.groundvegetation (
-        locationid, plotid, speciesname, coverpercent,
-        height_cm, layer, measurementdate, notes, createdby
+        location_id, plot_id, species_name, cover_percent,
+        height_cm, layer, measurement_date, notes, created_by
     ) VALUES (
-        NEW.locationid, NEW.plotid, NEW.speciesname, NEW.coverpercent,
-        NEW.height_cm, NEW.layer, NEW.measurementdate, NEW.notes, NEW.createdby
-    ) RETURNING groundvegetationid INTO NEW.groundvegetationid;
+        NEW.location_id, NEW.plot_id, NEW.species_name, NEW.cover_percent,
+        NEW.height_cm, NEW.layer, NEW.measurement_date, NEW.notes, NEW.created_by
+    ) RETURNING ground_vegetation_id INTO NEW.ground_vegetation_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -716,16 +716,16 @@ CREATE OR REPLACE FUNCTION public.images_insert()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO imagery.images (
-        locationid, plotid, campaignid, capturedate,
-        filepath, fileformat, resolution_px, cameramodel,
+        location_id, plot_id, campaign_id, capture_date,
+        file_path, file_format, resolution_px, camera_model,
         position, altitude_m, heading_deg, pitch_deg, roll_deg,
-        groundsampledistance_cm, description, createdby, updatedby
+        ground_sample_distance_cm, description, created_by, updated_by
     ) VALUES (
-        NEW.locationid, NEW.plotid, NEW.campaignid, NEW.capturedate,
-        NEW.filepath, NEW.fileformat, NEW.resolution_px, NEW.cameramodel,
+        NEW.location_id, NEW.plot_id, NEW.campaign_id, NEW.capture_date,
+        NEW.file_path, NEW.file_format, NEW.resolution_px, NEW.camera_model,
         NEW.position, NEW.altitude_m, NEW.heading_deg, NEW.pitch_deg, NEW.roll_deg,
-        NEW.groundsampledistance_cm, NEW.description, NEW.createdby, NEW.updatedby
-    ) RETURNING imageid INTO NEW.imageid;
+        NEW.ground_sample_distance_cm, NEW.description, NEW.created_by, NEW.updated_by
+    ) RETURNING image_id INTO NEW.image_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -775,18 +775,18 @@ ALTER VIEW public.scenarios SET (security_invoker = on);
 ALTER VIEW public.variants SET (security_invoker = on);
 
 -- Grant USAGE on sequences to allow auto-incrementing IDs
-GRANT USAGE ON SEQUENCE shared.campaigns_campaignid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE trees.trees_treeid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE sensor.sensors_sensorid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE sensor.sensorreadings_sensorreadingid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE trees.stems_stemid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE shared.plots_plotid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE shared.managementevents_managementeventid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE shared.disturbanceevents_disturbanceeventid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE trees.phenologyobservations_phenologyobservationid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE trees.deadwood_deadwoodid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE trees.groundvegetation_groundvegetationid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE imagery.images_imageid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE pointclouds.scannertypes_scannertypeid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE pointclouds.scanners_scannerid_seq TO authenticated, service_role;
-GRANT USAGE ON SEQUENCE shared.variants_variantid_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE shared.campaigns_campaign_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE trees.trees_tree_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE sensor.sensors_sensor_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE sensor.sensorreadings_sensor_reading_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE trees.stems_stem_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE shared.plots_plot_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE shared.managementevents_management_event_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE shared.disturbanceevents_disturbance_event_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE trees.phenologyobservations_phenology_observation_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE trees.deadwood_deadwood_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE trees.groundvegetation_ground_vegetation_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE imagery.images_image_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE pointclouds.scannertypes_scanner_type_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE pointclouds.scanners_scanner_id_seq TO authenticated, service_role;
+GRANT USAGE ON SEQUENCE shared.variants_variant_id_seq TO authenticated, service_role;

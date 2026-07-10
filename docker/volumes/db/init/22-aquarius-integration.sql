@@ -3,19 +3,19 @@
 
 SET search_path TO sensor, trees, shared, public;
 
--- 1. Add ExternalID and Metadata to Sensors table
+-- 1. Add external_id and Metadata to Sensors table
 ALTER TABLE sensor.Sensors 
-ADD COLUMN IF NOT EXISTS ExternalID VARCHAR(200) UNIQUE,
-ADD COLUMN IF NOT EXISTS ExternalMetadata JSONB DEFAULT '{}'::jsonb;
+ADD COLUMN IF NOT EXISTS external_id VARCHAR(200) UNIQUE,
+ADD COLUMN IF NOT EXISTS external_metadata JSONB DEFAULT '{}'::jsonb;
 
-COMMENT ON COLUMN sensor.Sensors.ExternalID IS 'Unique identifier from external system (e.g., Aquarius TimeSeriesIdentifier)';
-COMMENT ON COLUMN sensor.Sensors.ExternalMetadata IS 'Additional metadata from external system';
+COMMENT ON COLUMN sensor.Sensors.external_id IS 'Unique identifier from external system (e.g., Aquarius TimeSeriesIdentifier)';
+COMMENT ON COLUMN sensor.Sensors.external_metadata IS 'Additional metadata from external system';
 
 -- NOTE: Sensor types (including Stem_Radial_Variation) are loaded from data/lookups/sensor_types.csv
 -- NOTE: Sensor-tree links table is created in 16-sensor-tree-links-schema.sql
 
 -- 2. Create index for external ID lookups
-CREATE INDEX IF NOT EXISTS idx_sensors_external_id ON sensor.Sensors(ExternalID);
+CREATE INDEX IF NOT EXISTS idx_sensors_external_id ON sensor.Sensors(external_id);
 
 -- 6. Create bulk upsert function for sensors (views don't support ON CONFLICT)
 -- Uses extensions.ST_GeomFromText since PostGIS is in extensions schema
@@ -36,39 +36,39 @@ BEGIN
         END IF;
 
         INSERT INTO sensor.sensors (
-            locationid, sensortypeid, sensormodel, serialnumber, 
-            position, samplinginterval_seconds, unit, externalid,
-            externalmetadata, isactive, createdby
+            location_id, sensor_type_id, sensor_model, serial_number, 
+            position, sampling_interval_seconds, unit, external_id,
+            external_metadata, is_active, created_by
         )
         VALUES (
-            (sensor_rec->>'locationid')::INT,
-            (sensor_rec->>'sensortypeid')::INT,
-            sensor_rec->>'sensormodel',
-            sensor_rec->>'serialnumber',
+            (sensor_rec->>'location_id')::INT,
+            (sensor_rec->>'sensor_type_id')::INT,
+            sensor_rec->>'sensor_model',
+            sensor_rec->>'serial_number',
             v_position,
-            (sensor_rec->>'samplinginterval_seconds')::INT,
+            (sensor_rec->>'sampling_interval_seconds')::INT,
             sensor_rec->>'unit',
-            sensor_rec->>'externalid',
-            (sensor_rec->'externalmetadata')::JSONB,
-            (sensor_rec->>'isactive')::BOOLEAN,
-            sensor_rec->>'createdby'
+            sensor_rec->>'external_id',
+            (sensor_rec->'external_metadata')::JSONB,
+            (sensor_rec->>'is_active')::BOOLEAN,
+            sensor_rec->>'created_by'
         )
-        ON CONFLICT (externalid) DO UPDATE SET
-            locationid = EXCLUDED.locationid,
-            sensortypeid = EXCLUDED.sensortypeid,
-            sensormodel = EXCLUDED.sensormodel,
-            serialnumber = EXCLUDED.serialnumber,
+        ON CONFLICT (external_id) DO UPDATE SET
+            location_id = EXCLUDED.location_id,
+            sensor_type_id = EXCLUDED.sensor_type_id,
+            sensor_model = EXCLUDED.sensor_model,
+            serial_number = EXCLUDED.serial_number,
             position = EXCLUDED.position,
-            samplinginterval_seconds = EXCLUDED.samplinginterval_seconds,
+            sampling_interval_seconds = EXCLUDED.sampling_interval_seconds,
             unit = EXCLUDED.unit,
-            externalmetadata = EXCLUDED.externalmetadata,
-            isactive = EXCLUDED.isactive,
-            updatedby = EXCLUDED.createdby,
-            updatedat = NOW();
+            external_metadata = EXCLUDED.external_metadata,
+            is_active = EXCLUDED.is_active,
+            updated_by = EXCLUDED.created_by,
+            updated_at = NOW();
         
         RETURN QUERY SELECT 
-            (sensor_rec->>'externalid')::VARCHAR AS out_externalid, 
-            (SELECT s.sensorid FROM sensor.sensors s WHERE s.externalid = sensor_rec->>'externalid') AS out_sensorid;
+            (sensor_rec->>'external_id')::VARCHAR AS out_externalid, 
+            (SELECT s.sensor_id FROM sensor.sensors s WHERE s.external_id = sensor_rec->>'external_id') AS out_sensorid;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -77,7 +77,7 @@ COMMENT ON FUNCTION public.bulk_upsert_sensors IS 'Bulk upserts sensors from JSO
 GRANT EXECUTE ON FUNCTION public.bulk_upsert_sensors TO service_role, anon, authenticated;
 
 -- 7. Create bulk insert function for readings with ON CONFLICT DO NOTHING
--- Add unique constraint for sensorid,timestamp if not exists
+-- Add unique constraint for sensor_id,timestamp if not exists
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -87,7 +87,7 @@ BEGIN
     ) THEN
         ALTER TABLE sensor.sensorreadings 
         ADD CONSTRAINT sensorreadings_sensorid_timestamp_unique 
-        UNIQUE (sensorid, timestamp);
+        UNIQUE (sensor_id, timestamp);
     END IF;
 END $$;
 
@@ -100,14 +100,14 @@ AS $$
 DECLARE
     inserted_count integer;
 BEGIN
-    INSERT INTO sensor.sensorreadings (sensorid, timestamp, value, quality)
+    INSERT INTO sensor.sensorreadings (sensor_id, timestamp, value, quality)
     SELECT 
-        (r->>'sensorid')::integer,
+        (r->>'sensor_id')::integer,
         (r->>'timestamp')::timestamptz,
         (r->>'value')::numeric,
         COALESCE(r->>'quality', 'good')
     FROM jsonb_array_elements(readings) AS r
-    ON CONFLICT (sensorid, timestamp) DO NOTHING;
+    ON CONFLICT (sensor_id, timestamp) DO NOTHING;
     
     GET DIAGNOSTICS inserted_count = ROW_COUNT;
     

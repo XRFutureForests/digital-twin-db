@@ -12,86 +12,86 @@ SET search_path TO environments, shared, sensor, public;
 -- =============================================================================
 
 CREATE TABLE environments.Environments (
-    EnvironmentID SERIAL PRIMARY KEY,
-    ParentEnvironmentID INTEGER REFERENCES environments.Environments(EnvironmentID) ON DELETE SET NULL,
-    LocationID INTEGER NOT NULL REFERENCES shared.Locations(LocationID) ON DELETE CASCADE,
-    ScenarioID INTEGER REFERENCES shared.Scenarios(ScenarioID) ON DELETE SET NULL,
-    VariantTypeID INTEGER NOT NULL REFERENCES shared.VariantTypes(VariantTypeID),
-    ProcessID INTEGER REFERENCES shared.Processes(ProcessID) ON DELETE SET NULL,
-    VariantName VARCHAR(300) NOT NULL,
-    StartDate TIMESTAMPTZ,
-    EndDate TIMESTAMPTZ,
-    AvgTemperature_C NUMERIC(6, 2) CHECK (AvgTemperature_C >= -50 AND AvgTemperature_C <= 60),
-    AvgHumidity_percent NUMERIC(5, 2) CHECK (AvgHumidity_percent >= 0 AND AvgHumidity_percent <= 100),
-    TotalPrecipitation_mm NUMERIC(8, 2) CHECK (TotalPrecipitation_mm >= 0),
-    AvgGlobalRadiation_W_m2 NUMERIC(8, 2) CHECK (AvgGlobalRadiation_W_m2 >= 0),
-    AvgCO2_ppm NUMERIC(7, 2) CHECK (AvgCO2_ppm >= 200 AND AvgCO2_ppm <= 2000),
-    AvgWindSpeed_ms NUMERIC(6, 2) CHECK (AvgWindSpeed_ms >= 0 AND AvgWindSpeed_ms <= 100),
-    DominantWindDirection_deg NUMERIC(5, 2) CHECK (DominantWindDirection_deg >= 0 AND DominantWindDirection_deg < 360),
-    AvgSoilMoisture_percent NUMERIC(5, 2) CHECK (AvgSoilMoisture_percent >= 0 AND AvgSoilMoisture_percent <= 100),
-    AvgSoilTemperature_C NUMERIC(6, 2) CHECK (AvgSoilTemperature_C >= -20 AND AvgSoilTemperature_C <= 40),
-    SoilPH NUMERIC(4, 2) CHECK (SoilPH >= 3 AND SoilPH <= 10),
-    NutrientNitrogen_mg_kg NUMERIC(8, 2) CHECK (NutrientNitrogen_mg_kg >= 0),
-    NutrientPhosphorus_mg_kg NUMERIC(8, 2) CHECK (NutrientPhosphorus_mg_kg >= 0),
-    NutrientPotassium_mg_kg NUMERIC(8, 2) CHECK (NutrientPotassium_mg_kg >= 0),
-    StressFactor NUMERIC(3, 2) CHECK (StressFactor >= 0 AND StressFactor <= 1),
+    environment_id SERIAL PRIMARY KEY,
+    parent_environment_id INTEGER REFERENCES environments.Environments(environment_id) ON DELETE SET NULL,
+    location_id INTEGER NOT NULL REFERENCES shared.Locations(location_id) ON DELETE CASCADE,
+    scenario_id INTEGER REFERENCES shared.Scenarios(scenario_id) ON DELETE SET NULL,
+    variant_type_id INTEGER NOT NULL REFERENCES shared.VariantTypes(variant_type_id),
+    process_id INTEGER REFERENCES shared.Processes(process_id) ON DELETE SET NULL,
+    variant_name VARCHAR(300) NOT NULL,
+    start_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    avg_temperature_c NUMERIC(6, 2) CHECK (avg_temperature_c >= -50 AND avg_temperature_c <= 60),
+    avg_humidity_percent NUMERIC(5, 2) CHECK (avg_humidity_percent >= 0 AND avg_humidity_percent <= 100),
+    total_precipitation_mm NUMERIC(8, 2) CHECK (total_precipitation_mm >= 0),
+    avg_global_radiation_w_m2 NUMERIC(8, 2) CHECK (avg_global_radiation_w_m2 >= 0),
+    avg_co2_ppm NUMERIC(7, 2) CHECK (avg_co2_ppm >= 200 AND avg_co2_ppm <= 2000),
+    avg_wind_speed_ms NUMERIC(6, 2) CHECK (avg_wind_speed_ms >= 0 AND avg_wind_speed_ms <= 100),
+    dominant_wind_direction_deg NUMERIC(5, 2) CHECK (dominant_wind_direction_deg >= 0 AND dominant_wind_direction_deg < 360),
+    avg_soil_moisture_percent NUMERIC(5, 2) CHECK (avg_soil_moisture_percent >= 0 AND avg_soil_moisture_percent <= 100),
+    avg_soil_temperature_c NUMERIC(6, 2) CHECK (avg_soil_temperature_c >= -20 AND avg_soil_temperature_c <= 40),
+    soil_ph NUMERIC(4, 2) CHECK (soil_ph >= 3 AND soil_ph <= 10),
+    nutrient_nitrogen_mg_kg NUMERIC(8, 2) CHECK (nutrient_nitrogen_mg_kg >= 0),
+    nutrient_phosphorus_mg_kg NUMERIC(8, 2) CHECK (nutrient_phosphorus_mg_kg >= 0),
+    nutrient_potassium_mg_kg NUMERIC(8, 2) CHECK (nutrient_potassium_mg_kg >= 0),
+    stress_factor NUMERIC(3, 2) CHECK (stress_factor >= 0 AND stress_factor <= 1),
     Description TEXT,
-    ResearchNotes TEXT,
-    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
-    UpdatedAt TIMESTAMPTZ,
-    CreatedBy VARCHAR(200),
-    UpdatedBy VARCHAR(200),
-    CONSTRAINT chk_date_range CHECK (EndDate IS NULL OR StartDate IS NULL OR EndDate >= StartDate)
+    research_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    created_by VARCHAR(200),
+    updated_by VARCHAR(200),
+    CONSTRAINT chk_date_range CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date)
 );
 
 COMMENT ON TABLE environments.Environments IS 'Environmental condition variants derived from sensors, models, or user input';
-COMMENT ON COLUMN environments.Environments.EnvironmentID IS 'Unique identifier for this environment record';
-COMMENT ON COLUMN environments.Environments.ParentEnvironmentID IS 'Parent environment for tracking environmental modifications';
-COMMENT ON COLUMN environments.Environments.StartDate IS 'Start of environmental measurement period';
-COMMENT ON COLUMN environments.Environments.EndDate IS 'End of environmental measurement period (NULL for ongoing)';
-COMMENT ON COLUMN environments.Environments.AvgGlobalRadiation_W_m2 IS 'Average global radiation in W/m²';
-COMMENT ON COLUMN environments.Environments.StressFactor IS 'Environmental stress index (0=optimal, 1=severe stress)';
+COMMENT ON COLUMN environments.Environments.environment_id IS 'Unique identifier for this environment record';
+COMMENT ON COLUMN environments.Environments.parent_environment_id IS 'Parent environment for tracking environmental modifications';
+COMMENT ON COLUMN environments.Environments.start_date IS 'Start of environmental measurement period';
+COMMENT ON COLUMN environments.Environments.end_date IS 'End of environmental measurement period (NULL for ongoing)';
+COMMENT ON COLUMN environments.Environments.avg_global_radiation_w_m2 IS 'Average global radiation in W/m²';
+COMMENT ON COLUMN environments.Environments.stress_factor IS 'Environmental stress index (0=optimal, 1=severe stress)';
 
 -- Create indexes
-CREATE INDEX idx_environments_parent ON environments.Environments(ParentEnvironmentID);
-CREATE INDEX idx_environments_location ON environments.Environments(LocationID);
-CREATE INDEX idx_environments_scenario ON environments.Environments(ScenarioID);
-CREATE INDEX idx_environments_variant_type ON environments.Environments(VariantTypeID);
-CREATE INDEX idx_environments_process ON environments.Environments(ProcessID);
-CREATE INDEX idx_environments_start_date ON environments.Environments(StartDate DESC);
-CREATE INDEX idx_environments_end_date ON environments.Environments(EndDate DESC NULLS LAST);
-CREATE INDEX idx_environments_created_at ON environments.Environments(CreatedAt DESC);
-CREATE INDEX idx_environments_created_by ON environments.Environments(CreatedBy);
+CREATE INDEX idx_environments_parent ON environments.Environments(parent_environment_id);
+CREATE INDEX idx_environments_location ON environments.Environments(location_id);
+CREATE INDEX idx_environments_scenario ON environments.Environments(scenario_id);
+CREATE INDEX idx_environments_variant_type ON environments.Environments(variant_type_id);
+CREATE INDEX idx_environments_process ON environments.Environments(process_id);
+CREATE INDEX idx_environments_start_date ON environments.Environments(start_date DESC);
+CREATE INDEX idx_environments_end_date ON environments.Environments(end_date DESC NULLS LAST);
+CREATE INDEX idx_environments_created_at ON environments.Environments(created_at DESC);
+CREATE INDEX idx_environments_created_by ON environments.Environments(created_by);
 
 -- =============================================================================
 -- JUNCTION TABLE: PROCESS PARAMETERS FOR ENVIRONMENTS
 -- =============================================================================
 
 CREATE TABLE shared.ProcessParameters_Environments (
-    ProcessParameterID INTEGER NOT NULL REFERENCES shared.ProcessParameters(ProcessParameterID) ON DELETE CASCADE,
-    EnvironmentID INTEGER NOT NULL REFERENCES environments.Environments(EnvironmentID) ON DELETE CASCADE,
-    PRIMARY KEY (ProcessParameterID, EnvironmentID)
+    process_parameter_id INTEGER NOT NULL REFERENCES shared.ProcessParameters(process_parameter_id) ON DELETE CASCADE,
+    environment_id INTEGER NOT NULL REFERENCES environments.Environments(environment_id) ON DELETE CASCADE,
+    PRIMARY KEY (process_parameter_id, environment_id)
 );
 
 COMMENT ON TABLE shared.ProcessParameters_Environments IS 'Links process parameters to environment records';
 
-CREATE INDEX idx_pp_environments_parameter ON shared.ProcessParameters_Environments(ProcessParameterID);
-CREATE INDEX idx_pp_environments_environment ON shared.ProcessParameters_Environments(EnvironmentID);
+CREATE INDEX idx_pp_environments_parameter ON shared.ProcessParameters_Environments(process_parameter_id);
+CREATE INDEX idx_pp_environments_environment ON shared.ProcessParameters_Environments(environment_id);
 
 -- =============================================================================
 -- JUNCTION TABLE: AUDIT LOG FOR ENVIRONMENTS
 -- =============================================================================
 
 CREATE TABLE shared.AuditLog_Environments (
-    AuditID BIGINT NOT NULL REFERENCES shared.AuditLog(AuditID) ON DELETE CASCADE,
-    EnvironmentID INTEGER NOT NULL REFERENCES environments.Environments(EnvironmentID) ON DELETE CASCADE,
-    PRIMARY KEY (AuditID, EnvironmentID)
+    audit_id BIGINT NOT NULL REFERENCES shared.AuditLog(audit_id) ON DELETE CASCADE,
+    environment_id INTEGER NOT NULL REFERENCES environments.Environments(environment_id) ON DELETE CASCADE,
+    PRIMARY KEY (audit_id, environment_id)
 );
 
 COMMENT ON TABLE shared.AuditLog_Environments IS 'Links audit log entries to environment records';
 
-CREATE INDEX idx_audit_environments_audit ON shared.AuditLog_Environments(AuditID);
-CREATE INDEX idx_audit_environments_environment ON shared.AuditLog_Environments(EnvironmentID);
+CREATE INDEX idx_audit_environments_audit ON shared.AuditLog_Environments(audit_id);
+CREATE INDEX idx_audit_environments_environment ON shared.AuditLog_Environments(environment_id);
 
 -- =============================================================================
 -- HELPER FUNCTIONS
@@ -144,43 +144,43 @@ BEGIN
 
     -- Insert aggregated environment variant
     INSERT INTO environments.Environments (
-        LocationID,
-        VariantTypeID,
-        ProcessID,
-        VariantName,
-        StartDate,
-        EndDate,
-        AvgTemperature_C,
-        AvgHumidity_percent,
-        TotalPrecipitation_mm,
-        AvgCO2_ppm,
-        AvgWindSpeed_ms,
-        AvgSoilMoisture_percent,
-        AvgSoilTemperature_C
+        location_id,
+        variant_type_id,
+        process_id,
+        variant_name,
+        start_date,
+        end_date,
+        avg_temperature_c,
+        avg_humidity_percent,
+        total_precipitation_mm,
+        avg_co2_ppm,
+        avg_wind_speed_ms,
+        avg_soil_moisture_percent,
+        avg_soil_temperature_c
     )
     SELECT
         location_id_param,
-        (SELECT VariantTypeID FROM shared.VariantTypes WHERE VariantTypeName = 'sensor_derived'),
-        (SELECT ProcessID FROM shared.Processes WHERE ProcessName = 'Sensor_Data_Aggregation' LIMIT 1),
+        (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'sensor_derived'),
+        (SELECT process_id FROM shared.Processes WHERE process_name = 'Sensor_Data_Aggregation' LIMIT 1),
         calculated_variant_name,
         start_time,
         end_time,
-        AVG(CASE WHEN st.SensorTypeName = 'Temperature' THEN sr.Value END) AS AvgTemperature_C,
-        AVG(CASE WHEN st.SensorTypeName = 'Humidity' THEN sr.Value END) AS AvgHumidity_percent,
-        SUM(CASE WHEN st.SensorTypeName = 'Precipitation' THEN sr.Value END) AS TotalPrecipitation_mm,
-        AVG(CASE WHEN st.SensorTypeName = 'CO2' THEN sr.Value END) AS AvgCO2_ppm,
-        AVG(CASE WHEN st.SensorTypeName = 'Wind_Speed' THEN sr.Value END) AS AvgWindSpeed_ms,
-        AVG(CASE WHEN st.SensorTypeName = 'Soil_Moisture' THEN sr.Value END) AS AvgSoilMoisture_percent,
-        AVG(CASE WHEN st.SensorTypeName = 'Soil_Temperature' THEN sr.Value END) AS AvgSoilTemperature_C
+        AVG(CASE WHEN st.sensor_type_name = 'Temperature' THEN sr.Value END) AS avg_temperature_c,
+        AVG(CASE WHEN st.sensor_type_name = 'Humidity' THEN sr.Value END) AS avg_humidity_percent,
+        SUM(CASE WHEN st.sensor_type_name = 'Precipitation' THEN sr.Value END) AS total_precipitation_mm,
+        AVG(CASE WHEN st.sensor_type_name = 'CO2' THEN sr.Value END) AS avg_co2_ppm,
+        AVG(CASE WHEN st.sensor_type_name = 'Wind_Speed' THEN sr.Value END) AS avg_wind_speed_ms,
+        AVG(CASE WHEN st.sensor_type_name = 'Soil_Moisture' THEN sr.Value END) AS avg_soil_moisture_percent,
+        AVG(CASE WHEN st.sensor_type_name = 'Soil_Temperature' THEN sr.Value END) AS avg_soil_temperature_c
     FROM sensor.SensorReadings sr
-    JOIN sensor.Sensors s ON sr.SensorID = s.SensorID
-    JOIN sensor.SensorTypes st ON s.SensorTypeID = st.SensorTypeID
-    WHERE s.LocationID = location_id_param
+    JOIN sensor.Sensors s ON sr.sensor_id = s.sensor_id
+    JOIN sensor.SensorTypes st ON s.sensor_type_id = st.sensor_type_id
+    WHERE s.location_id = location_id_param
         AND sr.Timestamp >= start_time
         AND sr.Timestamp <= end_time
         AND sr.Quality IN ('good', 'suspect')
     HAVING COUNT(*) > 0
-    RETURNING EnvironmentID INTO new_variant_id;
+    RETURNING environment_id INTO new_variant_id;
 
     RETURN new_variant_id;
 END;
@@ -195,7 +195,7 @@ COMMENT ON FUNCTION environments.create_from_sensor_data IS 'Creates environment
 CREATE OR REPLACE FUNCTION environments.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.UpdatedAt = NOW();
+    NEW.updated_at = NOW();
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -213,34 +213,34 @@ CREATE TRIGGER trigger_environments_updated_at
 CREATE OR REPLACE VIEW environments.active_environments AS
 SELECT
     e.*,
-    environments.calculate_duration_days(e.StartDate, e.EndDate) AS duration_days,
-    environments.is_active(e.StartDate, e.EndDate) AS is_active,
-    l.LocationName,
-    s.ScenarioName,
-    vt.VariantTypeName
+    environments.calculate_duration_days(e.start_date, e.end_date) AS duration_days,
+    environments.is_active(e.start_date, e.end_date) AS is_active,
+    l.location_name,
+    s.scenario_name,
+    vt.variant_type_name
 FROM environments.Environments e
-LEFT JOIN shared.Locations l ON e.LocationID = l.LocationID
-LEFT JOIN shared.Scenarios s ON e.ScenarioID = s.ScenarioID
-LEFT JOIN shared.VariantTypes vt ON e.VariantTypeID = vt.VariantTypeID
-WHERE environments.is_active(e.StartDate, e.EndDate) = TRUE;
+LEFT JOIN shared.Locations l ON e.location_id = l.location_id
+LEFT JOIN shared.Scenarios s ON e.scenario_id = s.scenario_id
+LEFT JOIN shared.VariantTypes vt ON e.variant_type_id = vt.variant_type_id
+WHERE environments.is_active(e.start_date, e.end_date) = TRUE;
 
 COMMENT ON VIEW environments.active_environments IS 'Currently active environment variants with location and scenario context';
 
 -- View: Environment summary statistics by location
 CREATE OR REPLACE VIEW environments.location_environment_summary AS
 SELECT
-    l.LocationID,
-    l.LocationName,
-    COUNT(e.EnvironmentID) AS environment_count,
-    AVG(e.AvgTemperature_C) AS avg_temperature,
-    AVG(e.AvgHumidity_percent) AS avg_humidity,
-    AVG(e.AvgCO2_ppm) AS avg_co2,
-    AVG(e.StressFactor) AS avg_stress_factor,
-    MIN(e.StartDate) AS earliest_measurement,
-    MAX(e.EndDate) AS latest_measurement
+    l.location_id,
+    l.location_name,
+    COUNT(e.environment_id) AS environment_count,
+    AVG(e.avg_temperature_c) AS avg_temperature,
+    AVG(e.avg_humidity_percent) AS avg_humidity,
+    AVG(e.avg_co2_ppm) AS avg_co2,
+    AVG(e.stress_factor) AS avg_stress_factor,
+    MIN(e.start_date) AS earliest_measurement,
+    MAX(e.end_date) AS latest_measurement
 FROM shared.Locations l
-LEFT JOIN environments.Environments e ON l.LocationID = e.LocationID
-GROUP BY l.LocationID, l.LocationName;
+LEFT JOIN environments.Environments e ON l.location_id = e.location_id
+GROUP BY l.location_id, l.location_name;
 
 COMMENT ON VIEW environments.location_environment_summary IS 'Summary statistics of environmental conditions by location';
 
