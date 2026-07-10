@@ -42,7 +42,7 @@ ALTER TABLE sensor.Sensors
 CREATE INDEX IF NOT EXISTS idx_sensors_plot ON sensor.Sensors(plot_id);
 COMMENT ON COLUMN sensor.Sensors.plot_id IS
     'Named monitoring sub-area (plot) within the location, e.g. douglas_fir_plot. '
-    'Populated from the Aquarius LocationIdentifier; the site is location_id.';
+    'Populated from the location identifier of the external sensor sync; the site is location_id.';
 
 -- =============================================================================
 -- PART B — the two canonical sites (snake_case)

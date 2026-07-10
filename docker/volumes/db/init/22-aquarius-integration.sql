@@ -3,13 +3,18 @@
 
 SET search_path TO sensor, trees, shared, public;
 
--- 1. Add external_id and Metadata to Sensors table
-ALTER TABLE sensor.Sensors 
+-- 1. Generic external-source fields on Sensors. These are source-agnostic: a
+--    sensor's data may come from any provider (Aquarius is one of many). The
+--    Aquarius-specific import logic lives in scripts/import/, not in the schema.
+ALTER TABLE sensor.Sensors
+ADD COLUMN IF NOT EXISTS source VARCHAR(50),
 ADD COLUMN IF NOT EXISTS external_id VARCHAR(200) UNIQUE,
 ADD COLUMN IF NOT EXISTS external_metadata JSONB DEFAULT '{}'::jsonb;
 
-COMMENT ON COLUMN sensor.Sensors.external_id IS 'Unique identifier from external system (e.g., Aquarius TimeSeriesIdentifier)';
-COMMENT ON COLUMN sensor.Sensors.external_metadata IS 'Additional metadata from external system';
+COMMENT ON COLUMN sensor.Sensors.source IS 'External system this sensor''s data comes from (e.g. ''aquarius''). One of many possible providers.';
+COMMENT ON COLUMN sensor.Sensors.external_id IS 'Unique identifier for this sensor within its source system (see source).';
+COMMENT ON COLUMN sensor.Sensors.external_metadata IS 'Additional source-specific metadata (raw payload from the provider).';
+CREATE INDEX IF NOT EXISTS idx_sensors_source ON sensor.Sensors(source);
 
 -- NOTE: Sensor types (including Stem_Radial_Variation) are loaded from data/lookups/sensor_types.csv
 -- NOTE: Sensor-tree links table is created in 16-sensor-tree-links-schema.sql

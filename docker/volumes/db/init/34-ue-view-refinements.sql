@@ -48,7 +48,7 @@ SELECT
     -- Competition proxy: crown starts above 60% of tree height → high pressure
     COALESCE((t.crown_base_height_m / NULLIF(t.height_m, 0)) > 0.6, false) AS competition,
     -- Sensor cross-reference
-    t.aquarius_name      AS aquarius_name,
+    t.sensor_ref      AS sensor_ref,
     EXISTS (
         SELECT 1 FROM sensor.sensor_tree_links stl WHERE stl.tree_id = t.tree_id
     )                   AS has_sensors,
@@ -66,7 +66,7 @@ COMMENT ON VIEW public.ue_trees IS
     'Flat tree catalogue for UE Blueprint import (ST_TreeCatalogEntry). One row '
     'per tree with variant/scenario/species, main-stem DBH, competition flag, '
     'pre-flattened latitude/longitude, and sensor cross-reference '
-    '(aquarius_name + has_sensors). Filter by variant_id to load one time step. '
+    '(sensor_ref + has_sensors). Filter by variant_id to load one time step. '
     'For a tree''s sensors: GET /ue_sensors?linked_tree_entity_id=eq.<tree_entity_id>.';
 
 GRANT SELECT ON public.ue_trees TO anon, authenticated;
@@ -80,9 +80,10 @@ DROP VIEW IF EXISTS public.ue_sensors;
 CREATE VIEW public.ue_sensors AS
 SELECT
     s.sensor_id,
-    s.external_id                              AS aquarius_id,
+    s.source,                                                    -- external provider (e.g. aquarius)
+    s.external_id                              AS external_id,
     s.serial_number                            AS sensor_label,
-    s.external_metadata->>'Parameter'          AS aquarius_parameter,
+    s.external_metadata->>'Parameter'          AS parameter,     -- best-effort from raw payload
     -- Sensor classification
     st.sensor_type_id,
     st.sensor_type_name                         AS sensor_type,
@@ -93,9 +94,11 @@ SELECT
     s.installation_height_m,
     s.sampling_interval_seconds,
     s.installation_date,
-    -- Location
+    -- Location + plot (named monitoring sub-area)
     l.location_id,
     l.location_name,
+    s.plot_id,
+    p.plot_name,
     -- Latest reading (LATERAL backed by idx_sensor_readings_sensor_timestamp)
     lr.timestamp                              AS latest_timestamp,
     lr.value                                  AS latest_value,
@@ -112,6 +115,7 @@ SELECT
 FROM sensor.sensors s
 JOIN  sensor.sensortypes         st  ON s.sensor_type_id  = st.sensor_type_id
 JOIN  shared.locations           l   ON s.location_id    = l.location_id
+LEFT JOIN shared.plots           p   ON s.plot_id        = p.plot_id
 LEFT JOIN LATERAL (
     SELECT sr.timestamp, sr.value, sr.quality
     FROM   sensor.sensorreadings sr

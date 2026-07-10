@@ -45,7 +45,7 @@ SELECT
     -- Competition proxy: crown starts above 60% of tree height → high pressure
     COALESCE((t.crown_base_height_m / NULLIF(t.height_m, 0)) > 0.6, false) AS competition,
     -- Sensor cross-reference
-    t.aquarius_name      AS aquarius_name,
+    t.sensor_ref      AS sensor_ref,
     EXISTS (
         SELECT 1 FROM sensor.sensor_tree_links stl WHERE stl.tree_id = t.tree_id
     )                   AS has_sensors,
@@ -67,7 +67,7 @@ LEFT JOIN trees.stems         st  ON st.tree_id = t.tree_id AND st.stem_number =
 COMMENT ON VIEW public.ue_trees IS
     'Flat tree catalogue for UE Blueprint import. One row per tree with the '
     'location/scenario/variant hierarchy (id + name at each level), species, '
-    'main-stem DBH, competition flag, sensor cross-reference (aquarius_name + '
+    'main-stem DBH, competition flag, sensor cross-reference (sensor_ref + '
     'has_sensors), projected source coordinates (original_x/original_y in '
     'source_crs, EPSG:32632/UTM 32N — preferred for UE placement) and flattened '
     'latitude/longitude. Filter by variant_id to load one time step. For a tree''s '

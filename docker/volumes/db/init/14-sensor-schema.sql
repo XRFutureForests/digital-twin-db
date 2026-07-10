@@ -39,6 +39,7 @@ CREATE TABLE sensor.Sensors (
     location_id INTEGER NOT NULL REFERENCES shared.Locations(location_id) ON DELETE CASCADE,
     sensor_type_id INTEGER NOT NULL REFERENCES sensor.SensorTypes(sensor_type_id),
     campaign_id INTEGER REFERENCES shared.Campaigns(campaign_id) ON DELETE SET NULL,
+    plot_id INTEGER REFERENCES shared.Plots(plot_id) ON DELETE SET NULL,
     sensor_model VARCHAR(200) NOT NULL,
     serial_number VARCHAR(100),
     Position extensions.GEOMETRY(Point, 4326) NOT NULL,

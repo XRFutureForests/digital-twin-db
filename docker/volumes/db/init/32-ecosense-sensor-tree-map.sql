@@ -19,20 +19,21 @@ SET search_path TO trees, sensor, shared, public;
 -- TREES: AQUARIUS SENSOR-NAME ANCHOR
 -- =============================================================================
 -- The Aquarius name here equals the PREFIX of the sensor.sensors.serial_number
--- values for that tree's cluster (e.g. aquarius_name "Beech_Mixed_8" matches
+-- values for that tree's cluster (e.g. sensor_ref "Beech_Mixed_8" matches
 -- "Beech_Mixed_8_Dendrometer", "Beech_Mixed_8_Total_SapFlow", ...).
 -- Populated only for the ~46 instrumented Ecosense trees; NULL elsewhere.
 
 ALTER TABLE trees.Trees
-    ADD COLUMN IF NOT EXISTS aquarius_name VARCHAR(100);
+    ADD COLUMN IF NOT EXISTS sensor_ref VARCHAR(100);
 
-COMMENT ON COLUMN trees.Trees.aquarius_name IS
-    'Aquarius sensor-name prefix ({Species}_{PlotType}_{Seq}, e.g. Beech_Mixed_8) '
-    'identifying the sensor cluster installed on this tree. Matches the prefix of '
-    'sensor.sensors.serial_number. Populated from data/reference/ecosense_sensor_tree_map.csv '
-    'by scripts/import/link_sensors_to_trees.py. NULL for non-instrumented trees.';
+COMMENT ON COLUMN trees.Trees.sensor_ref IS
+    'Source-agnostic reference identifying the sensor cluster installed on this '
+    'tree. Matches the prefix of sensor.sensors.serial_number, so all of a tree''s '
+    'sensors resolve from it. For the current Ecosense data this value is the '
+    'external provider''s name prefix (e.g. Beech_Mixed_8), but the column carries '
+    'no provider semantics. NULL for non-instrumented trees.';
 
-CREATE INDEX IF NOT EXISTS idx_trees_aquarius_name ON trees.Trees(aquarius_name);
+CREATE INDEX IF NOT EXISTS idx_trees_sensor_ref ON trees.Trees(sensor_ref);
 
 -- =============================================================================
 -- DEPRECATE THE OLD PATTERN-MATCH LINKER
@@ -41,9 +42,9 @@ CREATE INDEX IF NOT EXISTS idx_trees_aquarius_name ON trees.Trees(aquarius_name)
 -- number from the Aquarius label and matching it against trees.tree_number. That
 -- is unreliable: Aquarius sequence numbers are not inventory tree numbers, and
 -- tree_number repeats across plots at the single Ecosense location, so every
--- match is ambiguous. It is superseded by aquarius_name-based linking. The
+-- match is ambiguous. It is superseded by sensor_ref-based linking. The
 -- function is kept only to avoid breaking existing references.
 
 COMMENT ON FUNCTION sensor.link_sensors_to_trees_by_pattern() IS
     'DEPRECATED - unreliable (see 32-ecosense-sensor-tree-map.sql). Use '
-    'scripts/import/link_sensors_to_trees.py, which links via trees.aquarius_name.';
+    'scripts/import/link_sensors_to_trees.py, which links via trees.sensor_ref.';

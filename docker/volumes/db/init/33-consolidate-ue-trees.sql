@@ -7,7 +7,7 @@
 -- column-scoped alias of it. Consolidating removes the redundant view. The new
 -- ue_trees is a strict superset of the old ue_trees columns (adds parent_tree_id,
 -- plot_id, time_delta_yrs, variant_sortorder, measurement_date, datasourcetype,
--- aquarius_name, position), so no data is lost — only the /forest_state endpoint
+-- sensor_ref, position), so no data is lost — only the /forest_state endpoint
 -- is retired in favour of /ue_trees.
 --
 -- Idempotent: safe on a fresh install (25 already builds the consolidated
@@ -48,7 +48,7 @@ SELECT
     t.measurement_date,
     dst.data_source_type_name AS datasourcetype,
     COALESCE((t.crown_base_height_m / NULLIF(t.height_m, 0)) > 0.6, false) AS competition,
-    t.aquarius_name      AS aquarius_name,
+    t.sensor_ref      AS sensor_ref,
     ST_Y(t.position)    AS latitude,
     ST_X(t.position)    AS longitude,
     t.position
@@ -63,7 +63,7 @@ LEFT JOIN trees.datasourcetypes dst ON t.data_source_type_id = dst.data_source_t
 COMMENT ON VIEW public.ue_trees IS
     'Flat tree catalogue for UE Blueprint import. One row per tree with variant, '
     'scenario, species, main-stem DBH, pre-flattened latitude/longitude, and the '
-    'Aquarius sensor anchor. Filter by variant_id to load one time step: '
+    'Sensor-cluster reference (sensor_ref). Filter by variant_id to load one time step: '
     'GET /ue_trees?variant_id=eq.<id>. For a tree''s sensors: '
     'GET /ue_sensors?linked_tree_entity_id=eq.<tree_entity_id>.';
 
