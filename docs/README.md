@@ -38,7 +38,7 @@ Scenarios (Current_Conditions, Forest_Fire, Thinning_2035, …) and VariantTypes
 
 To **add a new scenario**: insert a row in `data/lookups/scenarios.csv`, then run `python scripts/admin/reset_database.py` (wipes and reinitializes) or use the `refresh_lookup_functions` SQL functions to add it without a full reset.
 
-To **create growth variants** from an existing baseline: copy the pattern in `scripts/seed/ecosense_growth_variants.sql` — it clones all trees from a baseline VariantType and assigns the new VariantTypeID.
+To **create growth variants** from an existing baseline: copy the pattern in `scripts/seed/ecosense_growth_variants.sql` — it clones all trees from a baseline VariantType and assigns the new variant_type_id.
 
 Full model explanation and API query patterns: [variant-scenario-model.md](variant-scenario-model.md)
 
@@ -54,10 +54,10 @@ Step-by-step Blueprint setup, flat SQL view contracts, and PCG integration live 
 
 ### Run a SILVA growth simulation and write results back
 
-1. Export the input view to R: `SELECT * FROM silva_input WHERE locationid = <N>` (or download as CSV from Studio)
+1. Export the input view to R: `SELECT * FROM silva_input WHERE location_id = <N>` (or download as CSV from Studio)
 2. Run SILVA in R — produces per-tree projections at discrete time steps
 3. Write results back: `python scripts/silva/silva_writeback.py --input silva_output.csv --location-id <N>`
-4. Query results in UE via `/rest/v1/growth_simulations?runid=eq.<UUID>&projectionyear=eq.2035`
+4. Query results in UE via `/rest/v1/growth_simulations?run_id=eq.<UUID>&projection_year=eq.2035`
 
 Workflow detail, column mapping, and species codes: [silva-coupling.md](silva-coupling.md)
 Growth simulations schema and API views: [growth-simulation-schema.md](growth-simulation-schema.md)

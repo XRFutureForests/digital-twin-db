@@ -13,21 +13,21 @@
 
 ## Key concepts
 
-### RunID
+### run_id
 
-A UUID that groups every row produced by a single simulator execution. All rows sharing a `RunID` represent a complete, internally consistent forest state trajectory. UE uses `RunID` when it needs to compare two simulation runs side by side.
+A UUID that groups every row produced by a single simulator execution. All rows sharing a `run_id` represent a complete, internally consistent forest state trajectory. UE uses `run_id` when it needs to compare two simulation runs side by side.
 
-### TreeEntityID
+### tree_entity_id
 
 The stable UUID for a physical tree, shared across all `trees.Trees` variant rows and all `trees.GrowthSimulations` rows. This is the join key between the measured baseline state and the projected future states.
 
-### ProjectionYear
+### projection_year
 
 The calendar year the row describes. A typical SILVA run might output years 2025, 2030, 2035, …, 2100 — one row per tree per year step.
 
-### BaseTreeID
+### base_tree_id
 
-The `trees.Trees.TreeID` row used as the simulation starting point (e.g. the 2024 field inventory row). Allows tracing which baseline measurement the projection was derived from.
+The `trees.Trees.tree_id` row used as the simulation starting point (e.g. the 2024 field inventory row). Allows tracing which baseline measurement the projection was derived from.
 
 ---
 
@@ -35,31 +35,31 @@ The `trees.Trees.TreeID` row used as the simulation starting point (e.g. the 202
 
 ```
 trees.GrowthSimulations
-├── GrowthSimulationID BIGSERIAL PK
-├── RunID             UUID (groups one complete run)
-├── TreeEntityID      UUID (FK: stable tree identity)
-├── BaseTreeID        → trees.Trees.TreeID (input measurement)
-├── LocationID        → shared.Locations
-├── PlotID            → shared.Plots
-├── ScenarioID        → shared.Scenarios (e.g. Climate_Change_2050)
-├── SpeciesID         → shared.Species
-├── SimulatorName     SILVA | FVS | iLand | manual | other
-├── SimulatorVersion  free text
-├── ProjectionYear    integer (1900–2300)
-├── TimeDelta_yrs     years since BaseVariant measurement date
+├── growth_simulation_id BIGSERIAL PK
+├── run_id             UUID (groups one complete run)
+├── tree_entity_id      UUID (FK: stable tree identity)
+├── base_tree_id        → trees.Trees.tree_id (input measurement)
+├── location_id        → shared.Locations
+├── plot_id            → shared.Plots
+├── scenario_id        → shared.Scenarios (e.g. Climate_Change_2050)
+├── species_id         → shared.Species
+├── simulator_name     SILVA | FVS | iLand | manual | other
+├── simulator_version  free text
+├── projection_year    integer (1900–2300)
+├── time_delta_yrs     years since BaseVariant measurement date
 │
 ├── Per-tree dimensions
-│   ├── Height_m, DBH_cm, BasalArea_m2
-│   ├── CrownWidth_m, CrownBaseHeight_m
-│   ├── Volume_m3, Biomass_kg, CarbonContent_kg
-│   ├── HealthScore (0–1)
+│   ├── Height_m, DBH_cm, basal_area_m2
+│   ├── crown_width_m, crown_base_height_m
+│   ├── Volume_m3, Biomass_kg, carbon_content_kg
+│   ├── health_score (0–1)
 │   └── Mortality (boolean)
 │
-└── Stand-level aggregates (repeated across all trees in a RunID+Year)
-    ├── StandBasalArea_m2ha
-    ├── StandVolume_m3ha
-    ├── StandBiomass_tha
-    └── StandStemCount_ha
+└── Stand-level aggregates (repeated across all trees in a run_id+Year)
+    ├── stand_basal_area_m2ha
+    ├── stand_volume_m3ha
+    ├── stand_biomass_tha
+    └── stand_stem_count_ha
 ```
 
 ---
@@ -68,26 +68,26 @@ trees.GrowthSimulations
 
 ### `public.growth_simulations`
 
-Flat view with `scenarioname` and `speciesname` pre-resolved. Primary UE query target.
+Flat view with `scenario_name` and `species_name` pre-resolved. Primary UE query target.
 
 ```
 # Get all trees in a scenario at a projected year
-GET /growth_simulations?scenarioname=eq.Climate_Change_2050&projectionyear=eq.2050
+GET /growth_simulations?scenario_name=eq.Climate_Change_2050&projection_year=eq.2050
 
 # Time series for one tree
-GET /growth_simulations?treeentityid=eq.{uuid}&simulatorname=eq.SILVA&order=projectionyear
+GET /growth_simulations?tree_entity_id=eq.{uuid}&simulator_name=eq.SILVA&order=projection_year
 
 # All trees at a location in year 2075
-GET /growth_simulations?locationid=eq.1&projectionyear=eq.2075
+GET /growth_simulations?location_id=eq.1&projection_year=eq.2075
 ```
 
 ### `public.simulation_runs`
 
-One row per `RunID` — summary of the run (simulator, scenario, year range, tree count). Use to populate a simulation run selector in UE before loading detailed data.
+One row per `run_id` — summary of the run (simulator, scenario, year range, tree count). Use to populate a simulation run selector in UE before loading detailed data.
 
 ```
 GET /simulation_runs
-GET /simulation_runs?scenarioname=eq.Climate_Change_2050
+GET /simulation_runs?scenario_name=eq.Climate_Change_2050
 ```
 
 ---
@@ -106,11 +106,11 @@ GET /simulation_runs?scenarioname=eq.Climate_Change_2050
 
 ## Adding a new simulator
 
-1. Confirm `SimulatorName` is one of `SILVA | FVS | iLand | manual | other`. If adding a new name, update the CHECK constraint in the schema migration and add an `ALTER TABLE` migration.
+1. Confirm `simulator_name` is one of `SILVA | FVS | iLand | manual | other`. If adding a new name, update the CHECK constraint in the schema migration and add an `ALTER TABLE` migration.
 2. Map simulator output columns to the table columns (see XRFF-244 for the SILVA input view).
-3. Set `RunID = gen_random_uuid()` at the start of the write-back script; use the same value for all rows in that run.
-4. Always set `BaseTreeID` to the `trees.Trees.TreeID` row that was used as the simulation starting point.
-5. Populate `SpeciesID` via `SELECT SpeciesID FROM shared.Species WHERE ScientificName = '...'`.
+3. Set `run_id = gen_random_uuid()` at the start of the write-back script; use the same value for all rows in that run.
+4. Always set `base_tree_id` to the `trees.Trees.tree_id` row that was used as the simulation starting point.
+5. Populate `species_id` via `SELECT species_id FROM shared.Species WHERE scientific_name = '...'`.
 
 ---
 

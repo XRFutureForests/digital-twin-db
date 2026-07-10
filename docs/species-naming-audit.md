@@ -11,14 +11,14 @@
 ## How names flow through the pipeline
 
 ```
-DB shared.species.CommonName
-  → HTTPS Blueprint query: species(commonname)
-    → ST_TreeRow.SpeciesName (string)
+DB shared.species.common_name
+  → HTTPS Blueprint query: species(common_name)
+    → ST_TreeRow.species_name (string)
       → UE DataTable / PCG lookup key
         → growpy asset folder name (snake_case of growpy "Standardized Name")
 ```
 
-UE resolves assets by converting `SpeciesName` to snake_case via `standardize_species_name()`.  
+UE resolves assets by converting `species_name` to snake_case via `standardize_species_name()`.  
 growpy exports assets under its `Standardized Name` column (already snake_case).  
 **A mismatch at any step causes wrong trees to spawn or a silent no-spawn.**
 
@@ -28,7 +28,7 @@ growpy exports assets under its `Standardized Name` column (already snake_case).
 
 ### ✅ Matching species (8/12)
 
-| DB CommonName | growpy Standardized Name | Scientific Name |
+| DB common_name | growpy Standardized Name | Scientific Name |
 |---|---|---|
 | European Beech | `european_beech` | Fagus sylvatica |
 | Norway Spruce | `norway_spruce` | Picea abies |
@@ -89,7 +89,7 @@ Both appear in growpy yield-table dataset files (`common_ash_merged.csv`, `small
 #### Issue 4 — DB species with no growpy model
 **Severity: Low (not in Ecosense dataset)**
 
-| DB CommonName | GBIF Key | Notes |
+| DB common_name | GBIF Key | Notes |
 |---|---|---|
 | Norway Maple | 3189846 | No growpy model. Fallback: `field_maple` |
 | Wild Service Tree | 3012567 (synonym) | No growpy model. Fallback: `rowan_mountain_ash` |
@@ -104,7 +104,7 @@ For DB species that have no matching growpy asset, UE should:
 1. Log a `UE_LOG` warning: `"No asset for species '%s' — using fallback '%s'"`.
 2. Use the fallback below:
 
-| DB CommonName | Fallback Asset |
+| DB common_name | Fallback Asset |
 |---|---|
 | Norway Maple | `field_maple` |
 | Wild Service Tree | `rowan_mountain_ash` |
@@ -130,16 +130,16 @@ After updating `species.csv`, apply this migration to any populated DB instance:
 ```sql
 -- Fix: Pedunculate Oak → European Oak
 UPDATE shared.species
-SET commonname = 'European Oak'
-WHERE commonname = 'Pedunculate Oak' AND scientificname = 'Quercus robur';
+SET common_name = 'European Oak'
+WHERE common_name = 'Pedunculate Oak' AND scientific_name = 'Quercus robur';
 
 -- Fix: Birch → Silver Birch
 UPDATE shared.species
-SET commonname   = 'Silver Birch',
-    scientificname = 'Betula pendula',
-    gbifkey      = 5334357,
-    gbifacceptedname = 'Betula pendula'
-WHERE commonname = 'Birch';
+SET common_name   = 'Silver Birch',
+    scientific_name = 'Betula pendula',
+    gbif_key      = 5334357,
+    gbif_accepted_name = 'Betula pendula'
+WHERE common_name = 'Birch';
 
 -- Add: Common Ash (run import_trees.py or insert directly)
 -- Add: Small-leaved Linden (run import_trees.py or insert directly)

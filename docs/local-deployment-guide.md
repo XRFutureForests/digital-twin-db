@@ -132,7 +132,7 @@ Set these as Blueprint variables or in a `DT_Config` DataTable. See the XR Futur
 
 **Quick test query (paste in browser):**
 ```
-http://localhost:8000/rest/v1/trees?select=variantid,height_m,position,species(commonname),stems(dbh_cm)&limit=5&apikey=<YOUR_ANON_KEY>
+http://localhost:8000/rest/v1/trees?select=variant_id,height_m,position,species(common_name),stems(dbh_cm)&limit=5&apikey=<YOUR_ANON_KEY>
 ```
 
 Replace `<YOUR_ANON_KEY>` with the value from your `.env`.

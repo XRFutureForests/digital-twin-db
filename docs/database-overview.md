@@ -170,7 +170,7 @@ Central reference tables used across all domains.
 |-------|---------|
 | **Locations** | Forest plots with PostGIS boundaries, elevation, slope, soil type |
 | **Plots** | Sub-plot divisions within locations with PostGIS boundaries |
-| **Species** | Tree species (common name, scientific name, growth characteristics, IsDeciduous) |
+| **Species** | Tree species (common name, scientific name, growth characteristics, is_deciduous) |
 | **Scenarios** | Named analysis variants (Current_Conditions, Climate_Change_2050) |
 | **VariantTypes** | How a variant's data was produced: original, processed, manual, simulated_growth, user_input, sensor_derived, model_output, repeat_measurement |
 | **Campaigns** | Data collection events (LiDAR flights, field inventories) with methodology |
@@ -194,21 +194,21 @@ LiDAR scan data and processing variants with scanner hardware tracking.
 
 | Field | Description |
 |-------|-------------|
-| PointCloudID | Unique row identifier |
-| ParentPointCloudID | Links to source point cloud for processing lineage |
-| CampaignID | Links scan to data collection campaign |
-| ScannerID | Physical scanner hardware used for this scan |
-| ScanDate | Acquisition timestamp |
-| FilePath | S3/storage reference |
-| SourceCRS | EPSG code of original coordinate reference system |
-| PlatformType | Scanning platform: terrestrial, aerial, mobile, UAV |
-| FlightAltitude_m | Flight altitude above ground (for aerial/UAV) |
-| FlightSpeed_ms | Platform speed during scanning in m/s |
-| ScanAngle_deg | Scanner field of view angle in degrees |
+| point_cloud_id | Unique row identifier |
+| parent_point_cloud_id | Links to source point cloud for processing lineage |
+| campaign_id | Links scan to data collection campaign |
+| scanner_id | Physical scanner hardware used for this scan |
+| scan_date | Acquisition timestamp |
+| file_path | S3/storage reference |
+| source_crs | EPSG code of original coordinate reference system |
+| platform_type | Scanning platform: terrestrial, aerial, mobile, UAV |
+| flight_altitude_m | Flight altitude above ground (for aerial/UAV) |
+| flight_speed_ms | Platform speed during scanning in m/s |
+| scan_angle_deg | Scanner field of view angle in degrees |
 | Overlap_percent | Swath overlap percentage (for aerial scans) |
-| PointCount | Number of points |
-| PointDensity_per_m2 | Average point density in points per square meter |
-| ProcessingStatus | pending, processing, completed, failed, cancelled |
+| point_count | Number of points |
+| point_density_per_m2 | Average point density in points per square meter |
+| processing_status | pending, processing, completed, failed, cancelled |
 
 ### 3. 🟩 Trees Schema
 
@@ -217,88 +217,88 @@ Individual tree measurements with multi-stem support.
 ```mermaid
 erDiagram
     Trees {
-        int TreeID PK
-        uuid TreeEntityID "Persistent tree identity"
-        int VariantID FK "Forest state group"
-        int ParentTreeID FK
-        int CampaignID FK
-        int LocationID FK
-        int PlotID FK
-        int SpeciesID FK
-        int TreeStatusID FK
-        date MeasurementDate
+        int tree_id PK
+        uuid tree_entity_id "Persistent tree identity"
+        int variant_id FK "Forest state group"
+        int parent_tree_id FK
+        int campaign_id FK
+        int location_id FK
+        int plot_id FK
+        int species_id FK
+        int tree_status_id FK
+        date measurement_date
         varchar DataSourceType
         float Height_m
         float Volume_m3
         geometry Position
-        geometry PositionOriginal
-        int SourceCRS "EPSG code"
-        float CrownOffsetX_m
-        float CrownOffsetY_m
+        geometry position_original
+        int source_crs "EPSG code"
+        float crown_offset_x_m
+        float crown_offset_y_m
         float Age_years
-        float HealthScore
-        float CarbonContent_kg
-        float SpeciesConfidence
-        float PositionConfidence
-        float HeightConfidence
-        date StatusChangeDate
+        float health_score
+        float carbon_content_kg
+        float species_confidence
+        float position_confidence
+        float height_confidence
+        date status_change_date
     }
 
     Stems {
-        int StemID PK
-        int TreeID FK
-        int StemNumber
+        int stem_id PK
+        int tree_id FK
+        int stem_number
         float DBH_cm
-        int TaperTypeID FK
-        int StraightnessTypeID FK
-        float StemVolume_m3
+        int taper_type_id FK
+        int straightness_type_id FK
+        float stem_volume_m3
     }
 
     PhenologyObservations {
-        int PhenologyObservationID PK
-        int TreeID FK
-        date ObservationDate
-        varchar PhenophaseType
-        varchar PhenophaseStatus
+        int phenology_observation_id PK
+        int tree_id FK
+        date observation_date
+        varchar phenophase_type
+        varchar phenophase_status
         float Intensity_percent
         varchar Observer
     }
 
     Deadwood {
-        int DeadwoodID PK
-        int LocationID FK
-        int PlotID FK
-        int TreeID FK
-        int SpeciesID FK
-        varchar WoodType
+        int deadwood_id PK
+        int location_id FK
+        int plot_id FK
+        int tree_id FK
+        int species_id FK
+        varchar wood_type
         float Length_m
         float Diameter_cm
-        int DecayClass
+        int decay_class
         float Volume_m3
         geometry Position
     }
 
     GroundVegetation {
-        int GroundVegetationID PK
-        int LocationID FK
-        int PlotID FK
-        varchar SpeciesName
-        float CoverPercent
+        int ground_vegetation_id PK
+        int location_id FK
+        int plot_id FK
+        varchar species_name
+        float cover_percent
         float Height_cm
         varchar Layer
-        date MeasurementDate
+        date measurement_date
     }
 
     Campaigns {
-        int CampaignID PK
-        varchar CampaignName
-        varchar CampaignType
-        date StartDate
+        int campaign_id PK
+        varchar campaign_name
+        varchar campaign_type
+        date start_date
     }
 
     TreeStatus {
-        int TreeStatusID PK
-        varchar TreeStatusName
+        int tree_status_id PK
+        varchar tree_status_name
     }
 
     Trees ||--o{ Stems : "has_stems"
@@ -312,17 +312,17 @@ erDiagram
 
 | Field | Description |
 |-------|-------------|
-| `TreeEntityID` | Persistent UUID identifying the physical tree across all variants |
-| `CampaignID` | Links measurement to data collection campaign |
-| `PlotID` | Sub-plot within the location where the tree is located |
-| `MeasurementDate` | Actual field measurement date (vs. import date) |
+| `tree_entity_id` | Persistent UUID identifying the physical tree across all variants |
+| `campaign_id` | Links measurement to data collection campaign |
+| `plot_id` | Sub-plot within the location where the tree is located |
+| `measurement_date` | Actual field measurement date (vs. import date) |
 | `DataSourceType` | How data was collected: lidar, field, photogrammetry, estimated, simulated |
-| `SourceCRS` | EPSG code of original coordinate reference system for PositionOriginal |
+| `source_crs` | EPSG code of original coordinate reference system for position_original |
 | `CrownOffsetX/Y_m` | Crown asymmetry (offset from trunk position) |
-| `SpeciesConfidence` | 0-1 confidence in species identification |
-| `PositionConfidence` | 0-1 confidence in position accuracy |
-| `HeightConfidence` | 0-1 confidence in height measurement |
-| `StatusChangeDate` | Date when tree status changed (e.g., mortality date) |
+| `species_confidence` | 0-1 confidence in species identification |
+| `position_confidence` | 0-1 confidence in position accuracy |
+| `height_confidence` | 0-1 confidence in height measurement |
+| `status_change_date` | Date when tree status changed (e.g., mortality date) |
 
 **Morphology Lookup Tables:**
 
@@ -338,7 +338,7 @@ erDiagram
 | **PhenologyObservations** | Tree phenology observations tracking seasonal development phases (bud_break, leaf_out, flowering, fruit_set, leaf_color, leaf_fall, dormancy) |
 | **Deadwood** | Dead wood inventory including standing dead, fallen logs, stumps, and branches with decay classification (1-5) |
 | **GroundVegetation** | Ground vegetation survey records by plot and layer (herb, shrub, moss, litter, fern, grass) |
-| **GrowthSimulations** | Per-tree dimensional projections from external growth simulators (SILVA, FVS, iLand, manual) at discrete future years, keyed by `RunID` and `TreeEntityID`; powers the Unreal Time Machine feature |
+| **GrowthSimulations** | Per-tree dimensional projections from external growth simulators (SILVA, FVS, iLand, manual) at discrete future years, keyed by `run_id` and `tree_entity_id`; powers the Unreal Time Machine feature |
 
 ### 4. 🟧 Sensor Schema
 
@@ -347,22 +347,22 @@ Environmental monitoring hardware and time-series data.
 ```mermaid
 erDiagram
     Sensors {
-        int SensorID PK
-        int LocationID FK
-        int SensorTypeID FK
-        int CampaignID FK
-        varchar SensorModel
-        varchar SerialNumber
+        int sensor_id PK
+        int location_id FK
+        int sensor_type_id FK
+        int campaign_id FK
+        varchar sensor_model
+        varchar serial_number
         geometry Position
-        geometry PositionOriginal
-        int SourceCRS "EPSG code"
-        float InstallationHeight_m
-        boolean IsActive
+        geometry position_original
+        int source_crs "EPSG code"
+        float installation_height_m
+        boolean is_active
     }
 
     SensorReadings {
-        bigint SensorReadingID PK
-        int SensorID FK
+        bigint sensor_reading_id PK
+        int sensor_id FK
         timestamp Timestamp
         float Value
         varchar Unit
@@ -371,16 +371,16 @@ erDiagram
 
     SensorTreeLinks {
         int SensorTreeLinkID PK
-        int SensorID FK
-        int TreeID FK
+        int sensor_id FK
+        int tree_id FK
         varchar Description
-        date StartDate
-        date EndDate
+        date start_date
+        date end_date
     }
 
     SensorTypes {
-        int SensorTypeID PK
-        varchar SensorTypeName
+        int sensor_type_id PK
+        varchar sensor_type_name
     }
 
     Sensors ||--o{ SensorReadings : "records"
@@ -394,13 +394,13 @@ erDiagram
 
 | Field | Description |
 |-------|-------------|
-| `CampaignID` | Deployment campaign this sensor was installed during |
-| `SourceCRS` | EPSG code of original coordinate reference system for PositionOriginal |
-| `InstallationHeight_m` | Height of sensor installation above ground in meters |
+| `campaign_id` | Deployment campaign this sensor was installed during |
+| `source_crs` | EPSG code of original coordinate reference system for position_original |
+| `installation_height_m` | Height of sensor installation above ground in meters |
 
-**SensorTreeLinks** now includes `StartDate` and `EndDate` fields to track the temporal validity of sensor-to-tree relationships.
+**SensorTreeLinks** now includes `start_date` and `end_date` fields to track the temporal validity of sensor-to-tree relationships.
 
-**External Integration:** `ExternalID` and `ExternalMetadata` columns enable synchronization with the Aquarius API for automated data ingestion.
+**External Integration:** `external_id` and `ExternalMetadata` columns enable synchronization with the Aquarius API for automated data ingestion.
 
 ### 5. 🟦 Environments Schema
 
@@ -408,12 +408,12 @@ Aggregated environmental conditions per location/time period.
 
 | Field | Description |
 |-------|-------------|
-| AvgTemperature_C | Mean temperature |
-| AvgHumidity_percent | Mean humidity |
-| TotalPrecipitation_mm | Precipitation total |
-| AvgSoilMoisture_percent | Soil moisture |
-| StressFactor | 0.0-1.0 combined stress indicator |
-| NutrientNitrogen_mg_kg | Soil nitrogen content |
+| avg_temperature_c | Mean temperature |
+| avg_humidity_percent | Mean humidity |
+| total_precipitation_mm | Precipitation total |
+| avg_soil_moisture_percent | Soil moisture |
+| stress_factor | 0.0-1.0 combined stress indicator |
+| nutrient_nitrogen_mg_kg | Soil nitrogen content |
 
 ---
 
@@ -421,25 +421,25 @@ Aggregated environmental conditions per location/time period.
 
 ### Persistent Tree Identity
 
-The `TreeEntityID` (UUID) provides a stable identifier for physical trees across all measurement variants:
+The `tree_entity_id` (UUID) provides a stable identifier for physical trees across all measurement variants:
 
 ```mermaid
 flowchart TB
     subgraph Physical["Physical Tree in Forest"]
-        Tree["TreeEntityID: abc-123"]
+        Tree["tree_entity_id: abc-123"]
     end
 
     subgraph Variants["Measurement Variants"]
-        V1["TreeID: 1<br/>Campaign: 2024 Inventory<br/>Height: 15.2m"]
-        V2["TreeID: 5<br/>Campaign: 2025 Inventory<br/>Height: 15.8m"]
-        V3["TreeID: 12<br/>Campaign: LiDAR 2025<br/>Height: 15.9m"]
+        V1["tree_id: 1<br/>Campaign: 2024 Inventory<br/>Height: 15.2m"]
+        V2["tree_id: 5<br/>Campaign: 2025 Inventory<br/>Height: 15.8m"]
+        V3["tree_id: 12<br/>Campaign: LiDAR 2025<br/>Height: 15.9m"]
     end
 
     Tree --> V1
     Tree --> V2
     Tree --> V3
-    V1 -.->|ParentTreeID| V2
-    V2 -.->|ParentTreeID| V3
+    V1 -.->|parent_tree_id| V2
+    V2 -.->|parent_tree_id| V3
 
     style Physical fill:#2d5a3d,color:#fff
     style V1 fill:#5CB89C
@@ -462,9 +462,9 @@ Campaigns track data collection events with full methodology:
 **Workflow:**
 
 1. Create Campaign record with dates, methodology, equipment
-2. Import data with `CampaignID` reference
-3. Set `VariantTypeID` = "repeat_measurement" for follow-up surveys
-4. Link to parent tree row via `ParentTreeID` using `TreeEntityID` matching
+2. Import data with `campaign_id` reference
+3. Set `variant_type_id` = "repeat_measurement" for follow-up surveys
+4. Link to parent tree row via `parent_tree_id` using `tree_entity_id` matching
 
 ### Variant-Based Lineage
 
@@ -502,16 +502,16 @@ Per-field confidence scores enable quality-aware analysis:
 
 ```sql
 -- Find trees with uncertain species identification
-SELECT TreeEntityID, SpeciesID, SpeciesConfidence
+SELECT tree_entity_id, species_id, species_confidence
 FROM trees.trees
-WHERE SpeciesConfidence < 0.8
-ORDER BY SpeciesConfidence;
+WHERE species_confidence < 0.8
+ORDER BY species_confidence;
 
 -- Compare LiDAR vs field measurements
-SELECT TreeEntityID, DataSourceType, Height_m, HeightConfidence
+SELECT tree_entity_id, DataSourceType, Height_m, height_confidence
 FROM trees.trees
-WHERE TreeEntityID = 'abc-123'
-ORDER BY MeasurementDate;
+WHERE tree_entity_id = 'abc-123'
+ORDER BY measurement_date;
 ```
 
 ### Spatial Data (PostGIS)
@@ -520,7 +520,7 @@ All positions stored as PostGIS geometries:
 
 ```sql
 Position         -- WGS84 (EPSG:4326) for standardized queries
-PositionOriginal -- Original CRS preserved (e.g., EPSG:32632)
+position_original -- Original CRS preserved (e.g., EPSG:32632)
 Boundary         -- Polygon geometries for locations
 ```
 
@@ -531,7 +531,7 @@ Every data modification is tracked:
 ```mermaid
 flowchart LR
     Change["Field Update"] --> AuditLog
-    AuditLog --> |"Records"| Details["FieldName<br/>OldValue → NewValue<br/>UserID<br/>Timestamp<br/>IPAddress"]
+    AuditLog --> |"Records"| Details["field_name<br/>old_value → new_value<br/>user_id<br/>Timestamp<br/>ip_address"]
     style AuditLog fill:#F4EFA9,stroke:#c7bb1a,color:#3a3600
     style Change fill:#f5f5f5,stroke:#4f4f4f,color:#2a2a2a
     style Details fill:#FAF6D2,stroke:#c7bb1a,color:#4a4500
@@ -614,10 +614,10 @@ flowchart TB
 
 ```bash
 # Get trees with species info
-GET /rest/v1/trees?select=*,species(commonname)
+GET /rest/v1/trees?select=*,species(common_name)
 
 # Filter by location
-GET /rest/v1/trees?locationid=eq.4
+GET /rest/v1/trees?location_id=eq.4
 
 # Spatial query (via RPC)
 POST /rest/v1/rpc/trees_within_radius
@@ -627,16 +627,16 @@ POST /rest/v1/rpc/trees_within_radius
 
 ```sql
 -- Trees with stems at location
-SELECT t.*, s.dbh_cm, sp.commonname
+SELECT t.*, s.dbh_cm, sp.common_name
 FROM trees.trees t
-JOIN trees.stems s ON t.treeid = s.treeid
-JOIN shared.species sp ON t.speciesid = sp.speciesid
-WHERE t.locationid = 4;
+JOIN trees.stems s ON t.tree_id = s.tree_id
+JOIN shared.species sp ON t.species_id = sp.species_id
+WHERE t.location_id = 4;
 
 -- Sensor readings for tree correlation
 SELECT sr.timestamp, sr.value, stl.tree_id
 FROM sensor.sensorreadings sr
-JOIN sensor.sensor_tree_links stl ON sr.sensorid = stl.sensor_id
+JOIN sensor.sensor_tree_links stl ON sr.sensor_id = stl.sensor_id
 WHERE sr.timestamp > NOW() - INTERVAL '30 days';
 ```
 

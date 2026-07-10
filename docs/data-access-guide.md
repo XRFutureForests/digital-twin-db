@@ -66,7 +66,7 @@ curl -X POST "http://<SERVER>:8000/rest/v1/trees" \
   -H "apikey: <ANON_KEY>" \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"locationid": 5, "speciesid": 1, "varianttypeid": 1, "height_m": 20.0, ...}'
+  -d '{"location_id": 5, "species_id": 1, "variant_type_id": 1, "height_m": 20.0, ...}'
 ```
 
 The `access_token` is a short-lived JWT (1 hour). Refresh it:
@@ -157,16 +157,16 @@ Minimum required fields when inserting into `trees`:
 
 | Field | Type | Example |
 |-------|------|---------|
-| `locationid` | integer | `5` (Ecosense site) |
-| `varianttypeid` | integer | `1` (original) |
+| `location_id` | integer | `5` (Ecosense site) |
+| `variant_type_id` | integer | `1` (original) |
 | `position` | geometry | `ST_GeomFromText('POINT(7.877 48.268)', 4326)` |
 
 Important for Unreal Engine:
 
 | Field | Notes |
 |-------|-------|
-| `speciesid` | Links to species for asset selection |
-| `scenarioid` | Required for scenario/variant switching in UE |
+| `species_id` | Links to species for asset selection |
+| `scenario_id` | Required for scenario/variant switching in UE |
 | `height_m` | Used for PCG tree scaling |
 | `age_years` | Used for Time Machine projection |
 
@@ -180,10 +180,10 @@ See [data/templates/DATA_PREPARATION_GUIDE.md](../data/templates/DATA_PREPARATIO
 
 ```sql
 -- Example: fix a wrong height recorded in the field
-UPDATE trees."Trees" SET "Height_m" = 22.5 WHERE "TreeID" = 1234;
+UPDATE trees."Trees" SET "Height_m" = 22.5 WHERE "tree_id" = 1234;
 
 -- Example: backfill a missing DBH on a stem
-UPDATE trees."Stems" SET "DBH_cm" = 31.2 WHERE "StemID" = 5678;
+UPDATE trees."Stems" SET "DBH_cm" = 31.2 WHERE "stem_id" = 5678;
 ```
 
 **Automatic audit logging:** AFTER UPDATE triggers on `trees.Trees`, `trees.Stems`, `environments.Environments`, and `pointclouds.PointClouds` log every change to `shared.AuditLog`. The log records the field name, old value, new value, timestamp, and the GoTrue user ID of whoever made the change. No manual action is required.
@@ -192,12 +192,12 @@ Audited fields:
 
 | Table | Fields automatically logged |
 |-------|----------------------------|
-| `trees.Trees` | `Height_m`, `CrownWidth_m`, `HealthScore`, `TreeStatusID` |
-| `trees.Stems` | `DBH_cm`, `StemHeight_m` |
-| `environments.Environments` | `AvgTemperature_C`, `StressFactor` |
-| `pointclouds.PointClouds` | `ProcessingStatus` |
+| `trees.Trees` | `Height_m`, `crown_width_m`, `health_score`, `tree_status_id` |
+| `trees.Stems` | `DBH_cm`, `stem_height_m` |
+| `environments.Environments` | `avg_temperature_c`, `stress_factor` |
+| `pointclouds.PointClouds` | `processing_status` |
 
-Changes to other fields (e.g., `SpeciesID`, `MeasurementDate`) are not automatically audited by the trigger. To add a field, edit the `WHEN 'trees' THEN` block in `docker/volumes/db/init/21-audit-functions.sql` — follow the existing pattern:
+Changes to other fields (e.g., `species_id`, `measurement_date`) are not automatically audited by the trigger. To add a field, edit the `WHEN 'trees' THEN` block in `docker/volumes/db/init/21-audit-functions.sql` — follow the existing pattern:
 
 ```sql
 IF OLD."YourField" IS DISTINCT FROM NEW."YourField" THEN
