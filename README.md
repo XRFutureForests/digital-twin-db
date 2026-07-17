@@ -68,9 +68,7 @@ All services should show "healthy" status. If any show "Exit" or "Restarting", c
 docker compose logs [service-name]
 ```
 
-For more troubleshooting, see [docker/README.md](docker/README.md).
-
-**New to Supabase?** See [docs/supabase-introduction.md](docs/supabase-introduction.md) to learn what Supabase is and how it works.
+For more troubleshooting, see [docs/docker/README.md](docs/docker/README.md).
 
 ---
 
@@ -88,15 +86,16 @@ This repository implements the data tier for digital forest twin projects using 
 - **Edge Functions** - Serverless business logic (Deno/TypeScript)
 - **Supabase Studio** - Visual database management interface
 
-### Three-Layer Architecture
+### Schema and Lookup Data
 
 The database initialization follows a clean separation of concerns:
 
 | Layer | Files | Purpose |
 |-------|-------|---------|
-| **1. Structure** | `10-16` | Database schemas, tables, indexes, constraints |
-| **2. Functions** | `20-24` | Security policies, audit functions, API views |
-| **3. Lookup Data** | `30-31` | Reference data loaded from CSV files |
+| **1. Schema** | `10-baseline-schema.sql` | Consolidated schema baseline — schemas, tables, indexes, constraints, RLS policies, audit functions, API views. Additional numbered files (`11+`) hold schema changes added since the baseline; each one is additive, never restructuring an earlier file's objects. |
+| **2. Lookup Data** | `30-31` | Reference data loaded from CSV files |
+
+Schema history itself lives in `supabase/migrations/` (Supabase CLI) — see `AGENTS.md` §"Schema Migrations" for the workflow.
 
 **User data** (trees, sensors, readings) is NOT loaded during initialization—that's a separate user-triggered import step using the scripts in `scripts/`.
 
@@ -110,7 +109,7 @@ This separation allows you to:
 
 ## Database Structure
 
-The database organizes forest research data into 6 specialized schemas:
+The database organizes forest research data into 7 specialized schemas:
 
 ### 1. **shared** - Reference Data
 
@@ -121,7 +120,7 @@ Core reference tables used across all schemas:
 - **Plots** - Sub-plot divisions within locations
 - **Campaigns** - Data collection events (LiDAR flights, field inventories)
 - **SoilTypes**, **ClimateZones** - Environmental classification
-- **Scenarios**, **VariantTypes** - Analysis variant management
+- **Scenarios**, **VariantTypes** - Analysis variant management (see "Location → Scenario → Variant hierarchy" below)
 - **ManagementEvents**, **DisturbanceEvents** - Forest event tracking
 - **Processes**, **AuditLog** - Change tracking and audit trail
 
@@ -140,9 +139,7 @@ Individual tree data with multi-stem support:
 
 - **Trees** - Tree measurements and attributes with persistent TreeEntityID
 - **Stems** - Multi-stem measurements for trees with multiple main stems
-- **PhenologyObservations** - Seasonal development phase tracking
-- **Deadwood** - Dead wood inventory with decay classification
-- **GroundVegetation** - Ground vegetation surveys
+- **PhenologyObservations** - Seasonal development phase tracking (audited: `phenophase_status`, `intensity_percent`)
 - **TreeStatus**, **TaperTypes**, **StraightnessTypes**, **BranchingPatterns**, **BarkCharacteristics** - Classification tables
 
 ### 4. **sensor** - Environmental Monitoring
@@ -164,11 +161,24 @@ Processed environmental data:
 
 - **Images** - Aerial and ground-based imagery with spatial metadata and camera parameters
 
-All tables include:
+### 7. **forest_floor** - Plot-Level Surveys
 
-- **Variant tracking** - Version control for data iterations
-- **Audit logging** - Full change history with user attribution
+Site/plot-level surveys, not tied to an individual tree:
+
+- **Deadwood** - Dead wood inventory with decay classification
+- **GroundVegetation** - Ground vegetation surveys
+
+Most tables include:
+
 - **Row-Level Security** - Fine-grained access control
+- **Audit logging** - Full change history with user attribution, on tables where individual field values are expected to change after entry: `trees.Trees`, `trees.Stems`, `trees.PhenologyObservations`, `environments.Environments`, `pointclouds.PointClouds`
+- **Variant tracking** - `trees.Trees`, `pointclouds.PointClouds`, and `environments.Environments` carry a `variant_id`/`variant_type_id`; child tables (`trees.Stems`, `trees.PhenologyObservations`) inherit variant context through their parent row. `forest_floor.*` tables are plot-level snapshots and are not currently versioned.
+
+### Location → Scenario → Variant Hierarchy
+
+Forest state is organized in a strict three-level hierarchy: each **Location** (a site, e.g. `ecosense`, `mathisle`) owns its own **Scenarios** (management regimes, location-scoped and unique per location), and each Scenario owns a chain of **Variants** — one per time step or growth projection, linked via `parent_variant_id` (e.g. `baseline_2025` → `growth_2035` → `growth_2045`). `trees.Trees`, `pointclouds.PointClouds`, and `environments.Environments` all key off this hierarchy through their `variant_id` / `variant_type_id` columns, which is how the API serves "the forest as it looked/will look at time X" from a single flat query (`GET /ue_trees?variant_id=eq.<id>`).
+
+Scenarios and Variants are created per-site by the growth-variant seed scripts (`scripts/seed/`), not loaded from a global CSV. Full model explanation and API query patterns: [docs/variant-scenario-model.md](docs/variant-scenario-model.md).
 
 ---
 
@@ -194,8 +204,8 @@ Import data in this sequence so that foreign-key relationships resolve correctly
 | Step | Command | What it does |
 |------|---------|--------------|
 | 1 | `python scripts/import/import_trees.py <csv_file>` | Imports tree measurements from a prepared CSV |
-| 2 | `python scripts/import/import_sensor_data.py` | Imports sensor metadata from the Aquarius API |
-| 3 | `python scripts/import/link_sensors_to_trees.py` | Links sensors to nearby trees by proximity |
+| 2 | `python scripts/import/ingest_sensor_data.py sensors <file>` / provider connector | Imports sensor metadata and readings (e.g. via the [aquarius-connector](../aquarius-connector) repo for Aquarius) |
+| 3 | `python scripts/import/link_sensors_to_trees.py` | Links sensors to trees by matching sensor serial-number prefix to `trees.Trees.sensor_ref` |
 
 ### Import Tree Data
 
@@ -214,26 +224,28 @@ python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv --d
 
 **Preparing your own data?** Follow the step-by-step [Data Preparation Guide](data/templates/DATA_PREPARATION_GUIDE.md) — it covers column mapping, coordinate transformation, unit conversion, and species lookup, with worked examples in Python and R.
 
-### Import & Sync Sensor Data
+### Import Sensor Data from Any Provider
 
-Sensor data comes from the Aquarius API (requires university VPN):
+Sensor ingestion is provider-agnostic: `scripts/import/ingest_sensor_data.py` loads sensors and readings from any CSV or JSON export via two source-agnostic bulk RPCs (`bulk_upsert_sensors`, `bulk_insert_readings`) — supply a column mapping and no code changes are needed per provider. Both RPCs are idempotent, so re-running against the same export is always safe.
+
+Aquarius (University of Freiburg sensor network) is one such provider. Its sync, discovery, and metadata-enrichment scripts live in the sibling [aquarius-connector](../aquarius-connector) repo, which talks to this DB only through the same two bulk RPCs — see that repo's README for setup and usage (requires university network access).
 
 ```bash
-# Import sensor metadata and initial readings
-python scripts/import/import_sensor_data.py
+# Preview without writing (validates required fields, types, and value ranges)
+python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv --dry-run
 
-# Link sensors to nearby trees (run after importing both trees and sensors)
+# Load sensors, then readings (readings resolve by sensor_id or by external_id)
+python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv
+python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
+
+# If your source file uses different column names, map them to the RPC field names
+python scripts/import/ingest_sensor_data.py sensors data/imports/vendor_export.csv --mapping data/imports/vendor_mapping.json
+
+# After loading sensors from any provider, link them to inventory trees
 python scripts/import/link_sensors_to_trees.py
-
-# Sync latest readings from Aquarius (default: last 30 days)
-python scripts/import/sync_aquarius.py
-
-# Sync a custom time range
-python scripts/import/sync_aquarius.py 7
-
-# List sensors with recent data in Aquarius
-python scripts/import/find_active_sensors.py
 ```
+
+A mapping file is a flat JSON object of `{"source_column": "rpc_field_name"}`. Run `ingest_sensor_data.py --help` for the full field reference (required fields, `position` vs `latitude`/`longitude`, valid `quality` values).
 
 ### Managing Reference Data
 
@@ -254,38 +266,9 @@ See [`data/README.md`](data/README.md) for the full lookup table reference and [
 
 ## Edge Functions
 
-External data sources and processing services communicate with the database through Supabase Edge Functions. These are serverless TypeScript/Deno functions that act as API gateways.
+Supabase Edge Functions (serverless TypeScript/Deno) are available as an extension point, but this repo doesn't currently ship any custom ones — the Aquarius sensor sync that used to run here (`ecosense-ingest`) was extracted to the [aquarius-connector](../aquarius-connector) repo, which talks to this DB over its REST API instead of running inside it. `docker/volumes/functions/` still carries the platform's own `main/` router and `hello/` example, plus generic `_shared/` helpers (`database.ts`, `retry.ts`, `validators.ts`) available for a future function.
 
-**Note:** Edge Functions auto-reload on file changes during development - no restart needed!
-
-### Available Functions
-
-#### `/functions/v1/ecosense-ingest`
-
-Syncs sensor data from Aquarius API (EcoSense sensors).
-
-**Trigger manually:**
-
-```bash
-curl -X POST "http://localhost:8000/functions/v1/ecosense-ingest?days_back=7" \
-  -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY"
-```
-
-**Returns:**
-
-```json
-{
-  "success": true,
-  "count": 1523,
-  "sensors": 4
-}
-```
-
-**Authentication:** All Edge Functions require `SERVICE_ROLE_KEY` for authentication.
-
-**Configuration:** Edge Function credentials are set in `docker/.env`:
-
-- `AQUARIUS_HOSTNAME`, `AQUARIUS_USERNAME`, `AQUARIUS_PASSWORD`
+**Note:** Edge Functions auto-reload on file changes during development — no restart needed.
 
 ---
 
@@ -435,17 +418,16 @@ All documentation lives in the `docs/` directory. Start with **[docs/README.md](
 
 | Topic | Document | Description |
 |-------|----------|-------------|
-| **Getting Started** | [Supabase Introduction](docs/supabase-introduction.md) | What Supabase is and how it works |
 | **Data Import** | [Data Preparation Guide](data/templates/DATA_PREPARATION_GUIDE.md) | Preparing CSVs for the tree importer |
 | | [Data Directory Guide](data/README.md) | Lookup tables, templates, and raw data reference |
 | | [Scripts Guide](scripts/README.md) | All import, admin, and utility scripts with examples |
-| **Architecture** | [Architecture Overview](docs/ARCHITECTURE.md) | System design, schemas, and data flow |
+| **Architecture** | [Architecture Overview](docs/architecture.md) | System design, schemas, and data flow |
 | | [Database Schema](docs/database-schema.md) | Full schema specifications and design rationale |
 | | [Database ERD](docs/database-erd.dbml) | Entity relationship diagram (DBML format) |
-| | [Database Overview](docs/project/database-overview.md) | High-level database structure summary |
-| **Operations** | [API Quick Reference](docs/api-quick-reference.md) | URLs, credentials, REST examples, Docker commands |
-| | [Deployment Guide](docs/project/deployment-guide.md) | Production deployment instructions |
-| | [Troubleshooting](docs/project/troubleshooting.md) | Common issues and solutions |
+| | [Database Overview](docs/database-overview.md) | High-level database structure summary |
+| **Operations** | [API Reference](docs/api-spec.md) | Complete PostgREST endpoint reference |
+| | [Deployment Guide](docs/deployment-guide.md) | Production deployment instructions |
+| | [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
 
 ---
 
@@ -598,7 +580,7 @@ sudo lsof -i :8000
 # Stop the conflicting service or change ports in docker-compose.yml
 ```
 
-For more troubleshooting, see [docs/project/troubleshooting.md](docs/project/troubleshooting.md).
+For more troubleshooting, see [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ---
 
@@ -622,7 +604,7 @@ Large LiDAR files (.las, .laz) can be stored in external S3 buckets rather than 
 - Direct downloads with temporary URLs
 
 **Configuration**:
-See the Edge Functions in `docker/volumes/functions/` and [Deployment Guide](docs/project/deployment-guide.md) for S3 setup instructions (only needed if using point clouds).
+See the Edge Functions in `docker/volumes/functions/` and [Deployment Guide](docs/deployment-guide.md) for S3 setup instructions (only needed if using point clouds).
 
 ---
 
@@ -645,7 +627,7 @@ This repository is designed for both local development and production deployment
 - Configure backups and monitoring
 - Disable public signup (`DISABLE_SIGNUP=true`)
 
-**See [docs/project/deployment-guide.md](docs/project/deployment-guide.md) and the official [Supabase Self-Hosting Guide](https://supabase.com/docs/guides/hosting/docker) for detailed production deployment instructions.**
+**See [docs/deployment-guide.md](docs/deployment-guide.md) and the official [Supabase Self-Hosting Guide](https://supabase.com/docs/guides/hosting/docker) for detailed production deployment instructions.**
 
 ---
 
@@ -657,7 +639,7 @@ All documentation is in the `docs/` directory, organized by topic. Start with [d
 
 ### Issues
 
-- Check [docs/project/troubleshooting.md](docs/project/troubleshooting.md) for common problems
+- Check [docs/troubleshooting.md](docs/troubleshooting.md) for common problems
 - Review existing GitHub issues
 - Create new issue with detailed description
 
@@ -667,7 +649,6 @@ All documentation is in the `docs/` directory, organized by topic. Start with [d
 - [PostgREST API Reference](https://postgrest.org/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [PostGIS Documentation](https://postgis.net/)
-
 
 ---
 
@@ -691,4 +672,4 @@ If you use this database schema in a publication, please cite it. See
 
 > Sperlich, M. (2026). Digital Twin Database: Forest Inventory Schema (PostgreSQL/PostGIS).
 > University of Freiburg.
-> https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db
+> <https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db>

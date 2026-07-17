@@ -94,8 +94,8 @@ Full operations runbook: [runbook.md](runbook.md)
 |---|---|
 | [database-overview.md](database-overview.md) | **Start here** — schema architecture, the six schemas, tables, design patterns, audit trail, access patterns |
 | [architecture.md](architecture.md) | System architecture (arc42) with C4 diagrams and runtime scenarios |
-| [database_schema.md](database_schema.md) | Full schema, data dictionary, constraints, indexes |
-| [api_spec.md](api_spec.md) | Complete PostgREST endpoint reference |
+| [database-schema.md](database-schema.md) | Full schema, data dictionary, constraints, indexes |
+| [api-spec.md](api-spec.md) | Complete PostgREST endpoint reference |
 | [database-erd.dbml](database-erd.dbml) | Entity-relationship model (dbdiagram.io source) |
 | [local-deployment-guide.md](local-deployment-guide.md) | Spin up a local stack in <30 min; step-by-step onboarding |
 | [data-access-guide.md](data-access-guide.md) | Read/write access, user accounts, permissions model |
@@ -103,6 +103,7 @@ Full operations runbook: [runbook.md](runbook.md)
 | [silva-coupling.md](silva-coupling.md) | SILVA R model workflow — export, run, write-back |
 | [growth-simulation-schema.md](growth-simulation-schema.md) | GrowthSimulations table and API views |
 | [species-naming-audit.md](species-naming-audit.md) | Species naming conventions and audit notes |
+| [sensorreadings-scaling-evaluation.md](sensorreadings-scaling-evaluation.md) | Partitioning/index/performance evaluation for `sensor.sensorreadings` |
 | [runbook.md](runbook.md) | Operations: start/stop, reset, backups, health checks |
 | [deployment-guide.md](deployment-guide.md) | Production deployment guidance |
 | [troubleshooting.md](troubleshooting.md) | Common issues and resolutions |

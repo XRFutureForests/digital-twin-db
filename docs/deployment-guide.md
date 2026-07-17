@@ -134,8 +134,9 @@ conda activate digital-twin
 # Import tree data from prepared CSV
 python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
 
-# Import sensor data from Aquarius API
-python scripts/import/sync_aquarius_direct.py 45
+# Import sensor data (any provider; see the aquarius-connector repo for Aquarius)
+python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv
+python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
 
 # Link sensors to nearby trees
 python scripts/import/link_sensors_to_trees.py
@@ -356,9 +357,6 @@ done
 | `POSTGRES_PORT` | PostgreSQL port | `5432` |
 | `KONG_HTTP_PORT` | API gateway HTTP port | `8000` |
 | `STUDIO_PORT` | Studio UI port | `54323` |
-| `AQUARIUS_HOSTNAME` | Aquarius API host | _(none)_ |
-| `AQUARIUS_USERNAME` | Aquarius API username | _(none)_ |
-| `AQUARIUS_PASSWORD` | Aquarius API password | _(none)_ |
 
 ## Database Migrations
 
@@ -368,31 +366,20 @@ Migrations run automatically on first database startup from `docker/volumes/db/i
 
 | File | Purpose |
 | ---- | ------- |
-| `10-enable-postgis.sql` | PostGIS extension setup |
-| `11-shared-schema.sql` | Reference tables (locations, species, campaigns, etc.) |
-| `12-pointclouds-schema.sql` | Point cloud tables |
-| `13-trees-schema.sql` | Tree measurement tables |
-| `14-sensor-schema.sql` | Sensor infrastructure |
-| `15-environments-schema.sql` | Environmental conditions |
-| `16-sensor-tree-links-schema.sql` | Sensor-tree relationships |
-| `17-imagery-schema.sql` | Aerial & ground imagery |
-| `18-tree-morphology-schema.sql` | Tree morphology lookup tables and FK columns |
-| `20-rls-policies.sql` | Security policies and triggers |
-| `21-audit-functions.sql` | Change tracking |
-| `22-aquarius-integration.sql` | Aquarius API support |
-| `23-processing-jobs.sql` | Workflow tracking |
-| `24-public-api-views.sql` | Public API views with CRUD triggers |
+| `10-baseline-schema.sql` | Consolidated schema baseline — all custom schemas, tables, views, functions, RLS policies, and role-tier grants |
 | `30-load-lookup-tables.sql` | Reference data from CSVs |
 | `31-refresh-lookup-functions.sql` | Lookup table refresh functions |
 
 ### Creating New Migrations
 
-```bash
-# Create new migration file
-nano docker/volumes/db/init/25-your_migration_name.sql
+Schema history lives in `supabase/migrations/` (Supabase CLI), not as new numbered files under `docker/volumes/db/init/`. See `AGENTS.md` §"Schema Migrations" for the full workflow.
 
-# Apply manually to running database
-docker exec -i dftdb-db psql -U postgres < docker/volumes/db/init/25-your_migration_name.sql
+```bash
+# Create a new migration
+npx supabase migration new your_migration_name
+
+# Apply manually to the running database
+docker exec -i dftdb-db psql -U postgres < supabase/migrations/<timestamp>_your_migration_name.sql
 ```
 
 ### Manual Migration Execution
@@ -543,7 +530,7 @@ docker run --rm -v docker_db-config:/data -v $(pwd):/backup \
 ## Next Steps
 
 - [Architecture Overview](architecture.md) - Full system architecture and data patterns
-- [Database Schema](database_schema.md) - Detailed schema documentation
+- [Database Schema](database-schema.md) - Detailed schema documentation
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
 
 ## Support

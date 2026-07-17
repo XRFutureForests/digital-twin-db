@@ -11,7 +11,7 @@
 <!-- PRIMARY_SOURCES: docker/docker-compose.yml, docker/.env.example, scripts/, docs/project/infrastructure.md -->
 
 <!-- SCOPE: ALL operational procedures (local development setup, Docker commands, environment variables, testing commands, build/deployment, production operations, troubleshooting, logs, restart procedures) ONLY. -->
-<!-- DO NOT add here: Infrastructure inventory → infrastructure.md, Architecture patterns → architecture.md, Tech stack versions → tech_stack.md, Database schema → database_schema.md, API endpoints → api_spec.md -->
+<!-- DO NOT add here: Infrastructure inventory → infrastructure.md, Architecture patterns → architecture.md, Tech stack versions → tech_stack.md, Database schema → database-schema.md, API endpoints → api-spec.md -->
 
 ## Quick Navigation
 
@@ -41,7 +41,7 @@ This runbook provides step-by-step operational procedures for the Digital Forest
 ### 1.2 Quick Links
 
 - Architecture overview: [architecture.md](architecture.md)
-- Database schema: [database_schema.md](database_schema.md)
+- Database schema: [database-schema.md](database-schema.md)
 - Docker changelog: [docker/CHANGELOG.md](docker/CHANGELOG.md)
 
 ### 1.3 Key Contacts
@@ -181,15 +181,16 @@ python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
 python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
 ```
 
-**Sync Aquarius sensors + readings (requires university VPN):**
+**Sync sensors + readings (any provider):**
 ```bash
-python scripts/import/sync_aquarius_direct.py 45   # arg = days of history to fetch
+python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv
+python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
 ```
+For Aquarius specifically (requires university VPN), see the [aquarius-connector](../../aquarius-connector) repo.
 
-**Link sensors to trees, then enrich sensor metadata (order matters):**
+**Link sensors to trees:**
 ```bash
 python scripts/import/link_sensors_to_trees.py      # backfills trees.sensor_ref + sensor_tree_links
-python scripts/import/enrich_sensor_metadata.py     # real instrument/owner — run AFTER every sync
 ```
 
 ### 3.4.1 Full rebuild from scratch (reproducible)
@@ -203,7 +204,7 @@ schema change — a bare `up -d` reuses the old baked SQL.
 docker exec dftdb-db pg_dump -U postgres -d postgres -Fc -f /tmp/backup.dump
 docker cp dftdb-db:/tmp/backup.dump ./backup.dump
 
-# 1. Wipe volumes, rebuild the baked image, boot (init scripts 10→37 run on first boot)
+# 1. Wipe volumes, rebuild the baked image, boot (init scripts 10, 30, 31 run on first boot)
 cd docker
 docker compose down -v --remove-orphans
 docker compose build db
@@ -218,10 +219,10 @@ python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_growth_variants.sql
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/mathisle_growth_variants.sql
 
-# 4. Sensors + readings (VPN), then link + enrich
-python scripts/import/sync_aquarius_direct.py 45
+# 4. Sensors + readings (any provider; for Aquarius see the aquarius-connector repo), then link
+python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv
+python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
 python scripts/import/link_sensors_to_trees.py
-python scripts/import/enrich_sensor_metadata.py
 ```
 
 > Schema-owning DDL must run as `supabase_admin` (the `postgres` role is not the
@@ -251,7 +252,7 @@ docker compose up -d
 
 ## 5. Production Operations
 
-This stack is currently deployed for local development only. For production deployment guidance see [`docs/project/deployment-guide.md`](deployment-guide.md).
+This stack is currently deployed for local development only. For production deployment guidance see [`docs/deployment-guide.md`](deployment-guide.md).
 
 ### 5.1 Health Checks
 
@@ -399,11 +400,11 @@ docker compose down -v --remove-orphans
 
 #### Aquarius sync fails
 
-**Symptoms:** `scripts/import/sync_aquarius.py` connection errors.
+**Symptoms:** the [aquarius-connector](../../aquarius-connector) repo's sync reports connection errors.
 
-**Cause:** University of Freiburg VPN is not connected, or `AQUARIUS_*` variables in `docker/.env` are not set.
+**Cause:** University of Freiburg VPN is not connected, or `AQUARIUS_*` variables in that repo's `.env` are not set.
 
-**Resolution:** Connect to the university VPN, verify `AQUARIUS_HOSTNAME`, `AQUARIUS_USERNAME`, `AQUARIUS_PASSWORD` in `docker/.env`.
+**Resolution:** Connect to the university VPN, verify `AQUARIUS_HOSTNAME`, `AQUARIUS_USERNAME`, `AQUARIUS_PASSWORD` in the aquarius-connector repo's `.env`.
 
 ---
 
@@ -471,13 +472,7 @@ All variables are set in `docker/.env` (copy from `docker/.env.example`).
 | `POOLER_DEFAULT_POOL_SIZE` | `20` | Max PostgreSQL connections per pool |
 | `POOLER_MAX_CLIENT_CONN` | `100` | Max client connections per pool |
 
-**External integrations:**
-
-| Variable | Description |
-|----------|-------------|
-| `AQUARIUS_HOSTNAME` | Aquarius API base URL (requires university VPN) |
-| `AQUARIUS_USERNAME` | Aquarius API username |
-| `AQUARIUS_PASSWORD` | Aquarius API password |
+**External integrations:** none configured in this repo's `docker/.env` — provider connectors (e.g. [aquarius-connector](../../aquarius-connector)) hold their own credentials and talk to this stack only via its REST API.
 
 ---
 

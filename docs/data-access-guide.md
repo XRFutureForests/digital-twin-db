@@ -45,7 +45,7 @@ Available scripts:
 | Script | Purpose |
 |--------|---------|
 | `scripts/import/import_trees.py` | Bulk upsert tree inventory CSV |
-| `scripts/import/sync_aquarius_direct.py` | Sync sensors + readings from Aquarius (VPN) |
+| `scripts/import/ingest_sensor_data.py` | Sync sensors + readings from any provider (see [aquarius-connector](../../aquarius-connector) for Aquarius) |
 | `scripts/import/link_sensors_to_trees.py` | Link sensors to their nearest tree |
 | `scripts/silva/silva_writeback.py` | Write SILVA simulation output to `trees.GrowthSimulations` |
 | `scripts/admin/refresh_lookups.py` | Reload lookup CSVs without a full DB reset |
@@ -186,7 +186,7 @@ UPDATE trees."Trees" SET "Height_m" = 22.5 WHERE "tree_id" = 1234;
 UPDATE trees."Stems" SET "DBH_cm" = 31.2 WHERE "stem_id" = 5678;
 ```
 
-**Automatic audit logging:** AFTER UPDATE triggers on `trees.Trees`, `trees.Stems`, `environments.Environments`, and `pointclouds.PointClouds` log every change to `shared.AuditLog`. The log records the field name, old value, new value, timestamp, and the GoTrue user ID of whoever made the change. No manual action is required.
+**Automatic audit logging:** AFTER UPDATE triggers on `trees.Trees`, `trees.Stems`, `trees.PhenologyObservations`, `environments.Environments`, and `pointclouds.PointClouds` log every change to `shared.AuditLog`. The log records the field name, old value, new value, timestamp, and the GoTrue user ID of whoever made the change. No manual action is required. `trees.Deadwood` and `trees.GroundVegetation` moved to their own `forest_floor` schema and are not audited (site/plot-level surveys, not per-tree records).
 
 Audited fields:
 
@@ -196,9 +196,9 @@ Audited fields:
 | `trees.Stems` | `DBH_cm`, `stem_height_m` |
 | `environments.Environments` | `avg_temperature_c`, `stress_factor` |
 | `pointclouds.PointClouds` | `processing_status` |
+| `trees.PhenologyObservations` | `phenophase_status`, `intensity_percent` |
 
-Changes to other fields (e.g., `species_id`, `measurement_date`) are not automatically audited by the trigger. To add a field, edit the `WHEN 'trees' THEN` block in `docker/volumes/db/init/21-audit-functions.sql` — follow the existing pattern:
-
+Changes to other fields (e.g., `species_id`, `measurement_date`) are not automatically audited by the trigger. To add a field, edit the `WHEN 'trees' THEN` block in `shared.audit_update_trigger()` (see `AGENTS.md` §"Schema Migrations" for how to ship the change) — follow the existing pattern:
 ```sql
 IF OLD."YourField" IS DISTINCT FROM NEW."YourField" THEN
     PERFORM shared.create_audit_log(

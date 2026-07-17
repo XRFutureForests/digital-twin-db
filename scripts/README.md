@@ -13,11 +13,8 @@ scripts/
 │   └── validate_species_gbif.py    # Validate species names via GBIF
 ├── import/                   # Data import & sync scripts
 │   ├── import_trees.py             # Unified tree import from template CSV
-│   ├── sync_aquarius_direct.py     # Sync sensors + readings from Aquarius (VPN)
+│   ├── ingest_sensor_data.py       # Provider-agnostic sensor/reading import (CSV/JSON)
 │   ├── link_sensors_to_trees.py    # Link sensors to trees (writes sensor_ref)
-│   ├── enrich_sensor_metadata.py   # Backfill real instrument/owner after a sync
-│   ├── sync_aquarius.py            # Sync sensor data via edge function
-│   ├── find_active_sensors.py      # Find sensors with recent data
 │   └── archive/                    # Superseded scripts
 │       ├── import_ecosense.py      # (replaced by import_trees.py)
 │       └── import_mathisle.py      # (replaced by import_trees.py)
@@ -25,9 +22,7 @@ scripts/
 │   └── ecosense_growth_variants.sql # Growth variants generated from real Ecosense baseline (see docs/variant-scenario-model.md)
 └── utils/                    # Utility and debug scripts
     ├── check_db_schema.py          # Inspect database schema
-    ├── test_aquarius.py            # Test Aquarius API connection
-    ├── test_import_upload.py       # Test import file upload
-    └── test_sensor_query.py        # Test sensor queries
+    └── test_import_upload.py       # Test import file upload
 ```
 
 ## Prerequisites
@@ -66,32 +61,21 @@ python scripts/import/import_trees.py data/imports/my_data.csv --dry-run
 
 ### Import Sensor Data
 
+Provider-agnostic: loads sensors and readings from any CSV or JSON export via
+the `bulk_upsert_sensors` / `bulk_insert_readings` RPCs. For Aquarius
+specifically (requires university VPN), see the sibling
+[aquarius-connector](../../aquarius-connector) repo.
+
 ```bash
-# Import sensor data from Aquarius API
-python scripts/import/sync_aquarius_direct.py 45
+# Preview without writing
+python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv --dry-run
+
+# Load sensors, then readings
+python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv
+python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
 
 # Link sensors to nearby trees
 python scripts/import/link_sensors_to_trees.py
-```
-
-### Sync Aquarius Data
-
-Sync sensor readings from the Aquarius API (requires university VPN):
-
-```bash
-# Sync last 30 days (default)
-python scripts/import/sync_aquarius.py
-
-# Sync last N days
-python scripts/import/sync_aquarius.py 7
-```
-
-### Find Active Sensors
-
-List sensors that have recent data in Aquarius:
-
-```bash
-python scripts/import/find_active_sensors.py
 ```
 
 ## Seed Data (Optional)
@@ -116,14 +100,8 @@ All utility scripts are in `scripts/utils/`.
 # Test database connection and inspect schema
 python scripts/utils/check_db_schema.py
 
-# Test Aquarius API connection
-python scripts/utils/test_aquarius.py
-
 # Validate and test import files (dry-run)
 python scripts/utils/test_import_upload.py
-
-# Test sensor queries
-python scripts/utils/test_sensor_query.py
 ```
 
 ## Admin Scripts

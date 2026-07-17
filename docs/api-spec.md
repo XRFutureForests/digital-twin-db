@@ -12,7 +12,7 @@
 <!-- PRIMARY_SOURCES: docker/volumes/api/kong.yml, docker/volumes/db/init/24-public-api-views.sql, docker/volumes/db/init/22-aquarius-integration.sql, docker/docker-compose.yml -->
 
 <!-- SCOPE: API endpoints (methods, paths, parameters, responses), authentication mechanisms (JWT, API keys), error codes (HTTP status), PostgREST filtering, RPC functions ONLY. -->
-<!-- DO NOT add here: Database schema → database_schema.md, Tech stack versions → architecture.md, Deployment → deployment-guide.md, Docker setup → docs/docker/ -->
+<!-- DO NOT add here: Database schema → database-schema.md, Tech stack versions → architecture.md, Deployment → deployment-guide.md, Docker setup → docs/docker/ -->
 
 <!-- NO_CODE_EXAMPLES: API spec documents CONTRACTS (endpoints, schemas), not implementations.
      ALLOWED: JSON request/response schemas (this IS the API contract), endpoint tables, filter operator tables
@@ -23,7 +23,7 @@
 
 - [Docs Hub](README.md)
 - [Architecture](architecture.md)
-- [Database Schema](database_schema.md)
+- [Database Schema](database-schema.md)
 - [Deployment Guide](deployment-guide.md)
 
 ## Agent Entry
@@ -34,7 +34,7 @@
 | Read When | You need exact endpoint behavior, filter syntax, or RPC function signatures. |
 | Skip When | You only need database structure or operational commands. |
 | Canonical | Yes |
-| Next Docs | [Database Schema](database_schema.md), [Architecture](architecture.md) |
+| Next Docs | [Database Schema](database-schema.md), [Architecture](architecture.md) |
 | Primary Sources | `docker/volumes/api/kong.yml`, `docker/volumes/db/init/24-public-api-views.sql`, `docker/volumes/db/init/22-aquarius-integration.sql` |
 
 ---
@@ -181,7 +181,7 @@ GET /ue_sensors?linked_tree_entity_id=eq.<tree_entity_id>     → all sensors on
 GET /ue_sensorreadings?sensor_id=eq.<sensor_id>&order=timestamp.desc&limit=96   → that sensor's readings
 ```
 
-Join sensors to trees by **`linked_tree_entity_id`** (the persistent physical-tree UUID), not `linked_tree_id` (a single variant row) — this keeps the link stable across growth variants. `ue_sensors` also carries the latest reading inline (plus `sensor_model` = real instrument, `data_owner`, the generic `source` = provider e.g. `aquarius`, and `plot_name` = the sensor's monitoring sub-area), so a per-tree sensor list needs no extra readings or `/sensors` call. `linked_tree_*` is populated by `scripts/import/link_sensors_to_trees.py` (see [database_schema.md §3.9](database_schema.md)); meteo/soil-station sensors have `NULL` tree fields.
+Join sensors to trees by **`linked_tree_entity_id`** (the persistent physical-tree UUID), not `linked_tree_id` (a single variant row) — this keeps the link stable across growth variants. `ue_sensors` also carries the latest reading inline (plus `sensor_model` = real instrument, `data_owner`, the generic `source` = provider e.g. `aquarius`, and `plot_name` = the sensor's monitoring sub-area), so a per-tree sensor list needs no extra readings or `/sensors` call. `linked_tree_*` is populated by `scripts/import/link_sensors_to_trees.py` (see [database-schema.md §3.9](database-schema.md)); meteo/soil-station sensors have `NULL` tree fields.
 
 `ue_trees` also carries `sensor_ref` and a `has_sensors` boolean, so UE can flag instrumented trees without a second query — filter with `GET /ue_trees?has_sensors=eq.true`.
 

@@ -7,16 +7,13 @@
 <!-- DOC_ROLE: canonical -->
 <!-- READ_WHEN: Read when you need the current test layout, execution commands, or links to test policy. -->
 <!-- SKIP_WHEN: Skip when you only need the universal testing philosophy. -->
-<!-- PRIMARY_SOURCES: tests/, environment.yml, docs/reference/guides/testing-strategy.md -->
-<!-- DO NOT add here: Test code -> test files, Story implementation -> docs/tasks/kanban_board.md, Test strategy -> docs/reference/guides/testing-strategy.md -->
+<!-- PRIMARY_SOURCES: tests/, environment.yml -->
+<!-- DO NOT add here: Test code -> test files, Story/task tracking -> Linear -->
 
 ## Quick Navigation
 
-- [Testing Strategy](../docs/reference/guides/testing-strategy.md)
-- [Task Rules](../docs/tasks/README.md)
-- [Kanban Board](../docs/tasks/kanban_board.md)
-- [API Spec](../docs/project/api_spec.md)
-- [DB Schema](../docs/project/database_schema.md)
+- [API Spec](../docs/api-spec.md)
+- [DB Schema](../docs/database-schema.md)
 
 ## Agent Entry
 
@@ -24,10 +21,10 @@
 |--------|-------|
 | Purpose | Maps the test directories, execution commands, and links to the broader testing policy for digital-twin-db. |
 | Read When | You need to find tests, run them, or understand the local test layout for migrations, import scripts, or PostgREST API. |
-| Skip When | You only need general testing philosophy (see testing-strategy.md). |
+| Skip When | You only need general testing philosophy (see "Testing Philosophy" below). |
 | Canonical | Yes |
-| Next Docs | [Testing Strategy](../docs/reference/guides/testing-strategy.md), [Task Rules](../docs/tasks/README.md) |
-| Primary Sources | `tests/`, `environment.yml`, `docs/reference/guides/testing-strategy.md` |
+| Next Docs | None — task tracking is in Linear, not a markdown doc |
+| Primary Sources | `tests/`, `environment.yml` |
 
 ---
 
@@ -41,7 +38,7 @@ This directory contains all automated and manual tests for the digital-twin-db r
 
 **Test your code, not frameworks.** Focus on import script transformation logic, RLS policy boundaries, and migration correctness — not on PostgreSQL constraint enforcement or PostGIS geometry math.
 
-**Risk-based testing:** Automate only Priority `>=15` scenarios (`Business Impact x Probability`). Each test should satisfy the usefulness criteria in [testing-strategy.md](../docs/reference/guides/testing-strategy.md).
+**Risk-based testing:** Automate only Priority `>=15` scenarios (`Business Impact x Probability`). Each test should satisfy the usefulness criteria in the Testing Philosophy section above.
 
 ---
 
@@ -156,6 +153,6 @@ bash tests/manual/01-tree-import/test-import-trees.sh
 - [ ] All test directories exist (`automated/e2e/`, `automated/integration/`, `automated/unit/`, `manual/`)
 - [ ] `tests/manual/results/` is in `.gitignore`
 - [ ] Test execution commands match current conda environment and pytest version
-- [ ] Links to testing strategy and task workflow resolve
+- [ ] Links to API Spec and DB Schema resolve
 
 **Last Updated:** 2026-05-12
