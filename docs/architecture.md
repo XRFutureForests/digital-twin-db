@@ -11,9 +11,9 @@
 <!-- DOC_ROLE: canonical -->
 <!-- READ_WHEN: Read when you need the system model, boundaries, runtime flow, or design rationale. -->
 <!-- SKIP_WHEN: Skip when you only need operational steps or API/database lookup details. -->
-<!-- PRIMARY_SOURCES: docs/database-overview.md, docs/database_schema.md, docker/docker-compose.yml -->
+<!-- PRIMARY_SOURCES: docs/database-overview.md, docs/database-schema.md, docker/docker-compose.yml -->
 
-<!-- DO NOT add here: Deployment procedures → docs/deployment-guide.md, Schema details → docs/database_schema.md, API specs → docs/api_spec.md -->
+<!-- DO NOT add here: Deployment procedures → docs/deployment-guide.md, Schema details → docs/database-schema.md, API specs → docs/api-spec.md -->
 
 <!-- NO_CODE_EXAMPLES: Architecture documentation describes DECISIONS and CONTRACTS, not implementations.
      FORBIDDEN: Import statements, function bodies, code blocks > 5 lines
@@ -23,8 +23,8 @@
 
 - [Docs Hub](README.md)
 - [Database Overview](database-overview.md)
-- [Database Schema](database_schema.md)
-- [API Spec](api_spec.md)
+- [Database Schema](database-schema.md)
+- [API Spec](api-spec.md)
 - [Deployment Guide](deployment-guide.md)
 
 ## Agent Entry
@@ -35,8 +35,8 @@
 | Read When | You need mental models, component boundaries, schema organization, or cross-cutting concerns. |
 | Skip When | You only need endpoint lists, schema column lookup, or deployment commands. |
 | Canonical | Yes |
-| Next Docs | [Database Overview](database-overview.md), [Database Schema](database_schema.md), [API Spec](api_spec.md) |
-| Primary Sources | `docker/docker-compose.yml`, `docs/database_schema.md` |
+| Next Docs | [Database Overview](database-overview.md), [Database Schema](database-schema.md), [API Spec](api-spec.md) |
+| Primary Sources | `docker/docker-compose.yml`, `docs/database-schema.md` |
 
 ---
 
@@ -150,8 +150,8 @@ graph LR
     Supavisor --> PG[(PostgreSQL 15<br/>+ PostGIS 3<br/>:5432)]
     Admin[Admin / Studio] -->|:54323| Studio[Supabase Studio<br/>2025.11.10]
     Studio --> PG
-    Functions[Deno Edge Functions<br/>ecosense-ingest] -->|Aquarius API| AQ[Aquarius API<br/>Uni Freiburg VPN]
-    Functions --> PG
+    Connector[aquarius-connector<br/>external repo] -->|Aquarius API| AQ[Aquarius API<br/>Uni Freiburg VPN]
+    Connector -->|HTTP:8000 REST| Kong
 ```
 
 ---
@@ -176,7 +176,7 @@ graph LR
 
 1. **Gateway layer** — Kong routes and authenticates all external traffic
 2. **Service layer** — PostgREST, GoTrue, Realtime, Edge Functions (stateless, auto-scaling within Docker)
-3. **Data layer** — PostgreSQL 15 + PostGIS, 6 domain schemas, migrations-based schema management
+3. **Data layer** — PostgreSQL 15 + PostGIS, 7 domain schemas, migrations-based schema management
 
 ### 4.3 Approach to Quality Goals
 
@@ -208,11 +208,13 @@ C4Context
     System_Ext(aquarius, "Aquarius API", "Uni Freiburg sensor data (VPN)")
     System_Ext(gbif, "GBIF API", "Species validation")
     System_Ext(unreal, "Unreal Engine (lidar-to-unreal)", "VR digital twin rendering")
+    System_Ext(aquarius_connector, "aquarius-connector", "Provider connector, external repo")
     System_Ext(rdash, "R Shiny Dashboard", "Analytics")
 
     Rel(researcher, dftdb, "Queries data", "REST API / Studio")
     Rel(engineer, dftdb, "Imports data", "Python scripts / psql")
-    Rel(dftdb, aquarius, "Ingests sensor readings", "HTTPS REST")
+    Rel(aquarius_connector, aquarius, "Fetches sensor readings", "HTTPS REST")
+    Rel(aquarius_connector, dftdb, "Ingests sensor readings", "REST API")
     Rel(dftdb, gbif, "Validates species", "HTTPS REST")
     Rel(unreal, dftdb, "Reads tree/LiDAR data", "REST API")
     Rel(rdash, dftdb, "Reads analytics data", "REST API")
@@ -229,9 +231,9 @@ C4Container
     Container(pgrst, "PostgREST", "v13.0.7", "Auto-generated REST API from PostgreSQL schema")
     Container(gotrue, "GoTrue Auth", "v2.182.1", "JWT token issuance and verification")
     Container(realtime, "Supabase Realtime", "latest", "WebSocket subscriptions on DB changes")
-    Container(functions, "Deno Edge Functions", "Deno runtime", "ecosense-ingest: sensor data ingestion from Aquarius")
+    Container(functions, "Deno Edge Functions", "Deno runtime", "Platform main/hello scaffold; no custom functions currently deployed")
     Container(supavisor, "Supavisor", "Connection pooler :6543", "PostgreSQL connection pooling")
-    ContainerDb(postgres, "PostgreSQL 15 + PostGIS 3", ":5432", "6 domain schemas: shared, pointclouds, trees, sensor, environments, imagery")
+    ContainerDb(postgres, "PostgreSQL 15 + PostGIS 3", ":5432", "7 domain schemas: shared, pointclouds, trees, sensor, environments, imagery, forest_floor")
 
     Rel(kong, pgrst, "Routes /rest/v1/*")
     Rel(kong, gotrue, "Routes /auth/v1/*")
@@ -240,7 +242,6 @@ C4Container
     Rel(supavisor, postgres, "Connection pool")
     Rel(gotrue, postgres, "Reads/writes auth.*")
     Rel(realtime, postgres, "Listens on WAL")
-    Rel(functions, postgres, "Direct DB writes")
     Rel(studio, postgres, "Admin queries via meta")
 ```
 
@@ -265,8 +266,12 @@ graph TD
     subgraph trees["trees schema — inventory"]
         T1[Trees — tree_entity_id + PostGIS position]
         T2[Stems — multi-stem support]
-        T3[PhenologyObservations / Deadwood / GroundVegetation]
+        T3[PhenologyObservations]
         T4[Classification tables: TreeStatus, TaperTypes, BranchingPatterns, etc.]
+    end
+
+    subgraph forest_floor["forest_floor schema — plot-level surveys"]
+        FF1[Deadwood / GroundVegetation]
     end
 
     subgraph sensor["sensor schema — environmental"]
@@ -289,6 +294,7 @@ graph TD
     shared --> sensor
     shared --> environments
     shared --> imagery
+    shared --> forest_floor
 ```
 
 **Key Components:**
@@ -298,7 +304,8 @@ graph TD
 | `shared` schema | Reference data and audit infrastructure used by all domains | `Locations`, `Species`, `Scenarios`, `AuditLog_*` |
 | `pointclouds` schema | LiDAR scan metadata, file paths, variant tracking | `PointClouds`, `Scanners` |
 | `trees` schema | Individual tree inventory, multi-stem, morphology, phenology | `Trees`, `Stems`, `PhenologyObservations` |
-| `sensor` schema | Sensor hardware and time-series readings; Aquarius integration | `Sensors`, `SensorReadings`, `SensorTreeLinks` |
+| `forest_floor` schema | Plot/site-level surveys, not tied to a single tree | `Deadwood`, `GroundVegetation` |
+| `sensor` schema | Sensor hardware and time-series readings; source-agnostic (`source`/`external_id` columns) | `Sensors`, `SensorReadings`, `SensorTreeLinks` |
 | `environments` schema | Processed environmental conditions per location/variant | `Environments` |
 | `imagery` schema | Aerial and ground imagery with spatial metadata | `Images` |
 | Import scripts | CSV ingestion for trees and sensors; GBIF validation | `scripts/import/` |
@@ -311,20 +318,28 @@ graph TD
 
 ### 6.1 Scenario: Sensor Data Ingestion (Aquarius Sync)
 
+Runs from the external [aquarius-connector](../../aquarius-connector) repo —
+not inside this stack. It talks to the digital twin DB only through its REST
+API, using the same source-agnostic bulk RPCs any sensor provider connector
+would use.
+
 ```mermaid
 sequenceDiagram
-    participant Script as sync_aquarius.py
+    participant Script as aquarius-connector (external repo)
+    participant Kong as Kong :8000
     participant PG as PostgreSQL
     participant AQ as Aquarius API (VPN)
 
-    Script->>PG: Query sensor.Sensors WHERE is_active=true
-    PG-->>Script: Active sensor list with external_id
+    Script->>Kong: GET /rest/v1/sensors?select=sensor_id,external_id
+    Kong->>PG: Query (role=service_role)
+    PG-->>Kong: Active sensor list with external_id
+    Kong-->>Script: JSON response
     loop For each sensor
         Script->>AQ: GET /Publish/v2/GetTimeSeriesData (external_id)
         AQ-->>Script: Time-series readings JSON
-        Script->>PG: UPSERT sensor.SensorReadings (ON CONFLICT DO UPDATE)
+        Script->>Kong: POST /rest/v1/rpc/bulk_insert_readings
+        Kong->>PG: INSERT ... ON CONFLICT (sensor_id, timestamp) DO NOTHING
     end
-    Script->>PG: UPDATE Sensors SET LastSync=NOW()
 ```
 
 ### 6.2 Scenario: REST API Data Query (Downstream Consumer)

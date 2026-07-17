@@ -653,4 +653,4 @@ The Digital Forest Twin database provides:
 5. **Field-level auditing** for scientific reproducibility
 6. **Auto-generated REST API** for application integration
 
-For detailed schema definitions, see [database_schema.md](database_schema.md) and [database-erd.dbml](database-erd.dbml).
+For detailed schema definitions, see [database-schema.md](database-schema.md) and [database-erd.dbml](database-erd.dbml).

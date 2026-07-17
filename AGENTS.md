@@ -13,13 +13,11 @@ Self-hosted Supabase PostgreSQL database for digital forest twin research. 6 cus
 
 | Need | Read |
 |------|------|
-| Architecture overview | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Architecture overview | [docs/architecture.md](docs/architecture.md) |
 | Database schema | [docs/database-schema.md](docs/database-schema.md) |
-| Deployment guide | [docs/project/deployment-guide.md](docs/project/deployment-guide.md) |
+| Deployment guide | [docs/deployment-guide.md](docs/deployment-guide.md) |
 | Documentation map | [docs/README.md](docs/README.md) |
-| Documentation standards | [docs/documentation_standards.md](docs/documentation_standards.md) |
-| Principles | [docs/principles.md](docs/principles.md) |
-| Troubleshooting | [docs/project/troubleshooting.md](docs/project/troubleshooting.md) |
+| Troubleshooting | [docs/troubleshooting.md](docs/troubleshooting.md) |
 
 ## Agent Entry
 
@@ -37,7 +35,7 @@ Self-hosted Supabase PostgreSQL database for digital forest twin research. 6 cus
 | Confirmation | Never commit or push without explicit user confirmation | Always |
 | Scope | Modify only what the request requires — no adjacent cleanup | Always |
 | Secrets | Never commit `.env` or credentials; use `docker/.env` (gitignored) | Before any git operation |
-| Schema changes | Test migration scripts in a local reset before applying | Before schema edits |
+| Schema changes | Add a new file under `supabase/migrations/`; never edit the baseline or old numbered init files | Before schema edits |
 | Docker | Run `docker compose up -d` from `docker/` or the repo root | Before all local dev |
 | Task tracking | Check Linear for existing issues before creating new ones | Always |
 | Language | Keep code and documentation in English | For all written artifacts |
@@ -47,10 +45,23 @@ Self-hosted Supabase PostgreSQL database for digital forest twin research. 6 cus
 | Path | Purpose |
 |------|---------|
 | `docker/` | Docker Compose + all service configs (`.env` managed locally) |
-| `scripts/import/` | CSV data importers, Aquarius API sync |
+| `supabase/migrations/` | Schema change history (Supabase CLI) — source of truth for schema evolution |
+| `scripts/import/` | CSV/JSON data importers (trees, provider-agnostic sensor ingestion) |
 | `scripts/admin/` | DB admin utilities: reset, refresh lookups, JWT generation |
-| `scripts/utils/` | DB inspection, sensor query, test utilities |
+| `scripts/utils/` | DB schema inspection, import-file test utilities |
 | `docs/` | Project documentation |
+
+## Schema Migrations
+
+Schema history lives in `supabase/migrations/` (Supabase CLI), not as numbered files under `docker/volumes/db/init/`. That directory's `10-baseline-schema.sql` is a point-in-time snapshot (2026-07-17) consolidating the former 10-29 and 32-37 init files, which had accreted into a replay-history problem — later files restructured objects earlier files created, so a fresh init replayed the project's history instead of producing today's schema directly. `30-load-lookup-tables.sql` and `31-refresh-lookup-functions.sql` are unchanged (CSV data loading, not schema).
+
+**Adding a schema change:**
+1. `npx supabase migration new <description>` — creates a new timestamped file under `supabase/migrations/`
+2. Write the DDL (use `IF NOT EXISTS` / `IF EXISTS` guards for idempotency)
+3. Apply and test against a local reset (see Critical Rules) before committing
+4. If the change should also ship in the baked Docker image, mirror it into a new file under `docker/volumes/db/init/` (e.g. `11-<description>.sql`) — additive only, never restructuring `10-baseline-schema.sql`'s objects
+
+When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `pointclouds`, `environments`, `imagery`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot.
 
 ## Tech Stack
 
@@ -105,4 +116,4 @@ Required in `docker/.env` (never commit):
 - [ ] Commands match current Docker Compose setup
 - [ ] Environment variable list matches `docker/.env.example` or deployment guide
 
-**Last Updated:** 2026-07-10
+**Last Updated:** 2026-07-17

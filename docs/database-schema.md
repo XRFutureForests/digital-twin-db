@@ -8,16 +8,16 @@
 <!-- DOC_ROLE: canonical -->
 <!-- READ_WHEN: Read when you need entities, relationships, constraints, column types, or migration-facing schema facts. -->
 <!-- SKIP_WHEN: Skip when you only need endpoint contracts or deployment steps. -->
-<!-- PRIMARY_SOURCES: docker/volumes/db/init/11-shared-schema.sql, docker/volumes/db/init/12-pointclouds-schema.sql, docker/volumes/db/init/13-trees-schema.sql, docker/volumes/db/init/14-sensor-schema.sql, docker/volumes/db/init/15-environments-schema.sql, docker/volumes/db/init/17-imagery-schema.sql, docker/volumes/db/init/18-tree-morphology-schema.sql -->
+<!-- PRIMARY_SOURCES: docker/volumes/db/init/10-baseline-schema.sql, supabase/migrations/ -->
 
 <!-- SCOPE: Database schema (ER diagrams, table definitions, data dictionary, indexes, constraints, migrations, normalization) ONLY. -->
-<!-- DO NOT add here: API endpoints → api_spec.md, Tech stack versions → architecture.md, Deployment → deployment-guide.md, Docker setup → docs/docker/ -->
+<!-- DO NOT add here: API endpoints → api-spec.md, Tech stack versions → architecture.md, Deployment → deployment-guide.md, Docker setup → docs/docker/ -->
 
 ## Quick Navigation
 
 - [Docs Hub](README.md)
 - [Architecture](architecture.md)
-- [API Spec](api_spec.md)
+- [API Spec](api-spec.md)
 - [Deployment Guide](deployment-guide.md)
 - [Existing DB Overview](database-overview.md)
 - [Existing DB ERD (DBML)](database-erd.dbml)
@@ -30,8 +30,8 @@
 | Read When | You need exact database structure, column types, integrity rules, or schema lineage. |
 | Skip When | You only need API contracts or operational commands. |
 | Canonical | Yes |
-| Next Docs | [Architecture](architecture.md), [API Spec](api_spec.md), [DB Overview](database-overview.md) |
-| Primary Sources | `docker/volumes/db/init/` SQL migration files (11–18, 20–24) |
+| Next Docs | [Architecture](architecture.md), [API Spec](api-spec.md), [DB Overview](database-overview.md) |
+| Primary Sources | `docker/volumes/db/init/10-baseline-schema.sql`, `supabase/migrations/` |
 
 ---
 
@@ -52,7 +52,8 @@ The database is organized into **seven domain schemas** plus `public` (PostgREST
 | Schema | Purpose | Primary Tables |
 |--------|---------|----------------|
 | `shared` | Reference and cross-domain data | Locations, Species, Scenarios, Campaigns, Plots, Processes, AuditLog, ManagementEvents, DisturbanceEvents |
-| `trees` | Tree measurements, variants, and simulator output | Trees, Stems, PhenologyObservations, Deadwood, GroundVegetation, GrowthSimulations, morphology lookups |
+| `trees` | Tree measurements, variants, and simulator output | Trees, Stems, PhenologyObservations, GrowthSimulations, morphology lookups |
+| `forest_floor` | Plot/site-level surveys, not tied to a single tree | Deadwood, GroundVegetation |
 | `pointclouds` | LiDAR scan data and processing lineage | PointClouds, ScannerTypes, Scanners |
 | `sensor` | Environmental sensor hardware and time-series | SensorTypes, Sensors, SensorReadings, sensor_tree_links |
 | `environments` | Environmental condition variants | Environments |
@@ -93,7 +94,7 @@ erDiagram
 
     TREES_TREES ||--o{ TREES_STEMS : "has stems"
     TREES_TREES ||--o{ TREES_PHENOLOGYOBSERVATIONS : "observed in"
-    TREES_TREES ||--o{ TREES_DEADWOOD : "source of"
+    TREES_TREES o|--o{ FOREST_FLOOR_DEADWOOD : "source of (optional)"
     TREES_TREES }o--|| TREES_TREESTATUS : "status"
     TREES_TREES }|--|| TREES_TREES : "parent variant"
     TREES_TREES }o--|| POINTCLOUDS_POINTCLOUDS : "detected from"
@@ -365,7 +366,7 @@ erDiagram
 | `external_id` | VARCHAR(200) | YES | UNIQUE | Identifier within the source system (see `source`) |
 | `external_metadata` | JSONB | YES | DEFAULT `{}` | Raw source-specific payload: `Label`, `Parameter`, `LocationIdentifier`, and (after enrichment) `Instrument`, `DataOwner`, `TypeOfMeasurement`, `GapTolerance` |
 
-**Metadata enrichment.** `sensor_model` defaults to a generic `Ecosense Node` from the API sync. `scripts/import/enrich_sensor_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `external_id` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `sensor_model`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `external_metadata`. Re-run it **after** every Aquarius sync — the sync upsert resets these fields.
+**Metadata enrichment.** `sensor_model` defaults to a generic `Ecosense Node` from the API sync. The [aquarius-connector](../../aquarius-connector) repo's `enrich_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `external_id` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `sensor_model`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `external_metadata`, via the `bulk_upsert_sensors` RPC. Re-run it **after** every Aquarius sync — the sync upsert resets these fields.
 
 ---
 
@@ -477,7 +478,7 @@ Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING
 
 ### 3.12 `trees.GrowthSimulations`
 
-**Description:** Per-tree dimensional projections produced by external forest growth simulators (SILVA, FVS, iLand, manual). One row = one tree entity at one projected year under one simulation run. Rows from the same run share a `run_id` UUID. Added in migration `26-growth-simulations-schema.sql`.
+**Description:** Per-tree dimensional projections produced by external forest growth simulators (SILVA, FVS, iLand, manual). One row = one tree entity at one projected year under one simulation run. Rows from the same run share a `run_id` UUID.
 
 | Column | Type | Null | Description |
 |--------|------|------|-------------|
@@ -577,7 +578,7 @@ All geometry columns use GIST indexes:
 | `sensor.Sensors` | `Position` | Sensor proximity queries |
 | `pointclouds.PointClouds` | `scan_bounds` | Point cloud coverage queries |
 | `imagery.Images` | `Position` | Camera position queries |
-| `trees.Deadwood` | `Position` | Deadwood position queries |
+| `forest_floor.Deadwood` | `Position` | Deadwood position queries |
 
 ### 5.2 Time-Series Indexes
 
@@ -598,35 +599,15 @@ All geometry columns use GIST indexes:
 
 ### 6.1 Migration Tool
 
-Plain SQL migration files applied in numeric order by the PostgreSQL Docker initialization process. Files are in `docker/volumes/db/init/` and executed once on first container startup.
+Schema history lives in `supabase/migrations/` (Supabase CLI). `docker/volumes/db/init/` holds what the Docker image bakes for fresh deployments; its files are applied in numeric order by the PostgreSQL Docker initialization process on first container startup.
 
 ### 6.2 Migration Files
 
 | File | Description |
 |------|-------------|
-| `10-enable-postgis.sql` | Enables PostGIS extension |
-| `11-shared-schema.sql` | shared schema: Locations, Species, Scenarios, Campaigns, Plots, ManagementEvents, DisturbanceEvents, Processes, AuditLog |
-| `12-pointclouds-schema.sql` | pointclouds schema: ScannerTypes, Scanners, PointClouds |
-| `13-trees-schema.sql` | trees schema: Trees, Stems, PhenologyObservations, Deadwood, GroundVegetation |
-| `14-sensor-schema.sql` | sensor schema: SensorTypes, Sensors, SensorReadings |
-| `15-environments-schema.sql` | environments schema: Environments |
-| `16-sensor-tree-links-schema.sql` | sensor.sensor_tree_links junction table |
-| `17-imagery-schema.sql` | imagery schema: Images |
-| `18-tree-morphology-schema.sql` | trees morphology lookups: PhanerophyteHeightClasses, CrownArchitectures, BranchElongationHabits, GrowthOrientations, ShootElongationTypes, CrownShapes, GeometricCrownSolids, AxisStructures, GrowthForms |
-| `19-tree-condition-fields-schema.sql` | trees.CrownClasses, trees.DamageAgents lookups; adds crown_class_id/damage_agent_id/Defoliation_percent/Discolouration_percent/CrownTransparency_percent to trees.Trees; extends TreeStatus CHECK constraint with downed/broken (FIA/NEON/ICP Forests-aligned) |
-| `20-rls-policies.sql` | Row Level Security policies for all tables |
-| `21-audit-functions.sql` | Audit trigger functions |
-| `22-aquarius-integration.sql` | Adds `external_id`/`external_metadata` to Sensors; bulk upsert/insert RPC functions |
-| `23-processing-jobs.sql` | shared.ProcessingJobs for external workflow tracking |
-| `24-public-api-views.sql` | Public schema views exposing all domain tables to PostgREST |
+| `10-baseline-schema.sql` | Consolidated schema baseline (2026-07-17) — all custom schemas, tables, views, functions, RLS policies, and role-tier grants in one pass. Replaces the former `10-29` and `32-37` init files, which had accreted into a replay-history problem (later files restructured objects earlier ones created). Verified via structural diff against the live database before adoption. |
 | `30-load-lookup-tables.sql` | Seeds lookup tables from `data/lookups/*.csv` |
 | `31-refresh-lookup-functions.sql` | Functions to refresh lookup data |
-| `32-ecosense-sensor-tree-map.sql` | Adds `sensor_ref` to trees.Trees for joining Ecosense sensors to inventory trees; deprecates the pattern-match linker function |
-| `33-consolidate-ue-trees.sql` | Consolidates `forest_state` + `ue_trees` into a single self-contained `public.ue_trees`; drops `forest_state` |
-| `34-ue-view-refinements.sql` | Trims `ue_trees` to the UE struct + adds `has_sensors`; adds `sensor_model`/`data_owner` to `ue_sensors`; indexes `sensor_tree_links(tree_id)` |
-| `35-ue-trees-projected-coords.sql` | Adds `location_name`, `scenario_id`, and projected `original_x`/`original_y`/`source_crs` (from `position_original`, UTM 32N) to `ue_trees` |
-| `36-restructure-locations-plots-snakecase.sql` | Collapses locations to two sites (`ecosense`, `mathisle`); demotes Ecosense sub-areas to plots + adds `sensor.Sensors.plot_id`; snake_cases identifier/vocab/morphology values (Köppen/USDA/species preserved) |
-| `37-scenario-variant-hierarchy.sql` | Makes `shared.Scenarios` location-scoped (`location_id`, unique per location); adds `shared.Variants.parent_variant_id`; consolidates per-year scenarios into `natural_growth` per site; refreshes `public.scenarios`/`public.variants` views |
 
 ### 6.3 Migration Strategy
 
@@ -636,7 +617,8 @@ Migrations run automatically when the Docker container initializes for the first
 python scripts/admin/reset_database.py
 ```
 
-For schema changes: add a new numbered SQL file to `docker/volumes/db/init/`, then rebuild the container.
+For new schema changes: add a new timestamped file under `supabase/migrations/` (`npx supabase migration new <description>`), not a numbered file here. See `AGENTS.md` §"Schema Migrations" for the full workflow, including when and how to re-snapshot the baseline.
+
 
 ---
 
@@ -671,12 +653,12 @@ For schema changes: add a new numbered SQL file to `docker/volumes/db/init/`, th
 
 ## Maintenance
 
-**Last Updated:** 2026-05-11
+**Last Updated:** 2026-07-17
 
 **Update Triggers:**
-- New migration file added to `docker/volumes/db/init/`
+- New schema migration added to `supabase/migrations/`
 - Schema changes to existing tables (columns, indexes, constraints)
-- New public schema view added (update `api_spec.md` in parallel)
+- New public schema view added (update `api-spec.md` in parallel)
 - RLS policy changes
 - New junction table for audit or process parameters
 

@@ -54,39 +54,9 @@ python scripts/import/link_sensors_to_trees.py
 Run it after tree and sensor data have been imported. It is idempotent
 (`ON CONFLICT DO NOTHING`).
 
-## `ecosense_sensor_metadata.csv`
+## `ecosense_sensor_metadata.csv` (moved)
 
-Project-wide Ecosense sensor metadata catalogue, keyed by `external_id`
-(Aquarius `TimeSeriesUniqueID` = `sensor.Sensors.ExternalID`). Extracted from the
-Aquarius *Insitu DataUpload* form export.
-
-**Why it exists.** The Aquarius API sync populates `sensor.Sensors.SensorModel`
-with a generic `Ecosense Node` placeholder and does not carry the instrument or
-data-owner. This catalogue holds the real values so they can be restored.
-
-| Column | Description |
-|--------|-------------|
-| `external_id` | Aquarius TimeSeriesUniqueID (= `sensor.Sensors.ExternalID`) |
-| `sensor_id` | Aquarius numeric sensor ID |
-| `label` | Aquarius series label (≈ `sensor.Sensors.SerialNumber`) |
-| `location` | Aquarius LocationIdentifier |
-| `parameter`, `parameter_unit` | Measured quantity + unit |
-| `instrument` | Hardware model (e.g. `SMT100`, `Implexx Sap Flow Sensor`) |
-| `data_owner` | Responsible person/subproject |
-| `measurement_type` | Aquarius computation type |
-| `gap_tolerance` | Aquarius gap tolerance (ISO-8601 duration) |
-
-### How it is used
-
-`scripts/import/enrich_sensor_metadata.py` matches by `external_id` and backfills
-`instrument` into `SensorModel` plus `data_owner` / `measurement_type` /
-`gap_tolerance` into `ExternalMetadata`.
-
-```bash
-python scripts/import/enrich_sensor_metadata.py                 # uses this CSV
-python scripts/import/enrich_sensor_metadata.py form.xlsx       # refresh from a raw export
-```
-
-**Run it after every Aquarius sync** — the sync upsert resets `SensorModel` and
-`ExternalMetadata`. To refresh the catalogue from a newer form export, re-run the
-extraction that produced this file.
+This catalogue moved to the [aquarius-connector](../../aquarius-connector) repo's
+`data/` directory as part of extracting the Aquarius integration out of this
+repo (it's the input to that repo's `enrich_metadata.py`, which now talks to
+this DB only via the `bulk_upsert_sensors` REST RPC rather than direct SQL).

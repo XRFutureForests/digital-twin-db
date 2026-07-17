@@ -158,8 +158,10 @@ Mathisle forest plot tree inventory.
 conda activate digital-twin
 python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
 
-# Import sensor data from Aquarius API
-python scripts/import/import_sensor_data.py
+# Import sensor data (provider-agnostic: scripts/import/ingest_sensor_data.py, or a
+# provider connector such as ../aquarius-connector for Aquarius)
+python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv
+python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
 
 # Link sensors to trees
 python scripts/import/link_sensors_to_trees.py
@@ -190,5 +192,5 @@ Before committing data:
 ## See Also
 
 - [scripts/README.md](../scripts/README.md) - Import script usage
-- [docker/README.md](../docker/README.md) - Database setup guide
+- [docs/docker/README.md](../docs/docker/README.md) - Database setup guide
 - [docs/database-schema.md](../docs/database-schema.md) - Full database schema documentation

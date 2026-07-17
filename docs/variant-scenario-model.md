@@ -133,7 +133,7 @@ Response fields (full `ue_trees` struct):
 }
 ```
 
-`sensor_ref` / `has_sensors` are non-null/true only for instrumented trees — see [api_spec.md](api_spec.md) for the tree ↔ sensor ↔ reading query chain.
+`sensor_ref` / `has_sensors` are non-null/true only for instrumented trees — see [api-spec.md](api-spec.md) for the tree ↔ sensor ↔ reading query chain.
 
 ### Filter by location + scenario name (when variant_id is unknown)
 
