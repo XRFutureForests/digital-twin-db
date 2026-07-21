@@ -24,6 +24,8 @@ htmlcov/
 
 # Secrets
 .env
+.env.*
+!.env.example
 
 # Claude Code local
 .claude/
