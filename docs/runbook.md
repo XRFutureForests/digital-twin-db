@@ -502,7 +502,17 @@ vector (no deps)
 
 ### Appendix C: Port Mapping
 
-See [infrastructure.md — Section 3: Port Allocation](infrastructure.md#3-port-allocation) for the authoritative port table.
+| Service | Host port | Container port | Purpose |
+|---|---|---|---|
+| Studio | 54323 | 3000 | Supabase Studio UI |
+| Kong | `${KONG_HTTP_PORT}` (8000) | 8000 | API gateway (REST, Auth, Storage, Realtime) |
+| Kong | `${KONG_HTTPS_PORT}` (8443) | 8443 | API gateway (HTTPS) |
+| Postgres (via Supavisor) | `${POSTGRES_PORT}` (5432) | 5432 | Direct database connection |
+| Supavisor pooler | `${POOLER_PROXY_PORT_TRANSACTION}` (6543) | 6543 | Transaction-mode connection pooling |
+| Mail (dev SMTP) | 2500 | 2500 | Local email testing |
+| Analytics (Logflare) | 4000 | 4000 | Log ingestion/query API |
+
+Source of truth: `docker/docker-compose.yml` `ports:` blocks; defaults shown are from `docker/.env.example`.
 
 ---
 
