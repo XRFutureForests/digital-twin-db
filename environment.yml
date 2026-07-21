@@ -32,5 +32,6 @@ dependencies:
       - pyproj>=3.4.0
       - supabase>=2.26.0
       - pygbif>=0.6.0 # GBIF API for species name validation
+      # Requires University of Freiburg GitLab access — pylometree is not yet public.
       - pylometree @ git+https://gitlab.uni-freiburg.de/xr-future-forests-lab/pylometree.git
       - openyieldtables # For real-world yield data calibration

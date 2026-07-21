@@ -6,9 +6,9 @@ collaborators and the wider community are welcome.
 
 ## Ways to contribute
 
-- **Report bugs** via the [GitLab issue tracker](https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db/-/issues).
+- **Report bugs** via the [GitHub issue tracker](https://github.com/XRFutureForests/digital-twin-db/issues).
 - **Suggest features or improvements** — open an issue describing the use case.
-- **Submit merge requests** for bug fixes, documentation improvements, or new
+- **Submit pull requests** for bug fixes, documentation improvements, or new
   features (see workflow below).
 - **Improve documentation** — typo fixes, clearer examples, and additional
   usage guides are always appreciated.
@@ -16,11 +16,11 @@ collaborators and the wider community are welcome.
 ## Development workflow
 
 1. Fork the repository or create a feature branch.
-2. Make focused changes — one logical change per merge request.
-3. Keep diffs small. Split unrelated changes into separate MRs.
+2. Make focused changes — one logical change per pull request.
+3. Keep diffs small. Split unrelated changes into separate PRs.
 4. Update `CHANGELOG.md` under `[Unreleased]` if the change is user-visible.
 5. Add or update tests where applicable.
-6. Open a merge request with a clear description of what changed and why.
+6. Open a pull request with a clear description of what changed and why.
 
 ## Commit messages
 

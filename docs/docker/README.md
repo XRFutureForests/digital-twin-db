@@ -94,7 +94,7 @@ conda activate digital-twin
 jupyter notebook  # Open import_trees.ipynb
 ```
 
-See [`scripts/README.md`](../scripts/README.md) for detailed import instructions.
+See [`scripts/README.md`](../../scripts/README.md) for detailed import instructions.
 
 ## Common Operations
 

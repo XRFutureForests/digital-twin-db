@@ -56,7 +56,7 @@ Run it after tree and sensor data have been imported. It is idempotent
 
 ## `ecosense_sensor_metadata.csv` (moved)
 
-This catalogue moved to the [aquarius-connector](../../aquarius-connector) repo's
+This catalogue moved to the [aquarius-connector](https://github.com/XRFutureForests/aquarius-connector) repo's
 `data/` directory as part of extracting the Aquarius integration out of this
 repo (it's the input to that repo's `enrich_metadata.py`, which now talks to
 this DB only via the `bulk_upsert_sensors` REST RPC rather than direct SQL).

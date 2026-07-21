@@ -197,6 +197,11 @@ conda activate digital-twin
 cd docker && docker compose ps
 ```
 
+> **Note:** `environment.yml` pulls in `pylometree` from the University of
+> Freiburg GitLab, which currently requires university access. If you're
+> outside the university, comment out that line and skip volume-calibration
+> features, or reach out for access.
+
 ### Recommended Import Order
 
 Import data in this sequence so that foreign-key relationships resolve correctly:
@@ -672,4 +677,4 @@ If you use this database schema in a publication, please cite it. See
 
 > Sperlich, M. (2026). Digital Twin Database: Forest Inventory Schema (PostgreSQL/PostGIS).
 > University of Freiburg.
-> <https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db>
+> <https://github.com/XRFutureForests/digital-twin-db>
