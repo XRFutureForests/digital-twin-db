@@ -1,5 +1,7 @@
 volumes/db/data
 volumes/storage
 .env
+.env.*
+!.env.example
 test.http
 docker-compose.override.yml
