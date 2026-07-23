@@ -1,6 +1,6 @@
-# Forest Digital Twin Database
+# Forest Digital Twin Database - A Supabase-powered PostgreSQL/PostGIS Schema
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21509858.svg)](https://doi.org/10.5281/zenodo.21509858)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21509858-blue)](https://doi.org/10.5281/zenodo.21509858)
 
 > **Supabase-powered database for research connected to digital forest twins**
 
