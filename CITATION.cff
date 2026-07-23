@@ -4,7 +4,7 @@ title: "Digital Twin Database — Forest Inventory Schema (PostgreSQL/PostGIS)"
 type: software
 version: 1.0.0
 date-released: "2026-04-02"
-license: CC-BY-NC-4.0
+license: AGPL-3.0-or-later
 repository-code: "https://github.com/XRFutureForests/digital-twin-db"
 # doi: 10.5281/zenodo.XXXXXXX   # uncomment after first Zenodo deposit (use the CONCEPT DOI)
 abstract: >-
