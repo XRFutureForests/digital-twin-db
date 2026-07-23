@@ -6,7 +6,7 @@ version: 1.0.0
 date-released: "2026-04-02"
 license: AGPL-3.0-or-later
 repository-code: "https://github.com/XRFutureForests/digital-twin-db"
-# doi: 10.5281/zenodo.XXXXXXX   # uncomment after first Zenodo deposit (use the CONCEPT DOI)
+doi: 10.5281/zenodo.21509858
 abstract: >-
     Supabase-powered PostgreSQL/PostGIS database schema for creating digital twins
     of forests. Provides tables for tree inventory, species data, growth simulation
