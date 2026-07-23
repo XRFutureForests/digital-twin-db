@@ -1,4 +1,4 @@
-# Digital Forest Twin Database Documentation
+# Forest Digital Twin Database Documentation
 
 Self-hosted Supabase/PostgreSQL backend for XR Future Forests digital twin research. University of Freiburg, funded by Eva Mayr-Stihl Stiftung.
 

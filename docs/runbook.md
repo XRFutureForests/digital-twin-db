@@ -1,4 +1,4 @@
-# Operations Runbook: Digital Forest Twin Database
+# Operations Runbook: Forest Digital Twin Database
 
 **Document Version:** 1.0
 **Date:** 2026-05-11
@@ -36,7 +36,7 @@
 
 ### 1.1 Purpose
 
-This runbook provides step-by-step operational procedures for the Digital Forest Twin Database — a self-hosted Supabase stack (PostgreSQL 15 + PostGIS 3) that serves as the data backend for the XR Future Forests Lab digital twin pipeline.
+This runbook provides step-by-step operational procedures for the Forest Digital Twin Database — a self-hosted Supabase stack (PostgreSQL 15 + PostGIS 3) that serves as the data backend for the XR Future Forests Lab digital twin pipeline.
 
 ### 1.2 Quick Links
 

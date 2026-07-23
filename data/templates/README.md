@@ -1,6 +1,6 @@
 # Import Templates
 
-This directory contains CSV templates for importing data into the Digital Forest Twin database.
+This directory contains CSV templates for importing data into the Forest Digital Twin database.
 
 ## Quick Start
 

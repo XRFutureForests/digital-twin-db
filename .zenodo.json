@@ -1,0 +1,22 @@
+{
+    "title": "Forest Digital Twin Database - A Supabase-powered PostgreSQL/PostGIS Schema",
+    "description": "Supabase-powered PostgreSQL/PostGIS database schema for creating digital twins of forests. Provides tables for tree inventory, species data, growth simulation variants, and integration with forest growth models (SILVA, iLand). Includes auto-generated REST APIs via PostgREST and local Docker deployment.",
+    "creators": [
+        {
+            "name": "Sperlich, Maximilian",
+            "affiliation": "University of Freiburg",
+            "orcid": "0009-0003-6131-6244"
+        }
+    ],
+    "license": "AGPL-3.0-or-later",
+    "upload_type": "software",
+    "access_right": "open",
+    "keywords": [
+        "digital-twin",
+        "forest-inventory",
+        "postgis",
+        "postgresql",
+        "supabase",
+        "database"
+    ]
+}

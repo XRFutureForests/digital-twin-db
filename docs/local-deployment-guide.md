@@ -1,6 +1,6 @@
 # Local Deployment Guide
 
-> **Goal:** Spin up a local Digital Forest Twin database in under 30 minutes.  
+> **Goal:** Spin up a local Forest Digital Twin database in under 30 minutes.  
 > **Audience:** Team members and external collaborators (e.g., Lukas) who need a local DB for UE development.
 
 ---

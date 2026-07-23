@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unified tree data import for Digital Forest Twin Database
+Unified tree data import for Forest Digital Twin Database
 
 Imports tree data from any CSV file that follows the standard template format
 (see data/templates/trees_import_template.csv).
@@ -533,7 +533,7 @@ def print_summary(df, csv_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Import tree data from a template-format CSV into the Digital Forest Twin database.",
+        description="Import tree data from a template-format CSV into the Forest Digital Twin database.",
         epilog="CSV must follow the standard template format. See data/templates/trees_import_template.csv",
     )
     parser.add_argument("csv_file", help="Path to the CSV file to import")

@@ -1,6 +1,6 @@
 # Data Directory
 
-This directory contains CSV data files for the Digital Forest Twin Database.
+This directory contains CSV data files for the Forest Digital Twin Database.
 
 ## Directory Structure
 

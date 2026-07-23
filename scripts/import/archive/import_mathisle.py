@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Import Mathisle tree data into Digital Forest Twin Database
+Import Mathisle tree data into Forest Digital Twin Database
 
 This script imports tree data from data/imports/mathisle_trees_import.csv:
 - Creates Trees records with species, location, position (WGS84)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test upload of generated import CSV files to the Digital Forest Twin database.
+Test upload of generated import CSV files to the Forest Digital Twin database.
 
 This script validates the import files and performs a test upload
 (with optional dry-run mode).

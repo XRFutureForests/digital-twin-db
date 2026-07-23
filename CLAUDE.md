@@ -1,4 +1,4 @@
-# Digital Forest Twin Database
+# Forest Digital Twin Database
 
 <!-- SCOPE: Thin Claude Code projection of AGENTS.md via the @ import. AGENTS.md is the canonical source. Do not duplicate content here — add it to AGENTS.md instead, or scope it to `.claude/rules/*.md` with a `paths:` filter. -->
 <!-- DOC_KIND: index -->

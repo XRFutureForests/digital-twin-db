@@ -1,4 +1,4 @@
-# Software Architecture Document: Digital Forest Twin Database
+# Software Architecture Document: Forest Digital Twin Database
 
 **Document Version:** 1.0
 **Date:** 2026-05-11
@@ -31,7 +31,7 @@
 
 | Signal | Value |
 |--------|-------|
-| Purpose | Explains system structure, container boundaries, runtime behavior, and architectural decisions for the Digital Forest Twin Database. |
+| Purpose | Explains system structure, container boundaries, runtime behavior, and architectural decisions for the Forest Digital Twin Database. |
 | Read When | You need mental models, component boundaries, schema organization, or cross-cutting concerns. |
 | Skip When | You only need endpoint lists, schema column lookup, or deployment commands. |
 | Canonical | Yes |
@@ -44,7 +44,7 @@
 
 ### 1.1 Requirements Overview
 
-The Digital Forest Twin Database stores and exposes multi-temporal, multi-variant forest research data for the University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung). Key requirements:
+The Forest Digital Twin Database stores and exposes multi-temporal, multi-variant forest research data for the University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung). Key requirements:
 
 - Spatially-aware storage of trees, LiDAR point clouds, sensors, and imagery using PostGIS
 - Variant-based lineage tracking to support multiple analysis scenarios and temporal versioning
@@ -113,7 +113,7 @@ The Digital Forest Twin Database stores and exposes multi-temporal, multi-varian
 
 ### 3.1 Business Context
 
-The Digital Forest Twin Database sits at the center of the XR Future Forests pipeline, receiving data from field instruments and LiDAR scanners, and serving it to visualization and analysis consumers.
+The Forest Digital Twin Database sits at the center of the XR Future Forests pipeline, receiving data from field instruments and LiDAR scanners, and serving it to visualization and analysis consumers.
 
 **Business Context Diagram:**
 
@@ -194,16 +194,16 @@ graph LR
 
 ### 5.1 Level 1: System Context (C4 Model)
 
-The Digital Forest Twin Database is a black-box data service within the XR Future Forests ecosystem.
+The Forest Digital Twin Database is a black-box data service within the XR Future Forests ecosystem.
 
 ```mermaid
 C4Context
-    title System Context — Digital Forest Twin Database
+    title System Context — Forest Digital Twin Database
 
     Person(researcher, "Researcher", "Forest scientist querying data via Studio or API")
     Person(engineer, "Data Engineer", "Imports field data, runs Python scripts")
 
-    System(dftdb, "Digital Forest Twin Database", "Self-hosted Supabase/PostgreSQL stack. Stores, versions, and serves forest research data.")
+    System(dftdb, "Forest Digital Twin Database", "Self-hosted Supabase/PostgreSQL stack. Stores, versions, and serves forest research data.")
 
     System_Ext(aquarius, "Aquarius API", "Uni Freiburg sensor data (VPN)")
     System_Ext(gbif, "GBIF API", "Species validation")
@@ -224,7 +224,7 @@ C4Context
 
 ```mermaid
 C4Container
-    title Container Diagram — Digital Forest Twin Database
+    title Container Diagram — Forest Digital Twin Database
 
     Container(studio, "Supabase Studio", "Next.js :54323", "Admin UI for schema, data, auth management")
     Container(kong, "Kong Gateway", "Kong 2.8.1 :8000/:8443", "API routing, JWT auth, CORS")
@@ -518,7 +518,7 @@ Additional implicit decisions not yet formalized as ADRs:
 3. ISO/IEC/IEEE 42010:2022 — Architecture description
 4. Supabase Self-Hosting Docs — https://supabase.com/docs/guides/self-hosting/docker
 5. PostgREST Documentation — https://postgrest.org/
-6. Digital Forest Twin Database Overview — [database-overview.md](database-overview.md)
+6. Forest Digital Twin Database Overview — [database-overview.md](database-overview.md)
 7. Functional requirements are tracked in Linear (XRFF team)
 
 ---

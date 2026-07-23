@@ -1,4 +1,4 @@
-# Digital Forest Twin Database
+# Forest Digital Twin Database
 
 Self-hosted Supabase PostgreSQL database for digital forest twin research. 6 custom schemas (shared, pointclouds, trees, sensor, environments, imagery), PostGIS spatial extensions, REST API via PostgREST/Kong, auth via GoTrue. University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung).
 
