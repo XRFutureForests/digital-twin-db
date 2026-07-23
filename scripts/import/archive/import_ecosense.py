@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Import ecosense tree data into Digital Forest Twin Database
+Import ecosense tree data into Forest Digital Twin Database
 
 This script imports tree data from ecosense_250911.csv:
 - Creates Trees records with species, location, height, position

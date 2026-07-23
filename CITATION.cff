@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this database schema or its outputs in a publication, please cite it as below."
-title: "Digital Twin Database — Forest Inventory Schema (PostgreSQL/PostGIS)"
+title: "Forest Digital Twin Database - A Supabase-powered PostgreSQL/PostGIS Schema"
 type: software
 version: 1.0.0
 date-released: "2026-04-02"
@@ -8,19 +8,19 @@ license: AGPL-3.0-or-later
 repository-code: "https://github.com/XRFutureForests/digital-twin-db"
 # doi: 10.5281/zenodo.XXXXXXX   # uncomment after first Zenodo deposit (use the CONCEPT DOI)
 abstract: >-
-  Supabase-powered PostgreSQL/PostGIS database schema for creating digital twins
-  of forests. Provides tables for tree inventory, species data, growth simulation
-  variants, and integration with forest growth models (SILVA, iLand). Includes
-  auto-generated REST APIs via PostgREST and local Docker deployment.
+    Supabase-powered PostgreSQL/PostGIS database schema for creating digital twins
+    of forests. Provides tables for tree inventory, species data, growth simulation
+    variants, and integration with forest growth models (SILVA, iLand). Includes
+    auto-generated REST APIs via PostgREST and local Docker deployment.
 keywords:
-  - digital-twin
-  - forest-inventory
-  - postgis
-  - postgresql
-  - supabase
-  - database
+    - digital-twin
+    - forest-inventory
+    - postgis
+    - postgresql
+    - supabase
+    - database
 authors:
-  - family-names: "Sperlich"
-    given-names: "Maximilian"
-    orcid: "https://orcid.org/0009-0003-6131-6244"
-    affiliation: "University of Freiburg"
+    - family-names: "Sperlich"
+      given-names: "Maximilian"
+      orcid: "https://orcid.org/0009-0003-6131-6244"
+      affiliation: "University of Freiburg"

@@ -1,4 +1,4 @@
-# Digital Forest Twin Database
+# Forest Digital Twin Database
 
 > **Supabase-powered database for research connected to digital forest twins**
 
@@ -675,6 +675,6 @@ make the modified source available to those users. See [LICENSE](LICENSE).
 If you use this database schema in a publication, please cite it. See
 [CITATION.cff](CITATION.cff) for machine-readable metadata, or:
 
-> Sperlich, M. (2026). Digital Twin Database: Forest Inventory Schema (PostgreSQL/PostGIS).
+> Sperlich, M. (2026). Forest Digital Twin Database - A Supabase-powered PostgreSQL/PostGIS Schema.
 > University of Freiburg.
 > <https://github.com/XRFutureForests/digital-twin-db>

@@ -1,4 +1,4 @@
-# API Specification: Digital Forest Twin Database
+# API Specification: Forest Digital Twin Database
 
 **Document Version:** 1.0
 **Date:** 2026-05-11

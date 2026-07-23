@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-This guide covers common issues and solutions for the Digital Forest Twin Database Docker setup, following [official Supabase self-hosting guidelines](https://github.com/supabase/supabase/tree/master/docker).
+This guide covers common issues and solutions for the Forest Digital Twin Database Docker setup, following [official Supabase self-hosting guidelines](https://github.com/supabase/supabase/tree/master/docker).
 
 ---
 

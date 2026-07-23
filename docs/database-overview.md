@@ -644,7 +644,7 @@ WHERE sr.timestamp > NOW() - INTERVAL '30 days';
 
 ## Summary
 
-The Digital Forest Twin database provides:
+The Forest Digital Twin database provides:
 
 1. **Unified spatial model** for LiDAR, tree measurements, and sensors
 2. **Temporal versioning** through variant lineage

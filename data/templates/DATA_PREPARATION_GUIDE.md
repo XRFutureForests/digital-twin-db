@@ -1,6 +1,6 @@
 # Data Preparation Guide
 
-This guide explains how to prepare tree and sensor inventory data for import into the Digital Forest Twin database. Rather than relying on automated data transformation, we recommend manually preparing your CSV files to match the expected template format.
+This guide explains how to prepare tree and sensor inventory data for import into the Forest Digital Twin database. Rather than relying on automated data transformation, we recommend manually preparing your CSV files to match the expected template format.
 
 ## Overview
 

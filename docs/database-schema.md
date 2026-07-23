@@ -1,4 +1,4 @@
-# Database Schema: Digital Forest Twin Database
+# Database Schema: Forest Digital Twin Database
 
 **Document Version:** 1.0
 **Date:** 2026-05-11
@@ -39,7 +39,7 @@
 
 ### 1.1 Purpose
 
-This document specifies the database schema, entity relationships, and data dictionary for the Digital Forest Twin Database. The database stores field measurements, LiDAR scan data, sensor time-series, environmental conditions, and imagery for forest plot management and VR digital twin generation.
+This document specifies the database schema, entity relationships, and data dictionary for the Forest Digital Twin Database. The database stores field measurements, LiDAR scan data, sensor time-series, environmental conditions, and imagery for forest plot management and VR digital twin generation.
 
 ### 1.2 Database System
 
