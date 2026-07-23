@@ -1,5 +1,7 @@
 # Forest Digital Twin Database
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21509858.svg)](https://doi.org/10.5281/zenodo.21509858)
+
 > **Supabase-powered database for research connected to digital forest twins**
 
 This repository provides the database infrastructure for creating digital twins of forests. It uses Supabase to deliver a complete PostgreSQL-based data platform with auto-generated REST APIs, real-time subscriptions, and integrated authentication.
