@@ -12,9 +12,19 @@ The Digital Forest Twin is a PostgreSQL-based spatial database for forest resear
 
 - Multi-stem tree modeling with morphological attributes
 - Temporal versioning via variant-based lineage
-- Real-time sensor integration with external APIs (Aquarius)
+- Point cloud intake from [3Dtrees.earth](https://www.3dtrees.earth), the lab's forest LiDAR point cloud processing platform
+- Provider-agnostic live data integration — measuring sensor networks (e.g. Ecosense Forest) and weather/environmental feeds, currently implemented via the Aquarius API
 - PostGIS spatial queries and coordinate transformations
 - Field-level audit trail for reproducible science
+
+---
+
+## Upstream Data Sources
+
+Two upstream sources feed the twin beyond direct field surveys and growth simulations:
+
+- **Point clouds** are acquired and processed upstream on [3Dtrees.earth](https://www.3dtrees.earth), which handles upload, standardization, and prediction-enrichment of TLS/MLS/ULS/ALS scans. The resulting processing variants (standardized, prediction-enriched) are registered into `pointclouds.PointClouds`, preserving lineage back to the source scan via `parent_point_cloud_id`.
+- **Live data** covers any continuously updating measurement relevant to a location — both physical sensor networks (e.g. the Ecosense Forest deployment: soil moisture, sap flow, stem radial variation) and external environmental feeds such as weather or climate data. The `sensor` schema's `external_id`/`ExternalMetadata` columns are source-agnostic by design; the Aquarius API is the current live implementation, not the only one the schema supports.
 
 ---
 
@@ -181,7 +191,7 @@ Central reference tables used across all domains.
 
 ### 2. ⬜ PointClouds Schema
 
-LiDAR scan data and processing variants with scanner hardware tracking.
+LiDAR scan data and processing variants with scanner hardware tracking. Scans are uploaded and processed on [3Dtrees.earth](https://www.3dtrees.earth); this schema registers the resulting raw and processed (standardized, prediction-enriched) point cloud variants alongside the scanner hardware that acquired them.
 
 **Scanner Reference Tables:**
 
@@ -400,7 +410,7 @@ erDiagram
 
 **SensorTreeLinks** now includes `start_date` and `end_date` fields to track the temporal validity of sensor-to-tree relationships.
 
-**External Integration:** `external_id` and `ExternalMetadata` columns enable synchronization with the Aquarius API for automated data ingestion.
+**External Integration:** `external_id` and `ExternalMetadata` columns are source-agnostic, enabling synchronization with any live data provider through a generic ingestion pipeline (`scripts/import/ingest_sensor_data.py`). The current live implementation is the Aquarius API, serving the Ecosense Forest sensor network; the same columns extend to weather services or other real-time environmental feeds without a schema change.
 
 ### 5. 🟦 Environments Schema
 
@@ -549,49 +559,51 @@ Junction tables link audit entries to specific variants:
 ## Data Flow
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Sources["Data Sources"]
-        LiDAR["LiDAR Scanners"]
+        TDT["3Dtrees.earth<br/>(LiDAR/TLS/ULS point clouds)"]
         Field["Field Surveys"]
-        API["Aquarius API"]
         Sim["Growth Simulations"]
+        Live["Live Sensor & Environmental Feeds<br/>(e.g. Ecosense Forest sensors, weather)"]
     end
 
-    subgraph DB["PostgreSQL + PostGIS"]
+    subgraph DB["Digital Forest Twin DB (PostgreSQL + PostGIS + PostgREST)"]
         PC["PointClouds"]
         TR["Trees"]
         SE["Sensors"]
         SR["SensorReadings"]
         EN["Environments"]
+        REST["REST API<br/>(PostgREST)"]
     end
 
     subgraph Consumers["Consumers"]
-        UE["Unreal Engine<br/>Visualization"]
-        REST["REST API<br/>PostgREST"]
+        UE["3D Visualization<br/>(Unreal Engine)"]
+        WEB["Web Dashboards<br/>(e.g. Ecosense Shiny)"]
+        GIS["GIS / Spatial Tools<br/>(e.g. QGIS)"]
         Analysis["R/Python<br/>Analysis"]
     end
 
-    LiDAR --> PC
+    TDT --> PC
     PC --> TR
     Field --> TR
-    API --> SE
+    Live --> SE
     SE --> SR
     SR --> EN
-    Sim --> TR
-    Sim --> EN
+    Sim <--> TR
+    Sim <--> EN
 
+    PC --> REST
     TR --> REST
+    SR --> REST
     EN --> REST
     REST --> UE
+    REST --> WEB
+    REST --> GIS
     REST --> Analysis
 
-    style DB fill:#fbfbfb,stroke:#888888
-    style PC fill:#f5f5f5,stroke:#4f4f4f,color:#2a2a2a
-    style TR fill:#b9e3d4,stroke:#19392f,color:#0c241c
-    style SE fill:#f6ddcb,stroke:#673428,color:#3c1d13
-    style SR fill:#f6ddcb,stroke:#673428,color:#3c1d13
-    style EN fill:#c3d2e3,stroke:#181d26,color:#10151d
 ```
+
+PostgREST is drawn inside the database boundary rather than as a separate hop: it runs as part of the same self-hosted Supabase stack, introspecting the schema directly and regenerating routes on every migration, so it is the twin's exposed interface rather than an independent consumer-side service.
 
 ---
 
@@ -646,10 +658,10 @@ WHERE sr.timestamp > NOW() - INTERVAL '30 days';
 
 The Forest Digital Twin database provides:
 
-1. **Unified spatial model** for LiDAR, tree measurements, and sensors
+1. **Unified spatial model** for LiDAR point clouds (sourced from 3Dtrees.earth), tree measurements, and sensors
 2. **Temporal versioning** through variant lineage
 3. **Multi-stem support** with detailed morphological attributes
-4. **External API integration** for automated sensor data ingestion
+4. **Provider-agnostic live data integration** for automated sensor and environmental data ingestion
 5. **Field-level auditing** for scientific reproducibility
 6. **Auto-generated REST API** for application integration
 
