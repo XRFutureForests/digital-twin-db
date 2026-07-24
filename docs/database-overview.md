@@ -561,49 +561,44 @@ Junction tables link audit entries to specific variants:
 ```mermaid
 flowchart LR
     subgraph Sources["Data Sources"]
-        TDT["3Dtrees.earth<br/>(LiDAR/TLS/ULS point clouds)"]
+        TDT["3Dtrees.earth"]
         Field["Field Surveys"]
         Sim["Growth Simulations"]
-        Live["Live Sensor & Environmental Feeds<br/>(e.g. Ecosense Forest sensors, weather)"]
+        Live["Live Sensor & Environmental Feeds"]
+        
     end
 
-    subgraph DB["Digital Forest Twin DB (PostgreSQL + PostGIS + PostgREST)"]
-        PC["PointClouds"]
-        TR["Trees"]
-        SE["Sensors"]
-        SR["SensorReadings"]
-        EN["Environments"]
-        REST["REST API<br/>(PostgREST)"]
+    subgraph DB["Digital Twin Database"]
+        PC["Point Clouds Schema"]
+        TR["Trees Schema"]
+        EN["Environments & Sensors</br>Schema"]
+        REST["REST API"]
     end
 
     subgraph Consumers["Consumers"]
-        UE["3D Visualization<br/>(Unreal Engine)"]
-        WEB["Web Dashboards<br/>(e.g. Ecosense Shiny)"]
-        GIS["GIS / Spatial Tools<br/>(e.g. QGIS)"]
-        Analysis["R/Python<br/>Analysis"]
+        Analysis["Data Analysis"]
+        GIS["GIS Software"]
+        Dashboards["Web Dashboards"]
+        3D["3D Mesh</br>Visualization"]
+        Synthetic["Synthetic</br>Training Data"]
     end
 
     TDT --> PC
-    PC --> TR
+    TDT --> TR
+    PC --> REST
     Field --> TR
-    Live --> SE
-    SE --> SR
-    SR --> EN
     Sim <--> TR
     Sim <--> EN
-
-    PC --> REST
+    Live --> EN
     TR --> REST
-    SR --> REST
     EN --> REST
-    REST --> UE
-    REST --> WEB
-    REST --> GIS
     REST --> Analysis
+    REST --> GIS
+    REST --> Dashboards
+    REST --> 3D
+    3D --> Synthetic
 
 ```
-
-PostgREST is drawn inside the database boundary rather than as a separate hop: it runs as part of the same self-hosted Supabase stack, introspecting the schema directly and regenerating routes on every migration, so it is the twin's exposed interface rather than an independent consumer-side service.
 
 ---
 
