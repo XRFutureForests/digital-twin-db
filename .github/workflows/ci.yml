@@ -50,7 +50,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: pip
+          # No `cache: pip` -- this repo has no requirements.txt or pyproject.toml
+          # (dependencies live in environment.yml), and setup-python errors out
+          # when the cache has nothing to key on.
 
       - name: Install
         run: pip install ruff
