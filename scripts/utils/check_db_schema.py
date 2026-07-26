@@ -1,25 +1,12 @@
 #!/usr/bin/env python3
 """Check database column names."""
-import os
-from pathlib import Path
+# Uses the shared connection helper. The previous inline copy resolved
+# `docker/.env` from `scripts/` instead of the repo root, so it never actually
+# loaded the file and depended on credentials already being in the ambient
+# environment. It also hardcoded host=localhost.
+from db import get_db_connection
 
-import psycopg2
-from dotenv import load_dotenv
-
-load_dotenv(Path(__file__).parent.parent / "docker/.env")
-
-user = os.getenv("POSTGRES_USER", "postgres")
-tenant = os.getenv("POOLER_TENANT_ID", "")
-if tenant:
-    user = f"{user}.{tenant}"
-
-conn = psycopg2.connect(
-    host="localhost",
-    user=user,
-    password=os.getenv("POSTGRES_PASSWORD"),
-    database=os.getenv("POSTGRES_DB", "postgres"),
-    port=os.getenv("POSTGRES_PORT", "5432"),
-)
+conn = get_db_connection()
 cur = conn.cursor()
 
 # Check Species columns

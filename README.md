@@ -30,7 +30,7 @@ docker compose ps
 All services should show as "healthy". The database is automatically initialized with:
 
 - PostGIS extension enabled
-- 6 custom forest schemas (shared, pointclouds, trees, sensor, environments, imagery)
+- 7 custom forest schemas (shared, pointclouds, trees, sensor, environments, imagery, forest_floor)
 - Reference data (species, soil types, climate zones)
 - Row-level security policies
 - **Empty tables** - No test data is automatically loaded

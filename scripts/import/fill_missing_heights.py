@@ -11,44 +11,18 @@ Usage:
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
-import psycopg2
-from dotenv import load_dotenv
+# Allow importing from scripts/utils/ when running as a script
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.db import get_db_connection
 
 try:
     from pylometree import registry
 except ImportError:
     print("pylometree not installed. Run: pip install pylometree")
     sys.exit(1)
-
-env_path = Path(__file__).parent.parent.parent / "docker" / ".env"
-load_dotenv(env_path)
-
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-# Override to localhost when running outside Docker
-if POSTGRES_HOST == "db":
-    POSTGRES_HOST = "localhost"
-POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
-POSTGRES_DATABASE = os.getenv("POSTGRES_DB", "postgres")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-POOLER_TENANT_ID = os.getenv("POOLER_TENANT_ID", "")
-
-if POOLER_TENANT_ID:
-    POSTGRES_USER = f"{POSTGRES_USER}.{POOLER_TENANT_ID}"
-
-
-def get_db_connection():
-    return psycopg2.connect(
-        host=POSTGRES_HOST,
-        user=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        database=POSTGRES_DATABASE,
-        port=POSTGRES_PORT,
-    )
 
 
 def ensure_height_source_column(conn):

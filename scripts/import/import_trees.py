@@ -16,37 +16,19 @@ Examples:
 
 import argparse
 import logging
-import os
 import sys
 from pathlib import Path
 
 import pandas as pd
 import psycopg2
-from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
 # Allow importing from scripts/utils/ when running as a script
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils.profiling import init_profiler  # noqa: E402
+from utils.db import get_db_connection
+from utils.profiling import init_profiler
 
-# Load environment
-env_path = Path(__file__).parent.parent.parent / "docker" / ".env"
-load_dotenv(env_path)
-
-# Database configuration
-POSTGRES_HOST = "localhost"
-POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
-POSTGRES_DATABASE = os.getenv("POSTGRES_DB", "postgres")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-POOLER_TENANT_ID = os.getenv("POOLER_TENANT_ID", "")
-
-if POOLER_TENANT_ID:
-    POSTGRES_USER_POOLER = f"{POSTGRES_USER}.{POOLER_TENANT_ID}"
-else:
-    POSTGRES_USER_POOLER = POSTGRES_USER
-
-# Standard template columns (the 24 core columns)
+# The 24 columns of data/templates/trees_import_template.csv.
 TEMPLATE_COLUMNS = [
     "LocationName",
     "LocationID",
@@ -72,25 +54,20 @@ TEMPLATE_COLUMNS = [
     "BarkCharacteristicID",
     "FieldNotes",
     "MeasurementDate",
-    "ScenarioName",
 ]
 
 REQUIRED_COLUMNS = ["LocationID", "Latitude", "Longitude"]
 
-# Extra columns that may appear in import CSVs (for provenance) — not inserted directly
-EXTRA_COLUMNS = ["Easting_32632", "Northing_32632"]
+# Columns accepted beyond the template but never inserted directly:
+#   Easting/Northing  -> combined into position_original for provenance
+#   ScenarioName      -> reported and FK-checked only. Scenarios are
+#                        location-scoped (Location -> Scenario -> Variant) and
+#                        are assigned afterwards by scripts/seed/*_growth_variants.sql,
+#                        so import_trees always writes scenario_id = NULL.
+EXTRA_COLUMNS = ["Easting_32632", "Northing_32632", "ScenarioName"]
 
 CREATED_BY = "import_trees"
 
-
-def get_db_connection():
-    return psycopg2.connect(
-        host=POSTGRES_HOST,
-        user=POSTGRES_USER_POOLER,
-        password=POSTGRES_PASSWORD,
-        database=POSTGRES_DATABASE,
-        port=POSTGRES_PORT,
-    )
 
 
 def validate_csv(df, csv_path):

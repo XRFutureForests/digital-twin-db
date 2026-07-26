@@ -2,7 +2,7 @@
 
 Self-hosted Supabase/PostgreSQL backend for XR Future Forests digital twin research. University of Freiburg, funded by Eva Mayr-Stihl Stiftung.
 
-> **New here?** Start with the **[Database Overview](database-overview.md)** — the schema architecture diagram, the six schemas and their tables, how they connect, and the key design patterns (variant lineage, audit trail, PostGIS, auto-generated REST API).
+> **New here?** Start with the **[Database Overview](database-overview.md)** — the schema architecture diagram, the seven schemas and their tables, how they connect, and the key design patterns (variant lineage, audit trail, PostGIS, auto-generated REST API).
 
 ---
 
@@ -21,7 +21,7 @@ Full instructions: [local-deployment-guide.md](local-deployment-guide.md)
 
 ### Load tree inventory data
 
-Prepare a CSV using the 23-column template, then import:
+Prepare a CSV using the 24-column template, then import:
 
 ```bash
 conda activate digital-twin
@@ -92,7 +92,7 @@ Full operations runbook: [runbook.md](runbook.md)
 
 | Document | What it covers |
 |---|---|
-| [database-overview.md](database-overview.md) | **Start here** — schema architecture, the six schemas, tables, design patterns, audit trail, access patterns |
+| [database-overview.md](database-overview.md) | **Start here** — schema architecture, the seven schemas, tables, design patterns, audit trail, access patterns |
 | [architecture.md](architecture.md) | System architecture (arc42) with C4 diagrams and runtime scenarios |
 | [database-schema.md](database-schema.md) | Full schema, data dictionary, constraints, indexes |
 | [api-spec.md](api-spec.md) | Complete PostgREST endpoint reference |

@@ -1,6 +1,6 @@
 # Forest Digital Twin Database
 
-Self-hosted Supabase PostgreSQL database for digital forest twin research. 6 custom schemas (shared, pointclouds, trees, sensor, environments, imagery), PostGIS spatial extensions, REST API via PostgREST/Kong, auth via GoTrue. University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung).
+Self-hosted Supabase PostgreSQL database for digital forest twin research. 7 custom schemas (shared, pointclouds, trees, sensor, environments, imagery, forest_floor), PostGIS spatial extensions, REST API via PostgREST/Kong, auth via GoTrue. University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung).
 
 <!-- SCOPE: Canonical machine-facing entry point with repo map, critical rules, command overview, and links to detailed documentation ONLY. -->
 <!-- DOC_KIND: index -->
@@ -61,7 +61,7 @@ Schema history lives in `supabase/migrations/` (Supabase CLI), not as numbered f
 3. Apply and test against a local reset (see Critical Rules) before committing
 4. If the change should also ship in the baked Docker image, mirror it into a new file under `docker/volumes/db/init/` (e.g. `11-<description>.sql`) — additive only, never restructuring `10-baseline-schema.sql`'s objects
 
-When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `pointclouds`, `environments`, `imagery`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot.
+When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `pointclouds`, `environments`, `imagery`, `forest_floor`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot. Keep this schema list in sync with the `CREATE SCHEMA` statements in the init files — omitting one silently drops it from the new baseline.
 
 ## Tech Stack
 
@@ -116,4 +116,4 @@ Required in `docker/.env` (never commit):
 - [ ] Commands match current Docker Compose setup
 - [ ] Environment variable list matches `docker/.env.example` or deployment guide
 
-**Last Updated:** 2026-07-17
+**Last Updated:** 2026-07-26

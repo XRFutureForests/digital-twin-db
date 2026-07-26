@@ -24,33 +24,17 @@ Idempotent: re-running only adds missing links and refreshes AquariusName.
 """
 
 import csv
-import os
 import re
 import sys
 from pathlib import Path
 
-import psycopg2
-from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
-REPO_ROOT = Path(__file__).parent.parent.parent
+# Allow importing from scripts/utils/ when running as a script
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.db import REPO_ROOT, get_db_connection
+
 REFERENCE_CSV = REPO_ROOT / "data" / "reference" / "ecosense_sensor_tree_map.csv"
-
-# Load environment
-load_dotenv(REPO_ROOT / "docker" / ".env")
-
-# Database configuration
-POSTGRES_HOST = "localhost"
-POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
-POSTGRES_DATABASE = os.getenv("POSTGRES_DB", "postgres")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-POOLER_TENANT_ID = os.getenv("POOLER_TENANT_ID", "")
-
-if POOLER_TENANT_ID:
-    POSTGRES_USER_POOLER = f"{POSTGRES_USER}.{POOLER_TENANT_ID}"
-else:
-    POSTGRES_USER_POOLER = POSTGRES_USER
 
 CREATED_BY = "link_sensors_trees_script"
 
@@ -60,16 +44,6 @@ CREATED_BY = "link_sensors_trees_script"
 # non-matching labels like "Beech_18_Dendrometer" are ignored.
 PREFIX_RE = re.compile(r"^([A-Za-z]+_[A-Za-z]+_\d+)")
 
-
-def get_db_connection():
-    """Create database connection"""
-    return psycopg2.connect(
-        host=POSTGRES_HOST,
-        user=POSTGRES_USER_POOLER,
-        password=POSTGRES_PASSWORD,
-        database=POSTGRES_DATABASE,
-        port=POSTGRES_PORT,
-    )
 
 
 def load_reference_map():

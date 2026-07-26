@@ -3,21 +3,40 @@
 # Use this template to prepare tree inventory data for database import.
 # See data/templates/DATA_PREPARATION_GUIDE.md for detailed field descriptions.
 #
+# 24 columns. Import with:
+#   python scripts/import/import_trees.py your_trees.csv [--dry-run]
+#
 # REQUIRED FIELDS: LocationID, Latitude, Longitude
+# STRONGLY RECOMMENDED: LocationName -- the importer resolves locations by NAME
+#   and falls back to the raw LocationID only when LocationName is absent.
+#   location_id is a serial and is reassigned by a clean rebuild
+#   (scripts/admin/reset_database.py), so a file carrying only LocationID can
+#   silently import into the wrong site. Both shipped import files carry it.
 # RECOMMENDED: SpeciesID, DBH_cm, Height_m, MeasurementDate, TreeNumber
+#
+# NOTE ON PlotID: the column holds the plot NUMBER within the location
+#   (shared.Plots.plot_number), not the surrogate shared.Plots.plot_id.
+#
 # All coordinates must be in WGS84 (EPSG:4326)
 # Unit conversions: DBH in cm, Height in m
+#
+# OPTIONAL EXTRA COLUMNS (not in this header, accepted if present):
+# - Easting_32632, Northing_32632: original projected coordinates, stored as
+#   trees.Trees.position_original for provenance.
+# - ScenarioName: currently validated and reported but NOT written. Scenario and
+#   variant assignment is done afterwards by scripts/seed/*_growth_variants.sql,
+#   because scenarios are location-scoped (Location -> Scenario -> Variant).
 #
 # DATABASE STRUCTURE:
 # - trees.Trees: Location, species, crown, health, age, position, plot, campaign
 # - trees.Stems: DBH and stem-specific measurements (linked to tree)
-# Import creates one stem (StemNumber=1) for single-stem trees.
+# Import creates one stem (stem_number=1) for single-stem trees.
 #
-# LOOKUP TABLE IDs (query DB for current values):
-# - LocationID: shared.Locations (SELECT locationid, locationname FROM shared.locations)
-# - SpeciesID: shared.Species (SELECT speciesid, commonname FROM shared.species)
-# - PlotID: shared.Plots (SELECT plotid, plotname FROM shared.plots)
-# - CampaignID: shared.Campaigns (SELECT campaignid, campaignname FROM shared.campaigns)
+# LOOKUP TABLE IDs (query DB for current values; columns are snake_case):
+# - LocationName / LocationID: SELECT location_id, location_name FROM shared.locations
+# - SpeciesID:            SELECT species_id, common_name FROM shared.species
+# - PlotID (plot number): SELECT plot_number, plot_name FROM shared.plots
+# - CampaignID:           SELECT campaign_id, campaign_name FROM shared.campaigns
 # - TreeStatusID: trees.TreeStatus (1=healthy, 2=stressed, 3=declining, 4=dead, 5=harvested, 6=missing)
 # - VariantTypeID: shared.VariantTypes (1=original, 2=processed, 3=manual, 8=repeat_measurement)
 # - TaperTypeID: trees.TaperTypes (1=Cylinder, 2=Cone, 3=Paraboloid, 4=Neiloid)
@@ -28,6 +47,6 @@
 # DataSourceType: lidar, field, photogrammetry, estimated, simulated
 # SourceCRS: EPSG code of original coordinates (e.g., 32632 for UTM 32N) - for provenance tracking
 #
-LocationID,PlotID,TreeNumber,CampaignID,SpeciesID,VariantTypeID,DataSourceType,Latitude,Longitude,SourceCRS,DBH_cm,Height_m,TreeStatusID,CrownWidth_m,CrownBaseHeight_m,Age_years,HealthScore,TaperTypeID,StraightnessTypeID,BranchingPatternID,BarkCharacteristicID,FieldNotes,MeasurementDate
-4,19,367,,1,field,47.884878,8.088243,,21.96,25.5,1,4.5,8.0,85,0.95,3,1,1,2,,2025-03-05
-5,8,15,,1,field,48.268452,7.878024,32632,54.43,32.7,1,6.2,12.5,45,0.90,3,2,1,3,,2025-09-11
+LocationName,LocationID,PlotID,TreeNumber,CampaignID,SpeciesID,VariantTypeID,DataSourceType,Latitude,Longitude,SourceCRS,DBH_cm,Height_m,TreeStatusID,CrownWidth_m,CrownBaseHeight_m,Age_years,HealthScore,TaperTypeID,StraightnessTypeID,BranchingPatternID,BarkCharacteristicID,FieldNotes,MeasurementDate
+mathisle,4,1,367,,1,1,field,47.884878,8.088243,,21.96,25.5,1,4.5,8.0,85,0.95,3,1,1,2,,2025-03-05
+ecosense,5,8,15,,1,1,field,48.268452,7.878024,32632,54.43,32.7,1,6.2,12.5,45,0.90,3,2,1,3,,2025-09-11

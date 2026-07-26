@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  schema-drift:
+    # The Docker init baseline and the Supabase CLI migration snapshot are two
+    # copies of the same ~9.5k-line DDL, kept in sync by hand (AGENTS.md
+    # "Schema Migrations"). A missed mirror produces a Docker image whose schema
+    # silently differs from what the migrations describe, so compare them here.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Baseline matches migration snapshot
+        run: |
+          init=docker/volumes/db/init/10-baseline-schema.sql
+          snap=supabase/migrations/20260717093000_baseline_snapshot.sql
+          # The init copy carries an extra provenance header; compare from the
+          # first SQL statement onward.
+          strip() { grep -v '^--' "$1" | sed '/^[[:space:]]*$/d'; }
+          if ! diff <(strip "$init") <(strip "$snap"); then
+            echo "::error::$init and $snap have drifted. Re-mirror the change (see AGENTS.md 'Schema Migrations')."
+            exit 1
+          fi
+          echo "Schema baseline and migration snapshot agree."
+
+      - name: Forest-floor migration matches its init mirror
+        run: |
+          init=docker/volumes/db/init/11-restructure-forest-floor-and-phenology-audit.sql
+          snap=supabase/migrations/20260717102053_restructure_forest_floor_and_phenology_audit.sql
+          diff "$init" "$snap"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install
+        run: pip install ruff
+
+      - name: Lint (bug-level rules — blocking)
+        run: ruff check --select F82,F63,F7,E9 scripts
+
+      - name: Lint (full rule set — advisory)
+        run: ruff check scripts
+        continue-on-error: true

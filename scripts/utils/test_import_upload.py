@@ -6,19 +6,17 @@ This script validates the import files and performs a test upload
 (with optional dry-run mode).
 """
 
-import os
 import sys
 from pathlib import Path
 
 import pandas as pd
-import psycopg2
-from dotenv import load_dotenv
+from db import POSTGRES_PASSWORD, REPO_ROOT, get_db_connection
 from psycopg2.extras import execute_values
 
-# Configuration
-BASE_DIR = Path(__file__).parent.parent
-IMPORT_DIR = BASE_DIR / "data" / "imports"
-ENV_PATH = BASE_DIR / "docker" / ".env"
+# Configuration. REPO_ROOT comes from db.py; the local BASE_DIR previously
+# resolved to `scripts/` (one parent short), so IMPORT_DIR and ENV_PATH both
+# pointed at directories that do not exist and the script exited at startup.
+IMPORT_DIR = REPO_ROOT / "data" / "imports"
 
 # Import files to test
 IMPORT_FILES = [
@@ -34,42 +32,16 @@ CREATED_BY = "import_test_script"
 
 
 def load_environment():
-    """Load database connection settings from docker/.env"""
-    if not ENV_PATH.exists():
-        print(f"❌ Environment file not found: {ENV_PATH}")
-        sys.exit(1)
-
-    load_dotenv(ENV_PATH)
-
-    config = {
-        "host": "localhost",
-        "user": os.getenv("POSTGRES_USER", "postgres"),
-        "password": os.getenv("POSTGRES_PASSWORD"),
-        "database": os.getenv("POSTGRES_DB", "postgres"),
-        "port": os.getenv("POSTGRES_PORT", "5432"),
-    }
-
-    # Handle pooler tenant ID if set
-    pooler_tenant = os.getenv("POOLER_TENANT_ID", "")
-    if pooler_tenant:
-        config["user"] = f"{config['user']}.{pooler_tenant}"
-
-    if not config["password"]:
+    """Verify database credentials were picked up from docker/.env."""
+    if not POSTGRES_PASSWORD:
         print("❌ POSTGRES_PASSWORD not found in docker/.env")
         sys.exit(1)
-
-    return config
+    return {}
 
 
 def get_connection(config):
     """Create database connection."""
-    return psycopg2.connect(
-        host=config["host"],
-        user=config["user"],
-        password=config["password"],
-        database=config["database"],
-        port=config["port"],
-    )
+    return get_db_connection()
 
 
 def load_import_csv(file_path: Path) -> pd.DataFrame:

@@ -15,13 +15,16 @@ scripts/
 │   ├── import_trees.py             # Unified tree import from template CSV
 │   ├── ingest_sensor_data.py       # Provider-agnostic sensor/reading import (CSV/JSON)
 │   ├── link_sensors_to_trees.py    # Link sensors to trees (writes sensor_ref)
-│   └── archive/                    # Superseded scripts
-│       ├── import_ecosense.py      # (replaced by import_trees.py)
-│       └── import_mathisle.py      # (replaced by import_trees.py)
+│   └── fill_missing_heights.py     # Backfill height_m from allometric H-D models
 ├── seed/                     # Optional demo/test data (never auto-applied)
-│   └── ecosense_growth_variants.sql # Growth variants generated from real Ecosense baseline (see docs/variant-scenario-model.md)
+│   ├── ecosense_growth_variants.sql # Growth variants generated from real Ecosense baseline (see docs/variant-scenario-model.md)
+│   └── mathisle_growth_variants.sql
+├── silva/                    # SILVA growth-model coupling
+│   └── silva_writeback.py          # Write SILVA projections back to growth_simulations
 └── utils/                    # Utility and debug scripts
     ├── check_db_schema.py          # Inspect database schema
+    ├── generate_jwt.py             # Mint ANON/SERVICE_ROLE JWTs from JWT_SECRET
+    ├── profiling.py                # Per-stage timing helper used by --profile
     └── test_import_upload.py       # Test import file upload
 ```
 
