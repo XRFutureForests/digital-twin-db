@@ -4,7 +4,36 @@ All notable user-facing changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.1] - 2026-07-27
+
+### Changed
+
+- Consolidated `get_db_connection()` — duplicated across five scripts and
+  drifted — into `scripts/utils/db.py`. Three copies hardcoded
+  `POSTGRES_HOST = "localhost"`, silently ignoring the documented
+  configurable variable; two others resolved `docker/.env` relative to
+  `scripts/` instead of the repo root and never loaded credentials
+  (`test_import_upload.py` exited at startup on "Environment file not
+  found").
+- Rebuilt `trees_import_template.csv` to the 24 columns `TEMPLATE_COLUMNS`
+  actually declares (it shipped 23 and omitted `LocationName`, the
+  importer's preferred resolution path, with two misaligned example rows).
+  `ScenarioName` moved to `EXTRA_COLUMNS` since scenario assignment belongs
+  to the seed scripts.
+- Corrected "6 schemas" to 7 (`forest_floor` was added by a migration but
+  never counted) in `AGENTS.md`, `README.md`, and `docs/README.md`, and
+  added `forest_floor` to the pg_dump re-snapshot scope.
+- README's Zenodo DOI badge switched to a static shields.io badge — the
+  dynamic badge endpoint was intermittently failing GitHub's image proxy.
+- CI: dropped the pip cache step from the lint job (this repo has no
+  `requirements.txt`/`pyproject.toml` for it to key on; dependencies live in
+  `environment.yml`).
+
+### Removed
+
+- Dead code: `scripts/import/archive/` (456 lines, superseded by
+  `import_trees.py`) and `docker/volumes/functions/_shared/{database,retry}.ts`
+  (197 lines, imported by nothing).
 
 ### Security
 
@@ -48,6 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never-written `infrastructure.md`.
 - Removed `HANDOVER.md`, a stale internal session note whose proposed
   follow-up work (XRFF-253 through XRFF-257) is filed and completed in Linear.
+
+## [1.0.0] - 2026-07-23
 
 ## [0.1.0] - 2025
 
