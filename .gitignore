@@ -9,3 +9,11 @@ __pycache__/
 # Environment
 .env
 *.env.local
+
+# Real field-site data (precise coordinates of research plots) - local only,
+# not published in the public repo or its history
+/data/ecosense_250911.csv
+/data/mathisle_250904.csv
+/data/imports/ecosense_trees_import.csv
+/data/imports/mathisle_trees_import.csv
+/data/reference/ecosense_sensor_tree_map.csv
