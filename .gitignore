@@ -27,8 +27,10 @@ htmlcov/
 .env.*
 !.env.example
 
-# Claude Code local
+# AI agent tooling (dev branch only - kept off main for a clean public tree)
 .claude/
+AGENTS.md
+CLAUDE.md
 
 # Test results (manual test outputs)
 tests/manual/results/
