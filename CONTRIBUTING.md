@@ -55,6 +55,22 @@ An `.editorconfig` at the repository root enforces whitespace conventions.
 - If you accidentally commit a secret, rotate it immediately and notify the
   maintainer before force-pushing anything to a shared branch.
 
+## Maintainer note: `dev` -> `main` merges
+
+`main` intentionally does not track `AGENTS.md`/`CLAUDE.md` (dev-workflow
+tooling only); `dev` does. Prefer cherry-picking specific commits from
+`dev` onto `main`. For a bulk local merge instead, `.gitattributes` marks
+those paths `merge=ours` so `git merge dev` keeps them absent on `main`
+instead of conflicting - but that only works after running, once per
+clone:
+
+```
+git config merge.ours.driver true
+```
+
+This has no effect on GitHub/GitLab's server-side "Merge" button; always
+merge or cherry-pick locally, then push.
+
 ## Questions
 
 Open an issue or contact the maintainer.
