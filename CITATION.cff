@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use this database schema or its outputs in a publication, please cite it as below."
 title: "Forest Digital Twin Database - A Supabase-powered PostgreSQL/PostGIS Schema"
 type: software
-version: 1.0.1
-date-released: "2026-07-27"
+version: 1.0.2
+date-released: "2026-07-29"
 license: AGPL-3.0-or-later
 repository-code: "https://github.com/XRFutureForests/digital-twin-db"
 doi: 10.5281/zenodo.21509858
