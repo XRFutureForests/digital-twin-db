@@ -268,6 +268,10 @@ graph TD
         T2[Stems — multi-stem support]
         T3[PhenologyObservations]
         T4[Classification tables: TreeStatus, TaperTypes, BranchingPatterns, etc.]
+        T5[QSMs / QSMCylinders — QSM reconstructions + cylinder geometry]
+        T6[TreePartTypes / TreeGraphEdges — CityGML semantics + topology]
+        T7[RootSystemTypes / Roots — root classification]
+        T8[CrownFoliageProfiles — crown leaf-area density]
     end
 
     subgraph forest_floor["forest_floor schema — plot-level surveys"]

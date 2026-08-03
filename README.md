@@ -143,6 +143,15 @@ Individual tree data with multi-stem support:
 - **Stems** - Multi-stem measurements for trees with multiple main stems
 - **PhenologyObservations** - Seasonal development phase tracking (audited: `phenophase_status`, `intensity_percent`)
 - **TreeStatus**, **TaperTypes**, **StraightnessTypes**, **BranchingPatterns**, **BarkCharacteristics** - Classification tables
+- **QSMs**, **QSMCylinders** - QSM (Quantitative Structure Model) reconstructions and their cylinder geometry
+- **TreePartTypes**, **TreeGraphEdges** - CityGML part semantics (root/trunk/branch/twig/leaf/crown) and topology
+- **RootSystemTypes**, **Roots** - Root system classification (and eventually geometry)
+- **CrownFoliageProfiles** - Crown leaf-area density/distribution
+
+  These four line up `trees.*` with the CityGML-conformant conceptual tree model of Ambarwari
+  et al. (2024) — see [docs/citygml-qsm-mapping.md](docs/citygml-qsm-mapping.md) for the
+  column-by-column mapping and [docs/database-schema.md](docs/database-schema.md) §3.5b–e for
+  the data dictionary.
 
 ### 4. **sensor** - Environmental Monitoring
 
@@ -432,6 +441,7 @@ All documentation lives in the `docs/` directory. Start with **[docs/README.md](
 | | [Database Schema](docs/database-schema.md) | Full schema specifications and design rationale |
 | | [Database ERD](docs/database-erd.dbml) | Entity relationship diagram (DBML format) |
 | | [Database Overview](docs/database-overview.md) | High-level database structure summary |
+| | [CityGML/QSM Mapping](docs/citygml-qsm-mapping.md) | Column-by-column mapping of `trees.*` to Ambarwari et al. (2024)'s CityGML conceptual model |
 | **Operations** | [API Reference](docs/api-spec.md) | Complete PostgREST endpoint reference |
 | | [Deployment Guide](docs/deployment-guide.md) | Production deployment instructions |
 | | [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
