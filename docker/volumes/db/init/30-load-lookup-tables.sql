@@ -501,6 +501,38 @@ ON CONFLICT (damage_agent_name) DO UPDATE SET Description = EXCLUDED.Description
 DROP TABLE temp_damage_agents;
 
 -- =============================================================================
+-- LOAD TREE PART TYPES
+-- =============================================================================
+CREATE TEMP TABLE temp_tree_part_types (
+    part_type_name VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_tree_part_types FROM '/var/lib/postgresql/lookups/tree_part_types.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.TreePartTypes (part_type_name, Description)
+SELECT part_type_name, Description FROM temp_tree_part_types
+ON CONFLICT (part_type_name) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_tree_part_types;
+
+-- =============================================================================
+-- LOAD ROOT SYSTEM TYPES
+-- =============================================================================
+CREATE TEMP TABLE temp_root_system_types (
+    root_system_type_name VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_root_system_types FROM '/var/lib/postgresql/lookups/root_system_types.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.RootSystemTypes (root_system_type_name, Description)
+SELECT root_system_type_name, Description FROM temp_root_system_types
+ON CONFLICT (root_system_type_name) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_root_system_types;
+
+-- =============================================================================
 -- SUMMARY
 -- =============================================================================
 DO $$
@@ -529,6 +561,8 @@ DECLARE
     growth_form_count INTEGER;
     crown_class_count INTEGER;
     damage_agent_count INTEGER;
+    tree_part_type_count INTEGER;
+    root_system_type_count INTEGER;
 BEGIN
     SELECT COUNT(*) INTO soil_count FROM shared.SoilTypes;
     SELECT COUNT(*) INTO climate_count FROM shared.ClimateZones;
@@ -554,6 +588,8 @@ BEGIN
     SELECT COUNT(*) INTO growth_form_count FROM trees.GrowthForms;
     SELECT COUNT(*) INTO crown_class_count FROM trees.CrownClasses;
     SELECT COUNT(*) INTO damage_agent_count FROM trees.DamageAgents;
+    SELECT COUNT(*) INTO tree_part_type_count FROM trees.TreePartTypes;
+    SELECT COUNT(*) INTO root_system_type_count FROM trees.RootSystemTypes;
 
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Lookup Tables Loaded from CSV';
@@ -587,6 +623,9 @@ BEGIN
     RAISE NOTICE 'Tree Condition (FIA/NEON/ICP Forests-aligned):';
     RAISE NOTICE '  Crown Classes:    % rows', crown_class_count;
     RAISE NOTICE '  Damage Agents:    % rows', damage_agent_count;
+    RAISE NOTICE 'CityGML/QSM Alignment (XRFF-266):';
+    RAISE NOTICE '  Tree Part Types:  % rows', tree_part_type_count;
+    RAISE NOTICE '  Root System Types:% rows', root_system_type_count;
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Edit CSV files in data/lookups/ and rebuild to update';
     RAISE NOTICE '=======================================================';

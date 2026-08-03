@@ -1,0 +1,7 @@
+PartTypeName,Description
+root,"Below-ground structural root system (CityGML Root feature class); no QSM cylinder representation yet, see trees.Roots"
+trunk,Main stem from base to first major branch (CityGML Trunk feature class); QSM cylinders with branch_order = 0
+branch,Woody structure above the twig radius threshold (CityGML Branch feature class); QSM cylinders with branch_order >= 1
+twig,Terminal woody structure at or below the twig radius threshold (CityGML Twig feature class)
+leaf,"Foliage (CityGML Leaf feature class); out of scope for QSM (wood-only skeleton), see trees.CrownFoliageProfiles for density/distribution instead"
+crown,"Aggregate above-crown-base structure (CityGML Crown feature class); not a single cylinder, implicit in trees.Trees.crown_base_height_m"

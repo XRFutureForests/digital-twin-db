@@ -315,6 +315,118 @@ erDiagram
 
 **Lookup data source:** `data/lookups/crown_classes.csv`, `data/lookups/damage_agents.csv`
 
+### 3.5b `trees.QSMs` and `trees.QSMCylinders`
+
+**Description:** QSM (Quantitative Structure Model) reconstructions and their cylinder geometry — the first schema step of the CityGML/QSM alignment (XRFF-264/265; see `citygml-qsm-mapping.md`). `trees.QSMs` is variant-like: the same physical tree (`tree_entity_id`) can have several reconstructions from different scans, tools, or parameter sets. QSM-derived volume/DBH/height/crown-area are kept separate from `trees.Trees`'s allometric equivalents so the two estimation methods can be validated against each other rather than conflated.
+
+`trees.QSMCylinders` adopts the Real Twig / rTwig standardised cylinder column set directly ([aidanmorales.github.io/rTwig](https://aidanmorales.github.io/rTwig), "Dictionary" vignette) rather than inventing a new one, so ingesting a published rTwig CSV is a copy, not a transform. Only the source geometry/topology columns are stored (start point, axis, length, radius, parent, branch identity/order/position); rTwig's derived tree/segment metrics (growth length, distances, pipe-model outputs, segment ids) are not — they're recomputable from the stored geometry and would be speculative to store before a consumer needs them.
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `qsm_id` | BIGSERIAL | NO | PRIMARY KEY | — |
+| `tree_entity_id` | UUID | NO | — | Stable physical-tree identity; groups QSMs of the same tree across scans/tools |
+| `tree_id` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE | Measurement row this QSM was derived from |
+| `point_cloud_id` | INTEGER | YES | FK → `pointclouds.PointClouds` ON DELETE SET NULL | Source scan — provenance anchor |
+| `process_id` | INTEGER | YES | FK → `shared.Processes` ON DELETE SET NULL | TreeQSM/rTwig/SmartQSM + version |
+| `lod` | SMALLINT | YES | 0–4 | CityGML LoD this reconstruction supports (expect 3 or 4) |
+| `local_crs` | TEXT | YES | — | CRS of `QSMCylinders` coordinates, or the literal `local` |
+| `origin_position` | GEOMETRY(PointZ, 4326) | YES | — | Georeferences the local cylinder frame |
+| `cylinder_count` | INTEGER | YES | ≥ 0 | — |
+| `total_volume_m3`, `trunk_volume_m3`, `branch_volume_m3` | NUMERIC(10,3) | YES | ≥ 0 | QSM-derived volumes — distinct from `trees.Trees.volume_m3` |
+| `dbh_qsm_cm` | NUMERIC(6,2) | YES | 0–1000 | DBH from the QSM — validates against `trees.Stems.DBH_cm` |
+| `height_qsm_m` | NUMERIC(6,2) | YES | 0–200 | — |
+| `crown_area_qsm_m2` | NUMERIC(10,2) | YES | ≥ 0 | — |
+| `is_corrected` | BOOLEAN | NO | DEFAULT false | Raw TreeQSM (false) vs Real Twig radius-corrected (true) |
+
+**`trees.QSMCylinders`** (~10³–10⁴ rows per tree):
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `cylinder_id` | BIGSERIAL | NO | PRIMARY KEY | — |
+| `qsm_id` | BIGINT | NO | FK → `trees.QSMs` ON DELETE CASCADE | — |
+| `cylinder_index` | INTEGER | NO | UNIQUE with `qsm_id` | Cylinder id within the QSM, as published (rTwig `id`) |
+| `parent_cylinder_index` | INTEGER | YES | not FK — self-reference by index | Matches the source files; 0 = base cylinder |
+| `start_point` | GEOMETRY(PointZ) | YES | — | Cylinder base, in the QSM's local frame |
+| `axis` | DOUBLE PRECISION[3] | YES | length = 3 if set | Unit vector, base → top |
+| `length_m` | NUMERIC(8,4) | NO | > 0 | — |
+| `radius_m` | NUMERIC(8,5) | NO | ≥ 0 | — |
+| `branch_index` | INTEGER | YES | — | rTwig `branch` |
+| `branch_order` | INTEGER | YES | ≥ 0 | 0 = trunk |
+| `branch_position` | INTEGER | YES | — | Position within the branch |
+| `part_type_id` | SMALLINT | YES | FK → `trees.TreePartTypes` | CityGML part semantic (trunk/branch/twig); see the part_type assignment rule in §3.5c |
+
+Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not exposed through a `public.*` view (unlike `trees.QSMs`): every other public view in this schema is one-row-per-entity, and there is no client query pattern yet for a per-tree cylinder cloud of this size — XRFF-269 (`qsm_to_pve` spike) will define the real access shape. The table is already reachable via the `trees` schema (`PGRST_DB_SCHEMAS`), gated by the same RLS policies a public view would carry.
+
+**Lookup data source:** `data/lookups/tree_part_types.csv` (§3.5c).
+
+---
+
+### 3.5c `trees.TreePartTypes` and `trees.TreeGraphEdges`
+
+**Description:** CityGML tree semantics and topology (XRFF-266; `citygml-qsm-mapping.md` §4). `trees.TreePartTypes` is a read-only lookup mirroring Ambarwari et al.'s CityGML feature classes (root/trunk/branch/twig/leaf/crown) — the join point for a future CityGML ADE. Not every value is assignable to a `trees.QSMCylinders` row today: only trunk/branch/twig come from QSM geometry.
+
+**Part_type assignment rule** (applied by `scripts/import/import_qsm.py --twig-radius-mm`, not a stored/computed column):
+1. `branch_order = 0` → `trunk`
+2. `branch_order >= 1 AND radius_m <= twig_radius_m` → `twig`
+3. `branch_order >= 1 AND radius_m > twig_radius_m` → `branch`
+
+`twig_radius_m` is the species-specific value from rTwig's own `twigs`/`twigs_index` reference database — the same value used to correct that QSM's cylinder radii in the first place.
+
+`trees.TreeGraphEdges` materialises QSM topology (Ambarwari et al.'s Node/Edge model) — but only edges whose type deviates from the default. Every QSM cylinder has exactly one parent, so the full edge set already exists as `trees.QSMCylinders.parent_cylinder_index`; a row here overrides that default only where the edge's provenance needs recording.
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `edge_id` | BIGSERIAL | NO | PRIMARY KEY | — |
+| `qsm_id` | BIGINT | NO | FK → `trees.QSMs` ON DELETE CASCADE | — |
+| `from_cylinder_index`, `to_cylinder_index` | INTEGER | NO | UNIQUE with `qsm_id` | The CityGML Edge's 2 Nodes (parent → child `cylinder_index`) |
+| `edge_type` | TEXT | NO | `observed` \| `synthetic` \| `derived` | See below |
+
+`edge_type` values: `observed` = the source measured this connection directly (the implicit default for any edge with no override row); `synthetic` = the source itself flagged the connection as inferred (e.g. BioDiv-3DTrees' network-analysis cleanup where the point cloud didn't support a valid connection); `derived` = **we** added or overrode the edge ourselves (import cleanup, a future `qsm_to_pve` topology fix) — kept distinct from `synthetic` because that specifically means "the original provider inferred this," not us.
+
+**Lookup data source:** `data/lookups/tree_part_types.csv`.
+
+---
+
+### 3.5d `trees.RootSystemTypes` and `trees.Roots`
+
+**Description:** Root system classification and (eventually) geometry (XRFF-266), per Guerrero Iñiguez (2017) — the paper Ambarwari et al. themselves name for root coupling. Root was originally out of scope for lack of a data source; root system type correlates with species well enough to be a documented default today (`source = 'species_default'`), geometry columns left NULL until measured — classifiable now, geometrized later. `trees.RootSystemTypes` is a 3-value lookup (Köstler et al. 1968 root-morphology classification: `tap_root` | `heart_root` | `lateral_root`), same pattern as `trees.CrownClasses`.
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `root_id` | BIGSERIAL | NO | PRIMARY KEY | — |
+| `tree_entity_id` | UUID | NO | — | Stable physical-tree identity |
+| `tree_id` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE | — |
+| `root_system_type_id` | SMALLINT | NO | FK → `trees.RootSystemTypes` | — |
+| `lod` | SMALLINT | YES | 0–4 | Which Guerrero Iñiguez detail level this row represents |
+| `geometry_class` | TEXT | YES | `implicit` \| `explicit` | Block model (LoD1-3) vs surface-projected (LoD4) — same column/values as `trees.TreeAssets.geometry_class` (XRFF-267) |
+| `root_depth_m`, `root_spread_radius_m` | NUMERIC(6,2) | YES | ≥ 0 | Block-model parameters; NULL until measured |
+| `process_id` | INTEGER | YES | FK → `shared.Processes` ON DELETE SET NULL | How `root_system_type_id` was determined |
+| `source` | TEXT | NO | `species_default` \| `field_observed` \| `measured` | — |
+
+**Species-default seed:** `scripts/seed/root_and_foliage_defaults.sql` seeds one `species_default` row per tree of our 11-species canonical catalog (see `memory/publication-canonical-numbers.md` / growpy's `config/tree_asset_lookup.csv`), classified per Köstler et al. (1968): tap root — *Quercus robur, Abies alba, Pinus sylvestris, Pseudotsuga menziesii*; heart root — *Fagus sylvatica, Acer pseudoplatanus, Fraxinus excelsior, Tilia cordata*; lateral root — *Picea abies, Prunus avium, Betula pendula*.
+
+**Lookup data source:** `data/lookups/root_system_types.csv`.
+
+---
+
+### 3.5e `trees.CrownFoliageProfiles`
+
+**Description:** Crown leaf area density/distribution (XRFF-266) — not per-leaf geometry, which stays out of scope (QSM is a wood-only skeleton, Raumonen et al. 2013). Feeds growpy/PVE's existing procedural leaf-instancing path with a real fitted/literature density instead of an arbitrary default, once species-specific shape parameters exist.
+
+| Column | Type | Null | Constraints | Description |
+|--------|------|------|-------------|-------------|
+| `profile_id` | BIGSERIAL | NO | PRIMARY KEY | — |
+| `tree_id` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE | — |
+| `process_id` | INTEGER | YES | FK → `shared.Processes` ON DELETE SET NULL | Method/paper the distribution came from |
+| `distribution_type` | TEXT | NO | `beta` \| `johnson_sb` \| `uniform` | `uniform` = no species-specific shape known yet, not a placeholder pretending to be fitted data |
+| `vertical_params`, `horizontal_params` | NUMERIC[] | YES | — | Distribution shape parameters; NULL when `uniform` |
+| `total_leaf_area_m2` | NUMERIC(10,2) | YES | ≥ 0 | — |
+| `source` | TEXT | NO | `species_literature_default` \| `fitted` \| `measured` | — |
+
+**Registered processes:** `shared.Processes` rows for Le Port, Bosc, Champion & Loustau (2000) (Beta PDFs, doi:10.1051/forest:2000110) and Jeréz, Dean, Cao & Roberts (2005) (Johnson SB function, doi:10.1093/forestscience/51.2.93), via `scripts/seed/root_and_foliage_defaults.sql`. Neither paper studied any of our 11 species (Maritime pine and loblolly pine respectively), so the seed script's per-tree rows use `distribution_type = 'uniform'` with no `process_id` rather than fabricating species-specific Beta/Johnson-SB parameters attributed to either paper.
+
+---
+
 ### 3.6 `pointclouds.PointClouds`
 
 **Description:** LiDAR point cloud records. Original scans and processed derivatives share the same table, linked via `parent_point_cloud_id`. File content is stored in S3; `file_path` holds the S3 URI.

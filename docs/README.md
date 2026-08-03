@@ -103,6 +103,7 @@ Full operations runbook: [runbook.md](runbook.md)
 | [silva-coupling.md](silva-coupling.md) | SILVA R model workflow — export, run, write-back |
 | [growth-simulation-schema.md](growth-simulation-schema.md) | GrowthSimulations table and API views |
 | [species-naming-audit.md](species-naming-audit.md) | Species naming conventions and audit notes |
+| [citygml-qsm-mapping.md](citygml-qsm-mapping.md) | CityGML (Ambarwari et al. 2024) column mapping — feeds the QSM schema work (XRFF-264–267) |
 | [sensorreadings-scaling-evaluation.md](sensorreadings-scaling-evaluation.md) | Partitioning/index/performance evaluation for `sensor.sensorreadings` |
 | [runbook.md](runbook.md) | Operations: start/stop, reset, backups, health checks |
 | [deployment-guide.md](deployment-guide.md) | Production deployment guidance |
