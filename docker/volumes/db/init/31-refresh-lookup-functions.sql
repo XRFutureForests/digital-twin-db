@@ -74,13 +74,16 @@ BEGIN
                 Slope_deg NUMERIC(5, 2),
                 Aspect VARCHAR(3),
                 soil_type_name VARCHAR(100),
-                climate_zone_name VARCHAR(10)
+                climate_zone_name VARCHAR(10),
+                ForestGrowthRegion VARCHAR(16),
+                SoilMoistness SMALLINT,
+                SoilNutrientSupply SMALLINT
             ) ON COMMIT DROP;
             TRUNCATE _temp_locations;
             
             EXECUTE format('COPY _temp_locations FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'locations.csv');
             
-            INSERT INTO shared.Locations (location_name, Description, center_point, Elevation_m, Slope_deg, Aspect, soil_type_id, climate_zone_id)
+            INSERT INTO shared.Locations (location_name, Description, center_point, Elevation_m, Slope_deg, Aspect, soil_type_id, climate_zone_id, forest_growth_region, soil_moistness, soil_nutrient_supply)
             SELECT 
                 t.location_name,
                 t.Description,
@@ -92,7 +95,10 @@ BEGIN
                 t.Slope_deg,
                 t.Aspect,
                 (SELECT soil_type_id FROM shared.SoilTypes WHERE soil_type_name = t.soil_type_name),
-                (SELECT climate_zone_id FROM shared.ClimateZones WHERE climate_zone_name = t.climate_zone_name)
+                (SELECT climate_zone_id FROM shared.ClimateZones WHERE climate_zone_name = t.climate_zone_name),
+                t.ForestGrowthRegion,
+                t.SoilMoistness,
+                t.SoilNutrientSupply
             FROM _temp_locations t
             ON CONFLICT (location_name) DO UPDATE SET
                 Description = EXCLUDED.Description,
@@ -101,7 +107,10 @@ BEGIN
                 Slope_deg = EXCLUDED.Slope_deg,
                 Aspect = EXCLUDED.Aspect,
                 soil_type_id = EXCLUDED.soil_type_id,
-                climate_zone_id = EXCLUDED.climate_zone_id;
+                climate_zone_id = EXCLUDED.climate_zone_id,
+                forest_growth_region = EXCLUDED.forest_growth_region,
+                soil_moistness = EXCLUDED.soil_moistness,
+                soil_nutrient_supply = EXCLUDED.soil_nutrient_supply;
             
             SELECT COUNT(*) INTO v_rows_after FROM shared.locations;
             
