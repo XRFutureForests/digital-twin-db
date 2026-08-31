@@ -74,41 +74,69 @@ CARBON_FRACTION = 0.47
 #
 # Scots pine is registered in pylometree but excluded here: both entries were
 # fitted on 2-16 cm saplings.
+# Forrester 2017 is preferred wherever it has the species: fitted over far wider
+# diameter ranges than Zianis (Picea 1-82 cm against 11-47 cm) on much larger
+# samples (n=576 against n=17), which removes almost all of the extrapolation
+# problem, and it covers Abies alba, Larix decidua and Quercus robur, which
+# Zianis does not. Douglas fir has no diameter-only aboveground row in
+# Forrester's Table A.5, so it stays on Zianis.
 PREFERRED = {
-    "Fagus sylvatica":       ("zianis2005_eq88_fagus_sylvatica_agb",        (5.7, 62.1)),
-    "Picea abies":           ("zianis2005_eq141_picea_abies_agb",           (11.0, 47.0)),
+    "Abies alba":            ("forrester2017_abies_alba_agb",               (5.7, 57.7)),
+    "Fagus sylvatica":       ("forrester2017_fagus_sylvatica_agb",          (1.0, 84.0)),
+    "Larix decidua":         ("forrester2017_larix_decidua_agb",            (4.0, 90.1)),
+    "Picea abies":           ("forrester2017_picea_abies_agb",              (1.0, 82.0)),
+    "Quercus robur":         ("forrester2017_quercus_robur_agb",            (5.9, 67.5)),
     "Pseudotsuga menziesii": ("zianis2005_eq526_pseudotsuga_menziesii_agb", (5.0, None)),
 }
 
 PROCESS = {
     "process_name": "Tree Biomass Estimation",
-    "algorithm_name": "Zianis 2005 aboveground biomass (pylometree)",
+    "algorithm_name": "Forrester 2017 / Zianis 2005 aboveground biomass (pylometree)",
     "description": (
         "Total aboveground dry biomass from published European allometric "
-        "equations (Zianis et al. 2005, Silva Fennica Monographs 4), applied per "
-        f"species. Carbon content is {CARBON_FRACTION} x dry biomass (IPCC 2006 "
-        "default for temperate species), not a separate model. Species without a "
-        "qualifying equation in the monograph are left NULL rather than "
-        "approximated by a congener."
+        "equations, applied per species: Forrester et al. (2017) generalized "
+        "equations where available, Zianis et al. (2005) otherwise. "
+        f"Carbon content is {CARBON_FRACTION} x dry biomass (IPCC 2006 default "
+        "for temperate species), not a separate model. Species with no "
+        "published equation are left NULL rather than approximated by a "
+        "congener."
     ),
-    "author": "Zianis, D., Muukkonen, P., Mäkipää, R. & Mencuccini, M.",
+    "author": "Forrester, D.I. et al.; Zianis, D. et al.",
     "citation": (
-        "Zianis D, Muukkonen P, Mäkipää R, Mencuccini M (2005) Biomass and stem "
-        "volume equations for tree species in Europe. Silva Fennica Monographs 4, "
-        "63 p. doi:10.14214/sf.sfm4"
+        "Forrester DI et al. (2017) Generalized biomass and leaf area allometric "
+        "equations for European tree species incorporating stand structure, tree "
+        "age and climate. Forest Ecology and Management 396:160-175. "
+        "doi:10.1016/j.foreco.2017.04.011 | "
+        "Zianis D, Muukkonen P, Makipaa R, Mencuccini M (2005) Biomass and stem "
+        "volume equations for tree species in Europe. Silva Fennica Monographs 4. "
+        "doi:10.14214/sf.sfm4"
     ),
     "category": "analysis",
 }
 
 
 def ensure_process(cur, version: str) -> int:
+    """Return the process id, creating or refreshing the row as needed.
+
+    shared.Processes is UNIQUE on (process_name, version) -- not on
+    algorithm_name -- so a changed algorithm at the same version has to update
+    the existing row rather than insert beside it.
+    """
     cur.execute(
         """SELECT process_id FROM shared.processes
-           WHERE process_name = %s AND algorithm_name = %s AND version = %s""",
-        (PROCESS["process_name"], PROCESS["algorithm_name"], version),
+           WHERE process_name = %s AND version = %s""",
+        (PROCESS["process_name"], version),
     )
     row = cur.fetchone()
     if row:
+        cur.execute(
+            """UPDATE shared.processes
+               SET algorithm_name = %s, description = %s, author = %s,
+                   citation = %s, category = %s, updated_at = now()
+               WHERE process_id = %s""",
+            (PROCESS["algorithm_name"], PROCESS["description"], PROCESS["author"],
+             PROCESS["citation"], PROCESS["category"], row[0]),
+        )
         return row[0]
     cur.execute(
         """INSERT INTO shared.processes
@@ -125,6 +153,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dry-run", action="store_true", help="Preview, write nothing")
     ap.add_argument("--location", default=None, help="Restrict to one location_name")
+    ap.add_argument("--refill", action="store_true",
+                    help="Recompute values that are already set, not just NULLs. Use after "
+                         "changing the preferred equation for a species, so the column does "
+                         "not end up a mix of sources. The audit log records old -> new.")
     args = ap.parse_args()
 
     conn = get_db_connection()
@@ -136,8 +168,10 @@ def main() -> None:
         JOIN shared.species sp USING (species_id)
         JOIN trees.stems st ON st.tree_id = t.tree_id AND st.stem_number = 1
         JOIN shared.locations l ON l.location_id = t.location_id
-        WHERE t.biomass_kg IS NULL AND st.dbh_cm IS NOT NULL AND t.height_m IS NOT NULL
+        WHERE st.dbh_cm IS NOT NULL AND t.height_m IS NOT NULL
     """
+    if not args.refill:
+        sql += " AND t.biomass_kg IS NULL"
     params: list = []
     if args.location:
         sql += " AND l.location_name = %s"
@@ -153,7 +187,7 @@ def main() -> None:
     for tree_id, species, dbh, height in rows:
         pref = PREFERRED.get(species)
         if pref is None:
-            key = f"{species}: no qualifying Zianis equation"
+            key = f"{species}: no published equation in Forrester 2017 or Zianis 2005"
             skipped[key] = skipped.get(key, 0) + 1
             continue
         model_id, (dmin, dmax) = pref
@@ -201,7 +235,7 @@ def main() -> None:
 
     cur.execute(
         "SET LOCAL app.change_reason = %s",
-        (f"Zianis 2005 aboveground biomass, carbon = {CARBON_FRACTION} x dry mass "
+        (f"Forrester 2017 / Zianis 2005 aboveground biomass, carbon = {CARBON_FRACTION} x dry mass "
          f"(shared.Processes id {process_id}, pylometree {version})",),
     )
 
@@ -213,7 +247,8 @@ def main() -> None:
         """UPDATE trees.trees t
            SET biomass_kg = v.agb, carbon_content_kg = v.carbon
            FROM (VALUES %s) AS v(tree_id, agb, carbon)
-           WHERE t.tree_id = v.tree_id AND t.biomass_kg IS NULL""",
+           WHERE t.tree_id = v.tree_id"""
+        + ("" if args.refill else " AND t.biomass_kg IS NULL"),
         filled,
         page_size=max(len(filled), 100),
     )
