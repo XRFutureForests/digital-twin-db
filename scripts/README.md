@@ -15,9 +15,10 @@ scripts/
 │   ├── import_trees.py             # Unified tree import from template CSV
 │   ├── ingest_sensor_data.py       # Provider-agnostic sensor/reading import (CSV/JSON)
 │   ├── link_sensors_to_trees.py    # Link sensors to trees (writes sensor_ref)
-│   └── fill_missing_heights.py     # Backfill height_m from allometric H-D models
+│   ├── fill_missing_heights.py     # Backfill height_m from allometric H-D models
+│   └── fill_missing_ages.py        # Backfill age_years by Chapman-Richards height-age inversion
 ├── seed/                     # Optional demo/test data (never auto-applied)
-│   ├── ecosense_baseline_variant.sql # Growth variants generated from real Ecosense baseline (see docs/variant-scenario-model.md)
+│   ├── ecosense_baseline_variant.sql # natural_growth scenario + baseline_2025 variant (see docs/variant-scenario-model.md)
 │   └── mathisle_baseline_variant.sql
 ├── silva/                    # SILVA growth-model coupling
 │   └── silva_writeback.py          # Write SILVA projections back to growth_simulations
