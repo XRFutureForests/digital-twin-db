@@ -216,8 +216,8 @@ python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
 python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
 
 # 3. Growth variants (simulated_growth trees, cloned from the baseline)
-docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_growth_variants.sql
-docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/mathisle_growth_variants.sql
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_baseline_variant.sql
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/mathisle_baseline_variant.sql
 
 # 4. Sensors + readings (any provider; for Aquarius see the aquarius-connector repo), then link
 python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv

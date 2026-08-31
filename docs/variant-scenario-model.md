@@ -12,7 +12,7 @@ The digital twin DB stores multiple **forest states** in a strict three-level hi
 |------|---------|---------|
 | **Location** | A physical forest site | `ecosense`, `mathisle` |
 | **Scenario** | A management regime **at one site** that owns its baseline/initial conditions | `natural_growth` (per site) |
-| **Variant** | A state in that regime's timeline (baseline → growth → intervention) | `baseline_2025`, `growth_2035` |
+| **Variant** | A state in that regime's timeline (baseline → growth → intervention) | `baseline_2025`, `silva_2035` |
 | **VariantType** | How the data was produced | `original`, `simulated_growth`, `model_output` |
 | **Tree row** | One tree's state at one time step | Tree #42 at height 22.5m in year 2035 |
 
@@ -27,7 +27,7 @@ shared.Locations   (which forest site: ecosense, mathisle)
 
 **Scenarios are location-scoped** — `shared.Scenarios.location_id NOT NULL` and `UNIQUE(location_id, scenario_name)`. So a site like `ecosense` can hold several management regimes (`natural_growth`, and later e.g. `intensive_management`, `extensive_management`), each defining its own initial conditions and developing through its own variants. A scenario is *not* a single time step — the successive years are **variants** of it.
 
-**Variants form a timeline** — `shared.Variants.parent_variant_id` links each state to the one it developed from (`baseline_2025` → `growth_2035` → `growth_2045`), with `sort_order` giving the display order. The same variant name (`baseline_2025`) exists once per (location, scenario), disambiguated by the hierarchy rather than embedded in the name.
+**Variants form a timeline** — `shared.Variants.parent_variant_id` links each state to the one it developed from (`baseline_2025` → `silva_2030` → `silva_2035`), with `sort_order` giving the display order. The same variant name (`baseline_2025`) exists once per (location, scenario), disambiguated by the hierarchy rather than embedded in the name.
 
 > The old model conflated the levels — each simulated year was its own "scenario" (`Ecosense_Growth_2035`, `Mathisle_Growth_2045`), so one trajectory was scattered across several scenarios. Consolidated to one `natural_growth` scenario per site.
 
@@ -206,7 +206,7 @@ Then insert tree rows with the new `scenario_id` and `variant_id`:
 For "what would this same forest look like N years from now" variants — grow the
 trees that already exist in the DB rather than hand-writing new rows — use a SQL
 script that grows a baseline variant into a derived one. The reference
-implementation is `scripts/seed/ecosense_growth_variants.sql`, which creates the
+implementation is `scripts/seed/ecosense_baseline_variant.sql`, which creates the
 `natural_growth` scenario, then chains its variants:
 `baseline_2025` → `growth_2035` → `growth_2045` (each `parent_variant_id` pointing
 at the prior state).

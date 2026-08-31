@@ -62,7 +62,7 @@ REQUIRED_COLUMNS = ["LocationID", "Latitude", "Longitude"]
 #   Easting/Northing  -> combined into position_original for provenance
 #   ScenarioName      -> reported and FK-checked only. Scenarios are
 #                        location-scoped (Location -> Scenario -> Variant) and
-#                        are assigned afterwards by scripts/seed/*_growth_variants.sql,
+#                        are assigned afterwards by scripts/seed/*_baseline_variant.sql,
 #                        so import_trees always writes scenario_id = NULL.
 EXTRA_COLUMNS = ["Easting_32632", "Northing_32632", "ScenarioName"]
 

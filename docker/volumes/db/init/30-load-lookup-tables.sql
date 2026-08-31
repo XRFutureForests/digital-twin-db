@@ -66,7 +66,7 @@ DROP TABLE temp_variant_types;
 -- SCENARIOS — intentionally NOT seeded here.
 -- Scenarios are location-scoped (Location -> Scenario -> Variant, see
 -- 37-scenario-variant-hierarchy.sql) and are created per site by the growth-
--- variant seed scripts (scripts/seed/{ecosense,mathisle}_growth_variants.sql),
+-- variant seed scripts (scripts/seed/{ecosense,mathisle}_baseline_variant.sql),
 -- each owning its baseline. A global scenarios.csv no longer fits the model.
 -- =============================================================================
 

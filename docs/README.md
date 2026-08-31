@@ -36,7 +36,7 @@ The importer validates, deduplicates, and upserts to `trees.Trees` + `trees.Stem
 
 Scenarios are **location-scoped management regimes** in a strict Location → Scenario → Variant hierarchy: each site (`ecosense`, `mathisle`) owns its scenarios, and each scenario owns its baseline. They are **created per-site by the growth-variant seed scripts**, not loaded from a global CSV. VariantTypes (original, simulated_growth, …) are loaded from `data/lookups/variant_types.csv` on init.
 
-To **add a scenario + its variants**: copy the pattern in `scripts/seed/ecosense_growth_variants.sql` — it creates the location-scoped scenario, assigns the baseline trees to `baseline_2025`, and chains growth variants (`growth_2035`, `growth_2045`) with `parent_variant_id` lineage. See [variant-scenario-model.md](variant-scenario-model.md).
+To **add a scenario + its variants**: copy the pattern in `scripts/seed/ecosense_baseline_variant.sql` — it creates the location-scoped scenario, and assigns the baseline trees to `baseline_2025`. Growth variants on top of that baseline are written by silva-connector (`silva_2030`, `silva_2035`, ...), chained via `parent_variant_id`. See [variant-scenario-model.md](variant-scenario-model.md).
 
 Full model explanation and API query patterns: [variant-scenario-model.md](variant-scenario-model.md)
 

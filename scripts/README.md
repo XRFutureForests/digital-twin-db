@@ -17,8 +17,8 @@ scripts/
 │   ├── link_sensors_to_trees.py    # Link sensors to trees (writes sensor_ref)
 │   └── fill_missing_heights.py     # Backfill height_m from allometric H-D models
 ├── seed/                     # Optional demo/test data (never auto-applied)
-│   ├── ecosense_growth_variants.sql # Growth variants generated from real Ecosense baseline (see docs/variant-scenario-model.md)
-│   └── mathisle_growth_variants.sql
+│   ├── ecosense_baseline_variant.sql # Growth variants generated from real Ecosense baseline (see docs/variant-scenario-model.md)
+│   └── mathisle_baseline_variant.sql
 ├── silva/                    # SILVA growth-model coupling
 │   └── silva_writeback.py          # Write SILVA projections back to growth_simulations
 └── utils/                    # Utility and debug scripts
@@ -90,9 +90,9 @@ fresh `docker compose up` produces a clean, empty database — real forest data
 ```bash
 # Generate growth variants from the real Ecosense baseline — optional
 # (creates the location-scoped natural_growth scenario, assigns the baseline
-# trees to baseline_2025, and chains growth_2035/growth_2045). See
+# trees to baseline_2025). Growth variants come from silva-connector. See
 # docs/variant-scenario-model.md for how to copy this pattern for your own variant.
-docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/ecosense_growth_variants.sql
+docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/ecosense_baseline_variant.sql
 ```
 
 ## Utility Scripts
