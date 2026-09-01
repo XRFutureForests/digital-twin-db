@@ -13,3 +13,4 @@ soil_temperature,Subsurface soil temperature,°C,-20,40
 leaf_wetness,Leaf surface moisture,units,0,15
 sap_flow,Tree sap flow rate,g/h,0,10000
 stem_radial_variation,Dendrometer readings for stem radial variation,mV,0,5000
+stem_water_potential,Stem xylem water potential read through a pressure transducer. Negative under tension.,MPa,-10,1

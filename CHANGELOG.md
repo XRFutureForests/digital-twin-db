@@ -4,6 +4,58 @@ All notable user-facing changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **All 40 sensors typed `barometric_pressure` were stem water potential
+  probes.** Their serials are `*_StemWaterPotential`, their units `bar` and
+  `MPa`, and their values run -31.19 to 0.67 -- against a type whose typical
+  range is 900-1100 hPa. Not one measured atmospheric pressure. The cause was
+  aquarius-connector mapping on the Aquarius `Parameter` field alone, which
+  reports these as "BarPressure" because they are read through a pressure
+  transducer, while the Label and Unit carry the real quantity. Migration
+  `20260901140000_add_stem_water_potential` adds the missing `stem_water_potential`
+  lookup row and reclassifies the 40 sensors; the connector now disambiguates on
+  the series label so a re-sync will not reintroduce it. 22 of the 40 are logged
+  in bar and 18 are `_in_MPa` duplicates of the same series -- both kept, since
+  they are distinct Aquarius series and `sensor.Sensors.unit` tells them apart.
+- `trees.GrowthSimulations.biomass_kg` and `carbon_content_kg` were NULL on all
+  8,900 rows. `fill_missing_biomass.py` only ever targeted `trees.Trees`, so the
+  mirrored `simulated_growth` variants there were filled while the trajectory
+  table itself was not. It now runs a second pass over
+  `trees.GrowthSimulations`, computing from that table's own `dbh_cm` and
+  `height_m` with the same equations and fitted-range rules rather than copying
+  across -- which keeps the two consistent (verified: 8,868 of 8,868 agree
+  exactly) and still works for a `run_simulation.R --no-promote` run, where the
+  trajectory exists with no `trees.Trees` rows to copy from.
+
+### Added
+
+- `stem_water_potential` in `data/lookups/sensor_types.csv` (MPa, -10 to 1;
+  water potential is negative under xylem tension). 15 sensor types now.
+
+### Notes
+
+Two things audited and found **not** to be defects, recorded so they are not
+"fixed" later by mistake:
+
+- Three EcoSense `(plot, tree_number)` pairs -- 4/46, 4/50 and 11/4 -- carry two
+  distinct trees each, not duplicated imports. Plot 4/50 holds a 10.5 m and a
+  26.2 m Silver Fir about 15 m apart. The field *label* collides; both trees are
+  real and neither should be deleted. Resolution belongs in the field records.
+- The EcoSense import is complete: `ecosense_trees_import.csv` holds exactly
+  1,495 data rows and 1,495 trees are in the database. The apparent 1,527 came
+  from counting the file's comment header lines. The "1,504" figure circulating
+  in older notes is wrong.
+
+Still open, deliberately not guessed at: `age_years` is NULL on 328 measured
+trees (Silver fir, Douglas fir, larch and scattered broadleaves) and
+`biomass_kg` on 8, because pylometree carries no published equation for those
+species. See `scripts/import/fill_missing_ages.py` for why substituting a
+congener's equation is refused.
+
+
 ## [1.0.1] - 2026-07-27
 
 ### Changed
