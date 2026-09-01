@@ -233,12 +233,18 @@ CREATE TEMP TABLE temp_locations (
     Slope_deg NUMERIC(5, 2),
     Aspect VARCHAR(3),
     soil_type_name VARCHAR(100),
-    climate_zone_name VARCHAR(10)
+    climate_zone_name VARCHAR(10),
+    -- SILVA site conditions, added by 14-add-silva-site-conditions.sql.
+    -- These must stay in step with data/lookups/locations.csv: a column count
+    -- mismatch aborts this \copy and every load after it in this file.
+    forest_growth_region VARCHAR(16),
+    soil_moistness SMALLINT,
+    soil_nutrient_supply SMALLINT
 );
 
 \copy temp_locations FROM '/var/lib/postgresql/lookups/locations.csv' WITH (FORMAT csv, HEADER true);
 
-INSERT INTO shared.Locations (location_name, Description, center_point, Elevation_m, Slope_deg, Aspect, soil_type_id, climate_zone_id)
+INSERT INTO shared.Locations (location_name, Description, center_point, Elevation_m, Slope_deg, Aspect, soil_type_id, climate_zone_id, forest_growth_region, soil_moistness, soil_nutrient_supply)
 SELECT 
     t.location_name,
     t.Description,
@@ -250,7 +256,10 @@ SELECT
     t.Slope_deg,
     t.Aspect,
     (SELECT soil_type_id FROM shared.SoilTypes WHERE soil_type_name = t.soil_type_name),
-    (SELECT climate_zone_id FROM shared.ClimateZones WHERE climate_zone_name = t.climate_zone_name)
+    (SELECT climate_zone_id FROM shared.ClimateZones WHERE climate_zone_name = t.climate_zone_name),
+    t.forest_growth_region,
+    t.soil_moistness,
+    t.soil_nutrient_supply
 FROM temp_locations t
 ON CONFLICT (location_name) DO UPDATE SET
     Description = EXCLUDED.Description,
@@ -259,7 +268,10 @@ ON CONFLICT (location_name) DO UPDATE SET
     Slope_deg = EXCLUDED.Slope_deg,
     Aspect = EXCLUDED.Aspect,
     soil_type_id = EXCLUDED.soil_type_id,
-    climate_zone_id = EXCLUDED.climate_zone_id;
+    climate_zone_id = EXCLUDED.climate_zone_id,
+    forest_growth_region = EXCLUDED.forest_growth_region,
+    soil_moistness = EXCLUDED.soil_moistness,
+    soil_nutrient_supply = EXCLUDED.soil_nutrient_supply;
 
 DROP TABLE temp_locations;
 

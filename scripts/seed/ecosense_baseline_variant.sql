@@ -9,9 +9,11 @@
 -- ==============
 -- 1. Creates the location-scoped 'natural_growth' scenario.
 -- 2. Creates its 'baseline_2025' variant (variant_type 'original').
--- 3. Assigns the imported ecosense baseline trees to it. import_trees.py sets
---    scenario_id but not variant_id, so without this the baseline trees have no
---    variant and are invisible to ?variant_id= queries from UE.
+-- 3. Assigns the imported ecosense baseline trees to it, and backfills their
+--    scenario_id. import_trees.py writes neither (it always sets
+--    scenario_id = NULL, see its comment at the scenario_id assignment), so
+--    without this the baseline trees have no variant and are invisible to
+--    ?variant_id= queries from UE.
 --
 -- History
 -- =======
@@ -54,15 +56,18 @@ WHERE NOT EXISTS (
     WHERE l.location_name = 'ecosense' AND v.variant_name = 'baseline_2025'
 );
 
--- Assign all Ecosense baseline trees to this variant
+-- Assign all Ecosense baseline trees to this variant, and resync scenario_id
+-- from it so the Location -> Scenario -> Variant chain is complete.
 UPDATE trees.Trees t
-SET variant_id = (
-    SELECT v.variant_id FROM shared.Variants v
-    JOIN shared.Locations l ON v.location_id = l.location_id
-    WHERE l.location_name = 'ecosense' AND v.variant_name = 'baseline_2025'
-)
+SET
+    variant_id  = (
+        SELECT v.variant_id FROM shared.Variants v
+        JOIN shared.Locations l ON v.location_id = l.location_id
+        WHERE l.location_name = 'ecosense' AND v.variant_name = 'baseline_2025'
+    ),
+    scenario_id = (SELECT s.scenario_id FROM shared.Scenarios s JOIN shared.Locations l ON s.location_id = l.location_id WHERE l.location_name = 'ecosense' AND s.scenario_name = 'natural_growth')
 FROM shared.Locations l
 WHERE t.location_id = l.location_id
   AND l.location_name = 'ecosense'
   AND t.variant_type_id = (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'original')
-  AND t.variant_id IS NULL;
+  AND (t.variant_id IS NULL OR t.scenario_id IS NULL);
