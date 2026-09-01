@@ -1,42 +1,48 @@
 #!/usr/bin/env python3
 """
 Fill NULL biomass_kg and carbon_content_kg in trees.Trees using pylometree's
-Zianis et al. (2005) aboveground biomass equations.
+registered aboveground biomass (AGB) equations.
 
 Third in the family after fill_missing_heights.py and fill_missing_ages.py.
 
-    AGB = a * D^b            (M1)
-    AGB = a * D^b * H^c      (M4)
+    AGB = a * D^b            (M1, diameter-only form used by every entry below)
 
-from Silva Fennica Monographs 4 (doi:10.14214/sf.sfm4), registered in pylometree
->= 0.2.0 as `zianis2005_eq*_agb`.
+Two published sources, in preference order (see PREFERRED):
+
+1. Forrester et al. (2017), Forest Ecology and Management 396:160-175
+   (doi:10.1016/j.foreco.2017.04.011), Table A.5 diameter-only form. Preferred
+   wherever it has the species: fitted over far wider diameter ranges than
+   Zianis (Picea 1-82 cm against 11-47 cm) on much larger samples (n=576
+   against n=17), and it additionally covers Abies alba, Larix decidua and
+   Quercus robur, for which Zianis has no aboveground equation at all.
+   Registered in pylometree >= 0.3.0 as `forrester2017_*_agb`.
+
+2. Zianis et al. (2005), Silva Fennica Monographs 4 (doi:10.14214/sf.sfm4).
+   Used only where Forrester has no diameter-only row for the species
+   (currently just Pseudotsuga menziesii). Registered in pylometree >= 0.2.0
+   as `zianis2005_eq*_agb`.
 
 Three things constrain what this can fill:
 
-1. Species coverage. The monograph has no qualifying total-aboveground-biomass
-   equation for Quercus robur, Quercus petraea, Abies alba or Larix decidua, so
-   those trees get nothing. Substituting a congener would be inventing data.
+1. Species coverage. Neither source has a qualifying equation for Quercus
+   petraea or the scattered broadleaves (Acer spp., Prunus avium, Betula
+   pendula, Torminalis glaberrima). Those trees get nothing rather than a
+   congener's equation -- substituting one would be inventing data.
 
 2. DBH range. Each equation was fitted over a stated diameter range, and a
-   power law with an exponent near 2.4 extrapolates badly. Trees outside the
-   fitted range are filled but flagged in the run summary, because the
-   alternative -- silently extrapolating a spruce equation fitted to 47 cm out
-   to an 85 cm stem -- is how a plausible-looking wrong number gets published.
-
-   The two directions are not symmetric. Checked against German NFI stem volume
-   x wood density, eq141 (Picea, fitted 11-47 cm) extrapolates *upward* almost
-   perfectly -- ratio 0.96-0.98 all the way to 85 cm -- but *downward* it fails
-   badly, over-estimating a 10 cm spruce by 3.2x and a 20 cm one by 1.5x. So
-   trees above the fitted range are filled and flagged; trees below it are left
-   NULL, because filling them would put a threefold error into the database
-   with nothing to mark it.
+   power law with an exponent near 2.3 extrapolates badly. Trees below the
+   fitted minimum are left NULL. Trees above the fitted maximum are filled but
+   flagged in the run summary as extrapolated, since Forrester's ranges
+   (fitted to full-grown trees, up to 84-90 cm depending on species) already
+   cover essentially every stem these stands have; only genuine outliers hit
+   this path.
 
 3. Carbon fraction. Carbon is not a second model: it is a fixed fraction of dry
    biomass. IPCC (2006, GPG-LULUCF) gives 0.47 for temperate species, used here
    and recorded in the process description so the assumption is visible.
 
 Requires:
-    pip install "pylometree>=0.2.0"
+    pip install "pylometree>=0.3.0"
 
 Usage:
     python fill_missing_biomass.py             # apply
@@ -56,30 +62,17 @@ try:
     import pylometree
     from pylometree.registry.base import registry
 except ImportError:
-    print('pylometree not installed. Run: pip install "pylometree>=0.2.0"')
+    print('pylometree not installed. Run: pip install "pylometree>=0.3.0"')
     sys.exit(1)
 
 # IPCC 2006 default carbon fraction of dry matter for temperate species.
 CARBON_FRACTION = 0.47
 
-# One preferred equation per species. Chosen on fitted DBH range first (it is
-# what governs applicability here), then r2 and sample size.
-#
-#   Fagus     eq 88  D 5.7-62.1 cm, n=20, r2=0.974 -- the only beech entry whose
-#                    range actually covers our stands (2.7-63.7 cm).
-#   Picea     eq 141 D 11-47 cm, n=17, r2=0.967. The alternative (eq 151,
-#                    Iceland) was fitted on trees under 28 cm at a marginal site
-#                    and disagrees with eq 141 by a factor of 2.4.
-#   Douglas   eq 526 D from 5 cm, upper bound not reported.
-#
-# Scots pine is registered in pylometree but excluded here: both entries were
-# fitted on 2-16 cm saplings.
-# Forrester 2017 is preferred wherever it has the species: fitted over far wider
-# diameter ranges than Zianis (Picea 1-82 cm against 11-47 cm) on much larger
-# samples (n=576 against n=17), which removes almost all of the extrapolation
-# problem, and it covers Abies alba, Larix decidua and Quercus robur, which
-# Zianis does not. Douglas fir has no diameter-only aboveground row in
-# Forrester's Table A.5, so it stays on Zianis.
+# One preferred equation per species -- Forrester 2017 wherever it has the
+# species, Zianis 2005 otherwise (Pseudotsuga menziesii; see module docstring).
+# Scots pine (Pinus sylvestris) is registered in pylometree but excluded here:
+# its two Zianis entries were both fitted on 2-16 cm saplings, and Forrester's
+# Table A.5 has no diameter-only row for it.
 PREFERRED = {
     "Abies alba":            ("forrester2017_abies_alba_agb",               (5.7, 57.7)),
     "Fagus sylvatica":       ("forrester2017_fagus_sylvatica_agb",          (1.0, 84.0)),
