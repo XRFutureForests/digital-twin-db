@@ -20,7 +20,8 @@ scripts/
 │   └── fill_missing_biomass.py     # Backfill biomass_kg / carbon_content_kg (Zianis 2005 AGB)
 ├── seed/                     # Optional demo/test data (never auto-applied)
 │   ├── ecosense_baseline_variant.sql # natural_growth scenario + baseline_2025 variant (see docs/variant-scenario-model.md)
-│   └── mathisle_baseline_variant.sql
+│   ├── mathisle_baseline_variant.sql
+│   └── ecosense_zwisel_stem.sql      # 2nd stem of the 4_56 forked tree (post-import)
 ├── silva/                    # SILVA growth-model coupling
 │   └── silva_writeback.py          # Write SILVA projections back to growth_simulations
 └── utils/                    # Utility and debug scripts
@@ -95,6 +96,10 @@ fresh `docker compose up` produces a clean, empty database — real forest data
 # trees to baseline_2025). Growth variants come from silva-connector. See
 # docs/variant-scenario-model.md for how to copy this pattern for your own variant.
 docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/ecosense_baseline_variant.sql
+
+# Add the second stem of the ecosense 4_56 Zwisel (forked tree). Required after
+# every ecosense tree import — import_trees.py only writes stem_number = 1.
+docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/ecosense_zwisel_stem.sql
 ```
 
 ## Utility Scripts

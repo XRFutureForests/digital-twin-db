@@ -228,7 +228,7 @@ Import data in this sequence so that foreign-key relationships resolve correctly
 The tree importer accepts any CSV that follows the [template format](data/templates/trees_import_template.csv). Two ready-made import files are included:
 
 ```bash
-# Import EcoSense trees (1504 trees, mixed-species plot)
+# Import EcoSense trees (1495 trees, mixed-species plot)
 python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
 
 # Import Mathisle trees (730 trees)
