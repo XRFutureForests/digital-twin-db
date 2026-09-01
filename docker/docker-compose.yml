@@ -229,7 +229,12 @@ services:
     image: supabase/storage-api:v1.29.0
     restart: unless-stopped
     volumes:
-      - ./volumes/storage:/var/lib/storage:z
+      # Object storage for uploaded files (imagery, point clouds). This is the
+      # only bind mount that grows without bound, so deployments with a large
+      # secondary filesystem can point STORAGE_PATH at it and leave the small
+      # config mounts on the local disk. Plain file I/O, so unlike PGDATA it is
+      # safe on NFS. Defaults to the in-repo path for local development.
+      - ${STORAGE_PATH:-./volumes/storage}:/var/lib/storage:z
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://storage:5000/status" ]
       timeout: 5s
@@ -264,7 +269,8 @@ services:
     image: darthsim/imgproxy:v3.8.0
     restart: unless-stopped
     volumes:
-      - ./volumes/storage:/var/lib/storage:z
+      # Must resolve to the same directory as the storage service above.
+      - ${STORAGE_PATH:-./volumes/storage}:/var/lib/storage:z
     healthcheck:
       test: [ "CMD", "imgproxy", "health" ]
       timeout: 5s
