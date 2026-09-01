@@ -157,9 +157,11 @@ def main() -> None:
     if args.dry_run:
         print("[dry-run] nothing written")
         return
-    if not filled:
-        print("Nothing to write.")
-        return
+    # No early return when `filled` is empty: the projected-variant update below
+    # still has work to do. The documented pipeline order runs this script before
+    # silva-connector, so the first pass fills baselines while no simulated
+    # variants exist yet, and every later pass finds no new baseline age. Returning
+    # here left projected trees with age_years NULL permanently.
 
     version = pylometree.__version__
     process_id = ensure_process(cur, version)
@@ -174,18 +176,20 @@ def main() -> None:
 
     from psycopg2.extras import execute_values
 
-    # page_size must cover the whole batch: execute_values otherwise splits the
-    # UPDATE into several statements and cur.rowcount reports only the last one
-    # (1904 rows in pages of 100 reads back as "4 updated").
-    execute_values(
-        cur,
-        """UPDATE trees.trees t SET age_years = v.age
-           FROM (VALUES %s) AS v(tree_id, age)
-           WHERE t.tree_id = v.tree_id AND t.age_years IS NULL""",
-        filled,
-        page_size=max(len(filled), 100),
-    )
-    n_base = cur.rowcount
+    n_base = 0
+    if filled:
+        # page_size must cover the whole batch: execute_values otherwise splits the
+        # UPDATE into several statements and cur.rowcount reports only the last one
+        # (1904 rows in pages of 100 reads back as "4 updated").
+        execute_values(
+            cur,
+            """UPDATE trees.trees t SET age_years = v.age
+               FROM (VALUES %s) AS v(tree_id, age)
+               WHERE t.tree_id = v.tree_id AND t.age_years IS NULL""",
+            filled,
+            page_size=max(len(filled), 100),
+        )
+        n_base = cur.rowcount
 
     # A projected tree's age is its baseline age plus the elapsed years -- exact,
     # and it avoids inverting a modelled height through a modelled curve.
