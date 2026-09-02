@@ -78,6 +78,23 @@ Growth simulations schema and API views: [growth-simulation-schema.md](growth-si
 
 ---
 
+### Ask the twin to run something
+
+```sql
+select workflow_key, description from public.workflows;
+select request_job('silva', '{"location":"ecosense","years":30}'::jsonb);
+select * from job_status order by submitted_at desc limit 10;
+```
+
+`public.workflows` is the menu of what can be run and what each one accepts;
+`request_job()` queues it; `job_status` says what happened. A runner on some
+host drains the queue — the database never says what a workflow executes.
+
+How to read the menu, and what does not work yet: [requesting-a-job.md](requesting-a-job.md)
+Runner setup and per-host configuration: [../scripts/runner/README.md](../scripts/runner/README.md)
+
+---
+
 ### Manage users and access
 
 | Need | How |
@@ -118,6 +135,7 @@ Full operations runbook: [runbook.md](runbook.md)
 | [variant-scenario-model.md](variant-scenario-model.md) | Scenarios, VariantTypes, Variants — data model and API patterns |
 | [silva-coupling.md](silva-coupling.md) | SILVA R model workflow — export, run, write-back |
 | [growth-simulation-schema.md](growth-simulation-schema.md) | GrowthSimulations table and API views |
+| [requesting-a-job.md](requesting-a-job.md) | Request a workflow run: the menu, `request_job()`, watching `job_status` |
 | [species-naming-audit.md](species-naming-audit.md) | Species naming conventions and audit notes |
 | [citygml-qsm-mapping.md](citygml-qsm-mapping.md) | CityGML (Ambarwari et al. 2024) column mapping — feeds the QSM schema work (XRFF-264–267) |
 | [sensorreadings-scaling-evaluation.md](sensorreadings-scaling-evaluation.md) | Partitioning/index/performance evaluation for `sensor.sensorreadings` |
