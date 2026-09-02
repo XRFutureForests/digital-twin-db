@@ -79,9 +79,46 @@ wake-up finds the row still `running` past its timeout.
 `drain` exits non-zero if any job failed, per the repo's exit-code rule: an
 unattended run's exit code is the only signal cron mail carries.
 
-## Not yet deployed
+## Scheduling it — for when there is something to schedule
 
-There is no cron line anywhere in this workspace, and installing one is
-XRFF-238's business, not this script's. As of 2026-09-02 `dt.unr.uni-freiburg.de`
-has no database, no conda, no Blender and no `aquarius-connector` checkout, so
-nothing here can run there yet. Develop and test against the WSL Docker stack.
+Not installed anywhere. There is no cron line in this workspace, and putting
+one on the server is XRFF-238's business: as of 2026-09-02
+`dt.unr.uni-freiburg.de` has no database, no conda, no Blender and no
+`aquarius-connector` checkout, so nothing here can run there yet. Develop and
+test against the WSL Docker stack.
+
+When the host is ready, this is the shape — a **user** crontab, not a systemd
+unit. That host has `Linger=no`, so a `--user` timer would stop at logout, and
+there is no passwordless sudo for a system one. Its user crontab is already in
+use (certbot), so this appends rather than replaces.
+
+```cron
+# Drain the job queue every minute; reap abandoned jobs hourly.
+# Cron's PATH is not a login shell's -- use absolute paths here and in
+# workflows.toml, and let the conda env's interpreter be the entry point
+# rather than sourcing an activate script.
+RUNNER=/home/max/dev/digital-twin-db/scripts/runner/runner.py
+PYTHON=/home/max/miniconda3/envs/digital-twin/bin/python
+
+* * * * *  $PYTHON $RUNNER drain >> /home/max/log/runner-drain.log 2>&1
+7 * * * *  $PYTHON $RUNNER reap  >> /home/max/log/runner-reap.log  2>&1
+```
+
+Overlapping invocations are safe — that is what `FOR UPDATE SKIP LOCKED` is
+for — so a drain that outlives its minute does not need a lock file. Keep
+`max_jobs` low on a host that runs growpy: one job can hold it for an hour.
+
+Redirecting to a log rather than letting cron mail is deliberate on a host
+where `drain` runs every minute; drop the redirect if you want the non-zero
+exit of a failed job to reach you by mail.
+
+On Windows the equivalent is a Task Scheduler entry running the same two
+commands; nothing in the runner assumes a POSIX host except the paths in
+`workflows.toml`.
+
+## Draining by hand
+
+```bash
+conda activate digital-twin
+python scripts/runner/runner.py drain
+```
