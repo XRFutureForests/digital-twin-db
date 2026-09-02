@@ -54,6 +54,14 @@ reap_grace_seconds = 120
 #   timeout_seconds  how long a run may take before it is killed and failed.
 #   positional       parameters passed as bare values instead of --flags.
 #
+# THE SUBPROCESS INHERITS THE RUNNER'S ENVIRONMENT, and nothing else. There is
+# no `env` key here on purpose: secrets in a config file are a worse problem
+# than the one they solve. So whatever a workflow needs must already be in the
+# environment of the process that runs `drain`. `silva` needs `PGPASSWORD` --
+# its compose file refuses to start without it -- and cron gives a job almost
+# no environment at all. Export it from the crontab, or from a wrapper script
+# the crontab calls, and keep it out of this file.
+#
 # ARGUMENTS ARE DERIVED, NOT LISTED. A parameter `foo_bar` becomes `--foo-bar
 # <value>`; a boolean becomes the bare flag when true and nothing when false; a
 # key named in `positional` becomes a bare value in the order listed. So the

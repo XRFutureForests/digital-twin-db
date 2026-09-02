@@ -100,6 +100,11 @@ use (certbot), so this appends rather than replaces.
 RUNNER=/home/max/dev/digital-twin-db/scripts/runner/runner.py
 PYTHON=/home/max/miniconda3/envs/digital-twin/bin/python
 
+# The subprocess inherits this environment and nothing else. silva's compose
+# file refuses to start without PGPASSWORD, and cron supplies almost nothing.
+# Read it from a mode-600 file rather than writing it in the crontab.
+PGPASSWORD=...
+
 * * * * *  $PYTHON $RUNNER drain >> /home/max/log/runner-drain.log 2>&1
 7 * * * *  $PYTHON $RUNNER reap  >> /home/max/log/runner-reap.log  2>&1
 ```
