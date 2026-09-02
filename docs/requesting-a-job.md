@@ -113,10 +113,12 @@ ERROR:  requesting a job requires the contributor role
 
 Two separate reasons, and the second outlives the first:
 
-1. **No user carries an `app_metadata.role` claim yet** (XRFF-239).
-   `shared.is_contributor()` has nothing to check, so it rejects everyone. The
-   mechanism to fix this already exists — see *Assigning a role tier* in
-   [data-access-guide.md](data-access-guide.md).
+1. **No user carries an `app_metadata.role` claim.** `shared.is_contributor()`
+   has nothing to check, so it rejects everyone. On the local stack `auth.users`
+   is empty — there are no accounts at all. This is not missing machinery:
+   creating an account and setting its role tier are both documented in
+   [data-access-guide.md](data-access-guide.md) (*Assigning a role tier*), and
+   XRFF-239, which built that, is closed. It is a manual step nobody has taken.
 
 2. **The Studio SQL Editor has no signed-in identity at all.** It reaches the
    database through the `meta` service as `supabase_admin`
