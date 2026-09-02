@@ -189,11 +189,16 @@ erDiagram
 | `Aspect` | VARCHAR(3) | YES | NULL | N/NE/E/SE/S/SW/W/NW | Cardinal aspect direction |
 | `soil_type_id` | INTEGER | YES | NULL | FK → `shared.SoilTypes` | USDA soil classification |
 | `climate_zone_id` | INTEGER | YES | NULL | FK → `shared.ClimateZones` | Köppen climate zone |
+| `forest_growth_region` | VARCHAR(16) | YES | NULL | — | German `Wuchsgebiet.Wuchsbezirk` code, e.g. `99.73.13`. Keys silvaR's climate table |
+| `soil_moistness` | SMALLINT | YES | NULL | 1–9 | SILVA soil moisture class (1 = very dry, 5 = fresh, 9 = very wet) |
+| `soil_nutrient_supply` | SMALLINT | YES | NULL | 1–5 | SILVA nutrient supply class (1 = very low, 5 = very high) |
 | `created_at` | TIMESTAMPTZ | NO | NOW() | — | Record creation timestamp |
 | `updated_at` | TIMESTAMPTZ | YES | NULL | auto-updated by trigger | Last update timestamp |
 | `created_by` / `updated_by` | VARCHAR(200) | YES | NULL | — | User attribution |
 
 **Indexes:** `GIST(Boundary)`, `GIST(center_point)`, `(soil_type_id)`, `(climate_zone_id)`
+
+**Writing site attributes:** `Elevation_m`, `Slope_deg`, `Aspect`, `soil_type_id`, `climate_zone_id`, `forest_growth_region`, `soil_moistness` and `soil_nutrient_supply` are written by the `public.set_location_attributes` RPC, which records a `shared.AttributeProvenance` row for each in the same transaction. Those eight are the complete set it accepts; it raises on any other key. See [api-spec.md §3.4](api-spec.md).
 
 ---
 
@@ -529,9 +534,12 @@ Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| `variant_id` | SERIAL | PRIMARY KEY | — |
+| `environment_id` | SERIAL | PRIMARY KEY | — |
 | `location_id` | INTEGER | FK → `shared.Locations` ON DELETE CASCADE | — |
+| `scenario_id` | INTEGER | FK → `shared.Scenarios` ON DELETE SET NULL | NULL for a non-scenario row |
 | `variant_type_id` | INTEGER | FK → `shared.VariantTypes` | sensor_derived / model_output / etc. |
+| `variant_name` | VARCHAR(300) | NOT NULL | Part of the natural key — use a deterministic name (`cmip6_ssp245_2041_2070`) |
+| `process_id` | INTEGER | FK → `shared.Processes` ON DELETE SET NULL | What produced the row: dataset, version, aggregation method, citation, licence |
 | `avg_temperature_c` | NUMERIC(6,2) | −50 to 60 | Average temperature (°C) |
 | `avg_humidity_percent` | NUMERIC(5,2) | 0–100 | Average relative humidity (%) |
 | `total_precipitation_mm` | NUMERIC(8,2) | ≥ 0 | Total precipitation (mm) |
@@ -542,6 +550,10 @@ Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING
 | `stress_factor` | NUMERIC(3,2) | 0–1 | Environmental stress index (0=optimal, 1=severe) |
 | `start_date` | TIMESTAMPTZ | — | Period start |
 | `end_date` | TIMESTAMPTZ | ≥ start_date | Period end (NULL = ongoing) |
+
+**Natural key:** `uq_environments_natural_key` on `(location_id, scenario_id, variant_type_id, variant_name, start_date, end_date)`, declared `NULLS NOT DISTINCT` — necessary rather than cosmetic, since `scenario_id` and both period bounds are nullable and the default `NULLS DISTINCT` would let repeated refreshes of an open-ended row insert duplicates. It is the conflict target of `public.upsert_environment`.
+
+**Writing rows:** `public.upsert_environment` (see [api-spec.md §3.4](api-spec.md)) creates or refreshes one row per natural key and requires a `process_id`. It **merges**: a measurement key absent from its payload leaves the stored value alone, so two sources can populate different columns of the same period — and consequently it cannot set a value back to `NULL`.
 
 **Helper functions:** `environments.calculate_duration_days(start, end)`, `environments.is_active(start, end)`, `environments.create_from_sensor_data(location_id, start_time, end_time)`
 
@@ -661,8 +673,33 @@ Simulator-agnostic parameters are columns; everything simulator-specific lives i
 | `shared.ProcessParameters` | `parameter_name`, `parameter_value`, `data_type` | Individual parameter name/value pairs |
 | `shared.ProcessMetrics` | `metric_name` in (accuracy/precision/recall/f1_score/rmse/mae/r_squared) | Published performance metrics |
 | `shared.ProcessingJobs` | `external_job_id` UNIQUE, `Status`, `input_data` JSONB, `output_data` JSONB | External workflow tracking |
+| `shared.AttributeProvenance` | `(location_id, column_name)` UNIQUE | Where each acquired `shared.Locations` value came from |
 
 **Parameter junction tables:** `shared.ProcessParameters_Trees`, `shared.ProcessParameters_PointClouds`, `shared.ProcessParameters_Environments`, `shared.ProcessParameters_Stems`
+
+**`Category`** is one of `detection`, `classification`, `simulation`, `analysis`, `aggregation`, `acquisition`. The last was added 2026-09-02 for fetches from external open-data sources — ERA5, SoilGrids, a Thünen layer — as opposed to computation over data already held. `param_schema` (JSONB) describes the parameters a runnable workflow accepts; it never holds a command line or host path, because what a workflow *does* is defined only in the runner's private config.
+
+---
+
+### 3.14 `shared.AttributeProvenance`
+
+**Description:** Where each value in a `shared.Locations` column came from — one row per (location, column), replaced when the value is refreshed. `environments.Environments` carries a `process_id` of its own; `shared.Locations` had nothing, and this database is published, so an acquired attribute has to be able to name its source.
+
+A table rather than N `*_source` columns on `shared.Locations`: the alternative is three columns per attribute, a schema change every time a source is added, and ~24 mostly-NULL columns on a two-row table.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `attribute_provenance_id` | SERIAL | PRIMARY KEY | — |
+| `location_id` | INTEGER | NOT NULL, FK → `shared.Locations` ON DELETE CASCADE | — |
+| `column_name` | VARCHAR(64) | NOT NULL | The `shared.Locations` column this row describes. Not FK-checkable; the allowed set is enforced by `set_location_attributes`, the only writer |
+| `process_id` | INTEGER | NOT NULL, FK → `shared.Processes` ON DELETE RESTRICT | The source: name, version, licence, citation. NOT NULL by design — an acquired value with no registered source is what this table exists to prevent |
+| `fetched_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | When the value was retrieved, which is neither when the source published it nor when the row was written |
+| `source_uri` | TEXT | — | API request URL, DOI or file identifier, so a value traces to one retrieval and not just to a dataset |
+| `license` | VARCHAR(100) | — | e.g. `CC-BY-4.0`, `Copernicus`. Per value, because this database is published and attribution requirements travel with the data |
+
+**UNIQUE `(location_id, column_name)`** is what makes `set_location_attributes` idempotent — the same structural device as `ON CONFLICT (external_id)` in `bulk_upsert_sensors`.
+
+**Reading it:** `public.attributeprovenance` (`security_invoker='on'`) resolves the process name, version and citation. `GET /rest/v1/attributeprovenance`.
 
 ---
 

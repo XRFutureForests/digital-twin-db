@@ -148,6 +148,7 @@ PostgREST exposes every public schema view as a resource. The path is `/rest/v1/
 | `/rest/v1/geometriccrownsolids` | `trees.GeometricCrownSolids` | Trees (lookup) | Yes | No |
 | `/rest/v1/axisstructures` | `trees.AxisStructures` | Trees (lookup) | Yes | No |
 | `/rest/v1/growthforms` | `trees.GrowthForms` | Trees (lookup) | Yes | No |
+| `/rest/v1/attributeprovenance` | `shared.AttributeProvenance` + process | Shared | Yes | No |
 | `/rest/v1/scenarios` | `shared.Scenarios` | Shared | Yes | Yes |
 | `/rest/v1/varianttypes` | `shared.VariantTypes` | Shared | Yes | No |
 | `/rest/v1/datasourcetypes` | `shared.DataSourceTypes` | Shared | Yes | No |
@@ -165,7 +166,7 @@ PostgREST exposes every public schema view as a resource. The path is `/rest/v1/
 The domain data lives in the custom schemas (`shared`, `trees`, `sensor`, …); `public` holds only views. PostgREST serves `public` as its **default profile**, so exposing views there lets clients use simple names (`/trees`) without a schema-selection header. The public views fall into three groups:
 
 1. **Pass-through views** (`24-public-api-views.sql`) — 1:1 wrappers over a single domain table (`trees`, `sensors`, `sensorreadings`, `species`, all morphology/lookup tables, …). They exist purely to expose the domain schemas over REST; writable ones carry `INSTEAD OF` triggers.
-2. **Composite / export views** — `growth_simulations` / `simulation_runs` (simulator output).
+2. **Composite / export views** — `growth_simulations` / `simulation_runs` (simulator output), and `attributeprovenance` (where each acquired `shared.Locations` value came from, with the source's name, version and citation resolved from `shared.Processes`; `security_invoker='on'`, read-only over REST — the only writer is `set_location_attributes`).
 3. **Unreal Engine views** (`ue_*`) — flat, join-free payloads shaped for UE Blueprint HTTP import. `ue_trees` (trees + variant + scenario + species + main-stem DBH, flattened) is defined in `25-forest-state-views.sql`; `ue_sensors` and `ue_sensorreadings` in `28-sensor-views.sql`.
 
 > **`ue_trees`** is the single flat tree endpoint. It replaced the former `forest_state` view (XRFF-240), which was consolidated into `ue_trees` — see `33-consolidate-ue-trees.sql`. Filter by `variant_id` to load one time step: `GET /ue_trees?variant_id=eq.<id>`.
@@ -246,12 +247,16 @@ Response (201 Created with `Prefer: return=representation`):
 
 ### 3.4 RPC Functions
 
-SQL functions are exposed at `/rest/v1/rpc/{function_name}` via HTTP POST. All three RPC functions are granted to `anon`, `authenticated`, and `service_role`.
+SQL functions are exposed at `/rest/v1/rpc/{function_name}` via HTTP POST. All four RPC functions are granted to `anon`, `authenticated`, and `service_role`.
+
+These four are the **complete write surface for connectors**. `aquarius-connector` and `open-data-connector` reach the database only through them — no direct SQL, no database credentials. One RPC per landing zone, chosen by the shape of the datum: time series into the sensor tables, static site attributes onto `shared.Locations`, period aggregates and scenarios into `environments.Environments`.
 
 | Function | Endpoint | Source File | Description |
 |----------|----------|-------------|-------------|
 | `bulk_upsert_sensors` | `POST /rest/v1/rpc/bulk_upsert_sensors` | `22-aquarius-integration.sql` | Upsert sensors from JSON array (conflict on `external_id`) |
 | `bulk_insert_readings` | `POST /rest/v1/rpc/bulk_insert_readings` | `22-aquarius-integration.sql` | Bulk insert readings, skip duplicates (unique on `sensor_id`+`timestamp`) |
+| `set_location_attributes` | `POST /rest/v1/rpc/set_location_attributes` | `23-open-data-landing-zones.sql` | Set site attributes on one `shared.Locations` row and record where each came from, atomically |
+| `upsert_environment` | `POST /rest/v1/rpc/upsert_environment` | `23-open-data-landing-zones.sql` | Create or refresh the one `environments.Environments` row for a (location, scenario, variant type, variant name, period) |
 
 **RPC: bulk_insert_readings**
 
@@ -299,6 +304,59 @@ Response (200 OK):
 ```json
 [{ "out_externalid": "Mathisle_DN2-001", "out_sensorid": 12 }]
 ```
+
+**RPC: set_location_attributes**
+
+Writes the values and their provenance rows in one transaction, so a value and its stated source can never disagree. `p_process_id` is required and must already exist in `shared.Processes` — that row carries the source's version, licence and citation, which matters because this database is published.
+
+`p_attributes` accepts exactly these eight columns and **raises on any other key** rather than skipping it: `elevation_m`, `slope_deg`, `aspect`, `soil_type_id`, `climate_zone_id`, `forest_growth_region`, `soil_moistness`, `soil_nutrient_supply`. Identity, geometry and audit columns are not reachable through this path. A rejected call writes nothing.
+
+Idempotent: re-running leaves one `shared.AttributeProvenance` row per column, updated in place.
+
+Request body:
+```json
+{
+  "p_location_id": 2,
+  "p_attributes": { "elevation_m": 1183.4, "slope_deg": 12.5, "aspect": "NE" },
+  "p_process_id": 17,
+  "p_source_uri": "https://rest.isric.org/soilgrids/v2.0/properties/query?lon=8.09&lat=47.89",
+  "p_license": "CC-BY-4.0"
+}
+```
+
+Response (200 OK) — the number of columns written:
+```json
+[{ "out_written_count": 3 }]
+```
+
+**RPC: upsert_environment**
+
+One row per (location, scenario, variant type, variant name, period), keyed by the unique index `uq_environments_natural_key`. Use a deterministic `p_variant_name` — it is part of the key, so a changed name inserts a new row rather than updating the existing one.
+
+**Merges, does not replace.** A measurement key absent from `p_values` leaves the stored value alone, so two sources can populate different columns of the same period row. The consequence: this RPC cannot set a value back to `NULL` — delete the row to reset one.
+
+`p_values` accepts the 14 measurement columns of `environments.Environments` (`avg_temperature_c` … `stress_factor`) and raises on any other key. `p_process_id` is required, as above.
+
+Request body:
+```json
+{
+  "p_location_id": 1,
+  "p_variant_type_id": 7,
+  "p_variant_name": "cmip6_ssp245_2041_2070",
+  "p_process_id": 17,
+  "p_values": { "avg_temperature_c": 11.4, "total_precipitation_mm": 940.5 },
+  "p_start_date": "2041-01-01T00:00:00Z",
+  "p_end_date": "2070-12-31T00:00:00Z",
+  "p_description": "CMIP6 SSP2-4.5 30-year mean"
+}
+```
+
+Response (200 OK) — `out_inserted` is `false` when an existing row was refreshed:
+```json
+[{ "out_environment_id": 1, "out_inserted": true }]
+```
+
+Provenance written by `set_location_attributes` is readable at `GET /rest/v1/attributeprovenance`, with the source's name, version and citation resolved from `shared.Processes`.
 
 ---
 
