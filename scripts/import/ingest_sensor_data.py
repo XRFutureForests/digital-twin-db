@@ -219,7 +219,8 @@ def resolve_sensor_ids(external_ids: list[str]) -> dict[str, int]:
     return mapping
 
 
-def ingest_sensors(records: list[dict], dry_run: bool, batch_size: int) -> None:
+def ingest_sensors(records: list[dict], dry_run: bool, batch_size: int) -> int:
+    """Upsert sensor rows. Returns how many rows failed (invalid or unwritten)."""
     valid, errors = [], []
     for i, row in enumerate(records, 1):
         payload, error = coerce_sensor(row, i)
@@ -236,20 +237,33 @@ def ingest_sensors(records: list[dict], dry_run: bool, batch_size: int) -> None:
 
     if dry_run:
         print(f"[dry-run] Would upsert {len(valid)} sensors (no rows written)")
-        return
+        return len(errors)
 
     written = 0
+    write_failures = 0
     for i in range(0, len(valid), batch_size):
         batch = valid[i : i + batch_size]
-        result = supabase_rpc("bulk_upsert_sensors", {"p_sensors": batch})
+        try:
+            result = supabase_rpc("bulk_upsert_sensors", {"p_sensors": batch})
+        except requests.RequestException as e:
+            # Caught rather than allowed to propagate so the summary below still
+            # prints; the non-zero exit, not a traceback, reports the failure.
+            write_failures += len(batch)
+            print(f"  - rows {i + 1}-{i + len(batch)}: write failed: {e}")
+            continue
         written += len(result) if isinstance(result, list) else 0
 
     print("=" * 60)
-    print(f"Sensors read: {len(records)} | written: {written} | skipped/failed: {len(errors)}")
+    print(
+        f"Sensors read: {len(records)} | written: {written} | "
+        f"skipped/failed: {len(errors) + write_failures}"
+    )
     print("=" * 60)
+    return len(errors) + write_failures
 
 
-def ingest_readings(records: list[dict], dry_run: bool, batch_size: int) -> None:
+def ingest_readings(records: list[dict], dry_run: bool, batch_size: int) -> int:
+    """Insert readings. Returns how many rows failed (invalid or unwritten)."""
     needs_lookup = [row.get("external_id") for row in records if not row.get("sensor_id") and row.get("external_id")]
     sensor_id_by_external = resolve_sensor_ids(needs_lookup) if needs_lookup else {}
 
@@ -269,22 +283,33 @@ def ingest_readings(records: list[dict], dry_run: bool, batch_size: int) -> None
 
     if dry_run:
         print(f"[dry-run] Would insert up to {len(valid)} readings (no rows written; some may already exist)")
-        return
+        return len(errors)
 
     inserted = 0
+    write_failures = 0
     for i in range(0, len(valid), batch_size):
         batch = valid[i : i + batch_size]
-        result = supabase_rpc("bulk_insert_readings", {"readings": batch})
+        try:
+            result = supabase_rpc("bulk_insert_readings", {"readings": batch})
+        except requests.RequestException as e:
+            # Caught rather than allowed to propagate so the summary below still
+            # prints; the non-zero exit, not a traceback, reports the failure.
+            write_failures += len(batch)
+            print(f"  - rows {i + 1}-{i + len(batch)}: write failed: {e}")
+            continue
         if result:
             inserted += result[0].get("out_inserted_count", 0)
 
-    skipped_existing = len(valid) - inserted
+    # Rows in a failed batch are neither inserted nor already present, so they
+    # are excluded here rather than silently inflating 'already present'.
+    skipped_existing = len(valid) - inserted - write_failures
     print("=" * 60)
     print(
         f"Readings read: {len(records)} | inserted: {inserted} | "
-        f"already present: {skipped_existing} | invalid: {len(errors)}"
+        f"already present: {skipped_existing} | invalid: {len(errors) + write_failures}"
     )
     print("=" * 60)
+    return len(errors) + write_failures
 
 
 def main() -> None:
@@ -304,9 +329,15 @@ def main() -> None:
     records = apply_mapping(load_records(args.file), mapping)
 
     if args.kind == "sensors":
-        ingest_sensors(records, args.dry_run, args.batch_size)
+        failures = ingest_sensors(records, args.dry_run, args.batch_size)
     else:
-        ingest_readings(records, args.dry_run, args.batch_size)
+        failures = ingest_readings(records, args.dry_run, args.batch_size)
+
+    # Exit non-zero when any record failed to write. Unattended runs (XRFF-346's
+    # job runner sets processingjobs.status from the exit code) must not record
+    # a run where every write failed as a completed job.
+    if failures:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -34,6 +34,7 @@ Self-hosted Supabase PostgreSQL database for digital forest twin research. 7 cus
 |----------|------|---------------|
 | Confirmation | Never commit or push without explicit user confirmation | Always |
 | Scope | Modify only what the request requires — no adjacent cleanup | Always |
+| Exit codes | An ingestion or connector script must exit non-zero if any record failed to write — an unattended run's exit code is the only signal the job runner has | Always |
 | Secrets | Never commit `.env` or credentials; use `docker/.env` (gitignored) | Before any git operation |
 | Schema changes | Add a new file under `supabase/migrations/`; never edit the baseline or old numbered init files | Before schema edits |
 | Docker | Run `docker compose up -d` from `docker/` or the repo root | Before all local dev |
