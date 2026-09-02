@@ -424,10 +424,44 @@ dashboard's nginx**, since the network is created here. `.env` sets
 Authentication is unchanged by the proxy: Kong still returns 401 without an
 `apikey` header, and row-level security still applies.
 
-#### The server tracks `dev`
+#### The checkouts are disposable; the repository is the truth
 
-It is a test host, and `dev` is the working branch — `main` only moves at a
-milestone release, because it is what publishes to Zenodo.
+Nothing is edited on the server. Its checkouts drifted once already — uncommitted
+edits to both `app.R` files, a stale `.venv`, a 320 MB abandoned PGDATA inside
+`docker/volumes/` — and the drift is invisible until something behaves
+differently there than it does locally. Both repositories were deleted and
+re-cloned 2026-09-02 to end that. Deploy by pushing and pulling, never by editing
+in place.
+
+The server tracks `dev`: it is a test host, and `dev` is the working branch —
+`main` only moves at a milestone release, because it is what publishes to Zenodo.
+The dashboard repository has no such split and tracks `main`.
+
+Only four things on the host are not in a repository, and a re-clone must restore
+them: `digital-twin-db/docker/.env`, `digital-twin-dashboard/docker/.env`, the
+two `apps/*/.Renviron` files, and `docker/nginx/ssl/*.pem`.
+
+#### No cron jobs, by decision
+
+The crontab is empty and should stay that way. On a host whose root disk has
+repeatedly filled to the point of unreachability, anything that writes on a
+schedule is a liability, and an unattended job that nobody watches fails silently
+— which is exactly how the TLS certificate came to expire.
+
+The cost is that certificate renewal is manual. Run
+`digital-twin-dashboard/scripts/renew-ssl.sh` before the certificate lapses; it
+is a single command and takes seconds. Check the expiry with:
+
+```bash
+openssl s_client -connect dt.unr.uni-freiburg.de:443 \
+    -servername dt.unr.uni-freiburg.de </dev/null 2>/dev/null \
+    | openssl x509 -noout -enddate
+```
+
+Scheduled data ingestion does not belong here either. The Aquarius connector
+talks to this stack over its REST API, so it runs from a workstation against
+`https://dt.unr.uni-freiburg.de/db` and needs neither a checkout nor a cron entry
+on the server.
 
 
 ## Environment Configuration
