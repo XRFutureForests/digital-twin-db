@@ -152,21 +152,20 @@ PostgREST exposes every public schema view as a resource. The path is `/rest/v1/
 | `/rest/v1/varianttypes` | `shared.VariantTypes` | Shared | Yes | No |
 | `/rest/v1/datasourcetypes` | `shared.DataSourceTypes` | Shared | Yes | No |
 | `/rest/v1/sensor_tree_links` | `sensor.sensor_tree_links` | Sensor | Yes | Yes |
-| `/rest/v1/silva_input` | composite view | Trees (external) | Yes | No |
 | `/rest/v1/growth_simulations` | `trees.GrowthSimulations` | Trees | Yes | No |
-| `/rest/v1/simulation_runs` | derived from GrowthSimulations | Trees | Yes | No |
+| `/rest/v1/simulation_runs` | `trees.SimulationRuns` + trajectory counts | Trees | Yes | No |
 | `/rest/v1/ue_trees` | composite view (trees) | Unreal Engine | Yes | No |
 | `/rest/v1/ue_sensors` | composite view | Unreal Engine | Yes | No |
 | `/rest/v1/ue_sensorreadings` | composite view | Unreal Engine | Yes | No |
 
-`silva_input` is the SILVA R model export view. `growth_simulations` and `simulation_runs` expose simulator output; writes go to the underlying `trees.GrowthSimulations` table via `scripts/silva/silva_writeback.py` (service_role).
+`growth_simulations` and `simulation_runs` expose simulator output and are read-only. Writes go to `trees.SimulationRuns` and `trees.GrowthSimulations` directly over libpq, from the [silva-connector](../../silva-connector) repo — see [silva-coupling.md](silva-coupling.md). The `silva_input` export view was dropped 2026-09-02 (XRFF-351): its species codes collided with the ones silvaR actually uses, and nothing read it.
 
 #### Public view categories
 
 The domain data lives in the custom schemas (`shared`, `trees`, `sensor`, …); `public` holds only views. PostgREST serves `public` as its **default profile**, so exposing views there lets clients use simple names (`/trees`) without a schema-selection header. The public views fall into three groups:
 
 1. **Pass-through views** (`24-public-api-views.sql`) — 1:1 wrappers over a single domain table (`trees`, `sensors`, `sensorreadings`, `species`, all morphology/lookup tables, …). They exist purely to expose the domain schemas over REST; writable ones carry `INSTEAD OF` triggers.
-2. **Composite / export views** — `silva_input` (SILVA model export), `growth_simulations` / `simulation_runs` (simulator output).
+2. **Composite / export views** — `growth_simulations` / `simulation_runs` (simulator output).
 3. **Unreal Engine views** (`ue_*`) — flat, join-free payloads shaped for UE Blueprint HTTP import. `ue_trees` (trees + variant + scenario + species + main-stem DBH, flattened) is defined in `25-forest-state-views.sql`; `ue_sensors` and `ue_sensorreadings` in `28-sensor-views.sql`.
 
 > **`ue_trees`** is the single flat tree endpoint. It replaced the former `forest_state` view (XRFF-240), which was consolidated into `ue_trees` — see `33-consolidate-ue-trees.sql`. Filter by `variant_id` to load one time step: `GET /ue_trees?variant_id=eq.<id>`.

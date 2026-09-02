@@ -63,6 +63,38 @@ Schema history lives in `supabase/migrations/` (Supabase CLI), not as numbered f
 
 When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `pointclouds`, `environments`, `imagery`, `forest_floor`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot. Keep this schema list in sync with the `CREATE SCHEMA` statements in the init files — omitting one silently drops it from the new baseline.
 
+## Consumers that read base tables directly
+
+Two repos deliberately reach past the published `public.*` API into the base
+schemas. This is a decision, not drift.
+
+| Repo | Reach | Why |
+|---|---|---|
+| [silva-connector](../silva-connector) | 8 tables in `shared` / `trees`, **writes 4** | libpq in one transaction. The published views cannot express a variant-scoped read, and a half-written variant would read as a real forest state, so it needs the base tables and a transaction |
+| [digital-twin-dashboard](../digital-twin-dashboard) | 12 tables, **read-only** via RPostgres | Aggregates across schemas that no single view exposes |
+
+Both are site-specific consumers of this specific deployment, which is what makes
+it defensible. [aquarius-connector](../aquarius-connector) is the counter-example
+and stays that way: it goes through PostgREST and two source-agnostic RPCs, so it
+could be pointed at a different database or replaced by another provider's
+connector.
+
+**The rule this creates:** any migration touching `shared`, `trees` or `sensor`
+requires a grep of both consumer repos before it lands.
+
+```bash
+grep -rn "<table_or_column>" ../silva-connector/R ../silva-connector/scripts
+grep -rn "<table_or_column>" ../digital-twin-dashboard/shared ../digital-twin-dashboard/apps
+```
+
+CI was removed workspace-wide on 2026-09-01, so nothing else will signal a
+break: a renamed column reaches those repos as a runtime error in front of a
+user, not as a failed build.
+
+Do not "fix" this coupling by pushing either consumer onto the public views
+without being asked. The views would have to grow to match, which trades a
+documented dependency for an undocumented one.
+
 ## Tech Stack
 
 | Component | Version / Detail |
@@ -116,4 +148,4 @@ Required in `docker/.env` (never commit):
 - [ ] Commands match current Docker Compose setup
 - [ ] Environment variable list matches `docker/.env.example` or deployment guide
 
-**Last Updated:** 2026-07-26
+**Last Updated:** 2026-09-02

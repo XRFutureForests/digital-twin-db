@@ -595,7 +595,7 @@ Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING
 | Column | Type | Null | Description |
 |--------|------|------|-------------|
 | `growth_simulation_id` | BIGSERIAL | No | Surrogate PK |
-| `run_id` | UUID | No | Groups all rows from a single simulator execution |
+| `run_id` | UUID | No | FK → `trees.SimulationRuns.run_id`; groups all rows from a single simulator execution |
 | `tree_entity_id` | UUID | No | Stable physical-tree identity (matches `trees.Trees.tree_entity_id`) |
 | `base_tree_id` | INTEGER | Yes | FK → `trees.Trees.tree_id`; starting-point measurement row |
 | `location_id` | INTEGER | Yes | FK → `shared.Locations` |
@@ -623,7 +623,31 @@ Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING
 | `created_at` | TIMESTAMPTZ | No | Insert timestamp |
 | `created_by` | VARCHAR(200) | Yes | Script or user that wrote the row |
 
-**Public API views:** `public.growth_simulations` (flat view with resolved scenario and species names) and `public.simulation_runs` (one row per run — for run selectors). Both are read-only via the API; writes use `scripts/silva/silva_writeback.py` with the service_role key.
+**Public API views:** `public.growth_simulations` (flat view with resolved scenario and species names) and `public.simulation_runs` (one row per run, over `trees.SimulationRuns` — identity, parameters and trajectory size, for run selectors). Both are read-only via the API; the writer is [silva-connector](../../silva-connector), which inserts into `trees.SimulationRuns` and `trees.GrowthSimulations` directly over libpq. See [silva-coupling.md](silva-coupling.md).
+
+### 3.12a `trees.SimulationRuns`
+
+**Description:** One row per simulator execution: what was simulated and how it was configured. `trees.GrowthSimulations.run_id` is a foreign key onto this table, so a trajectory cannot exist without a record of what produced it. Added by XRFF-374 — before it, two runs differing only by `--seed` were indistinguishable after the fact.
+
+| Column | Type | Null | Description |
+|--------|------|------|-------------|
+| `run_id` | UUID | No | PK; the run identity carried on every trajectory row |
+| `location_id` | INTEGER | No | FK → `shared.Locations` |
+| `scenario_id` | INTEGER | Yes | FK → `shared.Scenarios` |
+| `base_variant_id` | INTEGER | Yes | FK → `shared.Variants`; the forest state projected forward. Stored as a reference, not a name — variant names are reused and deleted by `--replace` |
+| `base_year` | INTEGER | Yes | Calendar year of the base variant (year zero) |
+| `simulator_name` | VARCHAR(100) | No | One of: SILVA, FVS, iLand, manual, other |
+| `simulator_version` | VARCHAR(50) | Yes | Simulator version string |
+| `process_id` | INTEGER | Yes | FK → `shared.Processes`; algorithm, version, citation |
+| `horizon_years` | INTEGER | Yes | Projection horizon as requested |
+| `seed` | INTEGER | Yes | Random seed |
+| `mortality_enabled` | BOOLEAN | Yes | True if the simulator was allowed to kill trees |
+| `promoted` | BOOLEAN | Yes | True if the run was promoted to the variant chain UE reads |
+| `run_params` | JSONB | No | Simulator-specific named parameters, e.g. `{"competition": "sf_polygon"}`. Named parameters only — never a command line |
+| `created_at` | TIMESTAMPTZ | No | Insert timestamp |
+| `created_by` | VARCHAR(200) | Yes | Script or user that wrote the row |
+
+Simulator-agnostic parameters are columns; everything simulator-specific lives in `run_params`. A key absent on a run predating 2026-09-02 means it was not recorded, not that it was unset.
 
 ---
 

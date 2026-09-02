@@ -282,7 +282,24 @@ See [`data/README.md`](data/README.md) for the full lookup table reference and [
 
 ## Edge Functions
 
-Supabase Edge Functions (serverless TypeScript/Deno) are available as an extension point, but this repo doesn't currently ship any custom ones — the Aquarius sensor sync that used to run here (`ecosense-ingest`) was extracted to the [aquarius-connector](../aquarius-connector) repo, which talks to this DB over its REST API instead of running inside it. `docker/volumes/functions/` still carries the platform's own `main/` router and `hello/` example, plus generic `_shared/` helpers (`database.ts`, `retry.ts`, `validators.ts`) available for a future function.
+This repo ships **no** custom Edge Functions, and is not expected to. The
+Aquarius sensor sync that once ran here (`ecosense-ingest`) was removed in
+XRFF-257 because the Deno container cannot reach the Freiburg VPN where the
+Aquarius API lives; it now lives in the [aquarius-connector](../aquarius-connector)
+repo as a CLI that talks to this DB over REST.
+
+That is not the only reason the runtime is a poor fit. It has no conda, no R, no
+Blender and no PDAL, so it can never execute the work this project actually runs
+(SILVA, growpy, LiDAR processing); and Kong routes `/functions/v1/` with only
+the `cors` plugin, while `/rest/v1/` gets `key-auth` and `acl` — so every
+function would have to hand-roll authentication that PostgREST gets for free.
+The job control plane (XRFF-346) is therefore a Postgres RPC on `/rest/v1/`,
+not an Edge Function.
+
+`docker/volumes/functions/` carries only the platform's own `main/` router and
+`hello/` example. The `_shared/validators.ts` helper left over from
+`ecosense-ingest` was deleted 2026-09-02 (XRFF-351) — it had a test but no
+caller, and no function is planned that would give it one.
 
 **Note:** Edge Functions auto-reload on file changes during development — no restart needed.
 

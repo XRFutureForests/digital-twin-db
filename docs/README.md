@@ -52,12 +52,28 @@ Step-by-step Blueprint setup, flat SQL view contracts, and PCG integration live 
 
 ### Run a SILVA growth simulation and write results back
 
-1. Export the input view to R: `SELECT * FROM silva_input WHERE location_id = <N>` (or download as CSV from Studio)
-2. Run SILVA in R — produces per-tree projections at discrete time steps
-3. Write results back: `python scripts/silva/silva_writeback.py --input silva_output.csv --location-id <N>`
-4. Query results in UE via `/rest/v1/growth_simulations?run_id=eq.<UUID>&projection_year=eq.2035`
+Growth simulation runs in the [silva-connector](../../silva-connector) repo, not
+here. It joins this stack's docker network, reads the baseline variant straight
+out of `trees` / `shared`, and writes the projection back over libpq in one
+transaction — there is no CSV and no REST hop.
 
-Workflow detail, column mapping, and species codes: [silva-coupling.md](silva-coupling.md)
+```bash
+cd ../silva-connector
+export PGPASSWORD=...            # docker/.env -> POSTGRES_PASSWORD
+
+docker compose -f docker/docker-compose.yml run --rm silvar \
+  Rscript /work/scripts/run_simulation.R \
+    --location ecosense --years 20 --replace
+```
+
+One run writes three targets in one transaction: `trees.SimulationRuns` (the
+parameters), `trees.GrowthSimulations` (the per-tree trajectory) and a chain of
+`simulated_growth` variants (`silva_2030`, `silva_2035`, …) that UE walks as a
+time machine. Read back with `/rest/v1/simulation_runs`,
+`/rest/v1/growth_simulations?run_id=eq.<UUID>` and
+`/rest/v1/ue_trees?variant_id=eq.<id>`.
+
+What is written, species coding, and site conditions: [silva-coupling.md](silva-coupling.md)
 Growth simulations schema and API views: [growth-simulation-schema.md](growth-simulation-schema.md)
 
 ---

@@ -311,6 +311,53 @@ docker compose exec db pg_dump -U postgres postgres > backup-$(date +%Y%m%d-%H%M
 cat backup-20260101-120000.sql | docker compose exec -T db psql -U postgres postgres
 ```
 
+### 5.4 Rotating credentials
+
+The database password and API keys live in `docker/.env` here, but **three other
+places hold copies**. Rotating without updating all of them leaves a consumer
+silently broken — CI was removed workspace-wide on 2026-09-01, so nothing will
+tell you.
+
+Do them in this order. The database first, then every consumer, then verify.
+
+| # | Destination | Keys | Notes |
+|---|---|---|---|
+| 1 | `digital-twin-db/docker/.env` | `POSTGRES_PASSWORD`, `ANON_KEY`, `SERVICE_ROLE_KEY`, `JWT_SECRET` | The source of truth. Changing `JWT_SECRET` invalidates both API keys, so regenerate them with `python scripts/utils/generate_jwt.py` |
+| 2 | `aquarius-connector/.env` | `SERVICE_ROLE_KEY`, `SUPABASE_URL` | Talks to this stack over REST; a stale key fails the whole nightly sync |
+| 3 | silva-connector | `PGPASSWORD` in the shell (or `docker/.env`) | Connects with libpq as `postgres`; see `silva-connector/docker/.env.example` |
+| 4 | `digital-twin-dashboard/docker/.env` | `DB_PASSWORD`, `POOLER_TENANT_ID` | Connects through `dftdb-pooler`; the tenant id must match this stack's `POOLER_TENANT_ID` |
+
+After step 1, recreate the stack so the new secrets reach every container — a
+`restart` is not enough, the env is baked at container creation:
+
+```bash
+cd docker && docker compose up -d --force-recreate
+```
+
+Verify each consumer before calling it done:
+
+```bash
+# 1. the API itself
+curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8000/rest/v1/species?limit=1" \
+  -H "apikey: <new ANON_KEY>"                      # expect 200
+
+# 2. aquarius-connector (read-only check, writes nothing)
+cd ../aquarius-connector && python -m aquarius_connector.find_active_sensors
+
+# 3. silva-connector
+cd ../silva-connector && export PGPASSWORD=<new>
+docker compose -f docker/docker-compose.yml run --rm silvar \
+  Rscript /work/scripts/run_simulation.R --location mathisle --years 20 --dry-run
+
+# 4. dashboard
+cd ../digital-twin-dashboard/docker && docker compose up -d --force-recreate
+docker logs dtdash-shiny --tail 20            # expect no connection errors
+```
+
+None of these files is in git (all four are gitignored). There is no secret
+store — the copies are the mechanism, which is why this list has to be kept
+current when a consumer is added.
+
 ---
 
 ## 6. Troubleshooting

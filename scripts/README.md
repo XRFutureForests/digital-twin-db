@@ -22,14 +22,18 @@ scripts/
 │   ├── ecosense_baseline_variant.sql # natural_growth scenario + baseline_2025 variant (see docs/variant-scenario-model.md)
 │   ├── mathisle_baseline_variant.sql
 │   └── ecosense_zwisel_stem.sql      # 2nd stem of the 4_56 forked tree (post-import)
-├── silva/                    # SILVA growth-model coupling
-│   └── silva_writeback.py          # Write SILVA projections back to growth_simulations
 └── utils/                    # Utility and debug scripts
     ├── check_db_schema.py          # Inspect database schema
     ├── generate_jwt.py             # Mint ANON/SERVICE_ROLE JWTs from JWT_SECRET
     ├── profiling.py                # Per-stage timing helper used by --profile
     └── test_import_upload.py       # Test import file upload
 ```
+
+SILVA growth simulation is **not** here: it lives in the
+[silva-connector](../../silva-connector) repo, which runs silvaR in R and writes
+back over libpq. The `scripts/silva/silva_writeback.py` draft that used to sit
+here described a CSV round-trip that was never implemented and was removed
+2026-09-02 (XRFF-351). See [docs/silva-coupling.md](../docs/silva-coupling.md).
 
 ## Prerequisites
 

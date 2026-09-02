@@ -15,7 +15,7 @@ curl "http://<SERVER_OR_LOCALHOST>:8000/rest/v1/species" \
   -H "apikey: <ANON_KEY>"
 ```
 
-Read access covers every public view: `species`, `locations`, `trees`, `ue_trees`, `scenarios`, `varianttypes`, `sensors`, `sensorreadings`, `growth_simulations`, `silva_input`, and all morphology lookups.
+Read access covers every public view: `species`, `locations`, `trees`, `ue_trees`, `scenarios`, `varianttypes`, `sensors`, `sensorreadings`, `growth_simulations`, `simulation_runs`, and all morphology lookups.
 
 ---
 
@@ -47,7 +47,7 @@ Available scripts:
 | `scripts/import/import_trees.py` | Bulk upsert tree inventory CSV |
 | `scripts/import/ingest_sensor_data.py` | Sync sensors + readings from any provider (see [aquarius-connector](../../aquarius-connector) for Aquarius) |
 | `scripts/import/link_sensors_to_trees.py` | Link sensors to their nearest tree |
-| `scripts/silva/silva_writeback.py` | Write SILVA simulation output to `trees.GrowthSimulations` |
+| [silva-connector](../../silva-connector) (separate repo, R) | Run SILVA and write `trees.SimulationRuns` + `trees.GrowthSimulations` + the variant chain, over libpq |
 | `scripts/admin/refresh_lookups.py` | Reload lookup CSVs without a full DB reset |
 
 ### Option C — Direct API with a user JWT
@@ -135,7 +135,7 @@ Field-data tables are the ones where a bad edit or delete actually costs somethi
 
 **Never share `SERVICE_ROLE_KEY` with external collaborators.** Create a Studio account for write access instead.
 
-Read-only views (`ue_trees`, `silva_input`, `growth_simulations`, `simulation_runs`, morphology lookups) are SELECT-only even for authenticated users. Writes to those domains go through the underlying tables via the import scripts.
+Read-only views (`ue_trees`, `growth_simulations`, `simulation_runs`, morphology lookups) are SELECT-only even for authenticated users. Writes to those domains go through the underlying tables via the import scripts and silva-connector.
 
 ### Assigning a role tier
 
