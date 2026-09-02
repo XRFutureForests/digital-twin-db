@@ -43,3 +43,5 @@ tmp/
 /data/imports/ecosense_trees_import.csv
 /data/imports/mathisle_trees_import.csv
 /data/reference/ecosense_sensor_tree_map.csv
+# Runner: what each host may actually execute (host-specific, never published)
+/config/workflows.toml

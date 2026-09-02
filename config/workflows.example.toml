@@ -1,0 +1,105 @@
+# =============================================================================
+# What this host may actually execute
+# =============================================================================
+# Copy to config/workflows.toml (gitignored) and edit for the host. Mirrors the
+# docker/.env.example -> docker/.env convention.
+#
+# This file is the *execution* half of the workflow declaration. The other half
+# is shared.Processes.workflow_key in the database, which names workflows and
+# describes their parameters but never says how to run them. The runner claims
+# a job only when its workflow appears in BOTH. That is what makes command
+# injection structurally impossible: nothing a caller sends can name a command,
+# because commands exist only here, on the host, outside the database.
+#
+# It is also how one queue serves several machines. growpy needs Blender, silva
+# needs Docker on the database network, aquarius needs to reach the Aquarius
+# API -- those may never be one machine. Give each host a workflows.toml
+# listing only what it can run, and each claims only its own work. No connector
+# learns that a queue exists.
+#
+# Check a host's configuration without running anything:
+#     python scripts/runner/runner.py list
+# =============================================================================
+
+[runner]
+# Written to processingjobs.claimed_by, and the only rows `reap` will touch --
+# a runner cleans up after itself and never after another host. Defaults to the
+# machine's hostname; set it explicitly if two runners share a host.
+name = "wsl-dev"
+
+# Most jobs to start in one `drain` invocation. Cron runs drain repeatedly, so
+# this caps how much one wake-up commits to, not how much gets done. Keep it
+# low where a single job is long: one growpy run can hold the host for an hour.
+max_jobs = 3
+
+# When a job fails and max_attempts allows another try, how long to wait before
+# it becomes claimable again. max_attempts defaults to 1, so by default nothing
+# is retried and this is unused.
+retry_backoff_seconds = 300
+
+# Added to a workflow's timeout before `reap` will declare a running job dead,
+# so reap cannot race a drain that is itself about to time the job out.
+reap_grace_seconds = 120
+
+
+# =============================================================================
+# Workflows
+# =============================================================================
+# Each table is [workflows.<workflow_key>], and the key must match
+# shared.Processes.workflow_key exactly -- `select workflow_key from
+# public.workflows;`.
+#
+#   command          argv prefix, as a list. Never a string, never a shell.
+#                    Absolute paths: cron's PATH is not a login shell's.
+#   timeout_seconds  how long a run may take before it is killed and failed.
+#   positional       parameters passed as bare values instead of --flags.
+#
+# ARGUMENTS ARE DERIVED, NOT LISTED. A parameter `foo_bar` becomes `--foo-bar
+# <value>`; a boolean becomes the bare flag when true and nothing when false; a
+# key named in `positional` becomes a bare value in the order listed. So the
+# param_schema in the database is the single description of what a workflow
+# accepts, and this file does not repeat it.
+# =============================================================================
+
+# --- silva -------------------------------------------------------------------
+# Runs in the silva-connector container, which joins the database's compose
+# network: the published 5432 is Supavisor and rejects a plain postgres user.
+# 32 s for ecosense, 9 s for mathisle -- the timeout is generous on purpose.
+[workflows.silva]
+command = [
+    "/usr/bin/docker", "compose",
+    "-f", "/home/max/dev/silva-connector/docker/docker-compose.yml",
+    "run", "--rm", "silvar",
+    "Rscript", "/work/scripts/run_simulation.R",
+]
+timeout_seconds = 900
+
+# --- aquarius-sync -----------------------------------------------------------
+# `days_back` is positional: the CLI predates its --from/--to window and kept
+# the bare form. --from/--to and --sensor-type are ordinary flags.
+[workflows.aquarius-sync]
+command = [
+    "/home/max/miniconda3/envs/aquarius/bin/python",
+    "-m", "aquarius_connector.sync",
+]
+timeout_seconds = 3600
+positional = ["days_back"]
+
+# --- aquarius-enrich ---------------------------------------------------------
+# Must follow every sync: sync overwrites sensor_model with a placeholder.
+[workflows.aquarius-enrich]
+command = [
+    "/home/max/miniconda3/envs/aquarius/bin/python",
+    "-m", "aquarius_connector.enrich_metadata",
+]
+timeout_seconds = 900
+
+# --- growpy ------------------------------------------------------------------
+# Needs Blender for step 4, so in practice this table belongs on a different
+# host from the two above. 23-75 minutes per species-height batch; the timeout
+# allows two hours.
+[workflows.growpy]
+command = [
+    "/home/max/miniconda3/envs/growpy/bin/growpy-dataset-pipeline",
+]
+timeout_seconds = 7200
