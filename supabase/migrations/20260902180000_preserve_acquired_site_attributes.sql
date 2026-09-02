@@ -1,18 +1,71 @@
--- Refresh Lookup Tables Functions
--- Provides functions to reload lookup data from CSV files without full database rebuild
+-- =============================================================================
+-- A lookup refresh must not revert an acquired site attribute
+-- =============================================================================
+-- XRFF-391. shared.Locations carries eight settable site-attribute columns, and
+-- two separate paths reseed all eight from data/lookups/locations.csv with
+-- ON CONFLICT (location_name) DO UPDATE SET:
 --
--- Usage:
---   SELECT shared.refresh_all_lookups();          -- Reload all lookup tables
---   SELECT shared.refresh_lookup('species');      -- Reload specific table
+--   30-load-lookup-tables.sql        on a fresh build
+--   shared.refresh_lookup('locations')  on a live database, via
+--                                    scripts/admin/refresh_lookups.py
 --
--- NOTE: CSV files must be mounted at /var/lib/postgresql/lookups/
+-- Since 20260902140000 those columns can also be written by
+-- public.set_location_attributes, which records where each value came from in
+-- shared.AttributeProvenance. Neither loader knew about that table, so a refresh
+-- reverted the acquired value **and left its provenance row behind** -- the
+-- database would then assert, through public.attributeprovenance, that
+-- elevation_m came from EDTM30 v1.1 at 30 m under CC-BY-4.0, for a column
+-- holding the number that was there before.
+--
+-- That is worse than an unattributed value, and it is exactly what the open-data
+-- connector (XRFF-368) exists to prevent. It is also the XRFF-388 lesson
+-- generalised: a value written only to shared.Locations is not durable, because
+-- the CSV is still its owner.
+--
+-- The rule this file establishes: **the CSV seeds, acquisition owns thereafter.**
+-- A column with an AttributeProvenance row keeps its value through any number of
+-- refreshes; a column without one is still reseeded from the CSV exactly as
+-- before. No new state was needed -- AttributeProvenance already *is* the record
+-- of "this value is owned by acquisition". A fresh build is unaffected, because
+-- the table is empty at that point and every column reseeds.
+--
+-- center_point is deliberately NOT covered. XRFF-388 established that the CSV is
+-- its right home -- a DB-only fix there was undone by the next rebuild, which is
+-- why that fix changed both. It is a surveyed identity, not an acquired
+-- attribute, and nothing writes it through set_location_attributes.
+--
+-- Mirrored to init 27-preserve-acquired-site-attributes.sql, which creates only
+-- the helper: on a fresh build 30- and 31- are loaded afterwards and already
+-- carry the guarded upserts. An existing database still holds the unguarded
+-- shared.refresh_lookup, so this migration replaces it too. The function body
+-- below is the one in 31-refresh-lookup-functions.sql, extracted verbatim so the
+-- two cannot drift.
+-- =============================================================================
 
-SET search_path TO shared, sensor, trees, public;
+SET search_path TO shared, public;
+
+CREATE OR REPLACE FUNCTION shared.attribute_is_acquired(
+    p_location_id INTEGER,
+    p_column_name TEXT
+)
+RETURNS BOOLEAN AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM shared.AttributeProvenance
+        WHERE location_id = p_location_id
+          AND column_name = p_column_name
+    );
+$$ LANGUAGE sql STABLE;
+
+COMMENT ON FUNCTION shared.attribute_is_acquired IS
+    'True when a shared.Locations column was written by an acquisition process and '
+    'therefore must not be reseeded from data/lookups/locations.csv (XRFF-391).';
+
+GRANT EXECUTE ON FUNCTION shared.attribute_is_acquired(INTEGER, TEXT) TO postgres, service_role;
 
 -- =============================================================================
--- MAIN REFRESH FUNCTION
+-- shared.refresh_lookup, with the locations branch guarded
 -- =============================================================================
-
 CREATE OR REPLACE FUNCTION shared.refresh_lookup(p_table_name TEXT)
 RETURNS TABLE(table_name TEXT, rows_before INT, rows_after INT, status TEXT) AS $$
 DECLARE
@@ -567,78 +620,3 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION shared.refresh_lookup IS 'Reload a specific lookup table from its CSV file without full database rebuild';
-
--- =============================================================================
--- REFRESH ALL LOOKUPS
--- =============================================================================
-
-CREATE OR REPLACE FUNCTION shared.refresh_all_lookups()
-RETURNS TABLE(table_name TEXT, rows_before INT, rows_after INT, status TEXT) AS $$
-BEGIN
-    -- Refresh in dependency order
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('soil_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('climate_zones');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('variant_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('scenarios');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('species');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('locations');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('sensor_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('tree_status');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('taper_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('straightness_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('branching_patterns');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('bark_characteristics');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('datasource_types');
-    -- Tree Morphology tables (from tree_anatomy.pdf)
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('height_classes');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_architectures');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('branch_elongation_habits');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('growth_orientations');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('shoot_elongation_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_shapes');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('geometric_crown_solids');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('axis_structures');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('growth_forms');
-    -- Tree Condition tables (FIA/NEON/ICP Forests-aligned)
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_classes');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('damage_agents');
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-COMMENT ON FUNCTION shared.refresh_all_lookups IS 'Reload all lookup tables from CSV files without full database rebuild';
-
--- =============================================================================
--- GRANT PERMISSIONS
--- =============================================================================
-
-GRANT EXECUTE ON FUNCTION shared.refresh_lookup TO service_role;
-GRANT EXECUTE ON FUNCTION shared.refresh_all_lookups TO service_role;
-
--- =============================================================================
--- SUMMARY
--- =============================================================================
-
-DO $$
-BEGIN
-    RAISE NOTICE '=======================================================';
-    RAISE NOTICE 'Lookup Refresh Functions Created';
-    RAISE NOTICE '=======================================================';
-    RAISE NOTICE 'Usage:';
-    RAISE NOTICE '  SELECT * FROM shared.refresh_all_lookups();';
-    RAISE NOTICE '  SELECT * FROM shared.refresh_lookup(''species'');';
-    RAISE NOTICE '';
-    RAISE NOTICE 'Supported tables:';
-    RAISE NOTICE '  species, locations, sensor_types, tree_status,';
-    RAISE NOTICE '  soil_types, climate_zones, variant_types, scenarios,';
-    RAISE NOTICE '  taper_types, straightness_types, branching_patterns,';
-    RAISE NOTICE '  bark_characteristics, datasource_types';
-    RAISE NOTICE '';
-    RAISE NOTICE 'Tree Morphology (from tree_anatomy.pdf):';
-    RAISE NOTICE '  height_classes, crown_architectures, branch_elongation_habits,';
-    RAISE NOTICE '  growth_orientations, shoot_elongation_types, crown_shapes,';
-    RAISE NOTICE '  geometric_crown_solids, axis_structures, growth_forms';
-    RAISE NOTICE '';
-    RAISE NOTICE 'Tree Condition (FIA/NEON/ICP Forests-aligned):';
-    RAISE NOTICE '  crown_classes, damage_agents';
-    RAISE NOTICE '=======================================================';
-END $$;

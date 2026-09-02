@@ -261,17 +261,30 @@ SELECT
     t.soil_moistness,
     t.soil_nutrient_supply
 FROM temp_locations t
+-- The eight site-attribute columns keep their value once an acquisition process
+-- has written one, so a reseed cannot revert it and leave its provenance row
+-- claiming a source the column no longer holds (XRFF-391). On a fresh build
+-- shared.AttributeProvenance is empty, so every column reseeds as before.
+-- Description and center_point are always reseeded: the CSV owns both.
 ON CONFLICT (location_name) DO UPDATE SET
     Description = EXCLUDED.Description,
     center_point = EXCLUDED.center_point,
-    Elevation_m = EXCLUDED.Elevation_m,
-    Slope_deg = EXCLUDED.Slope_deg,
-    Aspect = EXCLUDED.Aspect,
-    soil_type_id = EXCLUDED.soil_type_id,
-    climate_zone_id = EXCLUDED.climate_zone_id,
-    forest_growth_region = EXCLUDED.forest_growth_region,
-    soil_moistness = EXCLUDED.soil_moistness,
-    soil_nutrient_supply = EXCLUDED.soil_nutrient_supply;
+    Elevation_m = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'elevation_m')
+                       THEN Locations.Elevation_m ELSE EXCLUDED.Elevation_m END,
+    Slope_deg = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'slope_deg')
+                     THEN Locations.Slope_deg ELSE EXCLUDED.Slope_deg END,
+    Aspect = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'aspect')
+                  THEN Locations.Aspect ELSE EXCLUDED.Aspect END,
+    soil_type_id = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'soil_type_id')
+                        THEN Locations.soil_type_id ELSE EXCLUDED.soil_type_id END,
+    climate_zone_id = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'climate_zone_id')
+                           THEN Locations.climate_zone_id ELSE EXCLUDED.climate_zone_id END,
+    forest_growth_region = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'forest_growth_region')
+                                THEN Locations.forest_growth_region ELSE EXCLUDED.forest_growth_region END,
+    soil_moistness = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'soil_moistness')
+                          THEN Locations.soil_moistness ELSE EXCLUDED.soil_moistness END,
+    soil_nutrient_supply = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'soil_nutrient_supply')
+                                THEN Locations.soil_nutrient_supply ELSE EXCLUDED.soil_nutrient_supply END;
 
 DROP TABLE temp_locations;
 
