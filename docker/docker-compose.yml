@@ -377,10 +377,16 @@ services:
       dockerfile: docker/Dockerfile.db
     restart: unless-stopped
     volumes:
-      # PGDATA persisted in a named Docker volume — fully managed by Docker,
-      # no WSL bind-mount path resolution needed, survives reboot cleanly
-      - db-data:/var/lib/postgresql/data
-      # Use named volume to persist pgsodium decryption key between restarts
+      # PGDATA. Defaults to the named volume `db-data` (Docker-managed, no WSL
+      # bind-mount path resolution, survives reboot cleanly). On a host whose
+      # system disk is too small to hold the database, set PGDATA_PATH to an
+      # absolute path on the larger filesystem — see docker/.env.example.
+      - ${PGDATA_PATH:-db-data}:/var/lib/postgresql/data
+      # Holds the pgsodium decryption key; must persist between restarts. Stays
+      # a named volume even when PGDATA moves off the system disk: it is 140 kB
+      # that never grows, and the image seeds it on first start, so a bind mount
+      # over an empty directory hides the .conf files postgresql.conf includes
+      # and the postmaster dies before it can say why.
       - db-config:/etc/postgresql-custom
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "postgres", "-h", "localhost" ]

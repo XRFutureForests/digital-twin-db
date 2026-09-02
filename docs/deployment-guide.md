@@ -160,6 +160,11 @@ curl "http://localhost:8000/rest/v1/Trees?select=*" \
 
 ## Production Deployment
 
+> **The lab's own server is a worked example of the sections below.** See
+> [Deploying on dt.unr.uni-freiburg.de](#deploying-on-dtunruni-freiburgde) at the
+> end of this chapter for what its 28 GB root disk, its NFS export and the
+> university firewall actually require.
+
 ### 1. Server Preparation
 
 ```bash
@@ -337,6 +342,93 @@ for SERVICE in $SERVICES; do
     fi
 done
 ```
+
+### Deploying on dt.unr.uni-freiburg.de
+
+The lab server departs from the generic recipe above in three ways, each forced
+by the host rather than chosen. First deployed this way 2026-09-02 (XRFF-238).
+
+#### Data goes on the NFS export, not the root disk
+
+The root logical volume is 28 GB and has repeatedly filled to the point where the
+server stopped answering; `/media/data` is a 100 GB NFS export from
+`ufr-dyn.isi1` that sits nearly empty. So PGDATA and the object store both live
+there:
+
+```bash
+# Create the directories and hand them to the container UIDs. Needs root, but
+# the Docker daemon's root will do where host sudo is unavailable:
+cd ~/dev/digital-twin-db
+docker run --rm -v /media/data:/media/data \
+    -v "$PWD/scripts/server:/s:ro" python:3.12-alpine \
+    python3 /s/setup_data_dirs.py
+
+# Then in docker/.env:
+#   PGDATA_PATH=/media/data/dftdb/pgdata
+#   STORAGE_PATH=/media/data/dftdb/storage
+```
+
+The script refuses to run against a soft NFS mount, because a soft mount can
+return an I/O error part-way through an fsync and corrupt the cluster.
+`/media/data` is mounted `hard,vers=4.2,proto=tcp,local_lock=none`, which is what
+Postgres supports. Re-check with `findmnt -no OPTIONS /media/data` after any
+remount. The trade is throughput: every page read that misses shared buffers now
+crosses the network. That was accepted deliberately — a slower database beats an
+unreachable server.
+
+The pgsodium key directory (`db-config`) stays a named volume on the root disk.
+It is 140 kB that never grows, and bind-mounting an empty directory over it hides
+the `.conf` files `postgresql.conf` includes, which kills the postmaster with
+nothing but "configuration file contains errors" to go on.
+
+Images still land in `/var/lib/docker` on the root disk and cost roughly 5 GB, so
+keep an eye on `df -h /` after image updates. Container logs are already capped
+at 50 MB x 3 by `/etc/docker/daemon.json`.
+
+**Docker must wait for the mount.** `docker.service` ships ordered after
+`network-online.target` only, which is not enough for a network filesystem: if
+dockerd wins the race at boot, the PGDATA bind resolves to the empty local
+mountpoint, Postgres runs `initdb` there, and NFS then mounts over the result,
+leaving a second silently divergent cluster. A drop-in fixes the ordering:
+
+```bash
+# /etc/systemd/system/docker.service.d/nfs-data-mount.conf
+[Unit]
+RequiresMountsFor=/media/data
+```
+
+Installed 2026-09-02. Systemd reads drop-ins fresh at boot, so it is effective
+from the next restart without a `daemon-reload`. The accepted consequence is that
+an NFS outage now stops Docker entirely rather than corrupting the cluster.
+
+
+#### The API is published on 443, not 8000
+
+The university blocks inbound ports other than 22 and 443 from the campus client
+subnets, which is where the Pico headsets sit — a listener on 8001 answers on the
+host's loopback and nowhere else. Kong is therefore fronted by the dashboard's
+nginx, which proxies `/db/` to `dftdb-kong:8000`:
+
+| | URL |
+| --- | --- |
+| REST | `https://dt.unr.uni-freiburg.de/db/rest/v1/...` |
+| Auth | `https://dt.unr.uni-freiburg.de/db/auth/v1/...` |
+
+That proxy lives in `digital-twin-dashboard/docker/nginx/nginx.conf`, and its
+nginx service joins the `digital_forest_twin_db_default` network to resolve
+`dftdb-kong`. Consequence worth remembering: **start this stack before the
+dashboard's nginx**, since the network is created here. `.env` sets
+`SITE_URL`, `API_EXTERNAL_URL` and `SUPABASE_PUBLIC_URL` to
+`https://dt.unr.uni-freiburg.de/db` so GoTrue builds correct redirect links.
+
+Authentication is unchanged by the proxy: Kong still returns 401 without an
+`apikey` header, and row-level security still applies.
+
+#### The server tracks `dev`
+
+It is a test host, and `dev` is the working branch — `main` only moves at a
+milestone release, because it is what publishes to Zenodo.
+
 
 ## Environment Configuration
 

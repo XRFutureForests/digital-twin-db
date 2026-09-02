@@ -155,9 +155,11 @@ something to unpick by loosening the role check.
 ## Nothing runs until a runner exists somewhere
 
 A job sits at `pending` until a host with a configured runner claims it. As of
-2026-09-02 no cron line exists anywhere in this workspace, and
-`dt.unr.uni-freiburg.de` has no database, no conda and no Blender — that is
-XRFF-238's work. Locally, drain the queue by hand:
+2026-09-02 no cron line exists anywhere in this workspace. The database half of
+that gap closed the same day: `dt.unr.uni-freiburg.de` now runs the full stack,
+reachable at `https://dt.unr.uni-freiburg.de/db/rest/v1` (XRFF-238). It still has
+no conda and no Blender, so a runner there could queue jobs but not execute the
+ones that need either. Locally, drain the queue by hand:
 
 ```bash
 conda activate digital-twin

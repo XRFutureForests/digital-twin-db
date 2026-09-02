@@ -81,11 +81,11 @@ unattended run's exit code is the only signal cron mail carries.
 
 ## Scheduling it — for when there is something to schedule
 
-Not installed anywhere. There is no cron line in this workspace, and putting
-one on the server is XRFF-238's business: as of 2026-09-02
-`dt.unr.uni-freiburg.de` has no database, no conda, no Blender and no
-`aquarius-connector` checkout, so nothing here can run there yet. Develop and
-test against the WSL Docker stack.
+Not installed anywhere. There is no cron line in this workspace. As of
+2026-09-02 `dt.unr.uni-freiburg.de` does run the database (XRFF-238), but it
+still has no conda, no Blender and no `aquarius-connector` checkout, so a runner
+there could claim jobs it cannot execute. Develop and test against the WSL
+Docker stack until those are in place.
 
 When the host is ready, this is the shape — a **user** crontab, not a systemd
 unit. That host has `Linger=no`, so a `--user` timer would stop at logout, and
