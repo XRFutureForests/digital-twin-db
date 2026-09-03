@@ -152,7 +152,18 @@ graph LR
     Studio --> PG
     Connector[aquarius-connector<br/>external repo] -->|Aquarius API| AQ[Aquarius API<br/>Uni Freiburg VPN]
     Connector -->|HTTP:8000 REST| Kong
+    OpenData[open-data-connector<br/>external repo] -->|HTTPS| Providers[Open data providers<br/>CHELSA · SoilGrids · Open-Meteo<br/>PVGIS · Thünen · EU-DTM]
+    OpenData -->|HTTP:8000 REST| Kong
+    Silva[silva-connector<br/>external repo] -->|libpq, one transaction| PG
 ```
+
+Three connectors, and the third one reaches past the API on purpose.
+`aquarius-connector` and `open-data-connector` both go through Kong and public
+RPCs, so either could be pointed at another deployment. `silva-connector` talks
+to PostgreSQL directly, because a variant-scoped read is not expressible through
+the published views and a half-written variant would read as a real forest
+state — it needs the base tables and one transaction. That is a decision, not
+drift; see the consumer table in `AGENTS.md`.
 
 ---
 
@@ -209,12 +220,18 @@ C4Context
     System_Ext(gbif, "GBIF API", "Species validation")
     System_Ext(unreal, "Unreal Engine (lidar-to-unreal)", "VR digital twin rendering")
     System_Ext(aquarius_connector, "aquarius-connector", "Provider connector, external repo")
+    System_Ext(opendata_providers, "Open data providers", "CHELSA, SoilGrids, Open-Meteo, PVGIS, Thünen, EU-DTM")
+    System_Ext(opendata_connector, "open-data-connector", "Provider connector, external repo")
+    System_Ext(silva_connector, "silva-connector", "SILVA growth model, external repo")
     System_Ext(rdash, "R Shiny Dashboard", "Analytics")
 
     Rel(researcher, dftdb, "Queries data", "REST API / Studio")
     Rel(engineer, dftdb, "Imports data", "Python scripts / psql")
     Rel(aquarius_connector, aquarius, "Fetches sensor readings", "HTTPS REST")
     Rel(aquarius_connector, dftdb, "Ingests sensor readings", "REST API")
+    Rel(opendata_connector, opendata_providers, "Fetches climate, soil, weather", "HTTPS / local tiles")
+    Rel(opendata_connector, dftdb, "Writes site attributes, environments, virtual sensors", "REST API")
+    Rel(silva_connector, dftdb, "Reads a variant, writes projected ones", "libpq, base tables")
     Rel(dftdb, gbif, "Validates species", "HTTPS REST")
     Rel(unreal, dftdb, "Reads tree/LiDAR data", "REST API")
     Rel(rdash, dftdb, "Reads analytics data", "REST API")
