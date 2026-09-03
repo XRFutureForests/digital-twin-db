@@ -138,6 +138,7 @@ Full operations runbook: [runbook.md](runbook.md)
 | [requesting-a-job.md](requesting-a-job.md) | Request a workflow run: the menu, `request_job()`, watching `job_status` |
 | [species-naming-audit.md](species-naming-audit.md) | Species naming conventions and audit notes |
 | [derived-value-provenance.md](derived-value-provenance.md) | Which model produced a derived value, and how uncertain it is — decision for XRFF-401 |
+| [run-provenance.md](run-provenance.md) | Emitting an RO-Crate per recorded run (Process Run Crate 0.5) — XRFF-407 |
 | [citygml-qsm-mapping.md](citygml-qsm-mapping.md) | CityGML (Ambarwari et al. 2024) column mapping — feeds the QSM schema work (XRFF-264–267) |
 | [level-of-detail-vocabulary.md](level-of-detail-vocabulary.md) | The three LoD axes and what every `lod` column means — normative for db and growpy |
 | [sensorreadings-scaling-evaluation.md](sensorreadings-scaling-evaluation.md) | Partitioning/index/performance evaluation for `sensor.sensorreadings` |

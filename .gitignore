@@ -45,3 +45,8 @@ tmp/
 /data/reference/ecosense_sensor_tree_map.csv
 # Runner: what each host may actually execute (host-specific, never published)
 /config/workflows.toml
+
+# Emitted RO-Crates (XRFF-407): regenerable from the database at any time by
+# scripts/provenance/emit_ro_crate.py. Archive a crate deliberately (Zenodo,
+# alongside a paper); do not carry them in the repo.
+/crates/
