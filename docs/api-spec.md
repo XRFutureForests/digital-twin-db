@@ -158,6 +158,7 @@ PostgREST exposes every public schema view as a resource. The path is `/rest/v1/
 | `/rest/v1/ue_trees` | composite view (trees) | Unreal Engine | Yes | No |
 | `/rest/v1/ue_sensors` | composite view | Unreal Engine | Yes | No |
 | `/rest/v1/ue_sensorreadings` | composite view | Unreal Engine | Yes | No |
+| `/rest/v1/ue_environments` | composite view (environments) | Unreal Engine | Yes | No |
 
 `growth_simulations` and `simulation_runs` expose simulator output and are read-only. Writes go to `trees.SimulationRuns` and `trees.GrowthSimulations` directly over libpq, from the [silva-connector](../../silva-connector) repo — see [silva-coupling.md](silva-coupling.md). The `silva_input` export view was dropped 2026-09-02 (XRFF-351): its species codes collided with the ones silvaR actually uses, and nothing read it.
 
@@ -167,7 +168,7 @@ The domain data lives in the custom schemas (`shared`, `trees`, `sensor`, …); 
 
 1. **Pass-through views** (`24-public-api-views.sql`) — 1:1 wrappers over a single domain table (`trees`, `sensors`, `sensorreadings`, `species`, all morphology/lookup tables, …). They exist purely to expose the domain schemas over REST; writable ones carry `INSTEAD OF` triggers.
 2. **Composite / export views** — `growth_simulations` / `simulation_runs` (simulator output), and `attributeprovenance` (where each acquired `shared.Locations` value came from, with the source's name, version and citation resolved from `shared.Processes`; `security_invoker='on'`, read-only over REST — the only writer is `set_location_attributes`).
-3. **Unreal Engine views** (`ue_*`) — flat, join-free payloads shaped for UE Blueprint HTTP import. `ue_trees` (trees + variant + scenario + species + main-stem DBH, flattened) is defined in `25-forest-state-views.sql`; `ue_sensors` and `ue_sensorreadings` in `28-sensor-views.sql`.
+3. **Unreal Engine views** (`ue_*`) — flat, join-free payloads shaped for UE Blueprint HTTP import. `ue_trees` (trees + variant + scenario + species + main-stem DBH, flattened) is defined in `25-forest-state-views.sql`; `ue_sensors` and `ue_sensorreadings` in `28-sensor-views.sql`. `ue_environments` (environments + location + scenario + variant type + process, flattened, with the period exposed as integer years as well as timestamps) is defined in `29-ue-environments-view.sql`; a NULL `scenario_name` there means the row is not a projection -- an observed climatology or a permanent site property -- rather than a missing pathway.
 
 > **`ue_trees`** is the single flat tree endpoint. It replaced the former `forest_state` view (XRFF-240), which was consolidated into `ue_trees` — see `33-consolidate-ue-trees.sql`. Filter by `variant_id` to load one time step: `GET /ue_trees?variant_id=eq.<id>`.
 
@@ -179,6 +180,7 @@ The three `ue_*` views form the complete chain UE needs; join on stable keys:
 GET /ue_trees?variant_id=eq.<v>                              → tree catalogue (tree_id, tree_entity_id)
 GET /ue_sensors?linked_tree_entity_id=eq.<tree_entity_id>     → all sensors on that physical tree
 GET /ue_sensorreadings?sensor_id=eq.<sensor_id>&order=timestamp.desc&limit=96   → that sensor's readings
+GET /ue_environments?location_id=eq.<id>&scenario_name=eq.ssp370&order=start_year → that site's climate pathway
 ```
 
 Join sensors to trees by **`linked_tree_entity_id`** (the persistent physical-tree UUID), not `linked_tree_id` (a single variant row) — this keeps the link stable across growth variants. `ue_sensors` also carries the latest reading inline (plus `sensor_model` = real instrument, `data_owner`, the generic `source` = provider e.g. `aquarius`, and `plot_name` = the sensor's monitoring sub-area), so a per-tree sensor list needs no extra readings or `/sensors` call. `linked_tree_*` is populated by `scripts/import/link_sensors_to_trees.py` (see [database-schema.md §3.9](database-schema.md)); meteo/soil-station sensors have `NULL` tree fields.
