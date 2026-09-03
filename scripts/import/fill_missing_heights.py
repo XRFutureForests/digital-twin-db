@@ -37,12 +37,13 @@ def ensure_height_source_column(conn):
     if cur.fetchone():
         cur.close()
         return
-    # Column missing — requires supabase_admin; add via init SQL or manually
+    # Column missing — requires supabase_admin; add via init SQL or manually.
+    # No DEFAULT: an unstamped write must not claim a field measurement (XRFF-400).
     cur.close()
     raise RuntimeError(
-        "HeightSource column missing from trees.Trees. "
+        "height_source column missing from trees.Trees. "
         "Run: docker exec dftdb-db psql -U supabase_admin -d postgres -c "
-        "\"ALTER TABLE trees.Trees ADD COLUMN IF NOT EXISTS HeightSource VARCHAR(50) DEFAULT 'measured'\""
+        '"ALTER TABLE trees.Trees ADD COLUMN IF NOT EXISTS height_source VARCHAR(50)"'
     )
 
 
