@@ -412,7 +412,33 @@ services:
         "-c",
         "config_file=/etc/postgresql/postgresql.conf",
         "-c",
-        "log_min_messages=fatal" # prevents Realtime polling queries from appearing in logs
+        "log_min_messages=fatal", # prevents Realtime polling queries from appearing in logs
+        # Memory settings. initdb's defaults assume a small database on local
+        # disk; both halves of that are wrong for the server, where PGDATA is an
+        # NFS export and a cache miss costs a network round trip rather than a
+        # seek. Measured 2026-09-03 on 39M sensor readings: the same query ran
+        # 1,166 ms cold and 10 ms warm, so what shared_buffers holds is the whole
+        # difference between usable and not.
+        #
+        # These are set here rather than by ALTER SYSTEM so they live in the
+        # repository and survive the re-clone the server is now deployed by.
+        # The defaults below are sized for a laptop running the whole stack
+        # under WSL. The server has 15 GB and raises them in its .env.
+        "-c",
+        "shared_buffers=${POSTGRES_SHARED_BUFFERS:-1GB}",
+        "-c",
+        # Not an allocation -- it tells the planner how much of the table it can
+        # expect to find cached between shared_buffers and the OS. Left at the
+        # 128 MB default it costed an index scan as though nothing were cached
+        # and chose a parallel seq scan over 29M rows instead, turning a 10 ms
+        # lookup into 17.8 seconds.
+        "effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4GB}",
+        "-c",
+        # Per sort node, and every concurrent connection can hold several. The
+        # 4 MB default spilled a 315 MB sort onto the NFS. 16 MB will not hold
+        # that one -- nothing sane would -- but it keeps ordinary joins and
+        # ORDER BYs in memory.
+        "work_mem=${POSTGRES_WORK_MEM:-16MB}"
       ]
 
   vector:
