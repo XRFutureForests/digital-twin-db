@@ -44,6 +44,23 @@ no connector learns that a queue exists.
 Verified locally: two simultaneous `drain` invocations split six jobs three and
 three, each claimed exactly once.
 
+### This is also the lane mechanism — settled under XRFF-380
+
+XRFF-346 left concurrency as *"one job at a time is simplest, per-workflow lanes
+only if needed"*, and XRFF-380 asked whether the nightly `open-data-weather`
+refresh needs a lane of its own: it takes minutes, but a growpy run ahead of it
+in the queue could hold the host for an hour and cost a day's weather.
+
+**It does not, because the split above already prevents it.** growpy needs
+Blender and so belongs on a different host from the connectors; a host's
+`workflows.toml` lists only what that host can run, so a runner draining
+`open-data-weather` never sees a growpy job to queue behind. The contention the
+question describes only exists on a host configured to run both.
+
+If one ever is, reach for `max_jobs` and cron frequency before adding lanes —
+a `priority` column no runner consults would be worse than none, which is the
+same reasoning that kept one out of `shared.ProcessingJobs` to begin with.
+
 ## Arguments are derived, not listed
 
 A parameter `foo_bar` becomes `--foo-bar <value>`; a boolean becomes the bare

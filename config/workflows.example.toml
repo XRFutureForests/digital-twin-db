@@ -111,3 +111,58 @@ command = [
     "/home/max/miniconda3/envs/growpy/bin/growpy-dataset-pipeline",
 ]
 timeout_seconds = 7200
+
+# --- open-data-* -------------------------------------------------------------
+# Five keys, one per source that can run unattended. The source is baked into
+# the command here, not passed as a parameter, so the database never names one:
+# a key that is absent from this file simply cannot be claimed on this host.
+#
+# The four file-backed sources (eu-dtm, koppen-geiger, thuenen-wuchsbezirke,
+# chelsa) are deliberately absent and have no workflow_key. Each requires a
+# --dem or --layer path on the host filesystem, and a host path does not belong
+# in a queue that several machines share. They stay a CLI-only operation.
+#
+# All five reach the database over PostgREST, so the runner's environment needs
+# whatever open-data-connector's client reads for its URL and key.
+
+# The nightly one, and the only one that genuinely needs a schedule: a window of
+# hourly weather into the virtual sensors. Minutes per location.
+[workflows.open-data-weather]
+command = [
+    "/home/max/miniconda3/envs/open-data-connector/bin/open-data",
+    "fetch", "--source", "open-meteo",
+]
+timeout_seconds = 900
+
+# On demand, when a dataset version changes. Seconds each.
+[workflows.open-data-radiation]
+command = [
+    "/home/max/miniconda3/envs/open-data-connector/bin/open-data",
+    "fetch", "--source", "pvgis",
+]
+timeout_seconds = 600
+
+[workflows.open-data-co2]
+command = [
+    "/home/max/miniconda3/envs/open-data-connector/bin/open-data",
+    "fetch", "--source", "ssp-co2",
+]
+timeout_seconds = 300
+
+[workflows.open-data-soil-chemistry]
+command = [
+    "/home/max/miniconda3/envs/open-data-connector/bin/open-data",
+    "fetch", "--source", "soilgrids-chemistry",
+]
+timeout_seconds = 600
+
+# Hybrid: queries the SoilGrids endpoint when handed no layer, which is the
+# unattended path. Run when a site is added -- a re-run against an existing
+# value reports the disagreement and writes nothing, because --overwrite is not
+# declarable from the queue.
+[workflows.open-data-soil-class]
+command = [
+    "/home/max/miniconda3/envs/open-data-connector/bin/open-data",
+    "fetch", "--source", "soilgrids",
+]
+timeout_seconds = 600
