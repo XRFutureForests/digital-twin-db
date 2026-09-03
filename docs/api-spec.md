@@ -259,6 +259,7 @@ These four are the **complete write surface for connectors**. `aquarius-connecto
 | `bulk_insert_readings` | `POST /rest/v1/rpc/bulk_insert_readings` | `22-aquarius-integration.sql` | Bulk insert readings, skip duplicates (unique on `sensor_id`+`timestamp`) |
 | `set_location_attributes` | `POST /rest/v1/rpc/set_location_attributes` | `23-open-data-landing-zones.sql` | Set site attributes on one `shared.Locations` row and record where each came from, atomically |
 | `upsert_environment` | `POST /rest/v1/rpc/upsert_environment` | `23-open-data-landing-zones.sql` | Create or refresh the one `environments.Environments` row for a (location, scenario, variant type, variant name, period) |
+| `refresh_soil_aggregates` | `POST /rest/v1/rpc/refresh_soil_aggregates` | `33-soil-aggregates-from-sensors.sql` | Derive `avg_soil_moisture_percent` and `avg_soil_temperature_c` per location and year from the twin's own sensor readings and write them to `environments.Environments` |
 
 **RPC: bulk_insert_readings**
 
@@ -357,6 +358,47 @@ Response (200 OK) — `out_inserted` is `false` when an existing row was refresh
 ```json
 [{ "out_environment_id": 1, "out_inserted": true }]
 ```
+
+**RPC: refresh_soil_aggregates**
+
+The one writer of `environments.Environments` that acquires nothing: it reads the twin's own soil sensors and writes the result back, under `variant_name = 'twin-sensors'` and `variant_type_id = 6` (`sensor_derived`). No scenario — this is what was measured, not a projection.
+
+The value is a **quarter-balanced nested mean**: equal weight per sensor within a day, per day within a quarter, and per quarter within the year. The readings arrive in month-long windows whose volumes differ by up to a factor of ten, so a flat mean over all readings is weighted by sampling density rather than by time — 10.75 °C against the balanced 10.59 at ecosense for 2025.
+
+It **refuses rather than guesses**, per quantity, and says so in the returned `out_status`:
+
+* a quantity without four quarters of at least `p_min_days_per_quarter` measured days is skipped, because an annual mean over three quarters is a seasonal mean wearing a year's label;
+* a quantity whose sensors disagree on the unit is skipped, because 129 soil-moisture sensors declare `m^3/m^3` where 507 declare `%`;
+* readings outside the range `sensor.SensorTypes` declares for the quantity are excluded before any of this.
+
+Sensor depth is not recorded in the twin (`installation_height_m` is NULL on all 1,280 soil sensors), so the value is a mean across the depths the network sits at, not a profile. The row's `description` says so.
+
+Request body — every parameter optional; the defaults refresh every location and year:
+```json
+{
+  "p_location_id": 1,
+  "p_year": 2025,
+  "p_min_days_per_quarter": 7,
+  "p_dry_run": false
+}
+```
+
+Response (200 OK) — one row per location-year considered, **including the ones it refused**, so a caller that only counted successes would still see a site drop out of coverage:
+```json
+[{
+  "out_location_id": 1,
+  "out_year": 2025,
+  "out_start_date": "2025-01-15",
+  "out_end_date": "2025-11-14",
+  "out_avg_soil_moisture_percent": 22.160,
+  "out_avg_soil_temperature_c": 10.585,
+  "out_environment_id": 72,
+  "out_status": "written: soil moisture and soil temperature"
+}]
+```
+
+Idempotent: a second run refreshes the same row.
+
 
 Provenance written by `set_location_attributes` is readable at `GET /rest/v1/attributeprovenance`, with the source's name, version and citation resolved from `shared.Processes`.
 
