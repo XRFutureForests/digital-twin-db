@@ -198,9 +198,11 @@ BEGIN
                             'open-data-soil-class');
 
     IF n_rows = 0 THEN
-        RAISE NOTICE 'no open-data source rows yet -- fresh database. The five '
-                     'workflow keys land when the connector registers its '
-                     'sources and this file is applied again (XRFF-427).';
+        RAISE NOTICE 'no open-data source rows yet -- fresh database. Nothing '
+                     'to do here: the connector writes workflow_key and '
+                     'param_schema itself when it registers its sources '
+                     '(open_data/processes.py, XRFF-427). The UPDATEs above are '
+                     'a backfill for rows registered before that change.';
     ELSIF n_keys <> n_rows THEN
         RAISE EXCEPTION 'expected a workflow key on each of the % open-data '
                         'source rows, found %', n_rows, n_keys;
