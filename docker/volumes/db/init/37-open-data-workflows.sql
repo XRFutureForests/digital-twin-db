@@ -172,16 +172,40 @@ UPDATE shared.processes SET
 WHERE process_name = 'Open data acquisition: soilgrids';
 
 
--- Fail loudly if a process_name drifted: five keys must exist, or the runner
--- would silently have fewer workflows than the host config expects.
+-- Fail loudly if a process_name drifted -- but only about rows that exist.
+--
+-- The original check asserted a flat five keys, and that was wrong on a fresh
+-- database: these five rows are created by the connector's ensure_process() at
+-- registration time, not by any init file, so on a first build the UPDATEs
+-- above match nothing, the count is 0, and init aborts with exit 3 before it
+-- reaches any later file. Caught by the fresh-init test on 2026-09-09 (XRFF-427).
+--
+-- Counting by algorithm_name rather than by the keys themselves keeps the drift
+-- detection the original was for, and adds one: a source version bump makes a
+-- *second* row for the same algorithm_name that no UPDATE here will ever key,
+-- so 6 rows against 5 keys now raises instead of silently shipping a workflow
+-- the runner's config expects and the database no longer declares.
 DO $$
-DECLARE n integer;
+DECLARE
+    n_rows integer;
+    n_keys integer;
 BEGIN
-    SELECT COUNT(*) INTO n FROM shared.processes
-    WHERE workflow_key IN ('open-data-weather', 'open-data-radiation',
-                           'open-data-co2', 'open-data-soil-chemistry',
-                           'open-data-soil-class');
-    IF n <> 5 THEN
-        RAISE EXCEPTION 'expected 5 open-data workflow keys, found %', n;
+    SELECT COUNT(*) INTO n_rows FROM shared.processes
+     WHERE category = 'acquisition'
+       AND algorithm_name IN ('open-meteo', 'pvgis', 'ssp-co2',
+                              'soilgrids-chemistry', 'soilgrids');
+
+    SELECT COUNT(*) INTO n_keys FROM shared.processes
+     WHERE workflow_key IN ('open-data-weather', 'open-data-radiation',
+                            'open-data-co2', 'open-data-soil-chemistry',
+                            'open-data-soil-class');
+
+    IF n_rows = 0 THEN
+        RAISE NOTICE 'no open-data source rows yet -- fresh database. The five '
+                     'workflow keys land when the connector registers its '
+                     'sources and this file is applied again (XRFF-427).';
+    ELSIF n_keys <> n_rows THEN
+        RAISE EXCEPTION 'expected a workflow key on each of the % open-data '
+                        'source rows, found %', n_rows, n_keys;
     END IF;
 END $$;
