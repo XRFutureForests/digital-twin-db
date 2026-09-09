@@ -93,6 +93,29 @@ In Supabase Studio (http://localhost:54323):
 
 No SQL or CLI required for the account itself. The account works immediately for Studio and for direct API calls; only field-data writes need the extra step.
 
+#### Invite user does not reach the invitee — create the account directly
+
+Mail from this deployment never leaves the machine. `SMTP_HOST` is `supabase-mail`, which is the `dftdb-mail` container: [inbucket](https://inbucket.org/), a catch-all test server. It accepts the message on port 2500 and holds it in a web inbox on port 9000; it forwards nothing. So an invite to an external collaborator is generated, accepted, and never delivered.
+
+An operator *can* complete the flow by reading the link out of inbucket — <http://localhost:9000> on the dev stack, and on the server only through an SSH tunnel, since campus clients reach nothing but 22 and 443. That is a workaround, not a process to hand to a colleague.
+
+The GoTrue admin endpoint creates a confirmed account **and** sets its role tier in one call, skipping both the mail and the follow-up `UPDATE` below:
+
+```bash
+curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \
+  -H "apikey: $SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"someone@example.com",
+       "password":"<generated>",
+       "email_confirm":true,
+       "app_metadata":{"role":"contributor"}}'
+```
+
+`email_confirm: true` is what makes the account usable without a click-through. Verified on the dev stack 2026-09-09: the returned `app_metadata` carried the role, and the account signed in and called `request_job()` successfully (XRFF-422).
+
+Hand the generated password to the person over a channel that is not this repository, and have them change it.
+
 ### Removing a user
 
 In Studio → **Authentication → Users** → click the user → **Delete user**.

@@ -27,7 +27,8 @@ from public.workflows
 order by workflow_key;
 ```
 
-Four workflows today: `silva`, `aquarius-sync`, `aquarius-enrich`, `growpy`.
+Nine workflows today: `silva`, `aquarius-sync`, `aquarius-enrich`, `growpy`,
+and five `open-data-*` acquisitions.
 The `description` is written to answer "should I press this?" — what it
 changes, roughly how long it takes, and what it costs to be wrong.
 
@@ -104,27 +105,38 @@ You see your own jobs. Curators see everyone's.
 ## What does not work yet, and why
 
 **`request_job()` cannot be called from the Studio SQL Editor.** Verified on
-the live stack, 2026-09-02:
+the live stack, 2026-09-02 and again 2026-09-09:
 
 ```
 select request_job('aquarius-enrich');
 ERROR:  requesting a job requires the contributor role
 ```
 
-Two separate reasons, and the second outlives the first:
+This once had two causes. Only the second is left.
 
-1. **No user carries an `app_metadata.role` claim.** `shared.is_contributor()`
-   has nothing to check, so it rejects everyone. On the local stack `auth.users`
-   is empty — there are no accounts at all. This is not missing machinery:
-   creating an account and setting its role tier are both documented in
-   [data-access-guide.md](data-access-guide.md) (*Assigning a role tier*), and
-   XRFF-239, which built that, is closed. It is a manual step nobody has taken.
+1. ~~**No user carries an `app_metadata.role` claim.**~~ **Fixed on the dev
+   stack, 2026-09-09** (XRFF-422). Two accounts now exist there —
+   `contributor@dev.xrff.local` and `curator@dev.xrff.local` — created through
+   the GoTrue admin endpoint with `app_metadata.role` set at creation, which is
+   one step rather than the create-then-`UPDATE` pair
+   [data-access-guide.md](data-access-guide.md) describes:
+
+   ```bash
+   curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \
+     -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"email":"someone@example.com","password":"…","email_confirm":true,
+          "app_metadata":{"role":"contributor"}}'
+   ```
+
+   **The server stack at `dt.unr.uni-freiburg.de` still has no accounts**, so
+   `request_job()` still rejects everyone *there*.
 
 2. **The Studio SQL Editor has no signed-in identity at all.** It reaches the
    database through the `meta` service as `supabase_admin`
    (`docker-compose.yml`, `PG_META_DB_USER`), so `auth.jwt()` is null and the
    role check fails there *however* privileged the person at the keyboard is.
-   Fixing XRFF-239 will not change this.
+   Creating accounts did not change this and never could — tracked as XRFF-423.
 
 So Studio works today as the place to **read** the menu and **watch** jobs —
 both queries above run fine there, and a superuser sees every job. Actually
@@ -140,11 +152,15 @@ curl -X POST "$SUPABASE_URL/rest/v1/rpc/request_job" \
   -d '{"workflow":"silva","params":{"location":"ecosense","years":30}}'
 ```
 
-That path is verified working end to end, including the idempotency key and a
-`400` with the message on bad parameters. Closing the gap for non-coders means
-either handing colleagues that call in a form they will actually use, or giving
-Studio a caller that carries a token — a decision for XRFF-375/XRFF-239, not
-something to unpick by loosening the role check.
+That path is verified working end to end against a real signed-in account on
+2026-09-09: a contributor got job ids `19` and `20`, the same `external_job_id`
+returned the first id rather than queueing a second job, a bad parameter came
+back `400` with the message, and `anon` got `401`. `job_status` showed the
+contributor only its own row while the curator saw both, and `anon` read `[]`
+with a `200`. Closing the gap for non-coders means either handing colleagues
+that call in a form they will actually use, or giving Studio a caller that
+carries a token — that is XRFF-423, not something to unpick by loosening the
+role check.
 
 > **Do not insert into `shared.ProcessingJobs` by hand** in the Table Editor to
 > get around this. It bypasses `request_job()` entirely — no workflow check, no
