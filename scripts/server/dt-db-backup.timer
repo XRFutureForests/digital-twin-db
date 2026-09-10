@@ -1,0 +1,17 @@
+[Unit]
+# Nightly at 02:40 UTC. Ahead of nothing in particular -- there is no other
+# scheduled write on this host at that hour -- and well clear of dt-renew-ssl
+# at 03:45 so an NFS hiccup cannot be blamed on two jobs at once.
+Description=Back up the digital twin database nightly
+
+[Timer]
+OnCalendar=*-*-* 02:40:00
+# Catch up after downtime. A machine that was off overnight should still take
+# yesterday's backup when it comes back, rather than silently skipping a day.
+Persistent=true
+# Nothing else contends at this hour, but a few minutes of jitter costs nothing.
+RandomizedDelaySec=300
+Unit=dt-db-backup.service
+
+[Install]
+WantedBy=timers.target
