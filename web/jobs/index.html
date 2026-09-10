@@ -1,0 +1,689 @@
+<!doctype html>
+<!--
+  Requesting a job — the trigger surface Supabase Studio cannot be (XRFF-423).
+
+  Studio reaches the database through the `meta` service as `supabase_admin`, so
+  `auth.jwt()` is null there and `is_contributor()` is false however privileged
+  the person at the keyboard is. Requesting a run therefore has to come from a
+  caller that carries a *user* token. This page is that caller: sign in against
+  GoTrue, read the menu from `public.workflows`, post to
+  `public.request_job()`, watch `public.job_status`.
+
+  It is deliberately one static file with no build step and no dependencies:
+  nginx already serves this host on 443 and already proxies the API at /db/, so
+  deploying it is a bind mount and a `location` block. Nothing here is
+  SILVA-specific — every form is generated from the workflow's own
+  `param_schema`, so a new connector gets a form the moment it lands a
+  `workflow_key`.
+
+  Config (URL + anon key) comes from the sibling config.js, which is gitignored
+  for the same reason docker/.env is. See config.example.js.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request a job — Forest Digital Twin</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --panel: #ffffff;
+    --ink: #1b2019;
+    --muted: #5d6b5c;
+    --line: #d9ded6;
+    --accent: #2f6f4e;
+    --accent-ink: #ffffff;
+    --warn: #8a4b16;
+    --err: #9b2c2c;
+    --ok: #2f6f4e;
+    --code-bg: #f0f2ee;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141713;
+      --panel: #1c211a;
+      --ink: #e6eae3;
+      --muted: #9aa898;
+      --line: #2f382d;
+      --accent: #6db08a;
+      --accent-ink: #10150f;
+      --warn: #d9a066;
+      --err: #e88b8b;
+      --ok: #6db08a;
+      --code-bg: #131711;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding-block: 24px;
+    padding-inline: 20px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
+  h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+  label { display: block; font-weight: 500; margin-bottom: 4px; font-size: 14px; }
+  .help { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+  input[type=text], input[type=email], input[type=password], input[type=number], select {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+  }
+  input[type=checkbox] { width: auto; margin-right: 8px; }
+  button {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
+    border-radius: 5px;
+    padding: 8px 16px;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .row > * { flex: 1 1 220px; }
+  .row > button { flex: 0 0 auto; }
+  .field { margin-bottom: 14px; }
+  .req::after { content: " *"; color: var(--err); }
+  .msg { padding: 10px 12px; border-radius: 5px; font-size: 14px; margin-bottom: 14px; }
+  .msg.err { background: color-mix(in srgb, var(--err) 12%, transparent); color: var(--err); }
+  .msg.ok  { background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 13px; }
+  .tablewrap { overflow-x: auto; }
+  .badge { font-size: 12px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .badge.pending   { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+  .badge.running   { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .badge.completed { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .badge.failed    { background: color-mix(in srgb, var(--err) 18%, transparent); color: var(--err); }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 10px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    margin: 8px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .linkish {
+    background: none; border: 0; color: var(--accent);
+    padding: 0; font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline;
+  }
+  .who { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Request a job</h1>
+  <p class="sub">
+    Ask the twin to run something — a SILVA growth projection, an Aquarius sync,
+    a growpy batch — and watch it happen. A runner on some host picks the job up;
+    nothing runs until one does.
+  </p>
+
+  <div id="cfgError" class="msg err" hidden></div>
+
+  <!-- Sign in -->
+  <div class="panel" id="authPanel">
+    <h2>Sign in</h2>
+    <div id="authMsg"></div>
+    <form id="loginForm">
+      <div class="row">
+        <div>
+          <label for="email">Email</label>
+          <input type="email" id="email" autocomplete="username" required>
+        </div>
+        <div>
+          <label for="password">Password</label>
+          <input type="password" id="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" id="loginBtn">Sign in</button>
+      </div>
+      <p class="help">
+        Requesting a run needs the <code>contributor</code> role. Reading the menu
+        and your own job history does not.
+      </p>
+    </form>
+  </div>
+
+  <!-- Signed in -->
+  <div class="panel" id="sessionPanel" hidden>
+    <div class="who">
+      <div>Signed in as <strong id="whoami"></strong> <span id="roleBadge" class="badge"></span></div>
+      <button class="secondary" id="logoutBtn">Sign out</button>
+    </div>
+  </div>
+
+  <!-- Request -->
+  <div class="panel" id="requestPanel" hidden>
+    <h2>What to run</h2>
+    <div id="reqMsg"></div>
+    <div class="field">
+      <label for="workflow">Workflow</label>
+      <select id="workflow"></select>
+      <p class="help" id="workflowHelp"></p>
+    </div>
+    <form id="paramForm"></form>
+    <div class="field">
+      <label>
+        <input type="checkbox" id="idem" checked>
+        Guard against a double click
+      </label>
+      <p class="help">
+        Sends an idempotency key with the request, so pressing the button twice
+        returns the first job instead of queueing a second. Uncheck when you
+        genuinely want a second run — two identical SILVA runs are a legitimate
+        thing to want, because <code>trees.GrowthSimulations</code> accumulates.
+      </p>
+    </div>
+    <button id="submitBtn">Request run</button>
+  </div>
+
+  <!-- Watch -->
+  <div class="panel" id="jobsPanel" hidden>
+    <div class="who">
+      <h2 style="margin:0">Recent jobs</h2>
+      <button class="secondary" id="refreshBtn">Refresh</button>
+    </div>
+    <p class="help" style="margin-bottom:10px">
+      You see your own jobs; curators see everyone's. Refreshes itself while
+      anything is pending or running.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Job</th><th>Workflow</th><th>Status</th><th>Submitted</th><th>Took</th><th></th></tr>
+        </thead>
+        <tbody id="jobsBody"></tbody>
+      </table>
+    </div>
+    <div id="jobDetail"></div>
+  </div>
+</div>
+
+<!-- Config first: the page reads window.DFTDB on load. -->
+<script src="config.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var cfg = window.DFTDB;
+  if (!cfg || !cfg.anonKey) {
+    var e = document.getElementById("cfgError");
+    e.hidden = false;
+    e.textContent = "config.js is missing or has no anonKey. Copy config.example.js to config.js and fill it in.";
+    return;
+  }
+  // Default to the API on this same origin, which is how nginx serves it here.
+  var API = (cfg.apiBase || "/db").replace(/\/$/, "");
+
+  // The token lives in sessionStorage, not localStorage: it survives a reload
+  // in this tab and is gone when the tab closes, which suits a shared lab
+  // machine better than a token that outlives the person at the keyboard.
+  var TOKEN_KEY = "dftdb.session";
+  var session = null;
+  var schemas = {};
+  var pollTimer = null;
+
+  function loadSession() {
+    try {
+      var raw = sessionStorage.getItem(TOKEN_KEY);
+      if (raw) session = JSON.parse(raw);
+    } catch (err) { session = null; }
+  }
+  function saveSession(s) {
+    session = s;
+    try {
+      if (s) sessionStorage.setItem(TOKEN_KEY, JSON.stringify(s));
+      else sessionStorage.removeItem(TOKEN_KEY);
+    } catch (err) { /* private mode; the session just will not survive a reload */ }
+  }
+
+  function headers(auth) {
+    var h = { "apikey": cfg.anonKey, "Content-Type": "application/json" };
+    if (auth && session) h["Authorization"] = "Bearer " + session.access_token;
+    return h;
+  }
+
+  function show(id, on) { document.getElementById(id).hidden = !on; }
+
+  function message(where, kind, text) {
+    var el = document.getElementById(where);
+    if (!text) { el.innerHTML = ""; return; }
+    var d = document.createElement("div");
+    d.className = "msg " + kind;
+    d.textContent = text;
+    el.innerHTML = "";
+    el.appendChild(d);
+  }
+
+  // PostgREST and GoTrue disagree about which key carries the human-readable
+  // part, and request_job()'s RAISE lands in `message`. Try all of them before
+  // falling back to the status line.
+  function errorText(body, res) {
+    if (body) {
+      var t = body.message || body.error_description || body.msg || body.hint || body.details || body.error;
+      if (t) return t;
+    }
+    return "HTTP " + res.status + " " + res.statusText;
+  }
+
+  async function api(path, opts) {
+    opts = opts || {};
+    var res = await fetch(API + path, {
+      method: opts.method || "GET",
+      headers: headers(opts.auth !== false),
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    var body = null;
+    var text = await res.text();
+    if (text) { try { body = JSON.parse(text); } catch (err) { body = { message: text }; } }
+    if (!res.ok) {
+      var err = new Error(errorText(body, res));
+      err.status = res.status;
+      throw err;
+    }
+    return body;
+  }
+
+  /* ---------- auth ---------- */
+
+  function roleOf(s) {
+    try {
+      var claims = JSON.parse(atob(s.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      return (claims.app_metadata && claims.app_metadata.role) || null;
+    } catch (err) { return null; }
+  }
+
+  async function signIn(email, password) {
+    var res = await fetch(API + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: { "apikey": cfg.anonKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: password })
+    });
+    var body = await res.json().catch(function () { return null; });
+    if (!res.ok) throw new Error(errorText(body, res));
+    return body;
+  }
+
+  function renderSession() {
+    var on = !!session;
+    show("authPanel", !on);
+    show("sessionPanel", on);
+    show("requestPanel", on);
+    show("jobsPanel", on);
+    if (!on) return;
+
+    document.getElementById("whoami").textContent =
+      (session.user && session.user.email) || "unknown";
+
+    var role = roleOf(session);
+    var badge = document.getElementById("roleBadge");
+    badge.textContent = role || "no role";
+    // The set shared.is_contributor() accepts. Anything else can read the menu
+    // and its own job history, but request_job() will refuse it.
+    var mayRequest = ["admin", "curator", "contributor"].indexOf(role) >= 0;
+    badge.className = "badge " + (mayRequest ? "completed" : "pending");
+
+    if (!mayRequest) {
+      message("reqMsg", "err",
+        "This account carries " + (role ? "the role \"" + role + "\"" : "no app_metadata.role") +
+        ", so request_job() will refuse it. It needs admin, curator or contributor, " +
+        "which an administrator sets through the GoTrue admin endpoint.");
+    }
+  }
+
+  /* ---------- the menu, and a form built from param_schema ---------- */
+
+  async function loadWorkflows() {
+    var rows = await api("/rest/v1/workflows?select=*&order=workflow_key");
+    var sel = document.getElementById("workflow");
+    sel.innerHTML = "";
+    rows.forEach(function (r) {
+      schemas[r.workflow_key] = r;
+      var o = document.createElement("option");
+      o.value = r.workflow_key;
+      o.textContent = r.workflow_key + " — " + r.process_name;
+      sel.appendChild(o);
+    });
+    if (rows.length) renderParams(rows[0].workflow_key);
+  }
+
+  function ctrlFor(name, spec, required) {
+    var field = document.createElement("div");
+    field.className = "field";
+
+    var id = "p_" + name;
+    var input;
+
+    if (spec.enum) {
+      input = document.createElement("select");
+      spec.enum.forEach(function (v) {
+        var o = document.createElement("option");
+        o.value = String(v);
+        o.textContent = String(v);
+        input.appendChild(o);
+      });
+      if (spec.default !== undefined) input.value = String(spec.default);
+    } else if (spec.type === "boolean") {
+      input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = spec.default === true;
+    } else if (spec.type === "integer" || spec.type === "number") {
+      input = document.createElement("input");
+      input.type = "number";
+      if (spec.minimum !== undefined) input.min = spec.minimum;
+      if (spec.maximum !== undefined) input.max = spec.maximum;
+      // multipleOf is what makes the browser's own stepper agree with the
+      // server's validator, so `years` cannot be nudged to 33.
+      if (spec.multipleOf !== undefined) input.step = spec.multipleOf;
+      else if (spec.type === "integer") input.step = 1;
+      if (spec.default !== undefined) input.value = spec.default;
+    } else {
+      input = document.createElement("input");
+      input.type = "text";
+      if (spec.pattern) input.pattern = spec.pattern;
+      if (spec.default !== undefined) input.value = spec.default;
+    }
+
+    input.id = id;
+    input.dataset.param = name;
+    input.dataset.ptype = spec.type || (spec.enum ? "string" : "string");
+
+    var label = document.createElement("label");
+    label.setAttribute("for", id);
+    label.textContent = name;
+    if (required) label.className = "req";
+
+    if (spec.type === "boolean") {
+      label.textContent = "";
+      var wrap = document.createElement("label");
+      if (required) wrap.className = "req";
+      wrap.appendChild(input);
+      wrap.appendChild(document.createTextNode(name));
+      field.appendChild(wrap);
+    } else {
+      field.appendChild(label);
+      field.appendChild(input);
+    }
+
+    if (spec.description) {
+      var help = document.createElement("p");
+      help.className = "help";
+      help.textContent = spec.description;
+      field.appendChild(help);
+    }
+    return field;
+  }
+
+  function renderParams(key) {
+    var wf = schemas[key];
+    var form = document.getElementById("paramForm");
+    form.innerHTML = "";
+    document.getElementById("workflowHelp").textContent = wf.description || "";
+
+    var schema = wf.param_schema || {};
+    var props = schema.properties || {};
+    var required = schema.required || [];
+
+    var names = Object.keys(props).sort(function (a, b) {
+      // Required first, then alphabetical — the shape of the decision, not the
+      // order the JSON happens to be in.
+      var ra = required.indexOf(a) >= 0, rb = required.indexOf(b) >= 0;
+      if (ra !== rb) return ra ? -1 : 1;
+      return a.localeCompare(b);
+    });
+
+    if (!names.length) {
+      var p = document.createElement("p");
+      p.className = "help";
+      p.textContent = "This workflow takes no parameters.";
+      form.appendChild(p);
+      return;
+    }
+    names.forEach(function (n) {
+      form.appendChild(ctrlFor(n, props[n], required.indexOf(n) >= 0));
+    });
+
+    var dep = schema.dependentRequired || {};
+    var depNotes = Object.keys(dep).filter(function (k) { return dep[k] && dep[k].length; });
+    if (depNotes.length) {
+      var note = document.createElement("p");
+      note.className = "help";
+      note.textContent = "Given together: " + depNotes.map(function (k) {
+        return k + " needs " + dep[k].join(", ");
+      }).join("; ") + ".";
+      form.appendChild(note);
+    }
+  }
+
+  function collectParams() {
+    var out = {};
+    var inputs = document.getElementById("paramForm").querySelectorAll("[data-param]");
+    Array.prototype.forEach.call(inputs, function (el) {
+      var name = el.dataset.param;
+      var t = el.dataset.ptype;
+      if (t === "boolean") {
+        out[name] = el.checked;
+      } else if (el.value === "") {
+        // Left blank means "do not pass it": the tool's own default applies,
+        // which is exactly what `default` in the schema is telling you it is.
+        return;
+      } else if (t === "integer") {
+        out[name] = parseInt(el.value, 10);
+      } else if (t === "number") {
+        out[name] = parseFloat(el.value);
+      } else {
+        out[name] = el.value;
+      }
+    });
+    return out;
+  }
+
+  /* ---------- request, and watch ---------- */
+
+  async function submit() {
+    var btn = document.getElementById("submitBtn");
+    var key = document.getElementById("workflow").value;
+    var params = collectParams();
+    var body = { workflow: key, params: params };
+
+    if (document.getElementById("idem").checked) {
+      // Stable for identical parameters, so a double click collapses; different
+      // parameters get a different key and queue a real second job.
+      body.external_job_id = "ui-" + key + "-" + hash(JSON.stringify(params)) +
+                             "-" + new Date().toISOString().slice(0, 16);
+    }
+
+    btn.disabled = true;
+    message("reqMsg", "", "");
+    try {
+      var jobId = await api("/rest/v1/rpc/request_job", { method: "POST", body: body });
+      message("reqMsg", "ok", "Queued as job " + jobId + ". A runner claims it within about a minute.");
+      await loadJobs();
+    } catch (err) {
+      message("reqMsg", "err", err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function hash(s) {
+    var h = 5381;
+    for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36);
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  async function loadJobs() {
+    var rows;
+    try {
+      rows = await api("/rest/v1/job_status?select=*&order=submitted_at.desc&limit=15");
+    } catch (err) {
+      message("reqMsg", "err", "Could not read job_status: " + err.message);
+      return;
+    }
+    var body = document.getElementById("jobsBody");
+    body.innerHTML = "";
+    var busy = false;
+
+    rows.forEach(function (r) {
+      if (r.status === "pending" || r.status === "running") busy = true;
+      var tr = document.createElement("tr");
+
+      function cell(text) {
+        var td = document.createElement("td");
+        td.textContent = text === null || text === undefined ? "" : String(text);
+        return td;
+      }
+      tr.appendChild(cell(r.job_id));
+      tr.appendChild(cell(r.workflow_name));
+
+      var st = document.createElement("td");
+      var b = document.createElement("span");
+      b.className = "badge " + r.status;
+      b.textContent = r.status;
+      st.appendChild(b);
+      tr.appendChild(st);
+
+      tr.appendChild(cell(fmtTime(r.submitted_at)));
+      tr.appendChild(cell(r.duration_seconds !== null && r.duration_seconds !== undefined ? r.duration_seconds + " s" : ""));
+
+      var act = document.createElement("td");
+      var btn = document.createElement("button");
+      btn.className = "linkish";
+      btn.textContent = "details";
+      btn.addEventListener("click", function () { showDetail(r); });
+      act.appendChild(btn);
+      tr.appendChild(act);
+
+      body.appendChild(tr);
+    });
+
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    if (busy) pollTimer = setTimeout(loadJobs, 5000);
+  }
+
+  function showDetail(r) {
+    var host = document.getElementById("jobDetail");
+    host.innerHTML = "";
+
+    var h = document.createElement("p");
+    h.className = "help";
+    h.style.marginTop = "14px";
+    h.textContent = "Job " + r.job_id + " — " + r.workflow_name + " " + (r.workflow_version || "");
+    host.appendChild(h);
+
+    function block(title, text) {
+      if (!text) return;
+      var t = document.createElement("p");
+      t.className = "help";
+      t.textContent = title;
+      var pre = document.createElement("pre");
+      pre.textContent = text;
+      host.appendChild(t);
+      host.appendChild(pre);
+    }
+
+    block("parameters", JSON.stringify(r.input_data || {}, null, 2));
+    if (r.error_message) block("error", r.error_message);
+    var out = r.output_data || {};
+    // The answer to "why did it fail" is almost always in here.
+    block("stdout", out.stdout);
+    block("stderr", out.stderr);
+  }
+
+  /* ---------- wiring ---------- */
+
+  document.getElementById("loginForm").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var btn = document.getElementById("loginBtn");
+    btn.disabled = true;
+    message("authMsg", "", "");
+    try {
+      var s = await signIn(
+        document.getElementById("email").value.trim(),
+        document.getElementById("password").value
+      );
+      saveSession(s);
+      document.getElementById("password").value = "";
+      renderSession();
+      await loadWorkflows();
+      await loadJobs();
+    } catch (err) {
+      message("authMsg", "err", err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById("logoutBtn").addEventListener("click", function () {
+    saveSession(null);
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    document.getElementById("jobDetail").innerHTML = "";
+    message("reqMsg", "", "");
+    renderSession();
+  });
+
+  document.getElementById("workflow").addEventListener("change", function (ev) {
+    renderParams(ev.target.value);
+    message("reqMsg", "", "");
+  });
+
+  document.getElementById("submitBtn").addEventListener("click", function (ev) {
+    ev.preventDefault();
+    submit();
+  });
+
+  document.getElementById("refreshBtn").addEventListener("click", function () { loadJobs(); });
+
+  loadSession();
+  renderSession();
+  if (session) {
+    // A stored token may have expired while the tab was closed; find out by
+    // using it rather than by trusting its timestamp.
+    loadWorkflows().then(loadJobs).catch(function (err) {
+      if (err.status === 401) {
+        saveSession(null);
+        renderSession();
+        message("authMsg", "err", "That session expired. Sign in again.");
+      } else {
+        message("reqMsg", "err", err.message);
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

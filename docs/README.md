@@ -27,7 +27,7 @@ what the database is, and [RUNBOOK.md](../RUNBOOK.md) for how to run and load it
 |----------|----------|
 | [api-spec.md](api-spec.md) | REST endpoints, views, RPC signatures |
 | [data-access-guide.md](data-access-guide.md) | Query patterns per client — SQL, REST, R, Python, Unreal |
-| [requesting-a-job.md](requesting-a-job.md) | Queueing a connector run through the job RPC |
+| [requesting-a-job.md](requesting-a-job.md) | Queueing a connector run — the `/jobs/` page, the RPC underneath it, and what claims the job |
 | [silva-coupling.md](silva-coupling.md) | The contract with silva-connector |
 
 ## Running it

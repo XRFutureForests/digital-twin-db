@@ -43,6 +43,10 @@ tests/manual/results/
 # Runner: what each host may actually execute (host-specific, never published)
 /config/workflows.toml
 
+# Job trigger page: this deployment's API URL and anon key, written at deploy
+# time. The anon key is public by design, but it is still this stack's key.
+/web/jobs/config.js
+
 # Emitted RO-Crates (XRFF-407): regenerable from the database at any time by
 # scripts/provenance/emit_ro_crate.py. Archive a crate deliberately (Zenodo,
 # alongside a paper); do not carry them in the repo.

@@ -17,6 +17,21 @@ back. Nothing in the database says *how* a workflow runs — see
 
 ---
 
+## The short version: use the page
+
+**<https://dt.unr.uni-freiburg.de/jobs/>** — sign in, pick a workflow, fill in
+the form, watch it run. That is the whole thing, and it is what to hand a
+colleague. The rest of this document is what the page does underneath, which
+matters when you are scripting it or when something fails.
+
+The form is not written by hand for each workflow: it is generated from that
+workflow's own `param_schema`, so it always agrees with what the server will
+accept, and a new connector gets a form the moment it lands a `workflow_key`.
+Source is [web/jobs/](../web/jobs/); it is one static file, served by the
+dashboard's nginx, calling the same REST API as everything else.
+
+---
+
 ## 1. See what can be run
 
 In Studio → **SQL Editor**:
@@ -102,65 +117,59 @@ You see your own jobs. Curators see everyone's.
 
 ---
 
-## What does not work yet, and why
+## Why there is a page at all, and not just Studio
 
-**`request_job()` cannot be called from the Studio SQL Editor.** Verified on
-the live stack, 2026-09-02 and again 2026-09-09:
+**`request_job()` cannot be called from the Studio SQL Editor**, and this is
+not a configuration problem. Verified on the live stack 2026-09-02, 2026-09-09
+and again 2026-09-10:
 
 ```
 select request_job('aquarius-enrich');
 ERROR:  requesting a job requires the contributor role
 ```
 
-This once had two causes. Only the second is left.
+Studio reaches the database through the `meta` service as `supabase_admin`
+(`docker-compose.yml`, `PG_META_DB_USER`), so `auth.jwt()` is **null** there and
+the role check fails *however* privileged the person at the keyboard is.
+Creating accounts did not change this and never could. So Studio is the place to
+**read** the menu and **watch** jobs — both queries above run fine there, and a
+superuser sees every job — but requesting one has to come from a caller that
+carries a **user token**.
 
-1. ~~**No user carries an `app_metadata.role` claim.**~~ **Fixed on the dev
-   stack, 2026-09-09** (XRFF-422). Two accounts now exist there —
-   `contributor@dev.xrff.local` and `curator@dev.xrff.local` — created through
-   the GoTrue admin endpoint with `app_metadata.role` set at creation, which is
-   one step rather than the create-then-`UPDATE` pair
-   [data-access-guide.md](data-access-guide.md) describes:
+There are three such callers, and they are the same REST call underneath:
 
-   ```bash
-   curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \
-     -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{"email":"someone@example.com","password":"…","email_confirm":true,
-          "app_metadata":{"role":"contributor"}}'
-   ```
-
-   **The server stack at `dt.unr.uni-freiburg.de` still has no accounts**, so
-   `request_job()` still rejects everyone *there*.
-
-2. **The Studio SQL Editor has no signed-in identity at all.** It reaches the
-   database through the `meta` service as `supabase_admin`
-   (`docker-compose.yml`, `PG_META_DB_USER`), so `auth.jwt()` is null and the
-   role check fails there *however* privileged the person at the keyboard is.
-   Creating accounts did not change this and never could — tracked as XRFF-423.
-
-So Studio works today as the place to **read** the menu and **watch** jobs —
-both queries above run fine there, and a superuser sees every job. Actually
-*requesting* one has to come from a caller that carries a user token: the REST
-endpoint, which is how Unreal will do it (XRFF-352).
+| Caller | For |
+|---|---|
+| [the page](https://dt.unr.uni-freiburg.de/jobs/) | people |
+| `curl` (below) | scripts |
+| Unreal Blueprint | the headsets (XRFF-352) |
 
 ```bash
 # Sign in once (see data-access-guide.md), then:
-curl -X POST "$SUPABASE_URL/rest/v1/rpc/request_job" \
-  -H "apikey: $ANON_KEY" \
-  -H "Authorization: Bearer $USER_JWT" \
-  -H "Content-Type: application/json" \
-  -d '{"workflow":"silva","params":{"location":"ecosense","years":30}}'
+curl -X POST "$SUPABASE_URL/rest/v1/rpc/request_job"   -H "apikey: $ANON_KEY"   -H "Authorization: Bearer $USER_JWT"   -H "Content-Type: application/json"   -d '{"workflow":"silva","params":{"location":"ecosense","years":30}}'
 ```
 
-That path is verified working end to end against a real signed-in account on
-2026-09-09: a contributor got job ids `19` and `20`, the same `external_job_id`
-returned the first id rather than queueing a second job, a bad parameter came
-back `400` with the message, and `anon` got `401`. `job_status` showed the
-contributor only its own row while the curator saw both, and `anon` read `[]`
-with a `200`. Closing the gap for non-coders means either handing colleagues
-that call in a form they will actually use, or giving Studio a caller that
-carries a token — that is XRFF-423, not something to unpick by loosening the
-role check.
+Verified end to end against a real signed-in account on 2026-09-09: a
+contributor got job ids `19` and `20`, the same `external_job_id` returned the
+first id rather than queueing a second job, a bad parameter came back `400` with
+the message, and `anon` was refused. `job_status` showed the contributor only
+its own row while the curator saw both, and `anon` read `[]` with a `200`.
+
+**Accounts exist on both stacks now.** They are created through the GoTrue admin
+endpoint, which sets the role in the same call rather than the
+create-then-`UPDATE` pair [data-access-guide.md](data-access-guide.md)
+describes. Studio's *Invite user* is not the route: `SMTP_HOST` is the
+`dftdb-mail` container, an inbucket catch-all that forwards nothing, so the
+invitation is generated and never delivered.
+
+```bash
+curl -X POST "$SUPABASE_URL/auth/v1/admin/users"   -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY"   -H "Content-Type: application/json"   -d '{"email":"someone@example.com","password":"…","email_confirm":true,
+       "app_metadata":{"role":"contributor"}}'
+```
+
+`shared.is_contributor()` accepts `admin`, `curator` and `contributor`; anything
+else — or no role at all — reads the menu and its own job history but cannot
+request a run.
 
 > **Do not insert into `shared.ProcessingJobs` by hand** in the Table Editor to
 > get around this. It bypasses `request_job()` entirely — no workflow check, no
@@ -170,12 +179,18 @@ role check.
 
 ## Nothing runs until a runner exists somewhere
 
-A job sits at `pending` until a host with a configured runner claims it. As of
-2026-09-02 no cron line exists anywhere in this workspace. The database half of
-that gap closed the same day: `dt.unr.uni-freiburg.de` now runs the full stack,
-reachable at `https://dt.unr.uni-freiburg.de/db/rest/v1` (XRFF-238). It still has
-no conda and no Blender, so a runner there could queue jobs but not execute the
-ones that need either. Locally, drain the queue by hand:
+A job sits at `pending` until a host with a configured runner claims it, and a
+runner only claims the workflow keys its own private `config/workflows.toml`
+lists. That is the routing mechanism: a key absent from a host is a job that
+host will never touch, however long it waits.
+
+**`dt.unr.uni-freiburg.de` runs one** as of 2026-09-10 — a `systemd` timer
+draining the queue every minute, so a request there becomes a running job within
+about a minute unattended. It carries the `silva` key only. It has no Blender
+and no PDAL, so `growpy` and the point-cloud workflows would queue there and
+never run; request those where a runner for them exists.
+
+Locally, drain the queue by hand:
 
 ```bash
 conda activate digital-twin

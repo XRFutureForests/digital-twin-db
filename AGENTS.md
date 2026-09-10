@@ -39,6 +39,7 @@ approach was chosen, write it in the knowledge hub and link to it.
 | `scripts/admin/` | DB admin utilities: reset, refresh lookups, JWT generation |
 | `scripts/utils/` | DB schema inspection, import-file test utilities |
 | `docs/` | Project documentation |
+| `web/jobs/` | The job trigger page — one static file, served by the dashboard's nginx at `/jobs/` (`config.js` managed locally) |
 
 ## Schema Migrations
 
