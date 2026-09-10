@@ -288,8 +288,13 @@
   // falling back to the status line.
   function errorText(body, res) {
     if (body) {
-      var t = body.message || body.error_description || body.msg || body.hint || body.details || body.error;
+      var t = body.message || body.error_description || body.msg || body.details || body.error;
+      // The refusal from request_job() puts the actionable half in `hint` —
+      // which role is needed, and why Studio can never satisfy the check — so
+      // dropping it would throw away the useful sentence.
+      if (t && body.hint && body.hint !== t) return t + " — " + body.hint;
       if (t) return t;
+      if (body.hint) return body.hint;
     }
     return "HTTP " + res.status + " " + res.statusText;
   }
