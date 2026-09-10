@@ -84,37 +84,91 @@ curl -X POST "http://<SERVER>:8000/auth/v1/token?grant_type=refresh_token" \
 
 ### Creating a user account (admin)
 
-In Supabase Studio (http://localhost:54323):
-
-1. Go to **Authentication → Users**
-2. Click **Invite user** → enter the collaborator's email
-3. They receive a magic link; clicking it lets them set a password
-4. Their account is assigned the `authenticated` role automatically — read everywhere, full write on metadata/lookup tables. They get **no write access to field-data tables** (Trees, Stems, PointClouds, Environments, Images, SensorReadings, PhenologyObservations, Deadwood, GroundVegetation) until an admin also assigns a role tier — see [Assigning a role tier](#assigning-a-role-tier) below.
-
-No SQL or CLI required for the account itself. The account works immediately for Studio and for direct API calls; only field-data writes need the extra step.
-
-#### Invite user does not reach the invitee — create the account directly
-
-Mail from this deployment never leaves the machine. `SMTP_HOST` is `supabase-mail`, which is the `dftdb-mail` container: [inbucket](https://inbucket.org/), a catch-all test server. It accepts the message on port 2500 and holds it in a web inbox on port 9000; it forwards nothing. So an invite to an external collaborator is generated, accepted, and never delivered.
-
-An operator *can* complete the flow by reading the link out of inbucket — <http://localhost:9000> on the dev stack, and on the server only through an SSH tunnel, since campus clients reach nothing but 22 and 443. That is a workaround, not a process to hand to a colleague.
-
-The GoTrue admin endpoint creates a confirmed account **and** sets its role tier in one call, skipping both the mail and the follow-up `UPDATE` below:
+**Use the script.** It is the whole job in one line, on either stack:
 
 ```bash
-curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \
-  -H "apikey: $SERVICE_ROLE_KEY" \
-  -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"someone@example.com",
+# on the server
+ssh dt.unr.uni-freiburg.de dev/digital-twin-db/scripts/server/create-user.sh someone@uni-freiburg.de
+
+# locally, from the repo root
+scripts/server/create-user.sh someone@dev.xrff.local curator
+
+scripts/server/create-user.sh --list
+scripts/server/create-user.sh --set-role someone@uni-freiburg.de curator
+```
+
+It reads `SERVICE_ROLE_KEY` and `KONG_HTTP_PORT` from `docker/.env`, so it is
+identical on both hosts and correct on both — **the ports differ**: Kong is
+`8000` on dev and `8001` on the server, the same class of divergence as Postgres
+on 5432 and 5433. It generates the password, sets `email_confirm`, sets the role
+tier in the same call, refuses a duplicate address or an unknown role, and
+prints the credentials once.
+
+Roles are `admin`, `curator`, `contributor` — the three `shared.is_contributor()`
+accepts. An account without one can read the workflow menu and its own job
+history but cannot request a run.
+
+#### Doing it through Studio instead
+
+Possible, in **two** steps rather than one, because Studio's user form has no
+field for `app_metadata`. Verified on the dev stack 2026-09-10.
+
+1. **Authentication → Users → Add user → Create new user.** Tick *Auto Confirm
+   User* — without it the account lands unconfirmed and the confirmation mail
+   dies in inbucket (below), so it can never sign in and nothing says so.
+2. **SQL Editor**, to give it a role tier:
+
+   ```sql
+   update auth.users
+      set raw_app_meta_data = raw_app_meta_data || '{"role":"contributor"}'::jsonb
+    where email = 'someone@uni-freiburg.de';
+   ```
+
+The claim appears in the **next** sign-in's JWT, not the current one — GoTrue
+mints it at sign-in from `raw_app_meta_data`. Confirmed end to end: before the
+update the token carried no role and `request_job()` refused it; after it, the
+same account signed in and queued a job.
+
+**Studio on the server is not exposed.** `dftdb-studio` publishes 54323, and the
+campus client-subnet ACL blocks every inbound port but 22 and 443, so reach it
+through an SSH tunnel:
+
+```bash
+ssh -L 54323:localhost:54323 dt.unr.uni-freiburg.de
+# then open http://localhost:54323 — DASHBOARD_USERNAME / DASHBOARD_PASSWORD from docker/.env
+```
+
+#### Why *Invite user* is not the route
+
+Mail from this deployment never leaves the machine. `SMTP_HOST` is
+`supabase-mail`, the `dftdb-mail` container: [inbucket](https://inbucket.org/), a
+catch-all test server. It accepts the message on 2500 and holds it in a web inbox
+on 9000; it forwards nothing. So an invitation is generated, accepted, and never
+delivered.
+
+An operator *can* finish the flow by reading the link out of inbucket —
+<http://localhost:9000> locally, or through the same kind of tunnel on the server
+— but that is a workaround, not a process to hand to a colleague.
+
+#### The call underneath
+
+Both paths above are this, which is worth knowing when scripting something else:
+
+```bash
+curl -X POST "$SUPABASE_URL/auth/v1/admin/users"   -H "apikey: $SERVICE_ROLE_KEY"   -H "Authorization: Bearer $SERVICE_ROLE_KEY"   -H "Content-Type: application/json"   -d '{"email":"someone@example.com",
        "password":"<generated>",
        "email_confirm":true,
        "app_metadata":{"role":"contributor"}}'
 ```
 
-`email_confirm: true` is what makes the account usable without a click-through. Verified on the dev stack 2026-09-09: the returned `app_metadata` carried the role, and the account signed in and called `request_job()` successfully (XRFF-422).
+`email_confirm: true` is the load-bearing field, and `app_metadata` is what saves
+the follow-up `UPDATE`.
 
-Hand the generated password to the person over a channel that is not this repository, and have them change it.
+Hand the password over on a channel that is not this repository. **Note that the
+person cannot then change it**: there is no password-change page, and a reset
+mail would go to inbucket. Changing it means either an admin re-setting it, or
+the account holder calling `PUT /auth/v1/user` with their own token. If a
+password is lost, delete the account and make another.
 
 ### Removing a user
 
