@@ -61,6 +61,14 @@ range. For `silva` it says, without opening a repository, that `location` is
 required, `years` defaults to 20 and must be a multiple of 5, and `competition`
 is one of `sf_polygon`, `rect_sum`, `legacy`.
 
+Read the `description` too, not just the type. `silva`'s `scenario` is the case
+that earns this: it selects which `(location, scenario, variant_name)` triple to
+read as the base state and which bucket to write into — **it is not a climate
+scenario and does not change the projection.** `shared.Scenarios` also holds
+`ssp126`/`ssp370`/`ssp585` from the open-data acquisitions, which describe
+acquired climate data rather than forest states, and picking one here would only
+relabel an identical run.
+
 ## 2. Ask for a run
 
 ```sql
