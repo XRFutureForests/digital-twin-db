@@ -3,24 +3,18 @@
 Self-hosted Supabase PostgreSQL database for digital forest twin research. 7 custom schemas (shared, pointclouds, trees, sensor, environments, imagery, forest_floor), PostGIS spatial extensions, REST API via PostgREST/Kong, auth via GoTrue. University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung).
 
 
-## Quick Navigation
+## Documentation Map
 
 | Need | Read |
 |------|------|
-| Architecture overview | [docs/database-overview.md](docs/database-overview.md) |
-| Database schema | [docs/database-schema.md](docs/database-schema.md) |
-| Deployment guide | [docs/deployment-guide.md](docs/deployment-guide.md) |
-| Documentation map | [docs/README.md](docs/README.md) |
-| Troubleshooting | [docs/troubleshooting.md](docs/troubleshooting.md) |
+| What the database is, the variant model, the seven schemas | [README.md](README.md) |
+| Start the stack, import data, query it, reset it | [RUNBOOK.md](RUNBOOK.md) |
+| Schema dictionary, API spec, data access, deployment, troubleshooting | [docs/](docs/README.md) |
+| Why the variant model, the CityGML alignment, provenance and scaling decisions | XR Future Forests Lab knowledge hub (`03-DATA-TIER/`) — **not** in this repo |
+| Tasks | Linear |
 
-## Agent Entry
-
-- Purpose: Canonical repo map and routing layer for agents.
-- Read when: You need the project overview, local rules, or the next canonical doc.
-- Skip when: You already know the exact file or document to inspect.
-- Canonical: Yes.
-- Read next: `docs/README.md`, then the relevant canonical doc for the task.
-- Primary sources: `AGENTS.md`, `docs/README.md`.
+Deep-dive documentation is deliberately not duplicated here. If you need to explain *why* an
+approach was chosen, write it in the knowledge hub and link to it.
 
 ## Critical Rules
 
@@ -66,7 +60,7 @@ schemas. This is a decision, not drift.
 | Repo | Reach | Why |
 |---|---|---|
 | [silva-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/silva-connector) | 8 tables in `shared` / `trees`, **writes 4** | libpq in one transaction. The published views cannot express a variant-scoped read, and a half-written variant would read as a real forest state, so it needs the base tables and a transaction |
-| [digital-twin-dashboard](../digital-twin-dashboard) | 12 tables, **read-only** via RPostgres | Aggregates across schemas that no single view exposes |
+| [digital-twin-dashboard](https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-dashboard) | 12 tables, **read-only** via RPostgres | Aggregates across schemas that no single view exposes |
 
 Both are site-specific consumers of this specific deployment, which is what makes
 it defensible. [aquarius-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) is the counter-example
@@ -143,4 +137,4 @@ Required in `docker/.env` (never commit):
 - [ ] Commands match current Docker Compose setup
 - [ ] Environment variable list matches `docker/.env.example` or deployment guide
 
-**Last Updated:** 2026-09-02
+**Last Updated:** 2026-09-10

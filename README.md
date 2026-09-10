@@ -94,10 +94,17 @@ functions, API views, and reference data (species, soil types, climate zones) lo
 CSV — and **empty user tables**. Trees, sensors and readings are a separate, deliberate
 import step.
 
-| Layer | Files |
-|-------|-------|
-| Schema | `10-baseline-schema.sql`, plus additive `11+` files for changes since the baseline |
-| Lookup data | `30-31`, loaded from `data/lookups/*.csv` |
+| Files | What they do |
+|-------|--------------|
+| `10-baseline-schema.sql` | Point-in-time schema snapshot (2026-07-17) |
+| `11`–`29`, `32`+ | Additive schema changes made since that snapshot — each adds, never restructures an earlier file's objects |
+| `30`–`31` | Load the lookup CSVs and register their refresh functions |
+
+The gap around 30–31 is historical: the baseline consolidated the *former* 10–29 and 32–37
+files, which had accreted into a replay problem — later files kept restructuring what
+earlier ones created, so a fresh init replayed the project's history instead of producing
+today's schema. The two lookup files were data, not schema, so they were left in place and
+new schema files fill the numbers freed on either side.
 
 Keeping lookups in CSV means species or locations can be edited and refreshed without
 rebuilding the database. **A data fix in a lookup table needs both a migration and the CSV**

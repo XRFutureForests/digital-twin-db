@@ -96,43 +96,57 @@ wake-up finds the row still `running` past its timeout.
 `drain` exits non-zero if any job failed, per the repo's exit-code rule: an
 unattended run's exit code is the only signal cron mail carries.
 
-## Scheduling it — for when there is something to schedule
+## Scheduling it
 
-Not installed anywhere. There is no cron line in this workspace. As of
-2026-09-02 `dt.unr.uni-freiburg.de` does run the database (XRFF-238), but it
-still has no conda, no Blender and no `aquarius-connector` checkout, so a runner
-there could claim jobs it cannot execute. Develop and test against the WSL
-Docker stack until those are in place.
+**Installed and running on `dt.unr.uni-freiburg.de` since 2026-09-10**, as
+systemd *system* units rather than the crontab this section used to describe.
+The unit files live next to this README and are deployed by copying them:
 
-When the host is ready, this is the shape — a **user** crontab, not a systemd
-unit. That host has `Linger=no`, so a `--user` timer would stop at logout, and
-there is no passwordless sudo for a system one. Its user crontab is already in
-use (certbot), so this appends rather than replaces.
-
-```cron
-# Drain the job queue every minute; reap abandoned jobs hourly.
-# Cron's PATH is not a login shell's -- use absolute paths here and in
-# workflows.toml, and let the conda env's interpreter be the entry point
-# rather than sourcing an activate script.
-RUNNER=/home/max/dev/digital-twin-db/scripts/runner/runner.py
-PYTHON=/home/max/miniconda3/envs/digital-twin/bin/python
-
-# The subprocess inherits this environment and nothing else. silva's compose
-# file refuses to start without PGPASSWORD, and cron supplies almost nothing.
-# Read it from a mode-600 file rather than writing it in the crontab.
-PGPASSWORD=...
-
-* * * * *  $PYTHON $RUNNER drain >> /home/max/log/runner-drain.log 2>&1
-7 * * * *  $PYTHON $RUNNER reap  >> /home/max/log/runner-reap.log  2>&1
+```bash
+sudo cp ~/dev/digital-twin-db/scripts/runner/dt-job-runner.{service,timer} /etc/systemd/system/
+sudo cp ~/dev/digital-twin-db/scripts/runner/dt-job-runner-reap.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now dt-job-runner.timer dt-job-runner-reap.timer
 ```
+
+| Unit | Cadence | Does |
+|---|---|---|
+| `dt-job-runner.timer` | every minute | `drain` — claim and run |
+| `dt-job-runner-reap.timer` | hourly at :07 | `reap` — recover jobs this runner abandoned |
+
+Measured end to end on that host: a job requested at 10:07:16 was claimed at
+10:07:29 and finished at 10:07:41. **25 seconds from request to done**, which is
+the number that decides whether a queued job feels like a button press.
+
+### Three things this section used to say that were wrong
+
+1. *"a **user** crontab, not a systemd unit … there is no passwordless sudo for
+   a system one"* — correct about sudo, wrong about the conclusion. Someone with
+   sudo installs it once; the units are static files in the repo.
+2. *"That host has `Linger=no`, so a `--user` timer would stop at logout"* — the
+   premise is true but not binding: **`loginctl enable-linger max` succeeds
+   unprivileged there**, so user timers were always an option if sudo had been
+   unavailable. Verified 2026-09-10, then reverted, because the system units
+   made it moot.
+3. *"`PGPASSWORD=…`"* in the crontab — **not needed.** `silva`'s compose file
+   reads `silva-connector/docker/.env` on its own, because `-f
+   docker/docker-compose.yml` makes `docker/` the compose project directory. The
+   secret stays in one mode-600 file and the runner's environment stays empty.
+   `config/workflows.example.toml` still gives the crontab advice; it is not
+   wrong, just avoidable.
+
+Also note the interpreter: on that host it is `envs/runner/bin/python`, a
+minimal env of python + psycopg2 + python-dotenv — **not** `envs/digital-twin`,
+which pulls `r-base`, `jupyter` and `devtools` that the runner never uses onto a
+28 GB root disk.
 
 Overlapping invocations are safe — that is what `FOR UPDATE SKIP LOCKED` is
 for — so a drain that outlives its minute does not need a lock file. Keep
 `max_jobs` low on a host that runs growpy: one job can hold it for an hour.
 
-Redirecting to a log rather than letting cron mail is deliberate on a host
-where `drain` runs every minute; drop the redirect if you want the non-zero
-exit of a failed job to reach you by mail.
+`drain` exits non-zero when a job failed, which is why the unit sets
+`SuccessExitStatus=0 1`: the failure is already recorded on the job row, and a
+unit flapping into `failed` for it would hide a genuinely broken runner.
 
 On Windows the equivalent is a Task Scheduler entry running the same two
 commands; nothing in the runner assumes a POSIX host except the paths in
