@@ -4,19 +4,12 @@
 **Date:** 2026-05-11
 **Status:** Active
 
-<!-- DOC_KIND: how-to -->
-<!-- DOC_ROLE: canonical -->
-<!-- READ_WHEN: Read when you need setup, deploy, restart, troubleshoot, or recovery procedures. -->
-<!-- SKIP_WHEN: Skip when you only need static infrastructure inventory or architectural rationale. -->
-<!-- PRIMARY_SOURCES: docker/docker-compose.yml, docker/.env.example, scripts/, docs/project/infrastructure.md -->
 
-<!-- SCOPE: ALL operational procedures (local development setup, Docker commands, environment variables, testing commands, build/deployment, production operations, troubleshooting, logs, restart procedures) ONLY. -->
-<!-- DO NOT add here: Infrastructure inventory → infrastructure.md, Architecture patterns → architecture.md, Tech stack versions → tech_stack.md, Database schema → database-schema.md, API endpoints → api-spec.md -->
 
 ## Quick Navigation
 
 - [Docs Hub](README.md)
-- [Architecture](architecture.md)
+- [Architecture](database-overview.md)
 - [Docker Troubleshooting](docker/TROUBLESHOOTING.md)
 
 ## Agent Entry
@@ -27,7 +20,7 @@
 | Read When | You need commands, setup steps, troubleshooting, or recovery actions. |
 | Skip When | You only need static topology or design rationale. |
 | Canonical | Yes |
-| Next Docs | [Architecture](architecture.md), [Docker Troubleshooting](docker/TROUBLESHOOTING.md) |
+| Next Docs | [Architecture](database-overview.md), [Docker Troubleshooting](docker/TROUBLESHOOTING.md) |
 | Primary Sources | `docker/docker-compose.yml`, `docker/.env.example`, `scripts/` |
 
 ---
@@ -40,7 +33,7 @@ This runbook provides step-by-step operational procedures for the Forest Digital
 
 ### 1.2 Quick Links
 
-- Architecture overview: [architecture.md](architecture.md)
+- Architecture overview: [database-overview.md](database-overview.md)
 - Database schema: [database-schema.md](database-schema.md)
 - Docker changelog: [docker/CHANGELOG.md](docker/CHANGELOG.md)
 
@@ -186,7 +179,7 @@ python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
 python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv
 python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
 ```
-For Aquarius specifically (requires university VPN), see the [aquarius-connector](../../aquarius-connector) repo.
+For Aquarius specifically (requires university VPN), see the [aquarius-connector](../https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) repo.
 
 **Link sensors to trees:**
 ```bash
@@ -342,7 +335,7 @@ curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8000/rest/v1/species?
   -H "apikey: <new ANON_KEY>"                      # expect 200
 
 # 2. aquarius-connector (read-only check, writes nothing)
-cd ../aquarius-connector && python -m aquarius_connector.find_active_sensors
+cd https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector && python -m aquarius_connector.find_active_sensors
 
 # 3. silva-connector
 cd ../silva-connector && export PGPASSWORD=<new>
@@ -447,7 +440,7 @@ docker compose down -v --remove-orphans
 
 #### Aquarius sync fails
 
-**Symptoms:** the [aquarius-connector](../../aquarius-connector) repo's sync reports connection errors.
+**Symptoms:** the [aquarius-connector](../https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) repo's sync reports connection errors.
 
 **Cause:** University of Freiburg VPN is not connected, or `AQUARIUS_*` variables in that repo's `.env` are not set.
 
@@ -519,7 +512,7 @@ All variables are set in `docker/.env` (copy from `docker/.env.example`).
 | `POOLER_DEFAULT_POOL_SIZE` | `20` | Max PostgreSQL connections per pool |
 | `POOLER_MAX_CLIENT_CONN` | `100` | Max client connections per pool |
 
-**External integrations:** none configured in this repo's `docker/.env` — provider connectors (e.g. [aquarius-connector](../../aquarius-connector)) hold their own credentials and talk to this stack only via its REST API.
+**External integrations:** none configured in this repo's `docker/.env` — provider connectors (e.g. [aquarius-connector](../https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector)) hold their own credentials and talk to this stack only via its REST API.
 
 ---
 

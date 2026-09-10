@@ -4,19 +4,12 @@
 **Date:** 2026-05-11
 **Status:** Active
 
-<!-- DOC_KIND: reference -->
-<!-- DOC_ROLE: canonical -->
-<!-- READ_WHEN: Read when you need entities, relationships, constraints, column types, or migration-facing schema facts. -->
-<!-- SKIP_WHEN: Skip when you only need endpoint contracts or deployment steps. -->
-<!-- PRIMARY_SOURCES: docker/volumes/db/init/10-baseline-schema.sql, supabase/migrations/ -->
 
-<!-- SCOPE: Database schema (ER diagrams, table definitions, data dictionary, indexes, constraints, migrations, normalization) ONLY. -->
-<!-- DO NOT add here: API endpoints → api-spec.md, Tech stack versions → architecture.md, Deployment → deployment-guide.md, Docker setup → docs/docker/ -->
 
 ## Quick Navigation
 
 - [Docs Hub](README.md)
-- [Architecture](architecture.md)
+- [Architecture](database-overview.md)
 - [API Spec](api-spec.md)
 - [Deployment Guide](deployment-guide.md)
 - [Existing DB Overview](database-overview.md)
@@ -30,7 +23,7 @@
 | Read When | You need exact database structure, column types, integrity rules, or schema lineage. |
 | Skip When | You only need API contracts or operational commands. |
 | Canonical | Yes |
-| Next Docs | [Architecture](architecture.md), [API Spec](api-spec.md), [DB Overview](database-overview.md) |
+| Next Docs | [Architecture](database-overview.md), [API Spec](api-spec.md), [DB Overview](database-overview.md) |
 | Primary Sources | `docker/volumes/db/init/10-baseline-schema.sql`, `supabase/migrations/` |
 
 ---
@@ -483,7 +476,7 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 | `external_id` | VARCHAR(200) | YES | UNIQUE | Identifier within the source system (see `source`) |
 | `external_metadata` | JSONB | YES | DEFAULT `{}` | Raw source-specific payload: `Label`, `Parameter`, `LocationIdentifier`, and (after enrichment) `Instrument`, `DataOwner`, `TypeOfMeasurement`, `GapTolerance` |
 
-**Metadata enrichment.** `sensor_model` defaults to a generic `Ecosense Node` from the API sync. The [aquarius-connector](../../aquarius-connector) repo's `enrich_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `external_id` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `sensor_model`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `external_metadata`, via the `bulk_upsert_sensors` RPC. Re-run it **after** every Aquarius sync — the sync upsert resets these fields.
+**Metadata enrichment.** `sensor_model` defaults to a generic `Ecosense Node` from the API sync. The [aquarius-connector](../https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) repo's `enrich_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `external_id` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `sensor_model`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `external_metadata`, via the `bulk_upsert_sensors` RPC. Re-run it **after** every Aquarius sync — the sync upsert resets these fields.
 
 ---
 

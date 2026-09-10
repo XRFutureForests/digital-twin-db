@@ -655,7 +655,7 @@ docker run --rm -v docker_db-config:/data -v $(pwd):/backup \
 
 ## Next Steps
 
-- [Architecture Overview](architecture.md) - Full system architecture and data patterns
+- [Architecture Overview](database-overview.md) - Full system architecture and data patterns
 - [Database Schema](database-schema.md) - Detailed schema documentation
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
 

@@ -45,7 +45,7 @@ Available scripts:
 | Script | Purpose |
 |--------|---------|
 | `scripts/import/import_trees.py` | Bulk upsert tree inventory CSV |
-| `scripts/import/ingest_sensor_data.py` | Sync sensors + readings from any provider (see [aquarius-connector](../../aquarius-connector) for Aquarius) |
+| `scripts/import/ingest_sensor_data.py` | Sync sensors + readings from any provider (see [aquarius-connector](../https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) for Aquarius) |
 | `scripts/import/link_sensors_to_trees.py` | Link sensors to their nearest tree |
 | [silva-connector](../../silva-connector) (separate repo, R) | Run SILVA and write `trees.SimulationRuns` + `trees.GrowthSimulations` + the variant chain, over libpq |
 | `scripts/admin/refresh_lookups.py` | Reload lookup CSVs without a full DB reset |

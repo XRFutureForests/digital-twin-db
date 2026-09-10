@@ -1,148 +1,46 @@
-# Forest Digital Twin Database Documentation
+# docs — digital-twin-db
 
-Self-hosted Supabase/PostgreSQL backend for XR Future Forests digital twin research. University of Freiburg, funded by Eva Mayr-Stihl Stiftung.
+Reference for the schema, the API and deployment. Start with [README.md](../README.md) for
+what the database is, and [RUNBOOK.md](../RUNBOOK.md) for how to run and load it.
 
-> **New here?** Start with the **[Database Overview](database-overview.md)** — the schema architecture diagram, the seven schemas and their tables, how they connect, and the key design patterns (variant lineage, audit trail, PostGIS, auto-generated REST API).
+## The schema
 
----
+| Document | Contents |
+|----------|----------|
+| [database-overview.md](database-overview.md) | The seven schemas, how they connect, the key design patterns |
+| [database-schema.md](database-schema.md) | Full data dictionary — every table, column, type and constraint |
+| [variant-scenario-model.md](variant-scenario-model.md) | Location → Scenario → Variant, and the query patterns that depend on it |
+| [growth-simulation-schema.md](growth-simulation-schema.md) | `trees.GrowthSimulations` and `trees.SimulationRuns` |
+| [citygml-qsm-mapping.md](citygml-qsm-mapping.md) | Column-by-column mapping to the CityGML conceptual tree model |
+| [level-of-detail-vocabulary.md](level-of-detail-vocabulary.md) | The LOD terms used across schemas |
 
-## Quick Start Paths
+## Provenance
 
-### Get the database running locally
+| Document | Contents |
+|----------|----------|
+| [derived-value-provenance.md](derived-value-provenance.md) | How a derived value is distinguished from a measured one |
+| [run-provenance.md](run-provenance.md) | What a processing run records about itself |
 
-1. Install Docker Desktop and Git
-2. Clone the repo and get `docker/.env` from Max (contains DB passwords and API keys)
-3. `cd docker && docker compose up -d` — wait ~60 s for all containers to become healthy
-4. Verify: open **http://localhost:54323** (Studio) or run `curl "http://localhost:8000/rest/v1/species" -H "apikey: <ANON_KEY>"`
+## Using it
 
-Full instructions: [local-deployment-guide.md](local-deployment-guide.md)
+| Document | Contents |
+|----------|----------|
+| [api-spec.md](api-spec.md) | REST endpoints, views, RPC signatures |
+| [data-access-guide.md](data-access-guide.md) | Query patterns per client — SQL, REST, R, Python, Unreal |
+| [requesting-a-job.md](requesting-a-job.md) | Queueing a connector run through the job RPC |
+| [silva-coupling.md](silva-coupling.md) | The contract with silva-connector |
 
----
+## Running it
 
-### Load tree inventory data
-
-Prepare a CSV using the 24-column template, then import:
-
-```bash
-conda activate digital-twin
-python scripts/import/import_trees.py data/imports/your_trees.csv
-```
-
-The importer validates, deduplicates, and upserts to `trees.Trees` + `trees.Stems`. See [data/templates/DATA_PREPARATION_GUIDE.md](../data/templates/DATA_PREPARATION_GUIDE.md) for column specs and the coordinate transform steps.
-
----
-
-### Add scenarios and growth variants
-
-Scenarios are **location-scoped management regimes** in a strict Location → Scenario → Variant hierarchy: each site (`ecosense`, `mathisle`) owns its scenarios, and each scenario owns its baseline. They are **created per-site by the growth-variant seed scripts**, not loaded from a global CSV. VariantTypes (original, simulated_growth, …) are loaded from `data/lookups/variant_types.csv` on init.
-
-To **add a scenario + its variants**: copy the pattern in `scripts/seed/ecosense_baseline_variant.sql` — it creates the location-scoped scenario, and assigns the baseline trees to `baseline_2025`. Growth variants on top of that baseline are written by silva-connector (`silva_2030`, `silva_2035`, ...), chained via `parent_variant_id`. See [variant-scenario-model.md](variant-scenario-model.md).
-
-Full model explanation and API query patterns: [variant-scenario-model.md](variant-scenario-model.md)
-
----
-
-### Connect Unreal Engine
-
-Set the API Base URL to `http://<HOST>:8000/rest/v1` and the ANON_KEY from `docker/.env`. The primary endpoint for tree placement is `/rest/v1/ue_trees` — a flat, pre-joined view that includes lat/lon, species name, height, DBH, and scenario info in a single query.
-
-Step-by-step Blueprint setup, flat SQL view contracts, and PCG integration live in the XR Future Forests Lab knowledge hub → `05-PRESENTATION-TIER/data-fetcher-guide` (Unreal ↔ Digital Twin DB Integration Guide).
+| Document | Contents |
+|----------|----------|
+| [local-deployment-guide.md](local-deployment-guide.md) | Local stack, step by step |
+| [deployment-guide.md](deployment-guide.md) | Production deployment on dt.unr, TLS, Kong, NFS-backed PGDATA |
+| [runbook.md](runbook.md) | Operational procedures beyond the quick paths in [RUNBOOK.md](../RUNBOOK.md) |
+| [troubleshooting.md](troubleshooting.md) | Symptom-by-symptom |
+| [docker/](docker/README.md) | Container stack, versions, container-level troubleshooting |
 
 ---
 
-### Run a SILVA growth simulation and write results back
-
-Growth simulation runs in the [silva-connector](../../silva-connector) repo, not
-here. It joins this stack's docker network, reads the baseline variant straight
-out of `trees` / `shared`, and writes the projection back over libpq in one
-transaction — there is no CSV and no REST hop.
-
-```bash
-cd ../silva-connector
-export PGPASSWORD=...            # docker/.env -> POSTGRES_PASSWORD
-
-docker compose -f docker/docker-compose.yml run --rm silvar \
-  Rscript /work/scripts/run_simulation.R \
-    --location ecosense --years 20 --replace
-```
-
-One run writes three targets in one transaction: `trees.SimulationRuns` (the
-parameters), `trees.GrowthSimulations` (the per-tree trajectory) and a chain of
-`simulated_growth` variants (`silva_2030`, `silva_2035`, …) that UE walks as a
-time machine. Read back with `/rest/v1/simulation_runs`,
-`/rest/v1/growth_simulations?run_id=eq.<UUID>` and
-`/rest/v1/ue_trees?variant_id=eq.<id>`.
-
-What is written, species coding, and site conditions: [silva-coupling.md](silva-coupling.md)
-Growth simulations schema and API views: [growth-simulation-schema.md](growth-simulation-schema.md)
-
----
-
-### Ask the twin to run something
-
-```sql
-select workflow_key, description from public.workflows;
-select request_job('silva', '{"location":"ecosense","years":30}'::jsonb);
-select * from job_status order by submitted_at desc limit 10;
-```
-
-`public.workflows` is the menu of what can be run and what each one accepts;
-`request_job()` queues it; `job_status` says what happened. A runner on some
-host drains the queue — the database never says what a workflow executes.
-
-How to read the menu, and what does not work yet: [requesting-a-job.md](requesting-a-job.md)
-Runner setup and per-host configuration: [../scripts/runner/README.md](../scripts/runner/README.md)
-
----
-
-### Manage users and access
-
-| Need | How |
-|------|-----|
-| Give a colleague read access | Share the `ANON_KEY` from `docker/.env` — no account needed |
-| Give a colleague write access | Create a Studio account for them (see [data-access-guide.md](data-access-guide.md)) |
-| Run import scripts as a collaborator | Share the `SERVICE_ROLE_KEY` — for trusted team members only |
-| Log in programmatically | POST to `/auth/v1/token?grant_type=password` — see [data-access-guide.md](data-access-guide.md) |
-
-Full permissions model and user creation steps: [data-access-guide.md](data-access-guide.md)
-
----
-
-### Troubleshoot a broken stack
-
-```bash
-docker compose ps                    # see which containers are unhealthy
-docker compose logs <container>      # inspect a specific container
-python scripts/admin/reset_database.py  # full schema wipe + reinit (destroys data)
-```
-
-Common issues: [docs/docker/TROUBLESHOOTING.md](docker/TROUBLESHOOTING.md)
-Full operations runbook: [runbook.md](runbook.md)
-
----
-
-## Canonical Documentation
-
-| Document | What it covers |
-|---|---|
-| [database-overview.md](database-overview.md) | **Start here** — schema architecture, the seven schemas, tables, design patterns, audit trail, access patterns |
-| [architecture.md](architecture.md) | System architecture (arc42) with C4 diagrams and runtime scenarios |
-| [database-schema.md](database-schema.md) | Full schema, data dictionary, constraints, indexes |
-| [api-spec.md](api-spec.md) | Complete PostgREST endpoint reference |
-| [database-erd.dbml](database-erd.dbml) | Entity-relationship model (dbdiagram.io source) |
-| [local-deployment-guide.md](local-deployment-guide.md) | Spin up a local stack in <30 min; step-by-step onboarding |
-| [data-access-guide.md](data-access-guide.md) | Read/write access, user accounts, permissions model |
-| [variant-scenario-model.md](variant-scenario-model.md) | Scenarios, VariantTypes, Variants — data model and API patterns |
-| [silva-coupling.md](silva-coupling.md) | SILVA R model workflow — export, run, write-back |
-| [growth-simulation-schema.md](growth-simulation-schema.md) | GrowthSimulations table and API views |
-| [requesting-a-job.md](requesting-a-job.md) | Request a workflow run: the menu, `request_job()`, watching `job_status` |
-| [species-naming-audit.md](species-naming-audit.md) | Species naming conventions and audit notes |
-| [derived-value-provenance.md](derived-value-provenance.md) | Which model produced a derived value, and how uncertain it is — decision for XRFF-401 |
-| [run-provenance.md](run-provenance.md) | Emitting an RO-Crate per recorded run (Process Run Crate 0.5) — XRFF-407 |
-| [citygml-qsm-mapping.md](citygml-qsm-mapping.md) | CityGML (Ambarwari et al. 2024) column mapping — feeds the QSM schema work (XRFF-264–267) |
-| [level-of-detail-vocabulary.md](level-of-detail-vocabulary.md) | The three LoD axes and what every `lod` column means — normative for db and growpy |
-| [sensorreadings-scaling-evaluation.md](sensorreadings-scaling-evaluation.md) | Partitioning/index/performance evaluation for `sensor.sensorreadings` |
-| [runbook.md](runbook.md) | Operations: start/stop, reset, backups, health checks |
-| [deployment-guide.md](deployment-guide.md) | Production deployment guidance |
-| [troubleshooting.md](troubleshooting.md) | Common issues and resolutions |
-| [docker/README.md](docker/README.md) | Docker stack: services, ports, environment variables |
+Why the variant model, the CityGML alignment and the scaling decisions were chosen — and the
+audits behind them — live in the XR Future Forests Lab knowledge hub, `03-DATA-TIER/`.

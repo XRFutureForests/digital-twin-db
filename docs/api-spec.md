@@ -5,24 +5,13 @@
 **Status:** Active
 **OpenAPI Version:** 3.0.3
 
-<!-- DOC_KIND: reference -->
-<!-- DOC_ROLE: canonical -->
-<!-- READ_WHEN: Read when you need endpoint contracts, auth rules, or request/response shapes for the PostgREST API. -->
-<!-- SKIP_WHEN: Skip when you only need database schema structure or deployment procedures. -->
-<!-- PRIMARY_SOURCES: docker/volumes/api/kong.yml, docker/volumes/db/init/24-public-api-views.sql, docker/volumes/db/init/22-aquarius-integration.sql, docker/docker-compose.yml -->
 
-<!-- SCOPE: API endpoints (methods, paths, parameters, responses), authentication mechanisms (JWT, API keys), error codes (HTTP status), PostgREST filtering, RPC functions ONLY. -->
-<!-- DO NOT add here: Database schema → database-schema.md, Tech stack versions → architecture.md, Deployment → deployment-guide.md, Docker setup → docs/docker/ -->
 
-<!-- NO_CODE_EXAMPLES: API spec documents CONTRACTS (endpoints, schemas), not implementations.
-     ALLOWED: JSON request/response schemas (this IS the API contract), endpoint tables, filter operator tables
-     FORBIDDEN: Python/JavaScript client code, supabase-py usage examples, psycopg2 code
-     For client usage patterns → data-access-guide.md -->
 
 ## Quick Navigation
 
 - [Docs Hub](README.md)
-- [Architecture](architecture.md)
+- [Architecture](database-overview.md)
 - [Database Schema](database-schema.md)
 - [Deployment Guide](deployment-guide.md)
 
@@ -34,7 +23,7 @@
 | Read When | You need exact endpoint behavior, filter syntax, or RPC function signatures. |
 | Skip When | You only need database structure or operational commands. |
 | Canonical | Yes |
-| Next Docs | [Database Schema](database-schema.md), [Architecture](architecture.md) |
+| Next Docs | [Database Schema](database-schema.md), [Architecture](database-overview.md) |
 | Primary Sources | `docker/volumes/api/kong.yml`, `docker/volumes/db/init/24-public-api-views.sql`, `docker/volumes/db/init/22-aquarius-integration.sql` |
 
 ---

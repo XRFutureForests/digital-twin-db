@@ -2,18 +2,12 @@
 
 Self-hosted Supabase PostgreSQL database for digital forest twin research. 7 custom schemas (shared, pointclouds, trees, sensor, environments, imagery, forest_floor), PostGIS spatial extensions, REST API via PostgREST/Kong, auth via GoTrue. University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung).
 
-<!-- SCOPE: Canonical machine-facing entry point with repo map, critical rules, command overview, and links to detailed documentation ONLY. -->
-<!-- DOC_KIND: index -->
-<!-- DOC_ROLE: canonical -->
-<!-- READ_WHEN: Start here when you need the project map, local rules, or the next canonical document. -->
-<!-- SKIP_WHEN: Skip when you already know the exact target document or code area. -->
-<!-- PRIMARY_SOURCES: AGENTS.md, docs/README.md -->
 
 ## Quick Navigation
 
 | Need | Read |
 |------|------|
-| Architecture overview | [docs/architecture.md](docs/architecture.md) |
+| Architecture overview | [docs/database-overview.md](docs/database-overview.md) |
 | Database schema | [docs/database-schema.md](docs/database-schema.md) |
 | Deployment guide | [docs/deployment-guide.md](docs/deployment-guide.md) |
 | Documentation map | [docs/README.md](docs/README.md) |
@@ -71,11 +65,11 @@ schemas. This is a decision, not drift.
 
 | Repo | Reach | Why |
 |---|---|---|
-| [silva-connector](../silva-connector) | 8 tables in `shared` / `trees`, **writes 4** | libpq in one transaction. The published views cannot express a variant-scoped read, and a half-written variant would read as a real forest state, so it needs the base tables and a transaction |
+| [silva-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/silva-connector) | 8 tables in `shared` / `trees`, **writes 4** | libpq in one transaction. The published views cannot express a variant-scoped read, and a half-written variant would read as a real forest state, so it needs the base tables and a transaction |
 | [digital-twin-dashboard](../digital-twin-dashboard) | 12 tables, **read-only** via RPostgres | Aggregates across schemas that no single view exposes |
 
 Both are site-specific consumers of this specific deployment, which is what makes
-it defensible. [aquarius-connector](../aquarius-connector) is the counter-example
+it defensible. [aquarius-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) is the counter-example
 and stays that way: it goes through PostgREST and two source-agnostic RPCs, so it
 could be pointed at a different database or replaced by another provider's
 connector.
@@ -84,7 +78,7 @@ connector.
 requires a grep of both consumer repos before it lands.
 
 ```bash
-grep -rn "<table_or_column>" ../silva-connector/R ../silva-connector/scripts
+grep -rn "<table_or_column>" https://gitlab.uni-freiburg.de/xr-future-forests-lab/silva-connector/R https://gitlab.uni-freiburg.de/xr-future-forests-lab/silva-connector/scripts
 grep -rn "<table_or_column>" ../digital-twin-dashboard/shared ../digital-twin-dashboard/apps
 ```
 
