@@ -1,0 +1,16 @@
+[Unit]
+# Hourly, matching the `7 * * * *` the README's crontab sketch used. A stuck
+# row is not urgent -- it is already lost work -- and the only cost of noticing
+# it an hour late is that the slot stays occupied that much longer. With
+# max_jobs = 1 on this host that is worth an hour, not a minute.
+Description=Recover abandoned digital twin jobs hourly
+
+[Timer]
+# Off the hour, so it does not land on top of every other hourly thing.
+OnCalendar=*-*-* *:07:00
+# Catch up after downtime -- which is exactly when there is something to reap.
+Persistent=true
+Unit=dt-job-runner-reap.service
+
+[Install]
+WantedBy=timers.target

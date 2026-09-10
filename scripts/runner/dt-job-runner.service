@@ -1,0 +1,38 @@
+[Unit]
+# Drain shared.ProcessingJobs on dt.unr.uni-freiburg.de.
+#
+# Why a unit and not the user crontab the README describes: that crontab was
+# emptied 2026-09-02 by decision, because anything writing on a schedule
+# threatens the 28 GB root disk. This does not reopen that decision, it works
+# inside it -- see the disk note below -- and it follows the precedent set by
+# dt-renew-ssl on 2026-09-10, where cron's silent failure was the whole reason
+# a timer was chosen: `systemctl status dt-job-runner` shows the last run and
+# its exit code, and a cron line does not.
+#
+# Why this does not violate the no-scheduled-writes rule: a drain writes rows
+# into Postgres, whose PGDATA is on /media/data (NFS, 80 GB free). The only
+# root-disk writes are journal lines. It writes nothing when the queue is
+# empty, which is the normal case.
+#
+# It is a one-shot, not a daemon: each invocation claims at most max_jobs
+# (1 on this host), runs them and exits. Overlapping invocations are safe --
+# FOR UPDATE SKIP LOCKED means two drains never claim the same job.
+Description=Drain the digital twin job queue
+Documentation=file:/home/max/dev/digital-twin-db/scripts/runner/README.md
+After=network-online.target docker.service media-data.mount
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=max
+Group=max
+WorkingDirectory=/home/max/dev/digital-twin-db
+ExecStart=/home/max/miniconda3/envs/runner/bin/python scripts/runner/runner.py drain
+# A SILVA run is capped at 900 s by workflows.toml and max_jobs is 1, so a
+# drain cannot legitimately outlive this. Generous, so a slow run is not killed
+# by the scheduler on top of its own timeout.
+TimeoutStartSec=1200
+# drain exits non-zero when a job failed. That is information, not a reason to
+# treat the unit as broken -- the failure is already recorded on the job row.
+SuccessExitStatus=0 1
