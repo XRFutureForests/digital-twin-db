@@ -11,7 +11,7 @@ The digital twin DB stores multiple **forest states** in a strict three-level hi
 | Term | Meaning | Example |
 |------|---------|---------|
 | **Location** | A physical forest site | `ecosense`, `mathisle` |
-| **Scenario** | A management regime **at one site** that owns its baseline/initial conditions | `natural_growth` (per site) |
+| **Scenario** | A `(management regime, climate pathway)` pair **at one site** that owns its baseline/initial conditions; `scenario_code = regime*10 + pathway` | `natural_growth` (10), `crop_tree_thinning_ssp370` (22) |
 | **Variant** | A state in that regime's timeline (baseline → growth → intervention) | `baseline_2025`, `silva_2035` |
 | **VariantType** | How the data was produced | `original`, `simulated_growth`, `model_output` |
 | **Tree row** | One tree's state at one time step | Tree #42 at height 22.5m in year 2035 |
@@ -26,6 +26,19 @@ shared.Locations   (which forest site: ecosense, mathisle)
 ```
 
 **Scenarios are location-scoped** — `shared.Scenarios.location_id NOT NULL` and `UNIQUE(location_id, scenario_name)`. So a site like `ecosense` can hold several management regimes (`natural_growth`, and later e.g. `intensive_management`, `extensive_management`), each defining its own initial conditions and developing through its own variants. A scenario is *not* a single time step — the successive years are **variants** of it.
+
+**A scenario is a point on two axes (since 2026-09-14).** `shared.Scenarios` carries `management_regime_id` → `shared.ManagementRegimes` and `climate_pathway_id` → `shared.ClimatePathways`, both small-integer lookups with a name, and a generated `scenario_code = management_regime_id * 10 + climate_pathway_id`. That is what Unreal sorts on: the tens digit groups by regime, the units digit by pathway, and every id comes with its text.
+
+| | id | name | |
+|---|---|---|---|
+| regime | 0 | `none` | holds acquired data only, never trees |
+| regime | 1 | `natural_growth` | no intervention |
+| regime | 2 | `crop_tree_thinning` | Z-Baum thinning + target-diameter harvest (even-aged stands) |
+| regime | 3 | `target_diameter_harvest` | single-tree selection (two-storied stands) |
+| pathway | 0 | `historical` | observed 1981–2010 climatology held constant |
+| pathway | 1–3 | `ssp126`, `ssp370`, `ssp585` | CMIP6 pathways the open-data connector acquires |
+
+The scenario **name follows one grammar** — `<pathway>` (a climate bucket, regime 0), `<regime>` (that regime under historical climate) or `<regime>_<pathway>` — and a `BEFORE INSERT` trigger derives the two ids from the name when the inserter does not set them, refusing a name that fits no form. So `natural_growth` is code 10, `natural_growth_ssp585` is 13, `target_diameter_harvest_ssp370` is 32, and the open-data connector's `ssp370` bucket is 2. One scenario per `(location, regime, pathway)`. A regime row also carries the SILVA thinning preset it stands for (`silva_rules`), which is how silva-connector knows what "managed" means — see its RUNBOOK.
 
 **Variants form a timeline** — `shared.Variants.parent_variant_id` links each state to the one it developed from (`baseline_2025` → `silva_2030` → `silva_2035`), with `sort_order` giving the display order. The same variant name (`baseline_2025`) exists once per (location, scenario), disambiguated by the hierarchy rather than embedded in the name.
 
@@ -82,18 +95,31 @@ The **VariantType** (original, simulated_growth, etc.) is a property of the *var
 
 ## API query patterns for UE
 
-### Step 1: List available variants for a location + scenario (populate time-step selector UI)
+### Step 0: List the scenarios at a location (populate the scenario selector)
 
 ```
-GET /variants?location_name=eq.ecosense&scenario_name=eq.natural_growth&order=sort_order
+GET /ue_scenarios?location_id=eq.1&has_trees=eq.true&order=scenario_code
 → [
-    {"variant_id": 1, "location_name": "ecosense", "scenario_name": "natural_growth", "variant_name": "baseline_2025", "simulation_year": 2025, "sort_order": 0, "parent_variant_id": null, ...},
-    {"variant_id": 2, "location_name": "ecosense", "scenario_name": "natural_growth", "variant_name": "growth_2035",   "simulation_year": 2035, "sort_order": 1, "parent_variant_id": 1, ...},
-    {"variant_id": 3, "location_name": "ecosense", "scenario_name": "natural_growth", "variant_name": "growth_2045",   "simulation_year": 2045, "sort_order": 2, "parent_variant_id": 2, ...}
+    {"scenario_id": 2,  "scenario_name": "natural_growth",            "scenario_code": 10, "management_regime": "natural_growth",     "climate_pathway": "historical", "climate_label": "historical", "variant_count": 11, "first_year": 2025, "last_year": 2075, ...},
+    {"scenario_id": 14, "scenario_name": "natural_growth_ssp370",     "scenario_code": 12, "management_regime": "natural_growth",     "climate_pathway": "ssp370",     "climate_label": "SSP3-7.0",  ...},
+    {"scenario_id": 16, "scenario_name": "crop_tree_thinning_ssp370", "scenario_code": 22, "management_regime": "crop_tree_thinning", "climate_pathway": "ssp370",     ...}
   ]
 ```
 
-The `public.variants` view joins `location_name`, `scenario_name`, `variant_type_name`, so you can filter by name instead of id.
+`has_trees=false` rows are the climate-data buckets (regime 0); leave them out of the picker. Two dropdowns — regime and pathway — map onto `scenario_code` as `regime*10 + pathway`.
+
+### Step 1: List available variants for a scenario (populate the time-step selector)
+
+```
+GET /ue_variants?scenario_id=eq.2&order=sort_order
+→ [
+    {"variant_id": 2, "variant_name": "baseline_2025", "simulation_year": 2025, "time_delta_yrs": 0,  "sort_order": 0, "parent_variant_id": null, "variant_type_name": "original",         "scenario_code": 10, "tree_count": 1495, ...},
+    {"variant_id": 3, "variant_name": "silva_2030",    "simulation_year": 2030, "time_delta_yrs": 5,  "sort_order": 1, "parent_variant_id": 2,    "variant_type_name": "simulated_growth", "scenario_code": 10, "tree_count": 1495, ...},
+    {"variant_id": 4, "variant_name": "silva_2035",    "simulation_year": 2035, "time_delta_yrs": 10, "sort_order": 2, "parent_variant_id": 3,    ...}
+  ]
+```
+
+`simulation_year` is the number, `variant_name` the text; `sort_order` orders them. To jump between scenarios at the same year, filter `ue_variants?location_id=eq.1&simulation_year=eq.2050` and switch on `scenario_code`. (`public.variants` carries the same columns plus `description`; `ue_variants` adds `tree_count`.)
 
 ### Step 2: Load all trees at one time step
 
@@ -129,7 +155,17 @@ Response fields (full `ue_trees` struct):
   "original_y": 5346758.6,
   "source_crs": 32632,
   "latitude": 48.2684,
-  "longitude": 7.8779
+  "longitude": 7.8779,
+  "sort_order": 2,
+  "time_delta_yrs": 10,
+  "variant_type_id": 4,
+  "scenario_code": 10,
+  "management_regime_id": 1,
+  "management_regime": "natural_growth",
+  "climate_pathway_id": 0,
+  "climate_pathway": "historical",
+  "tree_status_id": 1,
+  "tree_status_name": "healthy"
 }
 ```
 
@@ -165,25 +201,31 @@ GET /trees?variant_id=eq.3&select=tree_id,height_m,position,species(common_name)
 
 ## Scenarios in the DB
 
-Scenarios are **location-scoped and created by the growth-variant seed scripts**, not pre-loaded from a lookup CSV (a global scenario list no longer fits the per-site model). After the standard rebuild there is one regime per site:
+Scenarios are **location-scoped**. The `natural_growth` scenario of each site is created by the growth-variant seed scripts; the `ssp*` climate buckets by the open-data connector; every other tree-holding scenario by silva-connector, named after the regime and pathway of the run that produced it (`--regime`, `--climate`). After the 2026-09-14 production run each site holds:
 
-| Location | scenario_name | Purpose |
+| scenario_code | scenario_name | holds |
 |---|---|---|
-| `ecosense` | `natural_growth` | Baseline field inventory developing under no active management |
-| `mathisle` | `natural_growth` | Same, for the Mathisle site |
+| 1–3 | `ssp126`, `ssp370`, `ssp585` | acquired climate only (`environments.Environments`) |
+| 10 | `natural_growth` | measured baseline + unmanaged projection, historical climate |
+| 11–13 | `natural_growth_ssp126` … `_ssp585` | unmanaged projection under each pathway |
+| 20–23 (ecosense) | `crop_tree_thinning`, `crop_tree_thinning_ssp126` … | managed projection, even-aged regime |
+| 30–33 (mathisle) | `target_diameter_harvest`, `target_diameter_harvest_ssp126` … | managed projection, single-tree selection |
 
-Additional regimes (e.g. `intensive_management`, `extensive_management`, a climate-stress scenario) are added per location, each owning its own baseline variant and trajectory. Variants (time steps) are created by the seed scripts or SILVA write-back when growth simulations are run.
+Every projection chain hangs off the same measured `baseline_2025` in `natural_growth`: the first variant of a managed or climate chain has `parent_variant_id` pointing across scenarios at that baseline. Variants (time steps) are created by the seed scripts or by SILVA write-back.
 
 ---
 
 ## Adding a new scenario and variant
 
 ```bash
-# Create scenario (via API) — location-scoped: location_id is required
+# Create scenario (via API) — location-scoped: location_id is required. The name
+# must follow <pathway> | <regime> | <regime>_<pathway> so the axis ids can be
+# derived (or pass management_regime_id / climate_pathway_id explicitly); a name
+# that fits no form is refused. New regimes/pathways go into their lookup first.
 curl -X POST "http://localhost:8000/rest/v1/scenarios" \
   -H "apikey: <SERVICE_ROLE_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{"location_id": <location_id>, "scenario_name": "intensive_management", "description": "Thinning regime, RCP4.5"}'
+  -d '{"location_id": <location_id>, "scenario_name": "crop_tree_thinning_ssp126", "description": "Thinning regime, SSP1-2.6"}'
 
 # Create variant for that scenario (location_id and variant_type_id are both required;
 # parent_variant_id links it to the state it develops from)
@@ -233,9 +275,9 @@ instead (`docs/silva-coupling.md`, `docs/growth-simulation-schema.md`).
 ## UE variant switching — implementation notes
 
 In the HTTPS Blueprint:
-1. On level load, call `GET /scenarios` → populate a DataTable `DT_Scenarios`.
-2. When user selects a scenario, call `GET /variants?scenario_id=eq.<id>&order=sort_order` → populate a `DT_Variants` time-step selector.
-3. When user selects a time step, call `GET /ue_trees?variant_id=eq.<variant_id>` → repopulate `DT_Trees`.
+1. On level load, call `GET /ue_scenarios?location_id=eq.<id>&has_trees=eq.true&order=scenario_code` → populate a DataTable `DT_Scenarios` (keyed on `scenario_code`; `management_regime` and `climate_pathway` are the two dropdowns).
+2. When user selects a scenario, call `GET /ue_variants?scenario_id=eq.<id>&order=sort_order` → populate a `DT_Variants` time-step selector (`simulation_year` for the slider, `variant_name` for the label).
+3. When user selects a time step, call `GET /ue_trees?variant_id=eq.<variant_id>` → repopulate `DT_Trees`. Skip rows with `tree_status_id = 5` (harvested — the tree is gone); render `4` (dead) as a snag; `NULL` means not recorded, treat as healthy.
 4. PCG graph re-runs → trees respawn at new heights/positions.
 
 The `ue_trees` view includes pre-flattened `latitude`/`longitude` — no PostGIS geometry parsing needed in Blueprint. It also carries the tree's projected source coordinates `original_x`/`original_y` (in `source_crs`, EPSG:32632 / UTM 32N), which UE places more reliably than WGS84 lat/lon. It also exposes `competition` (boolean), derived as `crown_base_height_m / height_m > 0.6` — trees where the live crown starts in the upper 40% are considered under competition pressure. See XRFF-242 for the blueprint implementation.
