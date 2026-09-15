@@ -476,7 +476,7 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 | `external_id` | VARCHAR(200) | YES | UNIQUE | Identifier within the source system (see `source`) |
 | `external_metadata` | JSONB | YES | DEFAULT `{}` | Raw source-specific payload: `Label`, `Parameter`, `LocationIdentifier`, and (after enrichment) `Instrument`, `DataOwner`, `TypeOfMeasurement`, `GapTolerance` |
 
-**Metadata enrichment.** `sensor_model` defaults to a generic `Ecosense Node` from the API sync. The [aquarius-connector](../https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) repo's `enrich_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `external_id` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `sensor_model`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `external_metadata`, via the `bulk_upsert_sensors` RPC. Re-run it **after** every Aquarius sync — the sync upsert resets these fields.
+**Metadata enrichment.** `sensor_model` defaults to a generic `Ecosense Node` from the API sync. The [aquarius-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) repo's `enrich_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `external_id` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `sensor_model`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `external_metadata`, via the `bulk_upsert_sensors` RPC. Re-run it **after** every Aquarius sync — the sync upsert resets these fields.
 
 ---
 

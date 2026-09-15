@@ -36,9 +36,14 @@ approach was chosen, write it in the knowledge hub and link to it.
 | `docker/` | Docker Compose + all service configs (`.env` managed locally) |
 | `supabase/migrations/` | Schema change history (Supabase CLI) — source of truth for schema evolution |
 | `scripts/import/` | CSV/JSON data importers (trees, provider-agnostic sensor ingestion) |
-| `scripts/admin/` | DB admin utilities: reset, refresh lookups, JWT generation |
-| `scripts/utils/` | DB schema inspection, import-file test utilities |
-| `docs/` | Project documentation |
+| `scripts/admin/` | DB admin utilities: reset, refresh lookups, GBIF species validation |
+| `scripts/runner/` | The job runner that drains `shared.ProcessingJobs`, with its systemd units |
+| `scripts/server/` | dt.unr-only: NFS data dirs, nightly backup unit, account creation |
+| `scripts/seed/` | Baseline-variant and default-row SQL applied after import |
+| `scripts/provenance/` | Process Run Crate emitter (XRFF-407) |
+| `scripts/utils/` | `db.py` connection helper, schema inspection, JWT generation, import-file tests |
+| `docs/` | Reference: schema dictionary, API spec, deployment, troubleshooting (index in `docs/README.md`) |
+| `CHANGELOG.md`, `CONTRIBUTING.md` | Kept because this repo releases to Zenodo (workspace decision 2026-09-15: only growpy, pylometree, digital-twin-db and dtm-to-unreal carry them) |
 | `web/jobs/` | The job trigger page — one static file, served by the dashboard's nginx at `/jobs/` (`config.js` managed locally) |
 
 ## Schema Migrations
@@ -138,4 +143,4 @@ Required in `docker/.env` (never commit):
 - [ ] Commands match current Docker Compose setup
 - [ ] Environment variable list matches `docker/.env.example` or deployment guide
 
-**Last Updated:** 2026-09-10
+**Last Updated:** 2026-09-15

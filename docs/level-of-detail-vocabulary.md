@@ -130,8 +130,8 @@ more detailed version of a 15 m tree, which it is not: it is a different tree.
 * **XRFF-267** — `trees.treeassets.lod` is `SMALLINT` 0..4 with the axis-1 meaning,
   plus `geometry_class`. Add `COMMENT ON COLUMN` to `trees.qsms.lod` and
   `trees.roots.lod` stating the same, so the currently empty columns cannot drift.
-* **growpy** — [docs/architecture/](../../growpy/docs/architecture/) adopts the
-  axis-2/axis-3 terms; a pointer to this page goes in the quality-preset docs.
+* **growpy** — `docs/reference/module-reference.md` in the growpy repo adopts the
+  axis-2/axis-3 terms and points back at this page.
 * **XRFF-249** — the position paper can cite a worked three-axis scheme as a
   response to Murtiyoso et al.'s open call. That is a small citable contribution in
   its own right.

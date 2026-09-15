@@ -45,7 +45,7 @@ Available scripts:
 | Script | Purpose |
 |--------|---------|
 | `scripts/import/import_trees.py` | Bulk upsert tree inventory CSV |
-| `scripts/import/ingest_sensor_data.py` | Sync sensors + readings from any provider (see [aquarius-connector](../https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) for Aquarius) |
+| `scripts/import/ingest_sensor_data.py` | Sync sensors + readings from any provider (see [aquarius-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) for Aquarius) |
 | `scripts/import/link_sensors_to_trees.py` | Link sensors to their nearest tree |
 | [silva-connector](../../silva-connector) (separate repo, R) | Run SILVA and write `trees.SimulationRuns` + `trees.GrowthSimulations` + the variant chain, over libpq |
 | `scripts/admin/refresh_lookups.py` | Reload lookup CSVs without a full DB reset |
@@ -208,7 +208,7 @@ Four tiers, named after standard research-data-management vocabulary (RDA/DataCi
 | `authenticated` + `role: admin` (**Administrator**) | Lab administrators | Everything above, plus can set other users' `role` claim |
 | `service_role` | Max / import scripts | Full access, bypasses RLS; never share externally |
 
-Field-data tables are the ones where a bad edit or delete actually costs something (cited measurements, growth-sim inputs): `Trees`, `Stems`, `PointClouds`, `Environments`, `Images`, `SensorReadings`, `PhenologyObservations`, `Deadwood`, `GroundVegetation`. Everything else stays full-CRUD for any `authenticated` user regardless of role claim — see `docker/volumes/db/init/29-role-tiers.sql`.
+Field-data tables are the ones where a bad edit or delete actually costs something (cited measurements, growth-sim inputs): `Trees`, `Stems`, `PointClouds`, `Environments`, `Images`, `SensorReadings`, `PhenologyObservations`, `Deadwood`, `GroundVegetation`. Everything else stays full-CRUD for any `authenticated` user regardless of role claim — see the `is_admin()` / `is_contributor()` / `is_curator()` helpers and their policies in `docker/volumes/db/init/10-baseline-schema.sql`.
 
 **Never share `SERVICE_ROLE_KEY` with external collaborators.** Create a Studio account for write access instead.
 

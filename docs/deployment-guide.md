@@ -21,8 +21,8 @@ The Supabase stack replaces the previous FastAPI + nginx + Redis architecture wi
 - **Kong**: API gateway for routing and authentication
 - **GoTrue**: Built-in authentication service
 - **Realtime**: WebSocket server for live subscriptions
-- **Storage API**: S3-compatible storage (connects to external S3)
-- **Edge Functions**: Deno-based serverless functions
+- **Storage API**: Supabase Storage backed by a local docker volume (no external S3)
+- **Edge Functions**: the platform's Deno runtime ships in the stack but this project runs **no** custom functions and never will (no VPN, no conda/R/Blender, no Kong auth on `/functions/v1/`) — work is queued through `request_job()` instead, see [requesting-a-job.md](requesting-a-job.md)
 - **Supabase Studio**: Web-based database management UI
 
 ## Prerequisites
@@ -43,7 +43,6 @@ The Supabase stack replaces the previous FastAPI + nginx + Redis architecture wi
 - **100GB+ Storage** (SSD recommended)
 - **Docker** and **Docker Compose** installed
 - **Domain name** with DNS configured
-- **S3 Bucket** (AWS S3, MinIO, or compatible service)
 - **SSL/TLS Certificate** (Let's Encrypt recommended)
 
 ## Local Development Setup
@@ -108,7 +107,7 @@ Services should be running at:
 | REST API | <http://localhost:8000/rest/v1> | PostgREST endpoints |
 | Auth API | <http://localhost:8000/auth/v1> | Authentication |
 | Realtime | <http://localhost:8000/realtime/v1> | WebSocket subscriptions |
-| Edge Functions | <http://localhost:8000/functions/v1> | Serverless functions |
+| Edge Functions | <http://localhost:8000/functions/v1> | platform router + `hello` example only — unused |
 | PostgreSQL | localhost:5432 | Direct database access (via pooler) |
 
 ### 5. Access Supabase Studio
@@ -275,36 +274,20 @@ docker compose logs -f
 
 ### 5. Set Up Backups
 
-#### Automated Database Backups
+Install the systemd timer shipped in the repo rather than a crontab entry (see
+[No cron jobs](#no-cron-jobs--four-systemd-timers-instead) below for why):
 
 ```bash
-# Create backup script
-sudo nano /opt/backup-database.sh
+sudo cp scripts/server/dt-db-backup.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now dt-db-backup.timer
+systemctl list-timers dt-db-backup.timer
 ```
 
-```bash
-#!/bin/bash
-BACKUP_DIR="/backup/database"
-DATE=$(date +%Y%m%d_%H%M%S)
-CONTAINER="dftdb-db"
-
-mkdir -p $BACKUP_DIR
-
-docker exec $CONTAINER pg_dump -U postgres postgres | gzip > $BACKUP_DIR/backup_$DATE.sql.gz
-
-# Keep only last 30 days
-find $BACKUP_DIR -name "backup_*.sql.gz" -mtime +30 -delete
-```
-
-```bash
-# Make executable
-sudo chmod +x /opt/backup-database.sh
-
-# Add to crontab (daily at 2 AM)
-sudo crontab -e
-# Add line:
-0 2 * * * /opt/backup-database.sh
-```
+`scripts/server/backup-db.sh` dumps as `supabase_admin` (the `postgres` role is not a
+superuser in this image and silently misses tables), excludes the *data* of
+`sensor.sensorreadings` (8.4 GB of 8.5 GB, all re-fetchable through aquarius-connector),
+verifies the gzip trailer before renaming, and keeps 30 days. Restore is in `RUNBOOK.md` §7.
 
 ### 6. Configure Firewall
 
@@ -345,7 +328,7 @@ done
 
 ### Deploying on dt.unr.uni-freiburg.de
 
-The lab server departs from the generic recipe above in three ways, each forced
+The lab server departs from the generic recipe above in four ways, each forced
 by the host rather than chosen. First deployed this way 2026-09-02 (XRFF-238).
 
 #### Data goes on the NFS export, not the root disk
@@ -441,16 +424,23 @@ Only four things on the host are not in a repository, and a re-clone must restor
 them: `digital-twin-db/docker/.env`, `digital-twin-dashboard/docker/.env`, the
 two `apps/*/.Renviron` files, and `docker/nginx/ssl/*.pem`.
 
-#### No cron jobs, by decision
+#### No cron jobs — four systemd timers instead
 
-The crontab is empty and should stay that way. On a host whose root disk has
-repeatedly filled to the point of unreachability, anything that writes on a
-schedule is a liability, and an unattended job that nobody watches fails silently
-— which is exactly how the TLS certificate came to expire.
+The crontab is empty and stays that way: on a host whose root disk has repeatedly filled to
+the point of unreachability, anything that writes on a schedule is a liability, and an
+unattended job nobody watches fails silently — which is exactly how the TLS certificate came
+to expire in April 2026.
 
-The cost is that certificate renewal is manual. Run
-`digital-twin-dashboard/scripts/renew-ssl.sh` before the certificate lapses; it
-is a single command and takes seconds. Check the expiry with:
+What *is* scheduled runs as a systemd timer with a unit file in the repo, so it is visible,
+logged and disable-able (decision 2026-09-10, when the certificate went back onto a timer):
+
+| Timer | Does | Note |
+|---|---|---|
+| `dt-renew-ssl.timer` | certbot renewal + nginx recreate | verify it actually renewed before **2026-12-01** rather than trusting a green timer (XRFF-421) |
+| `dt-job-runner.timer` / `dt-job-runner-reap.timer` | claims `shared.processingjobs` rows (SILVA, open data) and reaps stale ones | memory-capped at 9g/7Gb for SILVA; growpy and Aquarius jobs run from the workstation |
+| `dt-db-backup.timer` | nightly `pg_dump` (minus sensor readings) to the NFS export | there was no backup at all until 2026-09-10 |
+
+Check the certificate from anywhere:
 
 ```bash
 openssl s_client -connect dt.unr.uni-freiburg.de:443 \
@@ -458,10 +448,11 @@ openssl s_client -connect dt.unr.uni-freiburg.de:443 \
     | openssl x509 -noout -enddate
 ```
 
-Scheduled data ingestion does not belong here either. The Aquarius connector
-talks to this stack over its REST API, so it runs from a workstation against
-`https://dt.unr.uni-freiburg.de/db` and needs neither a checkout nor a cron entry
-on the server.
+Manual renewal remains `digital-twin-dashboard/scripts/renew-ssl.sh` (seconds, no downtime).
+
+Scheduled data ingestion still does not belong here. Aquarius is request-only by decision;
+the connector runs from a workstation with VPN reach against
+`https://dt.unr.uni-freiburg.de/db`, or as a requested job, never on a schedule.
 
 
 ## Environment Configuration
@@ -569,18 +560,11 @@ docker exec -it dftdb-db psql -U postgres -c "
 "
 ```
 
-### S3 Connection Issues
+### Storage
 
-```bash
-# Test S3 credentials from Edge Function
-docker compose logs functions
+Storage is Supabase Storage on a docker volume (NFS-backed on the server); there is no
+external S3 and no Edge Function to test. `docker compose logs storage` is the place to look.
 
-# Verify S3 bucket access
-aws s3 ls s3://your-bucket-name --region us-east-1
-
-# Check environment variables
-docker exec dftdb-edge-functions env | grep S3
-```
 
 ### Studio Won't Load
 

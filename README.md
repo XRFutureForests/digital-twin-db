@@ -127,7 +127,7 @@ docker compose ps
 | REST API (Kong) | <http://localhost:8000/rest/v1> |
 | PostgreSQL | `localhost:5432` (Supavisor pooler) |
 
-Importing data, API usage, `psql` access, edge functions, reset and troubleshooting are in
+Importing data, API usage, `psql` access, requesting jobs, reset, operation and troubleshooting are in
 **[RUNBOOK.md](RUNBOOK.md)**.
 
 `docker/.env` holds database passwords, JWT secrets and API keys. It is gitignored — never

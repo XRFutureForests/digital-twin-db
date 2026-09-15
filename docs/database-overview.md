@@ -609,7 +609,7 @@ flowchart LR
 | Database | PostgreSQL 15 + PostGIS |
 | Infrastructure | Self-hosted Supabase |
 | REST API | PostgREST (auto-generated) |
-| Edge Functions | Deno (TypeScript) |
+| Job queue | `shared.processingjobs` + `request_job()` RPC, claimed by a systemd runner |
 | Data Import | Python scripts |
 | Visualization | Unreal Engine 5 |
 

@@ -1,6 +1,9 @@
 # Troubleshooting Guide - XR Future Forests Lab Database
 
-This guide helps you solve common problems when running the database locally.
+This guide helps you solve common problems when running the database locally. The failures
+that actually happened on the lab server (NFS mount ordering, campus DNS on the `auth`
+short name, the single-file nginx bind mount) are in [RUNBOOK.md](../RUNBOOK.md) §6–§8, not
+here; container-level symptoms are in [docker/TROUBLESHOOTING.md](docker/TROUBLESHOOTING.md).
 
 ---
 
@@ -156,7 +159,7 @@ docker compose -f docker/docker-compose.yml up -d
 docker compose -f docker/docker-compose.yml logs kong
 
 # Check kong.yml syntax
-cat supabase/kong.yml
+cat docker/volumes/api/kong.yml
 
 # Restart dependencies first
 docker compose -f docker/docker-compose.yml restart db
@@ -227,7 +230,7 @@ If this returns HTML, Studio is working but might be a browser issue.
 
 ### 5. Environment Configuration Issues
 
-#### Problem: "SUPABASE_JWT_SECRET is invalid" or authentication errors
+#### Problem: "JWT_SECRET is invalid" or authentication errors
 
 **Cause**: Missing or invalid keys in `.env` file.
 
@@ -250,8 +253,8 @@ nano docker/.env
 **Step 2: Verify keys are set**
 
 ```bash
-grep SUPABASE_JWT_SECRET .env
-grep SUPABASE_ANON_KEY .env
+grep JWT_SECRET .env
+grep ANON_KEY .env
 ```
 
 Both should have long strings, not placeholders.
@@ -287,7 +290,7 @@ docker compose restart
 **Step 1: Get your API key**
 
 ```bash
-grep SUPABASE_ANON_KEY .env
+grep ANON_KEY .env
 ```
 
 **Step 2: Test with curl**
@@ -308,10 +311,10 @@ curl "http://localhost:8000/rest/v1/species?select=*" \
 
 ```bash
 # Wrong - using service role key
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+SERVICE_ROLE_KEY=eyJhbGc...
 
 # Right - using anon key
-SUPABASE_ANON_KEY=eyJhbGc...
+ANON_KEY=eyJhbGc...
 ```
 
 ---
@@ -451,11 +454,10 @@ docker exec -it dftdb-db psql -U postgres -c "\dt shared.*"
 **Step 4: If reference data is missing**
 
 ```bash
-# Check if seed migration ran
-docker compose logs db | grep "18a-seed-lookup"
-
-# If it didn't run, apply it manually
-docker exec -it dftdb-db psql -U postgres -f /docker-entrypoint-initdb.d/migrations/18a-seed-lookup-data.sql
+# Lookup tables load from data/lookups/*.csv via 30-load-lookup-tables.sql; if the
+# init ran but the tables are empty, refresh them from the host:
+conda activate digital-twin
+python scripts/admin/refresh_lookups.py
 ```
 
 ---
@@ -472,7 +474,7 @@ docker exec -it dftdb-db psql -U postgres -f /docker-entrypoint-initdb.d/migrati
 
 ```bash
 # Convert line endings (in Git Bash or WSL)
-dos2unix supabase/*.sh
+dos2unix scripts/server/*.sh
 
 # Or configure git
 git config --global core.autocrlf input
@@ -569,7 +571,7 @@ wsl --shutdown
 # Add your project directory
 
 # Fix file permissions
-chmod +x supabase/*.sh
+chmod +x scripts/server/*.sh
 chmod 644 .env
 ```
 
@@ -628,7 +630,7 @@ docker inspect dftdb-db
 
 # Check networks
 docker network ls
-docker network inspect xr_forests_network
+docker network inspect digital_forest_twin_db_default
 ```
 
 ### Database Debugging
@@ -652,11 +654,11 @@ docker exec -it dftdb-db psql -U postgres -c "SELECT pg_size_pretty(pg_database_
 
 ```bash
 # Test if services can talk to each other
-docker exec -it xr_forests_studio ping meta
-docker exec -it xr_forests_kong ping db
+docker exec -it dftdb-studio ping meta
+docker exec -it dftdb-kong ping db
 
 # Test API endpoint from inside Kong
-docker exec -it xr_forests_kong curl http://rest:3000
+docker exec -it dftdb-kong curl http://rest:3000
 ```
 
 ---
@@ -670,17 +672,18 @@ docker exec -it xr_forests_kong curl http://rest:3000
 ```bash
 cd docker
 
-# 1. Stop all containers
+# 1. Stop all containers and drop the volumes
 docker compose down -v
 
-# 2. Remove persistent database directory
-sudo rm -rf volumes/db/data
+# 2. Rebuild the db image -- the schema is baked into it, so a stale image
+#    replays stale init files (RUNBOOK.md §6)
+docker compose build db
 
 # 3. Clean Docker system (optional)
 docker system prune -a --volumes
 
 # 4. Verify .env has proper keys (regenerate if needed)
-cat .env | grep JWT_SECRET
+grep JWT_SECRET .env
 
 # 5. Start fresh
 docker compose up -d

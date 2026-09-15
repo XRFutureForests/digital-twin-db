@@ -183,40 +183,187 @@ routes `/functions/v1/` with only the `cors` plugin while `/rest/v1/` gets `key-
 
 ---
 
-## 6. Reset and recovery
+## 6. Reset and rebuild
+
+**The `db` image bakes `docker/volumes/db/init/`.** A bare `up -d` reuses the old baked SQL;
+after any schema change, rebuild the image.
 
 ```bash
+cd docker && docker compose build db && docker compose up -d db     # schema change
+```
+
+Full rebuild from committed sources, reproducible:
+
+```bash
+# 0. back up first (see §7)
+# 1. wipe volumes, rebuild the baked image, boot (init scripts run on first boot)
 cd docker
-docker compose down -v                 # stop and remove containers + volumes
-rm -rf volumes/db/data                 # remove persistent data
-docker compose up -d                   # fresh
+docker compose down -v --remove-orphans
+docker compose build db
+docker compose up -d
+cd ..
+
+# 2. trees
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
+python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
+
+# 3. baseline variants (schema-owning DDL runs as supabase_admin, not postgres)
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_baseline_variant.sql
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/mathisle_baseline_variant.sql
+
+# 4. sensors + readings, then link
+python scripts/import/ingest_sensor_data.py sensors  data/imports/my_sensors.csv
+python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
+python scripts/import/link_sensors_to_trees.py
 ```
 
-There is also a scripted reset — run it without arguments first to see what it will do.
+The Python importers connect as `postgres` for DML; that is fine. Growth variants come from
+`silva-connector` afterwards.
 
-**The analytics container needs the `_supabase` database.** If it fails to start, check the
-database logs before assuming the whole stack is broken:
+**Missing tables after a fresh start** = the image was not rebuilt. **Studio or Kong not
+reachable** = `analytics` is not healthy yet; `docker compose restart analytics`, wait ~15 s,
+then `restart studio kong`. **Port already in use** = find the holder (`netstat -ano |
+findstr :5432` / `ss -tlnp | grep 5432`) or change the mapping in `docker/.env`.
+**Volumes fail after a Docker Desktop restart on Windows** = stale WSL bind-mount paths;
+persistent state is on named volumes for exactly this reason, restart Docker Desktop and
+`up -d`.
 
-```bash
-docker compose logs db
-```
-
-**Port already in use:** find the holder and either stop it or change the mapping in
-`docker-compose.yml`.
-
-Full procedures: [docs/runbook.md](docs/runbook.md).
-Symptom-by-symptom: [docs/troubleshooting.md](docs/troubleshooting.md).
+Symptom-by-symptom: [docs/troubleshooting.md](docs/troubleshooting.md); container-level:
+[docs/docker/TROUBLESHOOTING.md](docs/docker/TROUBLESHOOTING.md).
 
 ---
 
-## 7. Production
+## 7. Operate
+
+### Health
+
+```bash
+docker compose ps                                              # every service "healthy"
+docker compose exec db pg_isready -U postgres
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/rest/v1/ -H "apikey: $ANON_KEY"   # 200
+python scripts/utils/check_db_schema.py
+```
+
+### Logs
+
+```bash
+docker compose logs -f                                         # everything, live
+docker compose logs --tail 500 db | grep -i error
+docker compose logs --no-color > logs-$(date +%Y%m%d).log
+docker stats
+```
+
+### Backup and restore
+
+```bash
+docker exec dftdb-db pg_dump -U postgres -d postgres -Fc -f /tmp/backup.dump
+docker cp dftdb-db:/tmp/backup.dump ./backup-$(date +%Y%m%d-%H%M%S).dump
+
+# restore into a running stack: stop the app services, keep db
+docker compose stop studio kong auth rest realtime storage
+docker exec -i dftdb-db pg_restore -U postgres -d postgres --clean --if-exists /tmp/backup.dump
+docker compose up -d
+```
+
+On the server a `dt-db-backup` systemd timer does this nightly (installed 2026-09-10 — until
+then there was no backup at all).
+
+### Rotating credentials
+
+The database password and API keys live in `docker/.env` here, but **three other places
+hold copies**. Rotate the database first, then every consumer, then verify; there is no CI
+and no secret store, so nothing else will tell you a consumer broke.
+
+| # | Destination | Keys | Notes |
+|---|---|---|---|
+| 1 | `digital-twin-db/docker/.env` | `POSTGRES_PASSWORD`, `ANON_KEY`, `SERVICE_ROLE_KEY`, `JWT_SECRET` | Source of truth. Changing `JWT_SECRET` invalidates both API keys — regenerate them with `python scripts/utils/generate_jwt.py` |
+| 2 | `aquarius-connector/.env` | `SERVICE_ROLE_KEY`, `SUPABASE_URL` | REST client; a stale key fails every sync |
+| 3 | silva-connector | `PGPASSWORD` in the shell (or `docker/.env`) | libpq as `postgres`; see `silva-connector/docker/.env.example` |
+| 4 | `digital-twin-dashboard/docker/.env` | `DB_PASSWORD`, `POOLER_TENANT_ID` | Through `dftdb-pooler`; the tenant id must match this stack's |
+
+After step 1 recreate the stack — a `restart` is not enough, env is baked at container
+creation:
+
+```bash
+cd docker && docker compose up -d --force-recreate
+```
+
+Verify: the API (`curl …/rest/v1/species?limit=1` → 200), `python -m
+aquarius_connector.find_active_sensors` in aquarius-connector (read-only), a silva-connector
+`--dry-run`, and `docker logs dtdash-shiny --tail 20` after recreating the dashboard.
+
+### Emergency
+
+```bash
+cd docker && docker compose down && docker compose up -d      # full stack restart
+```
+
+Rollback to the last backup: the restore recipe above.
+
+---
+
+## 8. Production
 
 Deployment to `dt.unr.uni-freiburg.de` — TLS, Kong routing, NFS-backed `PGDATA`, and the
 constraints that shaped them: [docs/deployment-guide.md](docs/deployment-guide.md).
+Requesting jobs from there: [docs/requesting-a-job.md](docs/requesting-a-job.md).
 
-Two traps recorded there, because both cost days:
+Traps recorded there, because each cost days:
 
-- **The API is served at `/db/` on 443** because a campus ACL blocks every other port.
+- **The API is served at `/db/` on 443** because a campus ACL blocks every other port; only
+  `rest`, `auth` and `storage` are proxied — Studio is not, it needs an SSH tunnel.
 - **Never name a compose service something campus DNS also resolves.** The service name
   `auth` resolved to a university web host, and Kong sent every `/auth/v1/` request off the
   machine for a week. A dev machine cannot reproduce this class of bug.
+- **`nginx.conf` is a single-file bind mount**: a reload does nothing and `nginx -t` passes
+  on the stale file — force-recreate the container.
+- **The TLS certificate renews on `dt-renew-ssl.timer`**; verify it actually renewed before
+  2026-12-01 rather than trusting a green timer (XRFF-421).
+- **`GOTRUE_DISABLE_SIGNUP` is still `false`** — the signup endpoint is open (XRFF-435).
+
+---
+
+## 9. Reference
+
+### Environment variables (`docker/.env`, from `docker/.env.example`)
+
+Secrets — change before any use:
+
+| Variable | Generate with | Purpose |
+|---|---|---|
+| `POSTGRES_PASSWORD` | `openssl rand -base64 32` | PostgreSQL superuser |
+| `JWT_SECRET` | `openssl rand -base64 32` | JWT signing secret |
+| `ANON_KEY`, `SERVICE_ROLE_KEY` | `python scripts/utils/generate_jwt.py` | Supabase role JWTs |
+| `DASHBOARD_PASSWORD` | `openssl rand -base64 32` | Studio login |
+| `SECRET_KEY_BASE` | `openssl rand -base64 48` | Realtime / Supavisor session key (≥ 64 chars) |
+| `VAULT_ENC_KEY` | `openssl rand -hex 16` | Supavisor vault key (32 hex) |
+| `PG_META_CRYPTO_KEY` | `openssl rand -base64 32` | pg-meta |
+| `LOGFLARE_PUBLIC_ACCESS_TOKEN`, `LOGFLARE_PRIVATE_ACCESS_TOKEN` | two different random strings ≥ 20 chars | Logflare |
+
+Configuration: `POSTGRES_HOST=db`, `POSTGRES_PORT=5432`, `POSTGRES_DB=postgres`,
+`DASHBOARD_USERNAME=supabase`; `KONG_HTTP_PORT=8000`, `KONG_HTTPS_PORT=8443`,
+`POOLER_PROXY_PORT_TRANSACTION=6543`, `POOLER_TENANT_ID=digital-forest-twin-local`,
+`POOLER_DEFAULT_POOL_SIZE=20`, `POOLER_MAX_CLIENT_CONN=100`. Provider credentials
+(Aquarius, …) live in the connector repos, never here.
+
+### Service start order (from `docker-compose.yml`)
+
+```
+vector → db → analytics → { studio, kong, auth, rest, realtime, meta, edge-functions, supavisor }
+                       └→ storage (needs rest + imgproxy)
+```
+
+If studio or kong will not start, check `analytics` first.
+
+### Ports (dev)
+
+| Service | Host | Container |
+|---|---|---|
+| Studio | 54323 | 3000 |
+| Kong (REST, Auth, Storage, Realtime) | 8000 / 8443 | 8000 / 8443 |
+| Postgres via Supavisor | 5432 | 5432 |
+| Supavisor transaction pooler | 6543 | 6543 |
+| Mail (inbucket, dev only — forwards nothing) | 2500 / 9000 | 2500 / 9000 |
+| Analytics (Logflare) | 4000 | 4000 |
+
+On the server Kong is on **8001** and Postgres on **5433**; the public surface is 443 only.

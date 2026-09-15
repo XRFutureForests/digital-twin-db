@@ -36,7 +36,6 @@ what the database is, and [RUNBOOK.md](../RUNBOOK.md) for how to run and load it
 |----------|----------|
 | [local-deployment-guide.md](local-deployment-guide.md) | Local stack, step by step |
 | [deployment-guide.md](deployment-guide.md) | Production deployment on dt.unr, TLS, Kong, NFS-backed PGDATA |
-| [runbook.md](runbook.md) | Operational procedures beyond the quick paths in [RUNBOOK.md](../RUNBOOK.md) |
 | [troubleshooting.md](troubleshooting.md) | Symptom-by-symptom |
 | [docker/](docker/README.md) | Container stack, versions, container-level troubleshooting |
 

@@ -6,6 +6,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-09-02 → 2026-09-14 (52 commits, condensed by theme)
+
+**Production on dt.unr.uni-freiburg.de** (`9cf0201`, `5864735`, `f8a4358`, `b105f56`, `7f31fb5`)
+
+- First server deployment (XRFF-238): PGDATA and object storage on the NFS export,
+  `STORAGE_PATH`/`PGDATA_PATH` in `.env`, `scripts/server/setup_data_dirs.py` refusing a
+  soft NFS mount, a systemd drop-in so Docker waits for the mount. API published at
+  `https://dt.unr.uni-freiburg.de/db/` on 443 through the dashboard's nginx.
+- Kong reaches GoTrue as `dftdb-auth`, not `auth` — campus DNS resolved the short name to a
+  university web host and every `/auth/v1/` call left the server for a week (XRFF-428).
+- Four systemd timers replace the "no cron" gap: job runner + reaper (`scripts/runner/`),
+  nightly `pg_dump` minus sensor readings (`scripts/server/dt-db-backup.*`), TLS renewal
+  (in digital-twin-dashboard). `scripts/server/create-user.sh` creates an account with its
+  role claim in one call (`5f9e0e1`).
+
+**Job control plane** (`fdc96e5`, `3839a2d`, `b614ec1`, `1900ac7`, `8c46763`, `2033e99`)
+
+- `request_job()` RPC + `public.job_status` (XRFF-347); `shared.Processes` is a readable
+  workflow menu (XRFF-348); a generic runner drains `shared.ProcessingJobs` (XRFF-349);
+  the open-data refreshes that need no host path are queueable (XRFF-380); `/jobs/` trigger
+  page generated from `param_schema` (XRFF-423); a refused request says why (XRFF-422).
+  Edge Functions are not used and never will be (XRFF-257).
+
+**Open-data landing zones and provenance** (`612bc50`, `6a4bf9e`, `aaf35a2`, `6e7bd1f`,
+`ac1b4e7`, `3a044bd`, `5f69a3b`, `7aa46e7`)
+
+- `set_location_attributes()` and `upsert_environment()` write RPCs with
+  `shared.AttributeProvenance`; a lookup refresh no longer reverts acquired site attributes;
+  an unstamped write can no longer claim to be a field measurement (XRFF-400); derived
+  values carry provenance and uncertainty by decision (XRFF-401); a Process Run Crate per
+  recorded run (XRFF-407); `refresh_soil_aggregates()` derives annual soil means from the
+  twin's own sensors; `sensor.Sensors` admits modelled series.
+
+**Unreal Engine feed** (`f695e5a`, `16b10a5`, `6fdbe3a`)
+
+- `ue_sensor_state_at(ts)` for the VR time slider; `ue_environments` and `ue_climate`
+  (one row per period merged across datasets); Postgres memory settings tuned for NFS.
+
+**SILVA** (`62d0bd5`, `3b20546`, `ae40dfa`, `e1fa860`)
+
+- `trees.SimulationRuns` records run parameters (XRFF-374); the CSV round-trip and the
+  `silva_input` view are gone (XRFF-351); site-condition columns exposed on
+  `public.locations`; a scenario is now a point on two axes, management regime × climate
+  pathway, with `scenario_code` (2026-09-14).
+
+**Data fixes** (`bc2f46e`, `2e19262`, `bf64fd7`, `dc5b223`)
+
+- ecosense `center_point` was 30.7 km from its own trees (XRFF-388); the 4_56 Zwisel second
+  stem is seeded; `security_invoker` on four public views; the importer exits non-zero when
+  any record failed.
+
+**Docs and housekeeping** (`1e69342`, `97a1bcc`, `c041ad3`, `cad7c68`, `802fa00`)
+
+- Root docs consolidated to `README.md` + `RUNBOOK.md`; the init-file history explained
+  truthfully; workspace `data/` layout adopted; GitHub Actions CI removed (all CI is off
+  workspace-wide since 2026-09-01); one meaning per level-of-detail axis (XRFF-404).
+
+### 2026-09-01
+
 ### Fixed
 
 - **All 40 sensors typed `barometric_pressure` were stem water potential

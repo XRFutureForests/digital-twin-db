@@ -1,7 +1,7 @@
 # Growth Simulation Schema
 
 **Issue:** XRFF-243  
-**Schema file:** `docker/volumes/db/init/26-growth-simulations-schema.sql`
+**Schema file:** `docker/volumes/db/init/10-baseline-schema.sql` (`trees.GrowthSimulations`), `21-add-simulationruns-and-queue-columns.sql` (`trees.SimulationRuns`)
 
 ---
 

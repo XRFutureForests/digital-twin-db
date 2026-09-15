@@ -13,7 +13,7 @@ This setup provides a complete, self-hosted Supabase stack with:
 - **Storage API** - File management
 - **Kong Gateway** - API routing and security
 - **Supabase Studio** - Web-based database management UI
-- **Edge Functions** - Deno-based serverless functions
+- **Edge Functions** - Deno runtime, present but unused (jobs go through `request_job()`, see `docs/requesting-a-job.md`)
 - **Analytics** - Logging and monitoring
 
 ## Quick Start
@@ -61,40 +61,30 @@ All services should show as "healthy" after about 30 seconds.
 
 ### 4. Custom Database Initialization
 
-The forest database schemas are automatically initialized via SQL files in `volumes/db/init/`:
+The forest database schema is baked into the `db` image from `volumes/db/init/` on first
+initialisation:
 
 | File | Purpose |
 |------|---------|
-| `10-enable-postgis.sql` | Enable PostGIS extension |
-| `11-shared-schema.sql` | Species, locations, soil, climate |
-| `12-pointclouds-schema.sql` | LiDAR data management |
-| `13-trees-schema.sql` | Tree measurements with dual geometry support |
-| `14-sensor-schema.sql` | IoT sensor data with dual geometry support |
-| `15-environments-schema.sql` | Environmental conditions |
-| `16-rls-policies.sql` | Row-level security |
-| `17-audit-functions.sql` | Change tracking |
-| `18a-seed-lookup-data.sql` | Species lookup data |
-| `18b-seed-sample-locations.sql` | Sample locations for testing |
-| `19-mathisle-seed-data.sql` | Mathisle data seeding |
-| `20-mathisle-tree-import.sql` | Mathisle tree data import |
-| `21-aquarius-integration.sql` | Aquarius time series API integration |
-| `22-link-sensors-to-trees.sql` | Associate sensors with tree measurements |
-| `23-processing-jobs.sql` | External workflow job tracking |
-| `24-public-api-views.sql` | Public API views |
-| `25-seed-aquarius-data.sql` | Aquarius data seeding |
+| `10-baseline-schema.sql` | Consolidated snapshot (2026-07-17) of every custom schema, table, view, function, RLS policy and role tier |
+| `11-…-42-*.sql` | Additive changes since the snapshot, each mirrored from `supabase/migrations/` |
+| `30-load-lookup-tables.sql`, `31-refresh-lookup-functions.sql` | Reference data from `data/lookups/*.csv` |
 
-These run automatically when the database is first initialized.
+The workflow for adding a change is in `AGENTS.md` §"Schema Migrations"; the reason the
+baseline exists (a replay-history problem) is there too.
 
-**Data Import**: The database initializes with minimal reference data only. To import tree inventory and sensor data, use the interactive Jupyter notebooks:
+**Data Import**: the database initialises with reference data only. Tree inventory and sensor
+data come from the import scripts:
 
 ```bash
 cd ../scripts
 conda env create -f environment.yml  # One-time setup
 conda activate digital-twin
-jupyter notebook  # Open import_trees.ipynb
+python import/import_trees.py ../data/imports/ecosense_trees_import.csv
 ```
 
-See [`scripts/README.md`](../../scripts/README.md) for detailed import instructions.
+See [`scripts/README.md`](../../scripts/README.md) for the full import sequence and
+`RUNBOOK.md` §3 for the load order.
 
 ## Common Operations
 
@@ -160,13 +150,17 @@ PGPASSWORD="$POSTGRES_PASSWORD" psql -h localhost -p 5432 \
 
 ### Reset Everything
 
-```bash
-# Stop and remove all containers and volumes
-docker compose down -v
+The schema is baked into the `db` image, so `docker compose down -v` alone replays the *old*
+image's init files. Rebuild the image whenever `volumes/db/init/` changed:
 
-# Start fresh
+```bash
+docker compose down -v
+docker compose build db
 docker compose up -d
 ```
+
+The full recipe, including what to do when the rebuild fails, is `RUNBOOK.md` §6.
+
 
 ## Environment Variables
 
@@ -245,7 +239,7 @@ This setup differs from the official Supabase Docker in these ways:
 2. **PostGIS Enabled**: Automatically enabled in initialization
 3. **Forest Schema Migrations**: Custom SQL files in `volumes/db/init/`
 4. **Dual Geometry Support**: Both original CRS and WGS84 coordinates stored
-5. **Edge Functions**: Deno functions for ecosense sensor data sync
+5. **Job queue**: `shared.processingjobs` + `request_job()` RPC instead of Edge Functions (XRFF-257)
 6. **Manual Data Import**: CSV importer with audit trail and coordinate transformation
 7. **Studio Port**: Exposed on port 54323 for WSL/Windows compatibility
 
@@ -282,11 +276,9 @@ docker compose logs db | tail -30
 
 3. **Docker resource limits**: Set at least 4GB RAM in Docker Desktop settings
 
-4. **File permissions**: On Linux, ensure write access to `volumes/db/data`
-
-   ```bash
-   sudo chown -R $USER:$USER volumes/db/data
-   ```
+4. **File permissions** (server, `PGDATA_PATH` bind mount only): create the directory with
+   `scripts/server/setup_data_dirs.py`, which hands it to the container UIDs. The default
+   named volume needs nothing.
 
 ### Service Won't Start
 
@@ -348,7 +340,7 @@ Before deploying to production:
 1. **Generate new secrets**: All passwords, tokens, and encryption keys
 2. **Update SMTP settings**: Configure real email service
 3. **Set up SSL/TLS**: Use reverse proxy (nginx, Caddy, Traefik)
-4. **Configure backups**: Regular backups of `volumes/db/data`
+4. **Configure backups**: install `scripts/server/dt-db-backup.timer` (see `docs/deployment-guide.md`)
 5. **Update firewall**: Only expose necessary ports
 6. **Set DISABLE_SIGNUP=true**: Prevent public registrations
 
