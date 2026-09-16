@@ -185,6 +185,7 @@ erDiagram
 | `forest_growth_region` | VARCHAR(16) | YES | NULL | — | German `Wuchsgebiet.Wuchsbezirk` code, e.g. `99.73.13`. Keys silvaR's climate table |
 | `soil_moistness` | SMALLINT | YES | NULL | 1–9 | SILVA soil moisture class (1 = very dry, 5 = fresh, 9 = very wet) |
 | `soil_nutrient_supply` | SMALLINT | YES | NULL | 1–5 | SILVA nutrient supply class (1 = very low, 5 = very high) |
+| `crs_epsg` | INTEGER | YES | NULL | 1024–32767 | Declared internal projected CRS of the site (EPSG code; both sites 32632 = WGS 84 / UTM 32N). Geometry columns stay EPSG:4326; this is the frame consumers transform into for metric work. Seeded from `locations.csv`, not settable via `set_location_attributes` |
 | `created_at` | TIMESTAMPTZ | NO | NOW() | — | Record creation timestamp |
 | `updated_at` | TIMESTAMPTZ | YES | NULL | auto-updated by trigger | Last update timestamp |
 | `created_by` / `updated_by` | VARCHAR(200) | YES | NULL | — | User attribution |

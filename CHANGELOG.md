@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-16
 
+**Sites declare their internal projected CRS**
+
+- `29a-declare-site-crs.sql` / migration `20260916130000`: `shared.Locations.crs_epsg`
+  (EPSG code, checked 1024–32767) records the one projected frame per site in which
+  planimetric work is done — both research sites 32632 (WGS 84 / UTM 32N), the frame the
+  surveyed positions arrive in and the engine places from. Geometry storage stays
+  EPSG:4326. Seeded from `data/lookups/locations.csv` (new `CrsEpsg` column) by both
+  lookup loaders and exposed on `public.locations`. Required by the Digital Forest Twin
+  Schema profile's Core (one declared CRS per site). The file sorts before the `30-`/`31-`
+  loaders that read the column; `11`–`29` were taken, hence the letter suffix.
+
 **Sensor readings: hourly thinning of fast series, two redundant indexes dropped**
 
 - `44-thin-fast-series-to-hourly.sql`: every series sampling faster than every 15 minutes

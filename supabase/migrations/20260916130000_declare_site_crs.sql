@@ -1,18 +1,83 @@
--- Refresh Lookup Tables Functions
--- Provides functions to reload lookup data from CSV files without full database rebuild
+-- =============================================================================
+-- Declare each site's internal projected CRS
+-- =============================================================================
+-- The Digital Forest Twin Schema profile (publications/full/digital-forest-twin-
+-- standard) requires a conforming deployment to declare ONE internal projected
+-- CRS per site and to record it in the site definition. shared.Locations had no
+-- such column: geometry is stored in EPSG:4326 (PostGIS/Supabase convention),
+-- trees.trees.position_original carries the ingested frame with its own
+-- source_crs, and nothing stated which projected frame per-site planimetric
+-- work (engine placement, terrain, distances) is done in.
 --
--- Usage:
---   SELECT shared.refresh_all_lookups();          -- Reload all lookup tables
---   SELECT shared.refresh_lookup('species');      -- Reload specific table
+-- crs_epsg is that declaration. Both research sites use EPSG:32632
+-- (WGS 84 / UTM zone 32N): it is the frame the surveyed tree positions arrive in
+-- and the one the engine client places from. Storage stays geographic; the
+-- declared CRS says which projection a consumer must transform into before
+-- treating coordinates as metres.
 --
--- NOTE: CSV files must be mounted at /var/lib/postgresql/lookups/
+-- Seeded from data/lookups/locations.csv (column CrsEpsg): a declared site
+-- identity like center_point, so the CSV owns it and every reseed rewrites it
+-- (XRFF-388 rule: a data fix needs both the migration and the CSV). It is not
+-- an acquired attribute and has no AttributeProvenance guard.
+--
+-- Mirrored to init 29a-declare-site-crs.sql (before the 30-/31- lookup loaders,
+-- which read the column); the loaders themselves carry the new column.
+-- =============================================================================
 
-SET search_path TO shared, sensor, trees, public;
+ALTER TABLE shared.Locations
+    ADD COLUMN IF NOT EXISTS crs_epsg INTEGER;
+
+-- Idempotent constraint (re)creation: ADD CONSTRAINT has no IF NOT EXISTS.
+ALTER TABLE shared.Locations DROP CONSTRAINT IF EXISTS locations_crs_epsg_check;
+ALTER TABLE shared.Locations
+    ADD CONSTRAINT locations_crs_epsg_check
+    CHECK (crs_epsg IS NULL OR (crs_epsg BETWEEN 1024 AND 32767));
+
+COMMENT ON COLUMN shared.Locations.crs_epsg IS
+    'Declared internal projected CRS of the site as an EPSG code (e.g. 32632 = '
+    'WGS 84 / UTM zone 32N). The one frame in which per-site planimetric work '
+    '(engine placement, terrain, distances) is done; every input in another '
+    'frame is transformed on ingestion and its source frame retained on the '
+    'record (trees.trees.source_crs / position_original). Geometry columns '
+    'stay EPSG:4326. Seeded from data/lookups/locations.csv.';
+
+-- public.locations is the PostgREST surface for the site definition; append the
+-- column (CREATE OR REPLACE keeps grants and comment, as in 19-fix-public-
+-- locations-view.sql).
+CREATE OR REPLACE VIEW public.locations WITH (security_invoker='on') AS
+ SELECT locations.location_id,
+    locations.location_name,
+    locations.boundary,
+    locations.center_point,
+    locations.description,
+    locations.elevation_m,
+    locations.slope_deg,
+    locations.aspect,
+    locations.soil_type_id,
+    locations.climate_zone_id,
+    locations.created_at,
+    locations.updated_at,
+    locations.created_by,
+    locations.updated_by,
+    locations.forest_growth_region,
+    locations.soil_moistness,
+    locations.soil_nutrient_supply,
+    locations.crs_epsg
+   FROM shared.locations;
+
+COMMENT ON VIEW public.locations IS 'Public API view for locations reference table';
+
+-- Live databases: declare the frame for the two existing sites now; the CSV
+-- carries the same value for every later refresh or rebuild.
+UPDATE shared.Locations
+   SET crs_epsg = 32632
+ WHERE location_name IN ('ecosense', 'mathisle')
+   AND crs_epsg IS NULL;
 
 -- =============================================================================
--- MAIN REFRESH FUNCTION
+-- shared.refresh_lookup: the locations branch reads the new CSV column
 -- =============================================================================
-
+-- Full function body, identical to init 31-refresh-lookup-functions.sql.
 CREATE OR REPLACE FUNCTION shared.refresh_lookup(p_table_name TEXT)
 RETURNS TABLE(table_name TEXT, rows_before INT, rows_after INT, status TEXT) AS $$
 DECLARE
@@ -569,79 +634,4 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION shared.refresh_lookup IS 'Reload a specific lookup table from its CSV file without full database rebuild';
-
--- =============================================================================
--- REFRESH ALL LOOKUPS
--- =============================================================================
-
-CREATE OR REPLACE FUNCTION shared.refresh_all_lookups()
-RETURNS TABLE(table_name TEXT, rows_before INT, rows_after INT, status TEXT) AS $$
-BEGIN
-    -- Refresh in dependency order
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('soil_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('climate_zones');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('variant_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('scenarios');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('species');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('locations');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('sensor_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('tree_status');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('taper_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('straightness_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('branching_patterns');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('bark_characteristics');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('datasource_types');
-    -- Tree Morphology tables (from tree_anatomy.pdf)
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('height_classes');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_architectures');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('branch_elongation_habits');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('growth_orientations');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('shoot_elongation_types');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_shapes');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('geometric_crown_solids');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('axis_structures');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('growth_forms');
-    -- Tree Condition tables (FIA/NEON/ICP Forests-aligned)
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_classes');
-    RETURN QUERY SELECT * FROM shared.refresh_lookup('damage_agents');
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-COMMENT ON FUNCTION shared.refresh_all_lookups IS 'Reload all lookup tables from CSV files without full database rebuild';
-
--- =============================================================================
--- GRANT PERMISSIONS
--- =============================================================================
-
-GRANT EXECUTE ON FUNCTION shared.refresh_lookup TO service_role;
-GRANT EXECUTE ON FUNCTION shared.refresh_all_lookups TO service_role;
-
--- =============================================================================
--- SUMMARY
--- =============================================================================
-
-DO $$
-BEGIN
-    RAISE NOTICE '=======================================================';
-    RAISE NOTICE 'Lookup Refresh Functions Created';
-    RAISE NOTICE '=======================================================';
-    RAISE NOTICE 'Usage:';
-    RAISE NOTICE '  SELECT * FROM shared.refresh_all_lookups();';
-    RAISE NOTICE '  SELECT * FROM shared.refresh_lookup(''species'');';
-    RAISE NOTICE '';
-    RAISE NOTICE 'Supported tables:';
-    RAISE NOTICE '  species, locations, sensor_types, tree_status,';
-    RAISE NOTICE '  soil_types, climate_zones, variant_types, scenarios,';
-    RAISE NOTICE '  taper_types, straightness_types, branching_patterns,';
-    RAISE NOTICE '  bark_characteristics, datasource_types';
-    RAISE NOTICE '';
-    RAISE NOTICE 'Tree Morphology (from tree_anatomy.pdf):';
-    RAISE NOTICE '  height_classes, crown_architectures, branch_elongation_habits,';
-    RAISE NOTICE '  growth_orientations, shoot_elongation_types, crown_shapes,';
-    RAISE NOTICE '  geometric_crown_solids, axis_structures, growth_forms';
-    RAISE NOTICE '';
-    RAISE NOTICE 'Tree Condition (FIA/NEON/ICP Forests-aligned):';
-    RAISE NOTICE '  crown_classes, damage_agents';
-    RAISE NOTICE '=======================================================';
-END $$;
+NOTIFY pgrst, 'reload schema';

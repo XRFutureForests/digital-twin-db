@@ -239,12 +239,14 @@ CREATE TEMP TABLE temp_locations (
     -- mismatch aborts this \copy and every load after it in this file.
     forest_growth_region VARCHAR(16),
     soil_moistness SMALLINT,
-    soil_nutrient_supply SMALLINT
+    soil_nutrient_supply SMALLINT,
+    -- Declared site CRS, added by 29a-declare-site-crs.sql.
+    crs_epsg INTEGER
 );
 
 \copy temp_locations FROM '/var/lib/postgresql/lookups/locations.csv' WITH (FORMAT csv, HEADER true);
 
-INSERT INTO shared.Locations (location_name, Description, center_point, Elevation_m, Slope_deg, Aspect, soil_type_id, climate_zone_id, forest_growth_region, soil_moistness, soil_nutrient_supply)
+INSERT INTO shared.Locations (location_name, Description, center_point, Elevation_m, Slope_deg, Aspect, soil_type_id, climate_zone_id, forest_growth_region, soil_moistness, soil_nutrient_supply, crs_epsg)
 SELECT 
     t.location_name,
     t.Description,
@@ -259,16 +261,19 @@ SELECT
     (SELECT climate_zone_id FROM shared.ClimateZones WHERE climate_zone_name = t.climate_zone_name),
     t.forest_growth_region,
     t.soil_moistness,
-    t.soil_nutrient_supply
+    t.soil_nutrient_supply,
+    t.crs_epsg
 FROM temp_locations t
 -- The eight site-attribute columns keep their value once an acquisition process
 -- has written one, so a reseed cannot revert it and leave its provenance row
 -- claiming a source the column no longer holds (XRFF-391). On a fresh build
 -- shared.AttributeProvenance is empty, so every column reseeds as before.
--- Description and center_point are always reseeded: the CSV owns both.
+-- Description, center_point and crs_epsg are always reseeded: the CSV owns
+-- all three (the CRS is a declared site identity, not an acquired attribute).
 ON CONFLICT (location_name) DO UPDATE SET
     Description = EXCLUDED.Description,
     center_point = EXCLUDED.center_point,
+    crs_epsg = EXCLUDED.crs_epsg,
     Elevation_m = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'elevation_m')
                        THEN Locations.Elevation_m ELSE EXCLUDED.Elevation_m END,
     Slope_deg = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'slope_deg')

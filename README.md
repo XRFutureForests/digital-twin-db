@@ -97,7 +97,7 @@ import step.
 | Files | What they do |
 |-------|--------------|
 | `10-baseline-schema.sql` | Point-in-time schema snapshot (2026-07-17) |
-| `11`–`29`, `32`+ | Additive schema changes made since that snapshot — each adds, never restructures an earlier file's objects |
+| `11`–`29`, `29a`, `32`+ | Additive schema changes made since that snapshot — each adds, never restructures an earlier file's objects. A schema file the lookup loaders depend on must sort before `30-`; once `11`–`29` are used, add a letter suffix (`29a-`) |
 | `30`–`31` | Load the lookup CSVs and register their refresh functions |
 
 The gap around 30–31 is historical: the baseline consolidated the *former* 10–29 and 32–37
