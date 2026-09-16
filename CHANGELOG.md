@@ -6,6 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-09-16
+
+**Sensor readings: hourly thinning of fast series, two redundant indexes dropped**
+
+- `44-thin-fast-series-to-hourly.sql`: every series sampling faster than every 15 minutes
+  (decided from the data, not from names) is thinned to one reading per hour — the raw point
+  nearest each hour boundary, timestamp as measured, not a mean. Four Ecosense soil-temperature
+  profile probes (13 depths each) and three ground probes log every 10 or 60 s; their 55 series
+  were 68 % of the readings table and none is linked to a tree. `sampling_interval_seconds`
+  becomes the **stored** cadence (3600 for these) and `external_metadata.native_interval_seconds`
+  the logger's own. The aquarius connector applies the identical rule on ingest from the same
+  day; the two must stay in step.
+- `43-drop-redundant-sensorreadings-indexes.sql`: `idx_sensor_readings_sensor_timestamp`
+  `(sensor_id, timestamp DESC)` and `idx_sensor_readings_sensor_id` duplicated the unique key
+  `(sensor_id, timestamp)` — 28 % of the table's bytes for no query the unique index does not
+  already serve.
+- `45-ue-sensor-state-at-lookback-per-sensor.sql`: `ue_sensor_state_at`'s default lookback is
+  now 4 × the sensor's `sampling_interval_seconds` instead of a fixed hour — unchanged for the
+  15-min network, four hours for the hourly series (open-meteo weather, thinned probes), which a
+  fixed hour ending a few seconds past the hour could miss entirely. Explicit `p_lookback` still
+  overrides.
+- 2025 sensor readings backfilled to the full year on dev and dt.unr (previously one window per
+  season): 32.9 M rows, identical on both, ~2.7 M a month for ~1,050 reporting sensors; the 55
+  hourly series are 194 k rows where native cadence would have been 62 M.
+
 ### 2026-09-02 → 2026-09-14 (52 commits, condensed by theme)
 
 **Production on dt.unr.uni-freiburg.de** (`9cf0201`, `5864735`, `f8a4358`, `b105f56`, `7f31fb5`)

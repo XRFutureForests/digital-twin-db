@@ -470,11 +470,11 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 | `installation_date` | TIMESTAMPTZ | NO | NOW() | Installation timestamp |
 | `installation_height_m` | NUMERIC(5,2) | YES | ≥ 0 | Height above ground (m) |
 | `decommission_date` | TIMESTAMPTZ | YES | ≥ installation_date | Decommission timestamp |
-| `sampling_interval_seconds` | INTEGER | NO | > 0 | Measurement frequency |
+| `sampling_interval_seconds` | INTEGER | NO | > 0 | Cadence of the **stored** readings: 900 for the 15-min network, 3600 for the weather station and for fast series thinned to hourly on ingest. Set by the connector from the observed points; `sensor.check_sensor_health` divides by it |
 | `Unit` | VARCHAR(50) | YES | — | Measurement unit |
 | `is_active` | BOOLEAN | NO | TRUE | Currently collecting data |
 | `external_id` | VARCHAR(200) | YES | UNIQUE | Identifier within the source system (see `source`) |
-| `external_metadata` | JSONB | YES | DEFAULT `{}` | Raw source-specific payload: `Label`, `Parameter`, `LocationIdentifier`, and (after enrichment) `Instrument`, `DataOwner`, `TypeOfMeasurement`, `GapTolerance` |
+| `external_metadata` | JSONB | YES | DEFAULT `{}` | Raw source-specific payload: `Label`, `Parameter`, `LocationIdentifier`, `native_interval_seconds` (the logger's own cadence where it differs from the stored one), and (after enrichment) `Instrument`, `DataOwner`, `TypeOfMeasurement`, `GapTolerance` |
 
 **Metadata enrichment.** `sensor_model` defaults to a generic `Ecosense Node` from the API sync. The [aquarius-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) repo's `enrich_metadata.py` matches an Aquarius *Insitu DataUpload* `.xlsx` export by `external_id` and backfills the real instrument model (e.g. `SMT100`, `Implexx Sap Flow Sensor`, `FloraPulse_Tensiometer`) into `sensor_model`, plus `DataOwner` / `TypeOfMeasurement` / `GapTolerance` into `external_metadata`, via the `bulk_upsert_sensors` RPC. Re-run it **after** every Aquarius sync — the sync upsert resets these fields.
 
@@ -482,7 +482,7 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 
 ### 3.8 `sensor.SensorReadings`
 
-**Description:** Time-series environmental measurements. High-volume table; composite index on `(sensor_id, Timestamp DESC)` supports all typical queries. Unique constraint on `(sensor_id, Timestamp)` enables idempotent bulk inserts.
+**Description:** Time-series environmental measurements. High-volume table; the unique index on `(sensor_id, Timestamp)` serves every per-sensor time-series query (a btree is read backwards for `ORDER BY Timestamp DESC`) and makes `bulk_insert_readings` idempotent. Series that sample faster than every 15 minutes are stored at one reading per hour — the raw point nearest each hour boundary, timestamp as measured, not a mean — by the ingesting connector and, for rows loaded before 2026-09-16, by migration `44-thin-fast-series-to-hourly.sql`; the rule is spelled out in that file and in `aquarius_connector.sync.nearest_hour_samples`, and the two must agree.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
@@ -495,7 +495,7 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 | `battery_voltage` | NUMERIC(4,2) | YES | — | Battery voltage at reading time |
 | `signal_strength` | NUMERIC(6,2) | YES | — | Wireless signal strength (dBm) |
 
-**Key indexes:** `(sensor_id, Timestamp DESC)` composite (covers all time-series queries), `(Quality)`, `(scenario_id)`
+**Key indexes:** UNIQUE `(sensor_id, Timestamp)` (covers all per-sensor time-series queries), `(Timestamp DESC)`, `(Quality)`, `(scenario_id)`. The former `(sensor_id, Timestamp DESC)` and `(sensor_id)` indexes duplicated the unique key and were dropped 2026-09-16 (2.1 GB on dev).
 
 **Helper functions:** `sensor.get_latest_reading(sensor_id)`, `sensor.aggregate_readings(sensor_id, start_time, end_time, interval_minutes)`, `sensor.check_sensor_health(sensor_id, hours_back)`
 
@@ -750,7 +750,7 @@ All geometry columns use GIST indexes:
 
 | Table | Index | Purpose |
 |-------|-------|---------|
-| `sensor.SensorReadings` | `(sensor_id, Timestamp DESC)` composite | Primary time-series access pattern |
+| `sensor.SensorReadings` | UNIQUE `(sensor_id, Timestamp)` | Primary time-series access pattern and idempotent insert |
 | `sensor.SensorReadings` | `(Timestamp DESC)` | Cross-sensor time range queries |
 | `pointclouds.PointClouds` | `(scan_date DESC)` | Latest scan retrieval |
 | `trees.Trees` | `(measurement_date DESC)` | Latest measurement retrieval |
@@ -811,7 +811,7 @@ For new schema changes: add a new timestamped file under `supabase/migrations/` 
 | Columns | PascalCase with unit suffix where applicable | `Height_m`, `DBH_cm`, `sampling_interval_seconds` |
 | Primary keys | `{Table}ID` | `location_id`, `sensor_id` |
 | Foreign keys | Match parent PK name | `location_id` referencing `shared.Locations.location_id` |
-| Indexes | `idx_{table}_{column}` | `idx_trees_location`, `idx_sensor_readings_sensor_timestamp` |
+| Indexes | `idx_{table}_{column}` | `idx_trees_location`, `idx_sensor_readings_timestamp` |
 | GIST indexes | `idx_{table}_{column}` | `idx_trees_position`, `idx_locations_boundary` |
 | Schemas | lowercase | `shared`, `trees`, `sensor` |
 
