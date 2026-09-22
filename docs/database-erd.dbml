@@ -569,7 +569,7 @@ Table sensor.SensorReadings {
 }
 
 Table sensor.SensorTreeLinks {
-  SensorTreeLinkID integer [primary key]
+  sensor_tree_link_id integer [primary key]
   sensor_id integer [ref: > sensor.Sensors.sensor_id, note: 'References Sensors']
   tree_id integer [ref: > trees.Trees.tree_id, note: 'References Trees row']
   Description text [note: 'Link description and automated matching notes']

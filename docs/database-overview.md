@@ -380,7 +380,7 @@ erDiagram
     }
 
     SensorTreeLinks {
-        int SensorTreeLinkID PK
+        int sensor_tree_link_id PK
         int sensor_id FK
         int tree_id FK
         varchar Description

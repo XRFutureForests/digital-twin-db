@@ -208,7 +208,7 @@ def insert_links(conn, links):
         INSERT INTO sensor.sensor_tree_links (sensor_id, tree_id, description)
         VALUES %s
         ON CONFLICT (sensor_id, tree_id) DO NOTHING
-        RETURNING sensortreelinkid
+        RETURNING sensor_tree_link_id
         """,
         values,
         fetch=True,
