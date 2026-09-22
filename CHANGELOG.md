@@ -6,6 +6,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-09-22
+
+**Naming conventions: written down correctly, two identifiers corrected, a checker added**
+
+- `docs/database-schema.md` §7.2 described neither the case nor the number of the
+  identifiers in this database — it claimed PascalCase singular tables (`Trees`,
+  `SensorReadings`) and PascalCase columns (`Height_m`), where every identifier is
+  lowercase snake_case and every table is plural. Its own examples contradicted its own
+  rules. Rewritten to the live schema, with the units, boolean, enumerated-text and
+  `public` API rules that were previously unstated (XRFF-484).
+- `scripts/utils/check_naming.py`: asserts the rewritten rules against a live connection
+  and exits non-zero on a **new** deviation. Existing deviations are listed against the
+  issue that tracks them, so the backlog does not mask a regression. CI has been off
+  workspace-wide since 2026-09-01, so run it by hand before opening a migration PR.
+- `46-sensor-identifier-spelling.sql` / migration `20260922120000`:
+  `sensor.SensorTreeLinks.sensortreelinkid` → `sensor_tree_link_id`. It was the only
+  single-column primary key among 69 base tables not spelled `<stem>_id`. The sequence
+  and the `sensorreadings_sensorid_timestamp_unique` index (which spelled `sensor_id` as
+  `sensorid`) are renamed with it, and `public.sensor_tree_links` republishes the
+  corrected name (XRFF-488).
+- `47-growth-simulations-stand-biomass-name.sql` / migration `20260922130000`:
+  `public.growth_simulations` stops aliasing `stand_biomass_tha` to `standbio_tha`. The
+  other three stand aggregates were already passed through unrenamed (XRFF-485, partial).
+
+  Both renames were cleared by the consumer grep AGENTS.md requires: neither identifier
+  appears in digital-twin-dashboard, silva-connector, aquarius-connector,
+  open-data-connector or any of the four Unreal projects. The remaining XRFF-485 columns
+  (`linked_tree_scientificname`, `sensor_label`, `sensor_type`, `management_regime`,
+  `climate_pathway`) are cached verbatim into Unreal DataTable JSON and are **not**
+  changed here — they need a matching change to the row structs.
+
 ### 2026-09-16
 
 **Sites declare their internal projected CRS**

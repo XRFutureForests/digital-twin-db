@@ -508,7 +508,7 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
-| `SensorTreeLinkID` | SERIAL | NO | PRIMARY KEY | — |
+| `sensor_tree_link_id` | SERIAL | NO | PRIMARY KEY | Renamed from `sensortreelinkid` 2026-09-22 (XRFF-488) |
 | `sensor_id` | INTEGER | NO | FK → `sensor.Sensors` ON DELETE CASCADE, UNIQUE with tree_id | — |
 | `tree_id` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE, UNIQUE with sensor_id | — |
 | `description` | TEXT | YES | — | Link provenance |
@@ -806,15 +806,73 @@ For new schema changes: add a new timestamped file under `supabase/migrations/` 
 
 ### 7.2 Naming Conventions
 
+Every identifier in the database is **lowercase snake_case**. Tables are created
+unquoted, so PostgreSQL folds them to lowercase regardless of how the DDL spells
+them — `CREATE TABLE trees.Trees` produces `trees.trees`. This document and
+`AGENTS.md` render table names PascalCase (`shared.ProcessingJobs`) for
+readability; that is a *prose* convention, not the stored name. Quote nothing and
+the two never diverge.
+
 | Element | Convention | Example |
 |---------|-----------|---------|
-| Tables | PascalCase singular | `Trees`, `SensorReadings` |
-| Columns | PascalCase with unit suffix where applicable | `Height_m`, `DBH_cm`, `sampling_interval_seconds` |
-| Primary keys | `{Table}ID` | `location_id`, `sensor_id` |
-| Foreign keys | Match parent PK name | `location_id` referencing `shared.Locations.location_id` |
-| Indexes | `idx_{table}_{column}` | `idx_trees_location`, `idx_sensor_readings_timestamp` |
-| GIST indexes | `idx_{table}_{column}` | `idx_trees_position`, `idx_locations_boundary` |
-| Schemas | lowercase | `shared`, `trees`, `sensor` |
+| Schemas | lowercase, single word where possible | `shared`, `trees`, `sensor`, `forest_floor` |
+| Tables | lowercase, **plural**, no separator between words | `trees`, `sensorreadings`, `growthsimulations` |
+| Junction tables | the two table names joined by `_` | `processparameters_trees`, `auditlog_stems` |
+| Columns | lowercase snake_case | `crown_base_height_m`, `simulator_version` |
+| Primary keys | `{singular_stem}_id`, matching the table | `location_id` on `shared.locations` |
+| Foreign keys | the parent's PK name, unchanged | `location_id` referencing `shared.locations.location_id` |
+| Lookup label | `{same_stem}_name` beside the PK | `crown_shape_id` + `crown_shape_name` |
+| Measurements | trailing SI unit | `height_m`, `dbh_cm`, `volume_m3`, `lean_angle_deg`, `defoliation_percent` |
+| Booleans | `is_` for a state, `has_` for a relation | `is_active`, `is_deciduous`, `has_sensors` |
+| Audit columns | `created_at` / `updated_at`, `created_by` / `updated_by` | — |
+| Indexes (incl. GIST) | `idx_{table}_{column}` | `idx_trees_location`, `idx_locations_boundary` |
+| Unique constraints | left to PostgreSQL (`{table}_{cols}_key`) unless a name is needed | `species_scientific_name_key` |
+
+**Rules with teeth.** The first three are load-bearing and hold without exception
+as of the 2026-09-22 audit (XRFF-484). `scripts/utils/check_naming.py` asserts
+what is mechanically checkable against a live connection — identifier case, the
+`_id` rule, FK-to-parent agreement, PK shape, lookup labels, boolean prefixes,
+unit suffixes, CHECK coverage, and view aliases that strip a `_name` or unit
+suffix. It cannot see a *missing* word separator inside an otherwise lowercase
+name (`sensortreelinkid` reads as valid snake_case to a regex); that class is
+caught indirectly, via the PK-shape and view-alias rules, or not at all.
+
+1. **Every foreign-key column ends in `_id`** — 118 of 118, no exceptions.
+2. **A foreign key carries the parent's PK name.** Ten FK edges currently differ,
+   and each is a deliberate qualifier on a self-reference or a role
+   (`parent_tree_id`, `base_variant_id`, `climate_pathway_id` →
+   `climatepathways.pathway_id`). A *new* FK should not add to that list.
+3. **A lookup's `_name` stem matches its own `_id` stem.** Three legacy tables
+   break this (`branchelongationhabits`, `phanerophyteheightclasses`,
+   `straightnesstypes` — XRFF-487); do not copy them.
+
+**Units.** A column holding a physical quantity carries its unit, always as the
+last token. Compound units are written numerator-then-denominator with no `per`:
+`stand_volume_m3ha`, `wood_density_kg_m3`, `nutrient_nitrogen_mg_kg`.
+Dimensionless ratios and scores take no suffix (`crown_ratio`, `health_score`).
+One concept is deliberately stored in two units — `height_m` on trees,
+`height_cm` on `forest_floor.groundvegetation`, where metres would be mostly
+zeroes; the suffix is what keeps that safe.
+
+**Enumerated text.** A `*_type` / `*_status` / `*_class` column is guarded by a
+CHECK constraint listing its values. Provenance columns are the documented
+exception: `height_source`, `sensors.source` and `processmetrics.source` are
+deliberately unconstrained, because a new writer with a new legitimate source
+should not need a migration to record it (XRFF-400). Their register is the
+column `COMMENT`.
+
+**The `public` API layer.** A view in `public` keeps its base table's name and
+its base columns' names. Where it joins a label in, the label column is
+`{stem}_name` (`location_name`, `scenario_name`). Five view names and six view
+columns predate this rule and are tracked in XRFF-485 and XRFF-486 — several are
+cached into Unreal DataTable JSON and cannot move without a coordinated change to
+the row structs.
+
+Run the checker before opening a migration PR:
+
+```shell
+python scripts/utils/check_naming.py
+```
 
 ---
 
