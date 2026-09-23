@@ -457,7 +457,13 @@
     var props = schema.properties || {};
     var required = schema.required || [];
 
-    var names = Object.keys(props).sort(function (a, b) {
+    var names = Object.keys(props).filter(function (n) {
+      // readOnly properties are recorded by the run, not requested from it —
+      // the regime a run resolved to, the climate deltas it applied. They are
+      // declared so the provenance crate can list them (XRFF-504); offering
+      // them here would be three fields nobody can usefully set.
+      return !props[n].readOnly;
+    }).sort(function (a, b) {
       // Required first, then alphabetical — the shape of the decision, not the
       // order the JSON happens to be in.
       var ra = required.indexOf(a) >= 0, rb = required.indexOf(b) >= 0;

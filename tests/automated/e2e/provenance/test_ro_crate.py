@@ -115,7 +115,15 @@ def test_reproducibility_parameters_present(crates):
             e["name"] for e in crate["@graph"] if e.get("@type") == "PropertyValue"
         }
         assert {"seed", "horizon_years", "base_year"} <= names
-        assert set(run["run_params"] or {}) <= names
+
+        # Null-valued keys are excluded on purpose. run_params records a key for
+        # every parameter the run *could* have taken, and silva-connector writes
+        # climate_periods: null for a run with no climate pathway (4 of 16 runs
+        # on dev). The emitter skips null parameters, which is right -- a crate
+        # listing a parameter with no value would claim more than it knows. The
+        # assertion is that every parameter the run actually used survives.
+        used = {k for k, v in (run["run_params"] or {}).items() if v is not None}
+        assert used <= names
 
 
 def test_outputs_reference_the_run(crates):
