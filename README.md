@@ -65,13 +65,13 @@ Full model and query patterns: [docs/variant-scenario-model.md](docs/variant-sce
 
 | Schema | Holds |
 |--------|-------|
-| `shared` | Species, Locations, Plots, Campaigns, SoilTypes, ClimateZones, Scenarios, VariantTypes, ManagementEvents, DisturbanceEvents, Processes, AuditLog |
-| `trees` | Trees (persistent `TreeEntityID`), Stems, PhenologyObservations, QSMs + QSMCylinders, TreePartTypes + TreeGraphEdges, Roots, CrownFoliageProfiles, classification tables |
-| `point_clouds` | PointClouds with S3 paths, ScannerTypes, Scanners; processing variants and quality metrics |
-| `sensor` | Sensors, SensorReadings, SensorTreeLinks |
+| `shared` | Species, Locations, Plots, Campaigns, soil_types, climate_zones, Scenarios, variant_types, management_events, disturbance_events, Processes, audit_log |
+| `trees` | Trees (persistent `TreeEntityID`), Stems, phenology_observations, QSMs + qsm_cylinders, tree_part_types + tree_graph_edges, Roots, crown_foliage_profiles, classification tables |
+| `pointclouds` | point_clouds with S3 paths, scanner_types, scanners; processing variants and quality metrics |
+| `sensor` | Sensors, sensor_readings, sensor_tree_links |
 | `environments` | Environments — temperature, humidity, soil moisture, nutrients, from sensors, manual entry or models |
 | `imagery` | Images with spatial metadata and camera parameters |
-| `forest_floor` | Deadwood, GroundVegetation — plot-level surveys, not tied to a tree |
+| `forest_floor` | Deadwood, ground_vegetation — plot-level surveys, not tied to a tree |
 
 The `trees` QSM, part-type, graph-edge, root and crown-profile tables line up with the
 CityGML-conformant conceptual tree model of Ambarwari et al. (2024) — see

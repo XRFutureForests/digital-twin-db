@@ -1,7 +1,7 @@
 # Growth Simulation Schema
 
 **Issue:** XRFF-243  
-**Schema file:** `docker/volumes/db/init/10-baseline-schema.sql` (`trees.growth_simulations`), `21-add-simulationruns-and-queue-columns.sql` (`trees.simulation_runs`)
+**Schema file:** `docker/volumes/db/init/10-baseline-schema.sql` (`trees.growth_simulations`), `21-add-simulation_runs-and-queue-columns.sql` (`trees.simulation_runs`)
 
 ---
 
@@ -94,7 +94,7 @@ GET /simulation_runs?scenario_name=eq.natural_growth
 
 ## Permissions
 
-| Role             | GrowthSimulations | simulation_runs |
+| Role             | growth_simulations | simulation_runs |
 |------------------|-------------------|-----------------|
 | `anon`           | SELECT            | SELECT          |
 | `authenticated`  | SELECT + INSERT   | SELECT          |

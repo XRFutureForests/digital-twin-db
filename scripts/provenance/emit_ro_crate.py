@@ -19,7 +19,7 @@ Every fact a crate needs is already in the database, so the crate is generated
 *from* the database instead. Today that means `trees.simulation_runs` (the only
 table holding complete run records -- `shared.processing_jobs` exists but has
 never held a row). When the runner lands, `--job-id` reads the same shape out of
-`ProcessingJobs` and every connector is covered without touching any of them.
+`processing_jobs` and every connector is covered without touching any of them.
 
 Which profile, and why not the one the issue names
 --------------------------------------------------
@@ -202,7 +202,7 @@ def build_crate(run, outputs, api_base):
     params = parameter_entities(run)
 
     # created_at is written at the START of the write-back transaction, before
-    # any result row, because GrowthSimulations.simulation_run_id is a FK onto this table.
+    # any result row, because growth_simulations.simulation_run_id is a FK onto this table.
     # So it is neither the moment SILVA began computing nor the moment the run
     # finished. It is recorded as startTime, which is the strongest true claim
     # available, and the description says so rather than implying a precision
@@ -255,7 +255,7 @@ def build_crate(run, outputs, api_base):
             f"{run['base_year'] + (run['horizon_years'] or 0)}",
             "description": (
                 "startTime is trees.simulation_runs.created_at, which the connector "
-                "writes at the start of the write-back transaction (GrowthSimulations "
+                "writes at the start of the write-back transaction (growth_simulations "
                 "carries a FK onto it). It therefore precedes every result row and "
                 "follows the simulation itself; true simulation start and end are not "
                 "recorded upstream. endTime is omitted rather than guessed."

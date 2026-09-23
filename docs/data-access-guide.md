@@ -208,7 +208,7 @@ Four tiers, named after standard research-data-management vocabulary (RDA/DataCi
 | `authenticated` + `role: admin` (**Administrator**) | Lab administrators | Everything above, plus can set other users' `role` claim |
 | `service_role` | Max / import scripts | Full access, bypasses RLS; never share externally |
 
-Field-data tables are the ones where a bad edit or delete actually costs something (cited measurements, growth-sim inputs): `Trees`, `Stems`, `PointClouds`, `Environments`, `Images`, `SensorReadings`, `PhenologyObservations`, `Deadwood`, `GroundVegetation`. Everything else stays full-CRUD for any `authenticated` user regardless of role claim — see the `is_admin()` / `is_contributor()` / `is_curator()` helpers and their policies in `docker/volumes/db/init/10-baseline-schema.sql`.
+Field-data tables are the ones where a bad edit or delete actually costs something (cited measurements, growth-sim inputs): `Trees`, `Stems`, `PointClouds`, `Environments`, `Images`, `sensor_readings`, `phenology_observations`, `Deadwood`, `ground_vegetation`. Everything else stays full-CRUD for any `authenticated` user regardless of role claim — see the `is_admin()` / `is_contributor()` / `is_curator()` helpers and their policies in `docker/volumes/db/init/10-baseline-schema.sql`.
 
 **Never share `SERVICE_ROLE_KEY` with external collaborators.** Create a Studio account for write access instead.
 

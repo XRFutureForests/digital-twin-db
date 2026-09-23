@@ -34,7 +34,7 @@ Every fact a crate needs is already in the database, so the crate is generated
 *from* the database. Today that means `trees.simulation_runs`, which is the only
 table holding complete run records: `shared.processing_jobs` exists, has the right
 shape, and has never held a row. When the runner lands, a `--job-id` path reads
-the same structure out of `ProcessingJobs` and every connector is covered without
+the same structure out of `processing_jobs` and every connector is covered without
 any connector changing.
 
 ## Which profile
@@ -63,9 +63,9 @@ the author, and the `citation` already stored on the `shared.processes` row.
 | Element | Source | Strength |
 |---|---|---|
 | Software, version, citation, author | `shared.processes` | recorded |
-| Parameters | `SimulationRuns` typed columns + `run_params` jsonb | recorded |
+| Parameters | `simulation_runs` typed columns + `run_params` jsonb | recorded |
 | Input state | `base_variant_id` | recorded |
-| Trajectory rows | `GrowthSimulations.simulation_run_id` | recorded, exact |
+| Trajectory rows | `growth_simulations.simulation_run_id` | recorded, exact |
 | Projected variants | walk of `parent_variant_id` | **derived** |
 | Time | `created_at` | **approximate** |
 
@@ -78,12 +78,12 @@ smoothed over:
   descends from a given baseline; two promoted runs from the same baseline would
   be indistinguishable. Adding `simulation_run_id` to `shared.variants` would close this.
 * **`created_at` is not the run's end.** The connector writes the
-  `SimulationRuns` row *before* the trajectory, because `GrowthSimulations.simulation_run_id`
+  `simulation_runs` row *before* the trajectory, because `growth_simulations.simulation_run_id`
   is an FK onto it. So the timestamp follows the simulation and precedes every
   result row. It is emitted as `startTime`, which is the strongest true claim
   available; `endTime` is omitted rather than guessed. Recording real
   `started_at` / `completed_at` in silva-connector would close this, and
-  `ProcessingJobs` already has both columns for when the runner lands.
+  `processing_jobs` already has both columns for when the runner lands.
 
 ## Tests
 

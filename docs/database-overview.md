@@ -36,109 +36,109 @@ The database is organized into **6 schemas**, each handling a specific domain:
 flowchart LR
     subgraph shared["SHARED SCHEMA"]
         direction TB
-        Locations["Locations"]
-        Plots["Plots"]
-        Species["Species"]
-        Scenarios["Scenarios"]
-        VariantTypes["VariantTypes"]
-        Campaigns["Campaigns"]
-        Processes["Processes"]
-        AuditLog["AuditLog"]
-        ManagementEvents["ManagementEvents"]
-        DisturbanceEvents["DisturbanceEvents"]
+        locations["locations"]
+        plots["plots"]
+        species["species"]
+        scenarios["scenarios"]
+        variant_types["variant_types"]
+        campaigns["campaigns"]
+        processes["processes"]
+        audit_log["audit_log"]
+        management_events["management_events"]
+        disturbance_events["disturbance_events"]
     end
 
-    subgraph pointclouds["POINTCLOUDS SCHEMA"]
-        ScannerTypes["ScannerTypes"]
-        Scanners["Scanners"]
-        PointClouds["PointClouds"]
+    subgraph point_clouds["point_clouds SCHEMA"]
+        scanner_types["scanner_types"]
+        scanners["scanners"]
+        point_clouds["point_clouds"]
     end
 
-    subgraph trees["TREES SCHEMA"]
-        Trees["Trees"]
-        Stems["Stems"]
-        TreeStatus["TreeStatus"]
-        TaperTypes["TaperTypes"]
-        PhenologyObservations["PhenologyObservations"]
-        Deadwood["Deadwood"]
-        GroundVegetation["GroundVegetation"]
-        GrowthSimulations["GrowthSimulations"]
+    subgraph trees["trees SCHEMA"]
+        trees["trees"]
+        stems["stems"]
+        tree_status["tree_status"]
+        taper_types["taper_types"]
+        phenology_observations["phenology_observations"]
+        deadwood["deadwood"]
+        ground_vegetation["ground_vegetation"]
+        growth_simulations["growth_simulations"]
     end
 
     subgraph sensor["SENSOR SCHEMA"]
-        Sensors["Sensors"]
-        SensorReadings["SensorReadings"]
-        SensorTreeLinks["SensorTreeLinks"]
+        sensors["sensors"]
+        sensor_readings["sensor_readings"]
+        sensor_tree_links["sensor_tree_links"]
     end
 
-    subgraph environments["ENVIRONMENTS SCHEMA"]
-        Environments["Environments"]
+    subgraph environments["environments SCHEMA"]
+        environments["environments"]
     end
 
     subgraph imagery["IMAGERY SCHEMA"]
-        Images["Images"]
+        images["images"]
     end
 
     %% Cross-schema relationships
-    Locations --> Plots
-    Locations --> PointClouds
-    Locations --> Trees
-    Locations --> Sensors
-    Locations --> Environments
-    Locations --> Campaigns
-    Locations --> Images
-    Locations --> ManagementEvents
-    Locations --> DisturbanceEvents
-    Locations --> Deadwood
-    Locations --> GroundVegetation
-    Locations --> GrowthSimulations
+    locations --> plots
+    locations --> point_clouds
+    locations --> trees
+    locations --> sensors
+    locations --> environments
+    locations --> campaigns
+    locations --> images
+    locations --> management_events
+    locations --> disturbance_events
+    locations --> deadwood
+    locations --> ground_vegetation
+    locations --> growth_simulations
 
-    Plots --> Trees
-    Plots --> ManagementEvents
-    Plots --> DisturbanceEvents
-    Plots --> Deadwood
-    Plots --> GroundVegetation
-    Plots --> Images
-    Plots --> GrowthSimulations
+    plots --> trees
+    plots --> management_events
+    plots --> disturbance_events
+    plots --> deadwood
+    plots --> ground_vegetation
+    plots --> images
+    plots --> growth_simulations
 
-    Species --> Trees
-    Species --> Deadwood
-    Species --> GrowthSimulations
+    species --> trees
+    species --> deadwood
+    species --> growth_simulations
 
-    Scenarios --> PointClouds
-    Scenarios --> Trees
-    Scenarios --> Environments
-    Scenarios --> SensorReadings
-    Scenarios --> GrowthSimulations
+    scenarios --> point_clouds
+    scenarios --> trees
+    scenarios --> environments
+    scenarios --> sensor_readings
+    scenarios --> growth_simulations
 
-    VariantTypes --> PointClouds
-    VariantTypes --> Trees
-    VariantTypes --> Environments
+    variant_types --> point_clouds
+    variant_types --> trees
+    variant_types --> environments
 
-    Processes --> PointClouds
-    Processes --> Trees
-    Processes --> Environments
+    processes --> point_clouds
+    processes --> trees
+    processes --> environments
 
-    Campaigns --> PointClouds
-    Campaigns --> Trees
-    Campaigns --> Sensors
-    Campaigns --> Images
+    campaigns --> point_clouds
+    campaigns --> trees
+    campaigns --> sensors
+    campaigns --> images
 
-    PointClouds --> Trees
-    TreeStatus --> Trees
-    Trees --> Stems
-    Trees --> PhenologyObservations
-    Trees --> GrowthSimulations
-    TaperTypes --> Stems
-    DisturbanceEvents --> Trees
-    ScannerTypes --> Scanners
-    Scanners --> PointClouds
-    Sensors --> SensorReadings
-    Sensors --> SensorTreeLinks
-    SensorTreeLinks --> Trees
+    point_clouds --> trees
+    tree_status --> trees
+    trees --> stems
+    trees --> phenology_observations
+    trees --> growth_simulations
+    taper_types --> stems
+    disturbance_events --> trees
+    scanner_types --> scanners
+    scanners --> point_clouds
+    sensors --> sensor_readings
+    sensors --> sensor_tree_links
+    sensor_tree_links --> trees
 
     style shared fill:#F4EFA9,stroke:#c7bb1a
-    style pointclouds fill:#e8e8e8,stroke:#4f4f4f
+    style point_clouds fill:#e8e8e8,stroke:#4f4f4f
     style trees fill:#5CB89C,stroke:#19392f
     style sensor fill:#eeb896,stroke:#673428
     style environments fill:#8fa8c8,stroke:#181d26
@@ -149,12 +149,12 @@ flowchart LR
     classDef cSensor fill:#f6ddcb,stroke:#673428,color:#3c1d13;
     classDef cEnv fill:#c3d2e3,stroke:#181d26,color:#10151d;
     classDef cImg fill:#e7cbf1,stroke:#5a2d6a,color:#321640;
-    class Locations,Plots,Species,Scenarios,VariantTypes,Campaigns,Processes,AuditLog,ManagementEvents,DisturbanceEvents cShared;
-    class ScannerTypes,Scanners,PointClouds cPc;
-    class Trees,Stems,TreeStatus,TaperTypes,PhenologyObservations,Deadwood,GroundVegetation,GrowthSimulations cTrees;
-    class Sensors,SensorReadings,SensorTreeLinks cSensor;
-    class Environments cEnv;
-    class Images cImg;
+    class locations,plots,species,scenarios,variant_types,campaigns,processes,audit_log,management_events,disturbance_events cShared;
+    class scanner_types,scanners,point_clouds cPc;
+    class trees,stems,tree_status,taper_types,phenology_observations,deadwood,ground_vegetation,growth_simulations cTrees;
+    class sensors,sensor_readings,sensor_tree_links cSensor;
+    class environments cEnv;
+    class images cImg;
 ```
 
 **Schema colour key:**
@@ -162,7 +162,7 @@ flowchart LR
 | | Schema | Domain |
 |---|---|---|
 | 🟨 | `shared` | Reference & audit tables used across all domains |
-| ⬜ | `point_clouds` | LiDAR scans and scanner hardware |
+| ⬜ | `pointclouds` | LiDAR scans and scanner hardware |
 | 🟩 | `trees` | Tree inventory, stems, morphology, phenology |
 | 🟧 | `sensor` | Environmental sensors and time-series readings |
 | 🟦 | `environments` | Aggregated environmental conditions |
@@ -178,16 +178,16 @@ Central reference tables used across all domains.
 
 | Table | Purpose |
 |-------|---------|
-| **Locations** | Research sites (`ecosense`, `mathisle`) with PostGIS boundaries, elevation, slope, soil type |
-| **Plots** | Named monitoring sub-areas within a location (e.g. `douglas_fir_plot`, tree subplots) |
-| **Species** | Tree species (common name, scientific name, growth characteristics, is_deciduous) |
-| **Scenarios** | Location-scoped management regimes (Location → Scenario → Variant); e.g. `natural_growth` per site |
-| **VariantTypes** | How a variant's data was produced: original, processed, manual, simulated_growth, user_input, sensor_derived, model_output, repeat_measurement |
-| **Campaigns** | Data collection events (LiDAR flights, field inventories) with methodology |
-| **Processes** | Algorithm/processing metadata with citations |
-| **AuditLog** | Field-level change tracking with user attribution |
-| **ManagementEvents** | Forest management activities (thinning, planting, harvesting) |
-| **DisturbanceEvents** | Natural disturbance events (storms, fire, insects, drought) |
+| **locations** | Research sites (`ecosense`, `mathisle`) with PostGIS boundaries, elevation, slope, soil type |
+| **plots** | Named monitoring sub-areas within a location (e.g. `douglas_fir_plot`, tree subplots) |
+| **species** | Tree species (common name, scientific name, growth characteristics, is_deciduous) |
+| **scenarios** | Location-scoped management regimes (Location → Scenario → Variant); e.g. `natural_growth` per site |
+| **variant_types** | How a variant's data was produced: original, processed, manual, simulated_growth, user_input, sensor_derived, model_output, repeat_measurement |
+| **campaigns** | Data collection events (LiDAR flights, field inventories) with methodology |
+| **processes** | Algorithm/processing metadata with citations |
+| **audit_log** | Field-level change tracking with user attribution |
+| **management_events** | Forest management activities (thinning, planting, harvesting) |
+| **disturbance_events** | Natural disturbance events (storms, fire, insects, drought) |
 
 ### 2. ⬜ PointClouds Schema
 
@@ -197,8 +197,8 @@ LiDAR scan data and processing variants with scanner hardware tracking. Scans ar
 
 | Table | Purpose |
 |-------|---------|
-| **ScannerTypes** | LiDAR scanner type classifications (Terrestrial_TLS, Aerial_ALS, Mobile_MLS, UAV_ULS) with manufacturers |
-| **Scanners** | Individual scanner hardware instances with serial numbers, acquisition and calibration dates |
+| **scanner_types** | LiDAR scanner type classifications (Terrestrial_TLS, Aerial_ALS, Mobile_MLS, UAV_ULS) with manufacturers |
+| **scanners** | Individual scanner hardware instances with serial numbers, acquisition and calibration dates |
 
 **PointClouds Table:**
 
@@ -226,7 +226,7 @@ Individual tree measurements with multi-stem support.
 
 ```mermaid
 erDiagram
-    Trees {
+    trees {
         int tree_id PK
         uuid tree_entity_id "Persistent tree identity"
         int variant_id FK "Forest state group"
@@ -254,7 +254,7 @@ erDiagram
         date status_change_date
     }
 
-    Stems {
+    stems {
         int stem_id PK
         int tree_id FK
         int stem_number
@@ -264,7 +264,7 @@ erDiagram
         float stem_volume_m3
     }
 
-    PhenologyObservations {
+    phenology_observations {
         int phenology_observation_id PK
         int tree_id FK
         date observation_date
@@ -274,7 +274,7 @@ erDiagram
         varchar Observer
     }
 
-    Deadwood {
+    deadwood {
         int deadwood_id PK
         int location_id FK
         int plot_id FK
@@ -288,7 +288,7 @@ erDiagram
         geometry Position
     }
 
-    GroundVegetation {
+    ground_vegetation {
         int ground_vegetation_id PK
         int location_id FK
         int plot_id FK
@@ -299,23 +299,23 @@ erDiagram
         date measurement_date
     }
 
-    Campaigns {
+    campaigns {
         int campaign_id PK
         varchar campaign_name
         varchar campaign_type
         date start_date
     }
 
-    TreeStatus {
+    tree_status {
         int tree_status_id PK
         varchar tree_status_name
     }
 
-    Trees ||--o{ Stems : "has_stems"
-    Trees ||--o{ PhenologyObservations : "observed_in"
-    Trees }o--|| TreeStatus : "status"
-    Trees }o--|| Campaigns : "collected_in"
-    Stems }o--|| TaperTypes : "taper"
+    trees ||--o{ stems : "has_stems"
+    trees ||--o{ phenology_observations : "observed_in"
+    trees }o--|| tree_status : "status"
+    trees }o--|| campaigns : "collected_in"
+    stems }o--|| taper_types : "taper"
 ```
 
 **New Fields for Data Quality:**
@@ -336,19 +336,19 @@ erDiagram
 
 **Morphology Lookup Tables:**
 
-- `TaperTypes`: Cylinder, Cone, Paraboloid, Neiloid
-- `StraightnessTypes`: Straight, Slight_sweep, Moderate_sweep, Severe_sweep
-- `BranchingPatterns`: Alternate, Opposite, Whorled, Spiral
-- `BarkCharacteristics`: Smooth, Furrowed, Plated, Exfoliating
+- `taper_types`: Cylinder, Cone, Paraboloid, Neiloid
+- `straightness_types`: Straight, Slight_sweep, Moderate_sweep, Severe_sweep
+- `branching_patterns`: Alternate, Opposite, Whorled, Spiral
+- `bark_characteristics`: Smooth, Furrowed, Plated, Exfoliating
 
 **Additional Trees Schema Tables:**
 
 | Table | Purpose |
 |-------|---------|
-| **PhenologyObservations** | Tree phenology observations tracking seasonal development phases (bud_break, leaf_out, flowering, fruit_set, leaf_color, leaf_fall, dormancy) |
-| **Deadwood** | Dead wood inventory including standing dead, fallen logs, stumps, and branches with decay classification (1-5) |
-| **GroundVegetation** | Ground vegetation survey records by plot and layer (herb, shrub, moss, litter, fern, grass) |
-| **GrowthSimulations** | Per-tree dimensional projections from external growth simulators (SILVA, FVS, iLand, manual) at discrete future years, keyed by `simulation_run_id` and `tree_entity_id`; powers the Unreal Time Machine feature |
+| **phenology_observations** | Tree phenology observations tracking seasonal development phases (bud_break, leaf_out, flowering, fruit_set, leaf_color, leaf_fall, dormancy) |
+| **deadwood** | Dead wood inventory including standing dead, fallen logs, stumps, and branches with decay classification (1-5) |
+| **ground_vegetation** | Ground vegetation survey records by plot and layer (herb, shrub, moss, litter, fern, grass) |
+| **growth_simulations** | Per-tree dimensional projections from external growth simulators (SILVA, FVS, iLand, manual) at discrete future years, keyed by `simulation_run_id` and `tree_entity_id`; powers the Unreal Time Machine feature |
 
 ### 4. 🟧 Sensor Schema
 
@@ -356,7 +356,7 @@ Environmental monitoring hardware and time-series data.
 
 ```mermaid
 erDiagram
-    Sensors {
+    sensors {
         int sensor_id PK
         int location_id FK
         int sensor_type_id FK
@@ -370,7 +370,7 @@ erDiagram
         boolean is_active
     }
 
-    SensorReadings {
+    sensor_readings {
         bigint sensor_reading_id PK
         int sensor_id FK
         timestamp Timestamp
@@ -379,7 +379,7 @@ erDiagram
         varchar Quality
     }
 
-    SensorTreeLinks {
+    sensor_tree_links {
         int sensor_tree_link_id PK
         int sensor_id FK
         int tree_id FK
@@ -388,14 +388,14 @@ erDiagram
         date end_date
     }
 
-    SensorTypes {
+    sensor_types {
         int sensor_type_id PK
         varchar sensor_type_name
     }
 
-    Sensors ||--o{ SensorReadings : "records"
-    Sensors ||--o{ SensorTreeLinks : "monitors"
-    Sensors }o--|| SensorTypes : "type"
+    sensors ||--o{ sensor_readings : "records"
+    sensors ||--o{ sensor_tree_links : "monitors"
+    sensors }o--|| sensor_types : "type"
 ```
 
 **Sensor Types:** Temperature, Humidity, CO2, Light, Soil_Moisture, Wind, Stem_Radial_Variation, Sap_Flow
@@ -408,7 +408,7 @@ erDiagram
 | `source_crs` | EPSG code of original coordinate reference system for position_original |
 | `installation_height_m` | Height of sensor installation above ground in meters |
 
-**SensorTreeLinks** now includes `start_date` and `end_date` fields to track the temporal validity of sensor-to-tree relationships.
+**sensor_tree_links** now includes `start_date` and `end_date` fields to track the temporal validity of sensor-to-tree relationships.
 
 **External Integration:** `external_id` and `ExternalMetadata` columns are source-agnostic, enabling synchronization with any live data provider through a generic ingestion pipeline (`scripts/import/ingest_sensor_data.py`). The current live implementation is the Aquarius API, serving the Ecosense Forest sensor network; the same columns extend to weather services or other real-time environmental feeds without a schema change.
 
@@ -439,7 +439,7 @@ flowchart TB
         Tree["tree_entity_id: abc-123"]
     end
 
-    subgraph Variants["Measurement Variants"]
+    subgraph variants["Measurement variants"]
         V1["tree_id: 1<br/>Campaign: 2024 Inventory<br/>Height: 15.2m"]
         V2["tree_id: 5<br/>Campaign: 2025 Inventory<br/>Height: 15.8m"]
         V3["tree_id: 12<br/>Campaign: LiDAR 2025<br/>Height: 15.9m"]
@@ -540,9 +540,9 @@ Every data modification is tracked:
 
 ```mermaid
 flowchart LR
-    Change["Field Update"] --> AuditLog
-    AuditLog --> |"Records"| Details["field_name<br/>old_value → new_value<br/>user_id<br/>Timestamp<br/>ip_address"]
-    style AuditLog fill:#F4EFA9,stroke:#c7bb1a,color:#3a3600
+    Change["Field Update"] --> audit_log
+    audit_log --> |"Records"| Details["field_name<br/>old_value → new_value<br/>user_id<br/>Timestamp<br/>ip_address"]
+    style audit_log fill:#F4EFA9,stroke:#c7bb1a,color:#3a3600
     style Change fill:#f5f5f5,stroke:#4f4f4f,color:#2a2a2a
     style Details fill:#FAF6D2,stroke:#c7bb1a,color:#4a4500
 ```
@@ -570,8 +570,8 @@ flowchart LR
 
     subgraph DB["Digital Twin Database"]
         PC["Point Clouds Schema"]
-        TR["Trees Schema"]
-        EN["Environments & Sensors</br>Schema"]
+        TR["trees Schema"]
+        EN["environments & sensors</br>Schema"]
         REST["REST API"]
     end
 

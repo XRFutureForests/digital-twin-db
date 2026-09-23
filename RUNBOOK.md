@@ -118,7 +118,7 @@ global CSV. Copy the pattern in `scripts/seed/ecosense_baseline_variant.sql`: it
 scenario and assigns baseline trees to `baseline_2025`. Growth variants on top are written by
 `silva-connector`, chained via `parent_variant_id`.
 
-`VariantTypes` (original, simulated_growth, repeat_measurement, …) load from
+`variant_types` (original, simulated_growth, repeat_measurement, …) load from
 `data/lookups/variant_types.csv` on init.
 
 Model and query patterns: [docs/variant-scenario-model.md](docs/variant-scenario-model.md).

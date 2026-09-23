@@ -55,19 +55,24 @@ KNOWN = {
     "sensor.sensor_tree_view.sensor_type": "XRFF-485",
     "sensor.sensor_tree_view.tree_species": "XRFF-485",
     "sensor.sensor_tree_view.tree_location": "XRFF-485",
-    # Already 60 bytes before any rename, and tier 1 takes it to 62. XRFF-497
-    # names it explicitly and shorter rather than letting the default ride.
-    "shared.auditlog_phenologyobservations_phenology_observation_id_fkey": "XRFF-497",
     "public.simulation_runs.base_variant": "XRFF-485",
-    "trees.growth_simulations.mortality": "XRFF-490",
-    "trees.simulation_runs.promoted": "XRFF-490",
-    "trees.simulation_runs.mortality_enabled": "XRFF-490",
-    "sensor.sensor_readings.battery_voltage": "XRFF-490",
     "sensor.sensors.accuracy": "XRFF-490",
     "environments.location_environment_summary.avg_temperature": "XRFF-485",
     "environments.location_environment_summary.avg_humidity": "XRFF-485",
     "public.ue_trees.competition": "XRFF-490",
     "sensor.sensor_tree_view.sensor_active": "XRFF-490",
+    # Rule 13. Two of these are computed and will never have a base-table
+    # counterpart -- they are carve-outs, not debt:
+    #   ue_scenarios.baseline_variant_id  COALESCE(parent_variant_id, variant_id)
+    #   recent_changes.record_id          COALESCE over five different PKs
+    # The other three are deliberate view-layer renames, and are debt in the
+    # same sense as the rest of XRFF-485: a client reading `linked_tree_id`
+    # cannot tell it joins `trees.trees.tree_id`.
+    "public.ue_scenarios.baseline_variant_id": "XRFF-485",
+    "shared.recent_changes.record_id": "XRFF-485",
+    "public.job_status.job_id": "XRFF-485",
+    "public.ue_sensors.linked_tree_id": "XRFF-485",
+    "public.ue_sensors.linked_tree_entity_id": "XRFF-485",
 }
 
 # FK edges where the local column deliberately qualifies the parent's PK name --
@@ -224,11 +229,14 @@ def main():
                 uniq.add((s, t, parts[0]))
 
     failures, known_hits = [], []
+    excused = set()
 
     def report(key, message):
-        (known_hits if key in KNOWN else failures).append(
-            f"{key}: {message}" + (f"  [{KNOWN[key]}]" if key in KNOWN else "")
-        )
+        if key in KNOWN:
+            excused.add(key)
+            known_hits.append(f"{key}: {message}  [{KNOWN[key]}]")
+        else:
+            failures.append(f"{key}: {message}")
 
     # 1. Every identifier is lowercase snake_case.
     for s, t, c, _dtype, _ttype in columns:
@@ -278,8 +286,8 @@ def main():
         for c, _dtype in cols:
             # A lookup's label is the column carrying its natural key, on a table
             # that is little more than id + label + description. Columns that
-            # merely end in _name -- attributeprovenance.column_name,
-            # processparameters.parameter_name -- name a thing being described
+            # merely end in _name -- attribute_provenance.column_name,
+            # process_parameters.parameter_name -- name a thing being described
             # rather than the row. shared.species (13 columns) is an entity whose
             # scientific_name is a natural key, not a lookup label.
             if (
@@ -391,6 +399,43 @@ def main():
     for s, ident, kind in identifiers:
         if ident.lower() in reserved:
             report(f"{s}.{ident}", f"identifier is a reserved word ({kind})")
+
+    # 13. Every `_id` column a view publishes must exist on some base table.
+    #     Renaming a base COLUMN rewrites a dependent view's stored definition,
+    #     so the view keeps working -- but it does NOT rename the view's output
+    #     column when an explicit AS pinned that name. (A TABLE rename updates
+    #     both, which is why this only bites column renames.) The view then
+    #     advertises a key that exists nowhere, and nothing fails until a client
+    #     tries to join on it. XRFF-487 left exactly two behind
+    #     (`branch_elongation_habit_id`, `phanerophyte_height_class_id`) and
+    #     rule 9 could not see them: no suffix was dropped, the whole stem moved.
+    #     Scoped to `_id` because that is where a wrong name silently becomes a
+    #     wrong join; a computed or aggregated view column legitimately has no
+    #     base-table counterpart.
+    base_cols = {c for (s, t, c, _d, ttype) in columns if ttype == "BASE TABLE"}
+    for s, t, c, _d, ttype in columns:
+        if ttype == "BASE TABLE" or not c.endswith("_id"):
+            continue
+        if c not in base_cols:
+            report(
+                f"{s}.{t}.{c}",
+                "view publishes an _id column that exists on no base table",
+            )
+
+    # 14. Every KNOWN entry must still correspond to a live deviation. A KNOWN
+    #     entry is a standing excuse: once the deviation it names is fixed, the
+    #     entry stops being a record of debt and becomes a blind spot, because
+    #     re-introducing that exact deviation would be silently excused. So a
+    #     fixed deviation must have its entry deleted, and this is what makes
+    #     that non-optional. (XRFF-497's grandfathered 62-byte constraint name
+    #     was the first to go stale: the rename shortened it to
+    #     `audit_log_phenology_observations_observation_fkey` and the entry
+    #     would have sat there excusing a name that can no longer occur.)
+    for key in sorted(set(KNOWN) - excused):
+        failures.append(
+            f"{key}: listed in KNOWN [{KNOWN[key]}] but no longer deviates -- "
+            "delete the entry, it is now a silent excuse"
+        )
 
     for line in known_hits:
         print(f"known   {line}")

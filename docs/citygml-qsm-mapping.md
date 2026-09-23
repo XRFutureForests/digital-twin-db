@@ -2,7 +2,7 @@
 
 > **XRFF-264** — Step 0: column-by-column mapping from `trees.*` to the Ambarwari et al. (2024)
 > CityGML UML, done before any migration so disagreements surface as edits to this doc instead
-> of as schema churn. Feeds XRFF-265 (QSMs/QSMCylinders), XRFF-266 (TreePartTypes/TreeGraphEdges),
+> of as schema churn. Feeds XRFF-265 (QSMs/qsm_cylinders), XRFF-266 (tree_part_types/tree_graph_edges),
 > XRFF-267 (LoD/3D geometry/TreeAssets).
 >
 > Source: Ambarwari, Suwardhi, Rani, Husni, Junaidy, Agirachman, Murtiyoso, Griess (2024),

@@ -32,9 +32,9 @@ cur.execute("SELECT * FROM shared.Locations LIMIT 3")
 cols = [desc[0] for desc in cur.description]
 print("Locations query columns:", cols)
 
-# Check TreeStatus columns
+# Check tree_status columns
 cur.execute(
-    "SELECT column_name FROM information_schema.columns WHERE table_schema='trees' AND table_name='treestatus'"
+    "SELECT column_name FROM information_schema.columns WHERE table_schema='trees' AND table_name='tree_status'"
 )
 print("\nTreeStatus columns:", [r[0] for r in cur.fetchall()])
 

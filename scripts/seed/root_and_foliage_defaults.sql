@@ -1,4 +1,4 @@
--- XR Future Forests Lab — Species-default Roots + CrownFoliageProfiles (XRFF-266)
+-- XR Future Forests Lab — Species-default Roots + crown_foliage_profiles (XRFF-266)
 --
 -- OPTIONAL — not part of docker/volumes/db/init/. Applied manually after the
 -- baseline import and the XRFF-266 schema migration:
@@ -11,7 +11,7 @@
 --    rows -- the two crown-foliage-distribution methods trees.crown_foliage_profiles
 --    is designed around. Registered now so the citation exists in the
 --    Processes registry whenever a real fitted distribution is added later;
---    neither paper studied any of our 11 species, so no CrownFoliageProfiles
+--    neither paper studied any of our 11 species, so no crown_foliage_profiles
 --    row below references either process_id.
 -- 2. Seeds one trees.Roots row (source = 'species_default') for every tree
 --    whose species is in our canonical 11-species catalog (growpy's
@@ -155,7 +155,7 @@ BEGIN
     SELECT COUNT(*) INTO roots_count FROM trees.Roots WHERE source = 'species_default';
     SELECT COUNT(*) INTO profiles_count FROM trees.crown_foliage_profiles WHERE source = 'species_literature_default';
     RAISE NOTICE '=======================================================';
-    RAISE NOTICE 'Species-default Roots + CrownFoliageProfiles seeded';
+    RAISE NOTICE 'Species-default Roots + crown_foliage_profiles seeded';
     RAISE NOTICE '=======================================================';
     RAISE NOTICE '  trees.Roots (species_default):               % rows', roots_count;
     RAISE NOTICE '  trees.crown_foliage_profiles (literature_def.): % rows', profiles_count;

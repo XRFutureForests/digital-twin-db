@@ -334,7 +334,7 @@ def main() -> None:
         failures = ingest_readings(records, args.dry_run, args.batch_size)
 
     # Exit non-zero when any record failed to write. Unattended runs (XRFF-346's
-    # job runner sets processingjobs.status from the exit code) must not record
+    # job runner sets processing_jobs.status from the exit code) must not record
     # a run where every write failed as a completed job.
     if failures:
         sys.exit(1)

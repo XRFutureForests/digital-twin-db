@@ -44,13 +44,13 @@ The database is organized into **seven domain schemas** plus `public` (PostgREST
 
 | Schema | Purpose | Primary Tables |
 |--------|---------|----------------|
-| `shared` | Reference and cross-domain data | Locations, Species, Scenarios, Campaigns, Plots, Processes, AuditLog, ManagementEvents, DisturbanceEvents |
-| `trees` | Tree measurements, variants, and simulator output | Trees, Stems, PhenologyObservations, GrowthSimulations, morphology lookups |
-| `forest_floor` | Plot/site-level surveys, not tied to a single tree | Deadwood, GroundVegetation |
-| `point_clouds` | LiDAR scan data and processing lineage | PointClouds, ScannerTypes, Scanners |
-| `sensor` | Environmental sensor hardware and time-series | SensorTypes, Sensors, SensorReadings, sensor_tree_links |
-| `environments` | Environmental condition variants | Environments |
-| `imagery` | Aerial and ground-based images | Images |
+| `shared` | Reference and cross-domain data | locations, species, scenarios, campaigns, plots, processes, audit_log, management_events, disturbance_events |
+| `trees` | Tree measurements, variants, and simulator output | trees, stems, phenology_observations, growth_simulations, morphology lookups |
+| `forest_floor` | Plot/site-level surveys, not tied to a single tree | deadwood, ground_vegetation |
+| `pointclouds` | LiDAR scan data and processing lineage | point_clouds, scanner_types, scanners |
+| `sensor` | Environmental sensor hardware and time-series | sensor_types, sensors, sensor_readings, sensor_tree_links |
+| `environments` | Environmental condition variants | environments |
+| `imagery` | Aerial and ground-based images | images |
 | `public` | PostgREST API views (mirrors above schemas) | Views only — no data |
 
 ### 1.4 Normalization
@@ -328,7 +328,7 @@ erDiagram
 | `point_cloud_id` | INTEGER | YES | FK → `pointclouds.point_clouds` ON DELETE SET NULL | Source scan — provenance anchor |
 | `process_id` | INTEGER | YES | FK → `shared.processes` ON DELETE SET NULL | TreeQSM/rTwig/SmartQSM + version |
 | `lod` | SMALLINT | YES | 0–4 | CityGML LoD this reconstruction supports (expect 3 or 4) |
-| `local_crs` | TEXT | YES | — | CRS of `QSMCylinders` coordinates, or the literal `local` |
+| `local_crs` | TEXT | YES | — | CRS of `qsm_cylinders` coordinates, or the literal `local` |
 | `origin_position` | GEOMETRY(PointZ, 4326) | YES | — | Georeferences the local cylinder frame |
 | `cylinder_count` | INTEGER | YES | ≥ 0 | — |
 | `total_volume_m3`, `trunk_volume_m3`, `branch_volume_m3` | NUMERIC(10,3) | YES | ≥ 0 | QSM-derived volumes — distinct from `trees.trees.volume_m3` |
@@ -809,12 +809,12 @@ For new schema changes: add a new timestamped file under `supabase/migrations/` 
 Every identifier in the database is **lowercase snake_case**, tables included.
 
 Tables are created unquoted, so PostgreSQL folds them to lowercase regardless of
-how the DDL spells them: `CREATE TABLE trees.GrowthSimulations` stores
-`growthsimulations`. That fold is how the word boundaries were lost in the first
+how the DDL spells them: `CREATE TABLE trees.growth_simulations` stores
+`growth_simulations`. That fold is how the word boundaries were lost in the first
 place, and why 52 tables were renamed on 2026-09-23 — the columns had always been
 snake_case, the tables never were.
 
-These docs used to render table names PascalCase (`shared.ProcessingJobs`) as a
+These docs used to render table names PascalCase (`shared.processing_jobs`) as a
 readability convention over a squashed real name. That rendering is gone. It
 bought nothing once the real name became `shared.processing_jobs`, and it
 actively misled, because a reader could reasonably type what the page showed.
@@ -845,14 +845,19 @@ suffix. It cannot see a *missing* word separator inside an otherwise lowercase
 name (`sensor_tree_link_id` reads as valid snake_case to a regex); that class is
 caught indirectly, via the PK-shape and view-alias rules, or not at all.
 
-1. **Every foreign-key column ends in `_id`** — 118 of 118, no exceptions.
-2. **A foreign key carries the parent's PK name.** Ten FK edges currently differ,
-   and each is a deliberate qualifier on a self-reference or a role
-   (`parent_tree_id`, `base_variant_id`, `climate_pathway_id` →
-   `climatepathways.climate_pathway_id`). A *new* FK should not add to that list.
-3. **A lookup's `_name` stem matches its own `_id` stem.** Three legacy tables
-   break this (`branch_elongation_habits`, `phanerophyte_height_classes`,
-   `straightnesstypes` — XRFF-487); do not copy them.
+1. **Every foreign-key column ends in `_id`** — 118 of 120. The two exceptions
+   are natural keys by design: `sensor.sensors.unit` and
+   `sensor.sensor_types.typical_unit` both point at `sensor.units.unit_name`,
+   which carries the value itself rather than a surrogate (XRFF-489).
+2. **A foreign key carries the parent's PK name.** Eight edges in the domain
+   schemas differ, and each is a deliberate qualifier: a self-reference
+   (`parent_tree_id`, `parent_variant_id`, `parent_environment_id`,
+   `parent_point_cloud_id`), a role (`base_tree_id`, `base_variant_id`), or one
+   of the two natural keys above. A *new* FK should not add to that list.
+3. **A lookup's `_name` stem matches its own `_id` stem.** Every base table
+   holds this as of XRFF-487, which shortened the three offending primary keys
+   rather than lengthening their labels — `elongation_habit_id`,
+   `height_class_id`, `straightness_type_id`.
 
 **Units.** A column holding a physical quantity carries its unit, always as the
 last token. Compound units are written numerator-then-denominator with no `per`:
@@ -864,17 +869,20 @@ zeroes; the suffix is what keeps that safe.
 
 **Enumerated text.** A `*_type` / `*_status` / `*_class` column is guarded by a
 CHECK constraint listing its values. Provenance columns are the documented
-exception: `height_source`, `sensors.source` and `processmetrics.source` are
+exception: `height_source`, `sensors.source` and `process_metrics.source` are
 deliberately unconstrained, because a new writer with a new legitimate source
 should not need a migration to record it (XRFF-400). Their register is the
 column `COMMENT`.
 
 **The `public` API layer.** A view in `public` keeps its base table's name and
 its base columns' names. Where it joins a label in, the label column is
-`{stem}_name` (`location_name`, `scenario_name`). Five view names and six view
-columns predate this rule and are tracked in XRFF-485 and XRFF-486 — several are
-cached into Unreal DataTable JSON and cannot move without a coordinated change to
-the row structs.
+`{stem}_name` (`location_name`, `scenario_name`). View *names* all follow it as
+of XRFF-486. View *columns* do not yet: 26 deviations remain, tracked in
+XRFF-485 and XRFF-490, because several are cached into Unreal DataTable JSON and
+cannot move without a coordinated change to the row structs — a renamed key
+imports as null, silently. Two of the 26 are permanent carve-outs rather than
+debt (`ue_scenarios.baseline_variant_id` and `shared.recent_changes.record_id`
+are both computed with `COALESCE`, so no base column corresponds).
 
 Run the checker before opening a migration PR:
 
@@ -886,7 +894,7 @@ python scripts/utils/check_naming.py
 
 ## Maintenance
 
-**Last Updated:** 2026-07-17
+**Last Updated:** 2026-09-23
 
 **Update Triggers:**
 - New schema migration added to `supabase/migrations/`

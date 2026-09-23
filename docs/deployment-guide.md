@@ -150,7 +150,7 @@ See `scripts/README.md` for full import documentation.
 export SUPABASE_KEY="your_anon_key_from_env_file"
 
 # Test REST API
-curl "http://localhost:8000/rest/v1/Trees?select=*" \
+curl "http://localhost:8000/rest/v1/trees?select=*" \
   -H "apikey: $SUPABASE_KEY" \
   -H "Authorization: Bearer $SUPABASE_KEY"
 

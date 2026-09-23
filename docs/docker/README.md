@@ -239,7 +239,7 @@ This setup differs from the official Supabase Docker in these ways:
 2. **PostGIS Enabled**: Automatically enabled in initialization
 3. **Forest Schema Migrations**: Custom SQL files in `volumes/db/init/`
 4. **Dual Geometry Support**: Both original CRS and WGS84 coordinates stored
-5. **Job queue**: `shared.processingjobs` + `request_job()` RPC instead of Edge Functions (XRFF-257)
+5. **Job queue**: `shared.processing_jobs` + `request_job()` RPC instead of Edge Functions (XRFF-257)
 6. **Manual Data Import**: CSV importer with audit trail and coordinate transformation
 7. **Studio Port**: Exposed on port 54323 for WSL/Windows compatibility
 
