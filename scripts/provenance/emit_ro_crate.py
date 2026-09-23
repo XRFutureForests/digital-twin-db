@@ -84,7 +84,7 @@ SOFTWARE_URLS = {
 RUN_QUERY = """
     SELECT r.simulation_run_id, r.location_id, r.scenario_id, r.base_variant_id,
            r.base_year, r.simulator_name, r.simulator_version, r.process_id,
-           r.horizon_years, r.seed, r.mortality_enabled, r.promoted,
+           r.horizon_years, r.seed, r.is_mortality_enabled, r.is_promoted,
            r.run_params, r.created_at, r.created_by,
            p.process_name, p.algorithm_name, p.version AS process_version,
            p.description AS process_description, p.author, p.citation,
@@ -171,8 +171,8 @@ def parameter_entities(run):
         "base_year": run["base_year"],
         "horizon_years": run["horizon_years"],
         "seed": run["seed"],
-        "mortality_enabled": run["mortality_enabled"],
-        "promoted": run["promoted"],
+        "is_mortality_enabled": run["is_mortality_enabled"],
+        "is_promoted": run["is_promoted"],
     }
     params.update(run["run_params"] or {})
     out = []
