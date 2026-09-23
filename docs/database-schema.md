@@ -648,7 +648,7 @@ Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING
 | `horizon_years` | INTEGER | Yes | Projection horizon as requested |
 | `seed` | INTEGER | Yes | Random seed |
 | `is_mortality_enabled` | BOOLEAN | Yes | True if the simulator was allowed to kill trees |
-| `promoted` | BOOLEAN | Yes | True if the run was promoted to the variant chain UE reads |
+| `is_promoted` | BOOLEAN | Yes | True if the run was promoted to the variant chain UE reads |
 | `run_params` | JSONB | No | Simulator-specific named parameters, e.g. `{"competition": "sf_polygon"}`. Named parameters only — never a command line |
 | `created_at` | TIMESTAMPTZ | No | Insert timestamp |
 | `created_by` | VARCHAR(200) | Yes | Script or user that wrote the row |
