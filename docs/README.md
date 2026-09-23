@@ -10,7 +10,7 @@ what the database is, and [RUNBOOK.md](../RUNBOOK.md) for how to run and load it
 | [database-overview.md](database-overview.md) | The seven schemas, how they connect, the key design patterns |
 | [database-schema.md](database-schema.md) | Full data dictionary — every table, column, type and constraint |
 | [variant-scenario-model.md](variant-scenario-model.md) | Location → Scenario → Variant, and the query patterns that depend on it |
-| [growth-simulation-schema.md](growth-simulation-schema.md) | `trees.GrowthSimulations` and `trees.SimulationRuns` |
+| [growth-simulation-schema.md](growth-simulation-schema.md) | `trees.growth_simulations` and `trees.simulation_runs` |
 | [citygml-qsm-mapping.md](citygml-qsm-mapping.md) | Column-by-column mapping to the CityGML conceptual tree model |
 | [level-of-detail-vocabulary.md](level-of-detail-vocabulary.md) | The LOD terms used across schemas |
 

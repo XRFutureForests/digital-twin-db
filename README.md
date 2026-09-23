@@ -53,7 +53,7 @@ A **Location** is a site. It owns its own **Scenarios** (management regimes, uni
 location). Each Scenario owns a chain of **Variants** — snapshots of the stand, one per
 time step or projection, linked by `parent_variant_id`.
 
-`trees.Trees`, `pointclouds.PointClouds` and `environments.Environments` all key off that
+`trees.trees`, `pointclouds.point_clouds` and `environments.environments` all key off that
 hierarchy through `variant_id` / `variant_type_id`. That is what makes
 `GET /ue_trees?variant_id=eq.<id>` return "the forest as it looked, or will look, at time X"
 in one flat query — and it is why **every query against `trees.trees` must filter on variant**,
@@ -67,7 +67,7 @@ Full model and query patterns: [docs/variant-scenario-model.md](docs/variant-sce
 |--------|-------|
 | `shared` | Species, Locations, Plots, Campaigns, SoilTypes, ClimateZones, Scenarios, VariantTypes, ManagementEvents, DisturbanceEvents, Processes, AuditLog |
 | `trees` | Trees (persistent `TreeEntityID`), Stems, PhenologyObservations, QSMs + QSMCylinders, TreePartTypes + TreeGraphEdges, Roots, CrownFoliageProfiles, classification tables |
-| `pointclouds` | PointClouds with S3 paths, ScannerTypes, Scanners; processing variants and quality metrics |
+| `point_clouds` | PointClouds with S3 paths, ScannerTypes, Scanners; processing variants and quality metrics |
 | `sensor` | Sensors, SensorReadings, SensorTreeLinks |
 | `environments` | Environments — temperature, humidity, soil moisture, nutrients, from sensors, manual entry or models |
 | `imagery` | Images with spatial metadata and camera parameters |
@@ -78,8 +78,8 @@ CityGML-conformant conceptual tree model of Ambarwari et al. (2024) — see
 [docs/citygml-qsm-mapping.md](docs/citygml-qsm-mapping.md).
 
 Most tables carry **row-level security** and **audit logging** with user attribution, on the
-tables whose individual field values change after entry: `trees.Trees`, `trees.Stems`,
-`trees.PhenologyObservations`, `environments.Environments`, `pointclouds.PointClouds`.
+tables whose individual field values change after entry: `trees.trees`, `trees.stems`,
+`trees.phenology_observations`, `environments.environments`, `pointclouds.point_clouds`.
 
 ## What the stack gives you
 

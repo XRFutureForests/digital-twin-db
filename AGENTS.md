@@ -37,7 +37,7 @@ approach was chosen, write it in the knowledge hub and link to it.
 | `supabase/migrations/` | Schema change history (Supabase CLI) — source of truth for schema evolution |
 | `scripts/import/` | CSV/JSON data importers (trees, provider-agnostic sensor ingestion) |
 | `scripts/admin/` | DB admin utilities: reset, refresh lookups, GBIF species validation |
-| `scripts/runner/` | The job runner that drains `shared.ProcessingJobs`, with its systemd units |
+| `scripts/runner/` | The job runner that drains `shared.processing_jobs`, with its systemd units |
 | `scripts/server/` | dt.unr-only: NFS data dirs, nightly backup unit, account creation |
 | `scripts/seed/` | Baseline-variant and default-row SQL applied after import |
 | `scripts/provenance/` | Process Run Crate emitter (XRFF-407) |
@@ -56,7 +56,7 @@ Schema history lives in `supabase/migrations/` (Supabase CLI), not as numbered f
 3. Apply and test against a local reset (see Critical Rules) before committing
 4. If the change should also ship in the baked Docker image, mirror it into a new file under `docker/volumes/db/init/` (e.g. `11-<description>.sql`) — additive only, never restructuring `10-baseline-schema.sql`'s objects
 
-When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `pointclouds`, `environments`, `imagery`, `forest_floor`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot. Keep this schema list in sync with the `CREATE SCHEMA` statements in the init files — omitting one silently drops it from the new baseline.
+When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `point_clouds`, `environments`, `imagery`, `forest_floor`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot. Keep this schema list in sync with the `CREATE SCHEMA` statements in the init files — omitting one silently drops it from the new baseline.
 
 ## Consumers that read base tables directly
 

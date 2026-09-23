@@ -286,7 +286,7 @@ systemctl list-timers dt-db-backup.timer
 
 `scripts/server/backup-db.sh` dumps as `supabase_admin` (the `postgres` role is not a
 superuser in this image and silently misses tables), excludes the *data* of
-`sensor.sensorreadings` (8.4 GB of 8.5 GB, all re-fetchable through aquarius-connector),
+`sensor.sensor_readings` (8.4 GB of 8.5 GB, all re-fetchable through aquarius-connector),
 verifies the gzip trailer before renaming, and keeps 30 days. Restore is in `RUNBOOK.md` §7.
 
 ### 6. Configure Firewall
@@ -437,7 +437,7 @@ logged and disable-able (decision 2026-09-10, when the certificate went back ont
 | Timer | Does | Note |
 |---|---|---|
 | `dt-renew-ssl.timer` | certbot renewal + nginx recreate | verify it actually renewed before **2026-12-01** rather than trusting a green timer (XRFF-421) |
-| `dt-job-runner.timer` / `dt-job-runner-reap.timer` | claims `shared.processingjobs` rows (SILVA, open data) and reaps stale ones | memory-capped at 9g/7Gb for SILVA; growpy and Aquarius jobs run from the workstation |
+| `dt-job-runner.timer` / `dt-job-runner-reap.timer` | claims `shared.processing_jobs` rows (SILVA, open data) and reaps stale ones | memory-capped at 9g/7Gb for SILVA; growpy and Aquarius jobs run from the workstation |
 | `dt-db-backup.timer` | nightly `pg_dump` (minus sensor readings) to the NFS export | there was no backup at all until 2026-09-10 |
 
 Check the certificate from anywhere:

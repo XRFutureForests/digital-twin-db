@@ -67,7 +67,7 @@ writes into -- `natural_growth`, `natural_growth_ssp370`,
 `crop_tree_thinning_ssp585` -- and they change the projection (a thinning
 preset applied between periods; CHELSA/SSP-CO2 deltas applied to SILVA's site
 conditions per period). `scenario` is only an optional override of that name.
-The `ssp126`/`ssp370`/`ssp585` rows in `shared.Scenarios` hold the acquired
+The `ssp126`/`ssp370`/`ssp585` rows in `shared.scenarios` hold the acquired
 climate a run reads, not forest states, and cannot be written into. See
 [variant-scenario-model.md](variant-scenario-model.md) for the encoding.
 
@@ -101,7 +101,7 @@ select request_job('silva', '{"location":"ecosense"}'::jsonb, 'my-2026-09-02-run
 ```
 
 Leave it out when you *want* a second run. Two identical SILVA runs are a
-legitimate thing to want: `trees.GrowthSimulations` accumulates, which is what
+legitimate thing to want: `trees.growth_simulations` accumulates, which is what
 makes scenario comparison possible.
 
 ## 3. Watch it
@@ -185,7 +185,7 @@ curl -X POST "$SUPABASE_URL/auth/v1/admin/users"   -H "apikey: $SERVICE_ROLE_KEY
 else — or no role at all — reads the menu and its own job history but cannot
 request a run.
 
-> **Do not insert into `shared.ProcessingJobs` by hand** in the Table Editor to
+> **Do not insert into `shared.processing_jobs` by hand** in the Table Editor to
 > get around this. It bypasses `request_job()` entirely — no workflow check, no
 > parameter validation, no idempotency — and a runner will happily execute
 > whatever a typo produces. The runner re-validates parameters for exactly this

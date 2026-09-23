@@ -36,7 +36,7 @@ real-time monitoring of tree responses to environmental conditions.
 // SHARED SCHEMA
 // =============================================================================
 
-Table shared.Locations {
+Table shared.locations {
   location_id integer [primary key, note: 'Unique location ID']
   location_name varchar [note: 'Location name']
   Boundary geometry [note: 'PostGIS polygon for location boundaries']
@@ -45,21 +45,21 @@ Table shared.Locations {
   Elevation_m float [note: 'Location elevation']
   Slope_deg float [note: 'Location slope']
   Aspect varchar [note: 'N, NE, E, SE, S, SW, W, NW']
-  soil_type_id integer [ref: > shared.SoilTypes.soil_type_id, note: 'Soil type reference']
-  climate_zone_id integer [ref: > shared.ClimateZones.climate_zone_id, note: 'Climate zone reference']
+  soil_type_id integer [ref: > shared.soil_types.soil_type_id, note: 'Soil type reference']
+  climate_zone_id integer [ref: > shared.climate_zones.climate_zone_id, note: 'Climate zone reference']
 }
 
-Table shared.SoilTypes {
+Table shared.soil_types {
   soil_type_id integer [primary key]
   soil_type_name varchar [note: 'Alfisol, Andisol, Aridisol, Entisol, Gelisol, Histosol, Inceptisol, Mollisol, Oxisol, Spodosol, Ultisol, Vertisol']
 }
 
-Table shared.ClimateZones {
+Table shared.climate_zones {
   climate_zone_id integer [primary key]
   climate_zone_name varchar [note: 'Köppen climate classification codes']
 }
 
-Table shared.Species {
+Table shared.species {
   species_id integer [primary key, note: 'Unique species ID']
   common_name varchar [note: 'Common name']
   scientific_name varchar [note: 'Scientific name']
@@ -71,17 +71,17 @@ Table shared.Species {
   is_deciduous boolean [note: 'true=deciduous, false=evergreen, NULL=unknown']
 }
 
-Table shared.Scenarios {
+Table shared.scenarios {
   scenario_id integer [primary key]
-  location_id integer [not null, ref: > shared.Locations.location_id, note: 'Site this management regime belongs to (Location → Scenario → Variant)']
+  location_id integer [not null, ref: > shared.locations.location_id, note: 'Site this management regime belongs to (Location → Scenario → Variant)']
   scenario_name varchar [note: 'e.g. natural_growth — location-scoped; UNIQUE(location_id, scenario_name)']
   Description varchar [note: 'Scenario description']
 }
 
-Table shared.Variants {
+Table shared.variants {
   variant_id integer [primary key, note: 'Forest state group — all trees with the same variant_id form one complete forest state']
-  scenario_id integer [not null, ref: > shared.Scenarios.scenario_id, note: 'Parent scenario']
-  parent_variant_id integer [ref: > shared.Variants.variant_id, note: 'The state this developed from (baseline → growth → …); NULL for baseline']
+  scenario_id integer [not null, ref: > shared.scenarios.scenario_id, note: 'Parent scenario']
+  parent_variant_id integer [ref: > shared.variants.variant_id, note: 'The state this developed from (baseline → growth → …); NULL for baseline']
   variant_name varchar [not null, note: 'baseline_2025, growth_2035, growth_2045 (unique per location+scenario)']
   simulation_year integer [note: 'Calendar year this forest state represents']
   time_delta_yrs float [note: 'Years elapsed from the scenario baseline (0 for baseline)']
@@ -90,17 +90,17 @@ Table shared.Variants {
   created_at timestamp
 }
 
-Table shared.VariantTypes {
+Table shared.variant_types {
   variant_type_id integer [primary key]
   variant_type_name varchar [note: 'original, processed, manual, simulated_growth, user_input, repeat_measurement']
   Description text [note: 'Description of variant type']
 }
 
-Table shared.Campaigns {
+Table shared.campaigns {
   campaign_id integer [primary key]
   campaign_name varchar [note: 'Unique campaign identifier']
   campaign_type varchar [note: 'lidar_flight, field_inventory, sensor_deployment, drone_survey, manual_update']
-  location_id integer [ref: > shared.Locations.location_id, note: 'Location for this campaign']
+  location_id integer [ref: > shared.locations.location_id, note: 'Location for this campaign']
   start_date date [note: 'Campaign start date']
   end_date date [note: 'Campaign end date']
   Description text [note: 'Campaign description']
@@ -113,9 +113,9 @@ Table shared.Campaigns {
   updated_by varchar
 }
 
-Table shared.Plots {
+Table shared.plots {
   plot_id integer [primary key, note: 'Unique plot ID']
-  location_id integer [not null, ref: > shared.Locations.location_id, note: 'Parent location']
+  location_id integer [not null, ref: > shared.locations.location_id, note: 'Parent location']
   plot_name varchar [not null, note: 'Plot identifier, unique within a location']
   plot_number integer [note: 'Numeric plot identifier for ordering']
   Area_m2 float [note: 'Plot area in square meters']
@@ -132,10 +132,10 @@ Table shared.Plots {
   }
 }
 
-Table shared.ManagementEvents {
+Table shared.management_events {
   management_event_id integer [primary key, note: 'Unique management event ID']
-  location_id integer [not null, ref: > shared.Locations.location_id, note: 'Location of event']
-  plot_id integer [ref: > shared.Plots.plot_id, note: 'Optional sub-plot']
+  location_id integer [not null, ref: > shared.locations.location_id, note: 'Location of event']
+  plot_id integer [ref: > shared.plots.plot_id, note: 'Optional sub-plot']
   event_type varchar [not null, note: 'thinning, planting, harvesting, pruning, fertilization, prescribed_burn, salvage_logging, site_preparation, other']
   event_date date [not null, note: 'Event start date']
   end_date date [note: 'Event end date']
@@ -149,10 +149,10 @@ Table shared.ManagementEvents {
   updated_by varchar
 }
 
-Table shared.DisturbanceEvents {
+Table shared.disturbance_events {
   disturbance_event_id integer [primary key, note: 'Unique disturbance event ID']
-  location_id integer [not null, ref: > shared.Locations.location_id, note: 'Location of disturbance']
-  plot_id integer [ref: > shared.Plots.plot_id, note: 'Optional sub-plot']
+  location_id integer [not null, ref: > shared.locations.location_id, note: 'Location of disturbance']
+  plot_id integer [ref: > shared.plots.plot_id, note: 'Optional sub-plot']
   disturbance_type varchar [not null, note: 'storm, fire, insect, drought, disease, flood, frost, snow_damage, landslide, other']
   event_date date [not null, note: 'Disturbance start date']
   end_date date [note: 'Disturbance end date']
@@ -166,9 +166,9 @@ Table shared.DisturbanceEvents {
   updated_by varchar
 }
 
-Table shared.DisturbanceEvents_Trees {
-  disturbance_event_id integer [ref: > shared.DisturbanceEvents.disturbance_event_id, note: 'References DisturbanceEvents']
-  tree_id integer [ref: > trees.Trees.tree_id, note: 'References Trees row']
+Table shared.disturbance_events_trees {
+  disturbance_event_id integer [ref: > shared.disturbance_events.disturbance_event_id, note: 'References DisturbanceEvents']
+  tree_id integer [ref: > trees.trees.tree_id, note: 'References Trees row']
   damage_level varchar [note: 'none, light, moderate, severe, destroyed']
   Notes text [note: 'Damage notes for individual tree']
 
@@ -177,7 +177,7 @@ Table shared.DisturbanceEvents_Trees {
   }
 }
 
-Table shared.Processes {
+Table shared.processes {
   process_id integer [primary key]
   process_name varchar [note: 'LiDAR_Segmentation, Tree_Detection, Growth_Simulation, Climate_Modeling']
   algorithm_name varchar [note: 'RandomForest, DeepLearning, RulesBased, Statistical']
@@ -189,7 +189,7 @@ Table shared.Processes {
   Category varchar [note: 'detection, classification, simulation, analysis']
 }
 
-Table shared.ProcessParameters {
+Table shared.process_parameters {
   process_parameter_id integer [primary key]
   parameter_name varchar [note: 'learning_rate, max_depth, threshold, growth_rate, interpolation_method']
   parameter_value varchar [note: 'Actual parameter value used for this variant']
@@ -198,52 +198,52 @@ Table shared.ProcessParameters {
 }
 
 // Junction tables for ProcessParameters polymorphic relationships
-Table shared.ProcessParameters_PointClouds {
-  process_parameter_id integer [ref: > shared.ProcessParameters.process_parameter_id, note: 'References ProcessParameters']
-  point_cloud_id integer [ref: > pointclouds.PointClouds.point_cloud_id, note: 'References PointClouds row']
+Table shared.process_parameters_point_clouds {
+  process_parameter_id integer [ref: > shared.process_parameters.process_parameter_id, note: 'References ProcessParameters']
+  point_cloud_id integer [ref: > pointclouds.point_clouds.point_cloud_id, note: 'References PointClouds row']
 
   indexes {
     (process_parameter_id, point_cloud_id) [pk]
   }
 }
 
-Table shared.ProcessParameters_Trees {
-  process_parameter_id integer [ref: > shared.ProcessParameters.process_parameter_id, note: 'References ProcessParameters']
-  tree_id integer [ref: > trees.Trees.tree_id, note: 'References Trees row']
+Table shared.process_parameters_trees {
+  process_parameter_id integer [ref: > shared.process_parameters.process_parameter_id, note: 'References ProcessParameters']
+  tree_id integer [ref: > trees.trees.tree_id, note: 'References Trees row']
 
   indexes {
     (process_parameter_id, tree_id) [pk]
   }
 }
 
-Table shared.ProcessParameters_Environments {
-  process_parameter_id integer [ref: > shared.ProcessParameters.process_parameter_id, note: 'References ProcessParameters']
-  environment_id integer [ref: > environments.Environments.environment_id, note: 'References Environments row']
+Table shared.process_parameters_environments {
+  process_parameter_id integer [ref: > shared.process_parameters.process_parameter_id, note: 'References ProcessParameters']
+  environment_id integer [ref: > environments.environments.environment_id, note: 'References Environments row']
 
   indexes {
     (process_parameter_id, environment_id) [pk]
   }
 }
 
-Table shared.ProcessParameters_Stems {
-  process_parameter_id integer [ref: > shared.ProcessParameters.process_parameter_id, note: 'References ProcessParameters']
-  stem_id integer [ref: > trees.Stems.stem_id, note: 'References Stems']
+Table shared.process_parameters_stems {
+  process_parameter_id integer [ref: > shared.process_parameters.process_parameter_id, note: 'References ProcessParameters']
+  stem_id integer [ref: > trees.stems.stem_id, note: 'References Stems']
 
   indexes {
     (process_parameter_id, stem_id) [pk]
   }
 }
 
-Table shared.ProcessMetrics {
+Table shared.process_metrics {
   process_metric_id integer [primary key]
-  process_id integer [ref: > shared.Processes.process_id, note: 'References Processes']
+  process_id integer [ref: > shared.processes.process_id, note: 'References Processes']
   metric_name varchar [note: 'accuracy, precision, recall, f1_score, rmse']
   metric_value float [note: 'Published performance value']
   Source text [note: 'Paper, report, or source of metric']
 }
 
-Table shared.AuditLog {
-  audit_id bigint [primary key]
+Table shared.audit_log {
+  audit_log_id bigint [primary key]
   field_name varchar [note: 'Specific field changed']
   old_value text [note: 'Previous value (JSON)']
   new_value text [note: 'New value (JSON)']
@@ -256,39 +256,39 @@ Table shared.AuditLog {
 }
 
 // Junction tables for AuditLog polymorphic relationships
-Table shared.AuditLog_PointClouds {
-  audit_id bigint [ref: > shared.AuditLog.audit_id, note: 'References AuditLog']
-  point_cloud_id integer [ref: > pointclouds.PointClouds.point_cloud_id, note: 'References PointClouds row']
+Table shared.audit_log_point_clouds {
+  audit_log_id bigint [ref: > shared.audit_log.audit_log_id, note: 'References AuditLog']
+  point_cloud_id integer [ref: > pointclouds.point_clouds.point_cloud_id, note: 'References PointClouds row']
 
   indexes {
-    (audit_id, point_cloud_id) [pk]
+    (audit_log_id, point_cloud_id) [pk]
   }
 }
 
-Table shared.AuditLog_Trees {
-  audit_id bigint [ref: > shared.AuditLog.audit_id, note: 'References AuditLog']
-  tree_id integer [ref: > trees.Trees.tree_id, note: 'References Trees row']
+Table shared.audit_log_trees {
+  audit_log_id bigint [ref: > shared.audit_log.audit_log_id, note: 'References AuditLog']
+  tree_id integer [ref: > trees.trees.tree_id, note: 'References Trees row']
 
   indexes {
-    (audit_id, tree_id) [pk]
+    (audit_log_id, tree_id) [pk]
   }
 }
 
-Table shared.AuditLog_Environments {
-  audit_id bigint [ref: > shared.AuditLog.audit_id, note: 'References AuditLog']
-  environment_id integer [ref: > environments.Environments.environment_id, note: 'References Environments row']
+Table shared.audit_log_environments {
+  audit_log_id bigint [ref: > shared.audit_log.audit_log_id, note: 'References AuditLog']
+  environment_id integer [ref: > environments.environments.environment_id, note: 'References Environments row']
 
   indexes {
-    (audit_id, environment_id) [pk]
+    (audit_log_id, environment_id) [pk]
   }
 }
 
-Table shared.AuditLog_Stems {
-  audit_id bigint [ref: > shared.AuditLog.audit_id, note: 'References AuditLog']
-  stem_id integer [ref: > trees.Stems.stem_id, note: 'References Stems']
+Table shared.audit_log_stems {
+  audit_log_id bigint [ref: > shared.audit_log.audit_log_id, note: 'References AuditLog']
+  stem_id integer [ref: > trees.stems.stem_id, note: 'References Stems']
 
   indexes {
-    (audit_id, stem_id) [pk]
+    (audit_log_id, stem_id) [pk]
   }
 }
 
@@ -296,16 +296,16 @@ Table shared.AuditLog_Stems {
 // POINTCLOUDS SCHEMA
 // =============================================================================
 
-Table pointclouds.ScannerTypes {
+Table pointclouds.scanner_types {
   scanner_type_id integer [primary key, note: 'Unique scanner type ID']
   scanner_type_name varchar [unique, note: 'Scanner type name (e.g., Terrestrial_TLS, Aerial_ALS, Mobile_MLS, UAV_ULS)']
   Manufacturer varchar [note: 'Scanner manufacturer']
   Description text [note: 'Scanner type description']
 }
 
-Table pointclouds.Scanners {
+Table pointclouds.scanners {
   scanner_id integer [primary key, note: 'Unique scanner ID']
-  scanner_type_id integer [not null, ref: > pointclouds.ScannerTypes.scanner_type_id, note: 'Scanner type reference']
+  scanner_type_id integer [not null, ref: > pointclouds.scanner_types.scanner_type_id, note: 'Scanner type reference']
   serial_number varchar [unique, note: 'Unique hardware serial number']
   acquisition_date date [note: 'Date scanner was acquired']
   calibration_date date [note: 'Last calibration date']
@@ -314,15 +314,15 @@ Table pointclouds.Scanners {
   updated_at timestamp
 }
 
-Table pointclouds.PointClouds {
+Table pointclouds.point_clouds {
   point_cloud_id integer [primary key]
-  parent_point_cloud_id integer [ref: > pointclouds.PointClouds.point_cloud_id, note: 'Self-reference for processing lineage']
-  location_id integer [ref: > shared.Locations.location_id, note: 'References shared.Locations']
-  scenario_id integer [ref: > shared.Scenarios.scenario_id, note: 'References shared.Scenarios - NULL for non-scenario variants']
-  variant_type_id integer [ref: > shared.VariantTypes.variant_type_id, note: 'References shared.VariantTypes']
-  process_id integer [ref: > shared.Processes.process_id, note: 'References shared.Processes - NULL for original scans']
-  campaign_id integer [ref: > shared.Campaigns.campaign_id, note: 'Data collection campaign this scan belongs to']
-  scanner_id integer [ref: > pointclouds.Scanners.scanner_id, note: 'Physical scanner hardware used for this scan']
+  parent_point_cloud_id integer [ref: > pointclouds.point_clouds.point_cloud_id, note: 'Self-reference for processing lineage']
+  location_id integer [ref: > shared.locations.location_id, note: 'References shared.locations']
+  scenario_id integer [ref: > shared.scenarios.scenario_id, note: 'References shared.scenarios - NULL for non-scenario variants']
+  variant_type_id integer [ref: > shared.variant_types.variant_type_id, note: 'References shared.variant_types']
+  process_id integer [ref: > shared.processes.process_id, note: 'References shared.processes - NULL for original scans']
+  campaign_id integer [ref: > shared.campaigns.campaign_id, note: 'Data collection campaign this scan belongs to']
+  scanner_id integer [ref: > pointclouds.scanners.scanner_id, note: 'Physical scanner hardware used for this scan']
   variant_name varchar [note: 'Descriptive name for variant']
   scan_date timestamp [note: 'Date and time of original scan']
   sensor_model varchar [note: 'LiDAR scanner model']
@@ -350,13 +350,13 @@ Table pointclouds.PointClouds {
 // TREES SCHEMA
 // =============================================================================
 
-Table trees.TreeStatus {
+Table trees.tree_status {
   tree_status_id integer [primary key]
   tree_status_name varchar [note: 'healthy, stressed, declining, dead, harvested, missing, downed, broken']
   Description text
 }
 
-Table trees.TaperTypes {
+Table trees.taper_types {
   taper_type_id integer [primary key]
   taper_type_name varchar [note: 'Cylinder, Cone, Paraboloid, Neiloid']
   Description text [note: 'Form description']
@@ -364,56 +364,56 @@ Table trees.TaperTypes {
   typical_taper_ratio_max float [note: 'Typical maximum taper ratio']
 }
 
-Table trees.StraightnessTypes {
+Table trees.straightness_types {
   straightness_type_id integer [primary key]
-  straightness_name varchar [note: 'Straight, Slight_sweep, Moderate_sweep, Severe_sweep']
+  straightness_type_name varchar [note: 'Straight, Slight_sweep, Moderate_sweep, Severe_sweep']
   Description text [note: 'Curvature description']
-  deviation_angle_min float [note: 'Minimum deviation angle in degrees']
-  deviation_angle_max float [note: 'Maximum deviation angle in degrees']
+  deviation_angle_min_deg float [note: 'Minimum deviation angle in degrees']
+  deviation_angle_max_deg float [note: 'Maximum deviation angle in degrees']
 }
 
-Table trees.BranchingPatterns {
+Table trees.branching_patterns {
   branching_pattern_id integer [primary key]
   branching_pattern_name varchar [note: 'Alternate, Opposite, Whorled, Spiral, Random']
   Description text [note: 'Branching arrangement description']
 }
 
-Table trees.BarkCharacteristics {
+Table trees.bark_characteristics {
   bark_characteristic_id integer [primary key]
   bark_characteristic_name varchar [note: 'Smooth, Furrowed, Plated, Exfoliating']
   Description text [note: 'Bark texture description']
   typical_species text [note: 'Examples: e.g., Fagus, Quercus, Pinus, Platanus']
 }
 
-Table trees.CrownClasses {
+Table trees.crown_classes {
   crown_class_id integer [primary key]
   crown_class_name varchar [note: 'dominant, co_dominant, intermediate, overtopped, open_grown']
   Description text [note: 'Crown competitive/social position (FIA CCLCD / NEON canopyPosition analog)']
 }
 
-Table trees.DamageAgents {
+Table trees.damage_agents {
   damage_agent_id integer [primary key]
   damage_agent_name varchar [note: 'none, insect, disease, fire, wind, snow_ice, drought, mechanical, animal, human_activity, competition, unknown']
   Description text [note: 'Cause of tree damage, decline, or mortality (FIA AGENTCD analog)']
 }
 
-Table trees.Trees {
+Table trees.trees {
   tree_id integer [primary key, note: 'Unique row identifier for this tree record']
   tree_entity_id uuid [note: 'Persistent UUID identifying the same physical tree across all variants and scenarios']
-  variant_id integer [ref: > shared.Variants.variant_id, note: 'Forest state group — all trees with the same variant_id form one complete forest state for UE']
-  parent_tree_id integer [ref: > trees.Trees.tree_id, note: 'Parent tree record for growth lineage tracking']
-  point_cloud_id integer [ref: > pointclouds.PointClouds.point_cloud_id, note: 'Source point cloud if tree was detected from LiDAR']
-  campaign_id integer [ref: > shared.Campaigns.campaign_id, note: 'Data collection campaign']
-  location_id integer [ref: > shared.Locations.location_id, note: 'References shared.Locations']
-  plot_id integer [ref: > shared.Plots.plot_id, note: 'Sub-plot within the location where tree is located']
-  scenario_id integer [ref: > shared.Scenarios.scenario_id, note: 'Convenience FK, resynced from the variant']
+  variant_id integer [ref: > shared.variants.variant_id, note: 'Forest state group — all trees with the same variant_id form one complete forest state for UE']
+  parent_tree_id integer [ref: > trees.trees.tree_id, note: 'Parent tree record for growth lineage tracking']
+  point_cloud_id integer [ref: > pointclouds.point_clouds.point_cloud_id, note: 'Source point cloud if tree was detected from LiDAR']
+  campaign_id integer [ref: > shared.campaigns.campaign_id, note: 'Data collection campaign']
+  location_id integer [ref: > shared.locations.location_id, note: 'References shared.locations']
+  plot_id integer [ref: > shared.plots.plot_id, note: 'Sub-plot within the location where tree is located']
+  scenario_id integer [ref: > shared.scenarios.scenario_id, note: 'Convenience FK, resynced from the variant']
   sensor_ref varchar [note: 'Source-agnostic reference to the sensor cluster on this tree (matches sensor.serial_number prefix); NULL if not instrumented']
-  variant_type_id integer [ref: > shared.VariantTypes.variant_type_id, note: 'References shared.VariantTypes']
-  process_id integer [ref: > shared.Processes.process_id, note: 'References shared.Processes - NULL for manual measurements']
-  species_id integer [ref: > shared.Species.species_id, note: 'References shared.Species']
-  tree_status_id integer [ref: > trees.TreeStatus.tree_status_id, note: 'References TreeStatus']
-  branching_pattern_id integer [ref: > trees.BranchingPatterns.branching_pattern_id, note: 'References BranchingPatterns']
-  bark_characteristic_id integer [ref: > trees.BarkCharacteristics.bark_characteristic_id, note: 'References BarkCharacteristics']
+  variant_type_id integer [ref: > shared.variant_types.variant_type_id, note: 'References shared.variant_types']
+  process_id integer [ref: > shared.processes.process_id, note: 'References shared.processes - NULL for manual measurements']
+  species_id integer [ref: > shared.species.species_id, note: 'References shared.species']
+  tree_status_id integer [ref: > trees.tree_status.tree_status_id, note: 'References TreeStatus']
+  branching_pattern_id integer [ref: > trees.branching_patterns.branching_pattern_id, note: 'References BranchingPatterns']
+  bark_characteristic_id integer [ref: > trees.bark_characteristics.bark_characteristic_id, note: 'References BarkCharacteristics']
   measurement_date date [note: 'Actual date of field measurement']
   DataSourceType varchar [note: 'lidar, field, photogrammetry, estimated, simulated']
   Height_m float [note: 'Total tree height']
@@ -436,8 +436,8 @@ Table trees.Trees {
   species_confidence float [note: '0.0-1.0, confidence in species ID']
   position_confidence float [note: '0.0-1.0, confidence in position accuracy']
   height_confidence float [note: '0.0-1.0, confidence in height measurement']
-  crown_class_id integer [ref: > trees.CrownClasses.crown_class_id, note: 'Crown competitive/social position']
-  damage_agent_id integer [ref: > trees.DamageAgents.damage_agent_id, note: 'Primary damage/decline agent, if any']
+  crown_class_id integer [ref: > trees.crown_classes.crown_class_id, note: 'Crown competitive/social position']
+  damage_agent_id integer [ref: > trees.damage_agents.damage_agent_id, note: 'Primary damage/decline agent, if any']
   Defoliation_percent float [note: '0-100, ICP Forests-style defoliation assessment']
   Discolouration_percent float [note: '0-100, ICP Forests-style discolouration assessment']
   CrownTransparency_percent float [note: '0-100, ICP Forests-style crown transparency assessment']
@@ -449,12 +449,12 @@ Table trees.Trees {
   updated_by varchar
 }
 
-Table trees.Stems {
+Table trees.stems {
   stem_id integer [primary key]
-  tree_id integer [ref: > trees.Trees.tree_id, note: 'References Trees row']
+  tree_id integer [ref: > trees.trees.tree_id, note: 'References Trees row']
   stem_number integer [note: '1=main stem, 2+=secondary stems']
-  taper_type_id integer [ref: > trees.TaperTypes.taper_type_id, note: 'References TaperTypes']
-  straightness_type_id integer [ref: > trees.StraightnessTypes.straightness_type_id, note: 'References StraightnessTypes']
+  taper_type_id integer [ref: > trees.taper_types.taper_type_id, note: 'References TaperTypes']
+  straightness_type_id integer [ref: > trees.straightness_types.straightness_type_id, note: 'References StraightnessTypes']
   DBH_cm float [note: 'Diameter at breast height (1.3m)']
   taper_ratio float [note: '0.0-1.0, diameter ratio top/bottom']
   Sweep_cm_per_m float [note: 'Maximum horizontal deviation per meter']
@@ -466,9 +466,9 @@ Table trees.Stems {
   updated_at timestamp
 }
 
-Table trees.PhenologyObservations {
+Table trees.phenology_observations {
   phenology_observation_id integer [primary key, note: 'Unique observation ID']
-  tree_id integer [not null, ref: > trees.Trees.tree_id, note: 'References Trees row']
+  tree_id integer [not null, ref: > trees.trees.tree_id, note: 'References Trees row']
   observation_date date [not null, note: 'Date of phenology observation']
   phenophase_type varchar [not null, note: 'bud_break, leaf_out, flowering, fruit_set, leaf_color, leaf_fall, dormancy']
   phenophase_status varchar [note: 'not_started, beginning, intermediate, peak, ending, completed']
@@ -479,12 +479,12 @@ Table trees.PhenologyObservations {
   created_by varchar
 }
 
-Table trees.Deadwood {
+Table forest_floor.deadwood {
   deadwood_id integer [primary key, note: 'Unique deadwood ID']
-  location_id integer [not null, ref: > shared.Locations.location_id, note: 'Location reference']
-  plot_id integer [ref: > shared.Plots.plot_id, note: 'Optional sub-plot']
-  tree_id integer [ref: > trees.Trees.tree_id, note: 'Optional link to known dead tree record']
-  species_id integer [ref: > shared.Species.species_id, note: 'Species reference']
+  location_id integer [not null, ref: > shared.locations.location_id, note: 'Location reference']
+  plot_id integer [ref: > shared.plots.plot_id, note: 'Optional sub-plot']
+  tree_id integer [ref: > trees.trees.tree_id, note: 'Optional link to known dead tree record']
+  species_id integer [ref: > shared.species.species_id, note: 'Species reference']
   wood_type varchar [not null, note: 'standing, fallen, stump, branch']
   Length_m float [note: 'Length in meters']
   Diameter_cm float [note: 'Diameter in centimeters']
@@ -497,10 +497,10 @@ Table trees.Deadwood {
   created_by varchar
 }
 
-Table trees.GroundVegetation {
+Table forest_floor.ground_vegetation {
   ground_vegetation_id integer [primary key, note: 'Unique vegetation record ID']
-  location_id integer [not null, ref: > shared.Locations.location_id, note: 'Location reference']
-  plot_id integer [ref: > shared.Plots.plot_id, note: 'Optional sub-plot']
+  location_id integer [not null, ref: > shared.locations.location_id, note: 'Location reference']
+  plot_id integer [ref: > shared.plots.plot_id, note: 'Optional sub-plot']
   species_name varchar [note: 'Vegetation species name']
   cover_percent float [note: 'Estimated cover percentage (0-100)']
   Height_cm float [note: 'Vegetation height in centimeters']
@@ -515,18 +515,18 @@ Table trees.GroundVegetation {
 // SENSOR SCHEMA
 // =============================================================================
 
-Table sensor.SensorTypes {
+Table sensor.sensor_types {
   sensor_type_id integer [primary key]
   sensor_type_name varchar [note: 'Temperature, Humidity, CO2, Light, Soil_Moisture, Wind']
   Description text
 }
 
-Table sensor.Sensors {
+Table sensor.sensors {
   sensor_id integer [primary key]
-  location_id integer [ref: > shared.Locations.location_id, note: 'References shared.Locations']
-  sensor_type_id integer [ref: > sensor.SensorTypes.sensor_type_id]
-  campaign_id integer [ref: > shared.Campaigns.campaign_id, note: 'Deployment campaign this sensor was installed during']
-  plot_id integer [ref: > shared.Plots.plot_id, note: 'Named monitoring sub-area within the location']
+  location_id integer [ref: > shared.locations.location_id, note: 'References shared.locations']
+  sensor_type_id integer [ref: > sensor.sensor_types.sensor_type_id]
+  campaign_id integer [ref: > shared.campaigns.campaign_id, note: 'Deployment campaign this sensor was installed during']
+  plot_id integer [ref: > shared.plots.plot_id, note: 'Named monitoring sub-area within the location']
   source varchar [note: 'External provider this data comes from, e.g. aquarius (one of many)']
   sensor_model varchar [note: 'Specific sensor model']
   serial_number varchar [note: 'Unique sensor identifier']
@@ -555,23 +555,23 @@ Table sensor.Sensors {
   updated_by varchar
 }
 
-Table sensor.SensorReadings {
+Table sensor.sensor_readings {
   sensor_reading_id bigint [primary key]
-  sensor_id integer [ref: > sensor.Sensors.sensor_id, note: 'References sensors.Sensors']
+  sensor_id integer [ref: > sensor.sensors.sensor_id, note: 'References sensors.Sensors']
   Timestamp timestamp [note: 'Reading timestamp']
   Value float
   Quality varchar [note: 'good, suspect, bad']
-  scenario_id integer [ref: > shared.Scenarios.scenario_id, note: 'References shared.Scenarios - NULL for real readings']
-  battery_voltage float [note: 'Sensor battery voltage at reading time']
+  scenario_id integer [ref: > shared.scenarios.scenario_id, note: 'References shared.scenarios - NULL for real readings']
+  battery_voltage_v float [note: 'Sensor battery voltage at reading time']
   signal_strength float [note: 'Communication signal strength']
   Notes text [note: 'Additional notes about this reading']
   created_at timestamp [note: 'Reading creation timestamp']
 }
 
-Table sensor.SensorTreeLinks {
+Table sensor.sensor_tree_links {
   sensor_tree_link_id integer [primary key]
-  sensor_id integer [ref: > sensor.Sensors.sensor_id, note: 'References Sensors']
-  tree_id integer [ref: > trees.Trees.tree_id, note: 'References Trees row']
+  sensor_id integer [ref: > sensor.sensors.sensor_id, note: 'References Sensors']
+  tree_id integer [ref: > trees.trees.tree_id, note: 'References Trees row']
   Description text [note: 'Link description and automated matching notes']
   start_date date [note: 'Start date of sensor-tree link']
   end_date date [note: 'End date of sensor-tree link']
@@ -582,13 +582,13 @@ Table sensor.SensorTreeLinks {
 // ENVIRONMENTS SCHEMA
 // =============================================================================
 
-Table environments.Environments {
+Table environments.environments {
   environment_id integer [primary key]
-  parent_environment_id integer [ref: > environments.Environments.environment_id, note: 'Self-reference for processing lineage']
-  location_id integer [ref: > shared.Locations.location_id, note: 'References shared.Locations']
-  scenario_id integer [ref: > shared.Scenarios.scenario_id, note: 'References shared.Scenarios']
-  variant_type_id integer [ref: > shared.VariantTypes.variant_type_id, note: 'References shared.VariantTypes']
-  process_id integer [ref: > shared.Processes.process_id, note: 'References shared.Processes - NULL for manual input']
+  parent_environment_id integer [ref: > environments.environments.environment_id, note: 'Self-reference for processing lineage']
+  location_id integer [ref: > shared.locations.location_id, note: 'References shared.locations']
+  scenario_id integer [ref: > shared.scenarios.scenario_id, note: 'References shared.scenarios']
+  variant_type_id integer [ref: > shared.variant_types.variant_type_id, note: 'References shared.variant_types']
+  process_id integer [ref: > shared.processes.process_id, note: 'References shared.processes - NULL for manual input']
   variant_name varchar [note: 'Descriptive name for variant']
   start_date timestamp [note: 'Period start date']
   end_date timestamp [note: 'Period end date']
@@ -618,11 +618,11 @@ Table environments.Environments {
 // IMAGERY SCHEMA
 // =============================================================================
 
-Table imagery.Images {
+Table imagery.images {
   image_id integer [primary key, note: 'Unique image ID']
-  location_id integer [not null, ref: > shared.Locations.location_id, note: 'Location reference']
-  plot_id integer [ref: > shared.Plots.plot_id, note: 'Optional sub-plot']
-  campaign_id integer [ref: > shared.Campaigns.campaign_id, note: 'Data collection campaign']
+  location_id integer [not null, ref: > shared.locations.location_id, note: 'Location reference']
+  plot_id integer [ref: > shared.plots.plot_id, note: 'Optional sub-plot']
+  campaign_id integer [ref: > shared.campaigns.campaign_id, note: 'Data collection campaign']
   capture_date timestamp [note: 'Image capture date and time']
   file_path text [not null, note: 'Path or URI to image file']
   file_format varchar [note: 'jpg, png, tiff, raw, geotiff']
@@ -646,66 +646,66 @@ Table imagery.Images {
 // =============================================================================
 
 TableGroup "Shared Schema" {
-  shared.Locations
-  shared.SoilTypes
-  shared.ClimateZones
-  shared.Species
-  shared.Scenarios
-  shared.Variants
-  shared.VariantTypes
-  shared.Campaigns
-  shared.Plots
-  shared.ManagementEvents
-  shared.DisturbanceEvents
-  shared.DisturbanceEvents_Trees
-  shared.Processes
-  shared.ProcessParameters
-  shared.ProcessParameters_PointClouds
-  shared.ProcessParameters_Trees
-  shared.ProcessParameters_Environments
-  shared.ProcessParameters_Stems
-  shared.ProcessMetrics
-  shared.AuditLog
-  shared.AuditLog_PointClouds
-  shared.AuditLog_Trees
-  shared.AuditLog_Environments
-  shared.AuditLog_Stems
+  shared.locations
+  shared.soil_types
+  shared.climate_zones
+  shared.species
+  shared.scenarios
+  shared.variants
+  shared.variant_types
+  shared.campaigns
+  shared.plots
+  shared.management_events
+  shared.disturbance_events
+  shared.disturbance_events_trees
+  shared.processes
+  shared.process_parameters
+  shared.process_parameters_point_clouds
+  shared.process_parameters_trees
+  shared.process_parameters_environments
+  shared.process_parameters_stems
+  shared.process_metrics
+  shared.audit_log
+  shared.audit_log_point_clouds
+  shared.audit_log_trees
+  shared.audit_log_environments
+  shared.audit_log_stems
 }
 
 TableGroup "Point Clouds Schema" {
-  pointclouds.ScannerTypes
-  pointclouds.Scanners
-  pointclouds.PointClouds
+  pointclouds.scanner_types
+  pointclouds.scanners
+  pointclouds.point_clouds
 }
 
 TableGroup "Trees Schema" {
-  trees.TreeStatus
-  trees.TaperTypes
-  trees.StraightnessTypes
-  trees.BranchingPatterns
-  trees.BarkCharacteristics
-  trees.Trees
-  trees.Stems
-  trees.PhenologyObservations
-  trees.Deadwood
-  trees.GroundVegetation
-  trees.CrownClasses
-  trees.DamageAgents
+  trees.tree_status
+  trees.taper_types
+  trees.straightness_types
+  trees.branching_patterns
+  trees.bark_characteristics
+  trees.trees
+  trees.stems
+  trees.phenology_observations
+  forest_floor.deadwood
+  forest_floor.ground_vegetation
+  trees.crown_classes
+  trees.damage_agents
 }
 
 TableGroup "Sensor Schema" {
-  sensor.SensorTypes
-  sensor.Sensors
-  sensor.SensorReadings
-  sensor.SensorTreeLinks
+  sensor.sensor_types
+  sensor.sensors
+  sensor.sensor_readings
+  sensor.sensor_tree_links
 }
 
 TableGroup "Environments Schema" {
-  environments.Environments
+  environments.environments
 }
 
 TableGroup "Imagery Schema" {
-  imagery.Images
+  imagery.images
 }
 
 

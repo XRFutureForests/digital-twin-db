@@ -23,13 +23,13 @@ silva-connector is an R container that joins this stack's docker network and
 talks to `dftdb-db` over libpq. There is no file interchange and no REST hop.
 
 ```
-shared.Variants + trees.Trees      the baseline forest state
+shared.variants + trees.trees      the baseline forest state
        ↓  (R: DBI::dbGetQuery, direct on the trees/shared schemas)
    silvaR (vendored TUM SILVA implementation)
        ↓  (one transaction over libpq)
-trees.SimulationRuns   ── what was asked for
-trees.GrowthSimulations ── the per-tree trajectory
-shared.Variants + trees.Trees ── one new variant per 5-year period
+trees.simulation_runs   ── what was asked for
+trees.growth_simulations ── the per-tree trajectory
+shared.variants + trees.trees ── one new variant per 5-year period
        ↓  (PostgREST)
 public.simulation_runs / public.growth_simulations / public.ue_trees
        ↓  (HTTPS Blueprint)
@@ -65,13 +65,13 @@ forest state to every downstream consumer, so it is all or nothing.
 
 | Target | Holds | On re-run |
 |---|---|---|
-| `trees.SimulationRuns` | one row: the run's parameters and identity | accumulates |
-| `trees.GrowthSimulations` | every per-tree projection of the run, keyed by `run_id`, plus stand aggregates | accumulates |
-| `shared.Variants` + `trees.Trees` (+ `trees.Stems`) | one complete forest **state** per 5-year period, chained by `parent_variant_id` | replaced — variant names are unique per (location, scenario), so `--replace` is required |
+| `trees.simulation_runs` | one row: the run's parameters and identity | accumulates |
+| `trees.growth_simulations` | every per-tree projection of the run, keyed by `simulation_run_id`, plus stand aggregates | accumulates |
+| `shared.variants` + `trees.trees` (+ `trees.stems`) | one complete forest **state** per 5-year period, chained by `parent_variant_id` | replaced — variant names are unique per (location, scenario), so `--replace` is required |
 
 The split is what makes scenario comparison possible: only one run can hold the
 variant chain UE reads, but any number of trajectories can sit side by side
-under their own `run_id`. `--no-promote` writes the first two targets and leaves
+under their own `simulation_run_id`. `--no-promote` writes the first two targets and leaves
 the chain alone.
 
 ### Reading a run back
@@ -80,9 +80,9 @@ Every run records the parameters that produced it (XRFF-374) — without that,
 two runs differing only by `--seed` would be indistinguishable.
 
 ```sql
-SELECT run_id, location_name, scenario_name,
+SELECT simulation_run_id, location_name, scenario_name,
        base_variant, base_year, horizon_years,
-       seed, mortality_enabled, promoted,
+       seed, is_mortality_enabled, promoted,
        run_params ->> 'competition' AS competition,
        first_year, last_year, tree_count
 FROM   public.simulation_runs
@@ -94,7 +94,7 @@ Simulator-agnostic parameters are columns; SILVA-specific ones
 absent on a run from before 2026-09-02 means it was not recorded, not that it
 was unset.
 
-`trees.GrowthSimulations.run_id` is a foreign key onto `trees.SimulationRuns`,
+`trees.growth_simulations.simulation_run_id` is a foreign key onto `trees.simulation_runs`,
 so a trajectory can no longer exist without a record of what produced it.
 
 ### Stand aggregates
@@ -121,7 +121,7 @@ loss, and a snag is real forest structure UE has to render.
 GET /rest/v1/ue_trees?variant_id=eq.<id>
 
 # Per-tree trajectory of one run
-GET /rest/v1/growth_simulations?run_id=eq.<uuid>&order=tree_entity_id,projection_year
+GET /rest/v1/growth_simulations?simulation_run_id=eq.<uuid>&order=tree_entity_id,projection_year
 
 # Available runs
 GET /rest/v1/simulation_runs?order=created_at.desc
@@ -141,7 +141,7 @@ silvaR works in ForestElementsR's `tum_wwk_short`, which has nine classes:
 | 4 | *Larix decidua* | 9 | *Alnus glutinosa* |
 | 5 | *Fagus sylvatica* | | |
 
-The mapping is from `shared.Species.scientific_name`, in
+The mapping is from `shared.species.scientific_name`, in
 `silva-connector/R/species.R`. It is deliberately **not** the legacy SILVA 4.5
 coding (`4 = Douglasie, 5 = Laerche, 11 = Buche`) that the old `silva_input`
 view emitted: the two collide on 4, 5 and 6, so mixing them silently turns
@@ -154,7 +154,7 @@ rather than a silent substitution into spruce.
 
 ## Site conditions
 
-`shared.Locations` carries `forest_growth_region`, `soil_moistness` and
+`shared.locations` carries `forest_growth_region`, `soil_moistness` and
 `soil_nutrient_supply` (added by migration `20260831120000`), which is what
 silvaR's site model needs. `silva-connector/docs/site-conditions.md` and
 `soil-classes.md` document the class definitions.

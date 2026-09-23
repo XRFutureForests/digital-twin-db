@@ -19,15 +19,15 @@ The digital twin DB stores multiple **forest states** in a strict three-level hi
 ### Three-level hierarchy
 
 ```
-shared.Locations   (which forest site: ecosense, mathisle)
-  └── shared.Scenarios   (a management regime AT that site; owns its baseline)
-        └── shared.Variants   (a state in the regime's timeline; parent_variant_id lineage)
-              └── trees.Trees  (all trees at that state, joined by variant_id)
+shared.locations   (which forest site: ecosense, mathisle)
+  └── shared.scenarios   (a management regime AT that site; owns its baseline)
+        └── shared.variants   (a state in the regime's timeline; parent_variant_id lineage)
+              └── trees.trees  (all trees at that state, joined by variant_id)
 ```
 
-**Scenarios are location-scoped** — `shared.Scenarios.location_id NOT NULL` and `UNIQUE(location_id, scenario_name)`. So a site like `ecosense` can hold several management regimes (`natural_growth`, and later e.g. `intensive_management`, `extensive_management`), each defining its own initial conditions and developing through its own variants. A scenario is *not* a single time step — the successive years are **variants** (snapshots) of it.
+**Scenarios are location-scoped** — `shared.scenarios.location_id NOT NULL` and `UNIQUE(location_id, scenario_name)`. So a site like `ecosense` can hold several management regimes (`natural_growth`, and later e.g. `intensive_management`, `extensive_management`), each defining its own initial conditions and developing through its own variants. A scenario is *not* a single time step — the successive years are **variants** (snapshots) of it.
 
-**A scenario is a point on two axes (since 2026-09-14).** `shared.Scenarios` carries `management_regime_id` → `shared.ManagementRegimes` and `climate_pathway_id` → `shared.ClimatePathways`, both small-integer lookups with a name, and a generated `scenario_code = management_regime_id * 10 + climate_pathway_id`. That is what Unreal sorts on: the tens digit groups by regime, the units digit by pathway, and every id comes with its text.
+**A scenario is a point on two axes (since 2026-09-14).** `shared.scenarios` carries `management_regime_id` → `shared.management_regimes` and `climate_pathway_id` → `shared.climate_pathways`, both small-integer lookups with a name, and a generated `scenario_code = management_regime_id * 10 + climate_pathway_id`. That is what Unreal sorts on: the tens digit groups by regime, the units digit by pathway, and every id comes with its text.
 
 | | id | name | |
 |---|---|---|---|
@@ -40,11 +40,11 @@ shared.Locations   (which forest site: ecosense, mathisle)
 
 The scenario **name follows one grammar** — `<pathway>` (a climate bucket, regime 0), `<regime>` (that regime under historical climate) or `<regime>_<pathway>` — and a `BEFORE INSERT` trigger derives the two ids from the name when the inserter does not set them, refusing a name that fits no form. So `natural_growth` is code 10, `natural_growth_ssp585` is 13, `target_diameter_harvest_ssp370` is 32, and the open-data connector's `ssp370` bucket is 2. One scenario per `(location, regime, pathway)`. A regime row also carries the SILVA thinning preset it stands for (`silva_rules`), which is how silva-connector knows what "managed" means — see its RUNBOOK.
 
-**Variants form a timeline** — `shared.Variants.parent_variant_id` links each state to the one it developed from (`baseline_2025` → `silva_2030` → `silva_2035`), with `sort_order` giving the display order. The same variant name (`baseline_2025`) exists once per (location, scenario), disambiguated by the hierarchy rather than embedded in the name.
+**Variants form a timeline** — `shared.variants.parent_variant_id` links each state to the one it developed from (`baseline_2025` → `silva_2030` → `silva_2035`), with `sort_order` giving the display order. The same variant name (`baseline_2025`) exists once per (location, scenario), disambiguated by the hierarchy rather than embedded in the name.
 
 > The old model conflated the levels — each simulated year was its own "scenario" (`Ecosense_Growth_2035`, `Mathisle_Growth_2045`), so one trajectory was scattered across several scenarios. Consolidated to one `natural_growth` scenario per site.
 
-One physical tree (identified by `tree_entity_id`) can appear in many rows in `trees.Trees` — one per variant. All trees at the same time step share the same `variant_id`. This is what enables UE "time travel": query by `variant_id` to load the complete forest at one point in time.
+One physical tree (identified by `tree_entity_id`) can appear in many rows in `trees.trees` — one per variant. All trees at the same time step share the same `variant_id`. This is what enables UE "time travel": query by `variant_id` to load the complete forest at one point in time.
 
 **Variants vs. data corrections:** A new Variant is for a distinct forest state. If you find a typo or missed measurement in an existing record, fix it with a plain UPDATE — not a new variant. The DB has AFTER UPDATE audit triggers that log the change automatically. See [data-access-guide.md](data-access-guide.md#correcting-data--field-updates-vs-new-variants).
 
@@ -53,43 +53,43 @@ One physical tree (identified by `tree_entity_id`) can appear in many rows in `t
 ## Schema
 
 ```
-shared.Locations              ← forest sites (top of hierarchy)
+shared.locations              ← forest sites (top of hierarchy)
   location_id  PK
   location_name                ← "ecosense", "mathisle"
 
-shared.Scenarios              ← management regimes, ONE set per location
+shared.scenarios              ← management regimes, ONE set per location
   scenario_id  PK
-  location_id    FK → shared.Locations    ← the site this regime belongs to
+  location_id    FK → shared.locations    ← the site this regime belongs to
   scenario_name                ← "natural_growth" (UNIQUE per location_id)
 
-shared.VariantTypes           ← how data was generated (lookup)
+shared.variant_types           ← how data was generated (lookup)
   variant_type_id PK
   variant_type_name             ← "original", "simulated_growth", "model_output", etc.
 
-shared.Variants               ← one state in a scenario's timeline
+shared.variants               ← one state in a scenario's timeline
   variant_id       PK
-  location_id      FK → shared.Locations    ← site (= the scenario's location)
-  scenario_id      FK → shared.Scenarios
-  variant_type_id   FK → shared.VariantTypes ← type of this entire snapshot
-  parent_variant_id FK → shared.Variants     ← lineage: the state this developed from
+  location_id      FK → shared.locations    ← site (= the scenario's location)
+  scenario_id      FK → shared.scenarios
+  variant_type_id   FK → shared.variant_types ← type of this entire snapshot
+  parent_variant_id FK → shared.variants     ← lineage: the state this developed from
   variant_name                 ← "baseline_2025", "growth_2035" (unique per location+scenario)
   simulation_year              ← calendar year this state represents
   time_delta_yrs               ← years since baseline
   sort_order                   ← display order in UE time-step selector (0 = baseline)
 
-trees.Trees                   ← one row per tree per time step
+trees.trees                   ← one row per tree per time step
   tree_id        PK            ← unique row identifier
   tree_entity_id  UUID          ← stable identity across all variants of the same physical tree
-  variant_id     FK → shared.Variants     ← group selector: all trees at one time step
-  parent_tree_id  FK → trees.Trees         ← lineage: which row this was grown from
-  scenario_id    FK → shared.Scenarios    ← convenience FK, resynced from the variant
-  plot_id        FK → shared.Plots        ← sub-plot within the site
+  variant_id     FK → shared.variants     ← group selector: all trees at one time step
+  parent_tree_id  FK → trees.trees         ← lineage: which row this was grown from
+  scenario_id    FK → shared.scenarios    ← convenience FK, resynced from the variant
+  plot_id        FK → shared.plots        ← sub-plot within the site
   Height_m, Position, position_original, species_id, Age_years, ...
 ```
 
 `tree_id` is the row PK (auto-increment, changes each time a tree is inserted). `tree_entity_id` is the stable physical-tree UUID — use it to track one tree across all variants/time steps. `variant_id` is the group selector used by UE to load a complete forest state.
 
-The **VariantType** (original, simulated_growth, etc.) is a property of the *variant as a whole* and lives on `shared.Variants.variant_type_id`, not on individual tree rows. `ue_trees` surfaces it via the variant join, so UE sees it per tree without any extra query.
+The **VariantType** (original, simulated_growth, etc.) is a property of the *variant as a whole* and lives on `shared.variants.variant_type_id`, not on individual tree rows. `ue_trees` surfaces it via the variant join, so UE sees it per tree without any extra query.
 
 ---
 
@@ -205,7 +205,7 @@ Scenarios are **location-scoped**. The `natural_growth` scenario of each site is
 
 | scenario_code | scenario_name | holds |
 |---|---|---|
-| 1–3 | `ssp126`, `ssp370`, `ssp585` | acquired climate only (`environments.Environments`) |
+| 1–3 | `ssp126`, `ssp370`, `ssp585` | acquired climate only (`environments.environments`) |
 | 10 | `natural_growth` | measured baseline + unmanaged projection, historical climate |
 | 11–13 | `natural_growth_ssp126` … `_ssp585` | unmanaged projection under each pathway |
 | 20–23 (ecosense) | `crop_tree_thinning`, `crop_tree_thinning_ssp126` … | managed projection, even-aged regime |
@@ -255,10 +255,10 @@ at the prior state).
 
 Each variant block:
 
-1. **Creates a Variant row** in `shared.Variants` under the scenario, with `parent_variant_id` set to the state it grows from.
-2. **Grows survivors** — selects baseline trees (joined to `trees.Stems` for DBH),
+1. **Creates a Variant row** in `shared.variants` under the scenario, with `parent_variant_id` set to the state it grows from.
+2. **Grows survivors** — selects baseline trees (joined to `trees.stems` for DBH),
    randomly drops a small fraction (simulated mortality), scales measurements up,
-   and inserts new `trees.Trees` rows with `variant_id` set to the new Variant,
+   and inserts new `trees.trees` rows with `variant_id` set to the new Variant,
    `tree_entity_id` carried over (same physical tree), and `parent_tree_id` pointing
    at the baseline row (lineage chain).
 3. **Regenerates** — inserts new sapling rows with fresh `tree_entity_id` and no

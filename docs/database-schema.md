@@ -47,7 +47,7 @@ The database is organized into **seven domain schemas** plus `public` (PostgREST
 | `shared` | Reference and cross-domain data | Locations, Species, Scenarios, Campaigns, Plots, Processes, AuditLog, ManagementEvents, DisturbanceEvents |
 | `trees` | Tree measurements, variants, and simulator output | Trees, Stems, PhenologyObservations, GrowthSimulations, morphology lookups |
 | `forest_floor` | Plot/site-level surveys, not tied to a single tree | Deadwood, GroundVegetation |
-| `pointclouds` | LiDAR scan data and processing lineage | PointClouds, ScannerTypes, Scanners |
+| `point_clouds` | LiDAR scan data and processing lineage | PointClouds, ScannerTypes, Scanners |
 | `sensor` | Environmental sensor hardware and time-series | SensorTypes, Sensors, SensorReadings, sensor_tree_links |
 | `environments` | Environmental condition variants | Environments |
 | `imagery` | Aerial and ground-based images | Images |
@@ -55,7 +55,7 @@ The database is organized into **seven domain schemas** plus `public` (PostgREST
 
 ### 1.4 Normalization
 
-Third Normal Form (3NF) throughout. Selective use of JSONB (`external_metadata` on `sensor.Sensors`, `input_data`/`output_data` on `shared.ProcessingJobs`) for semi-structured external system payloads. All spatial data uses PostGIS geometry columns rather than separate lat/lon columns.
+Third Normal Form (3NF) throughout. Selective use of JSONB (`external_metadata` on `sensor.sensors`, `input_data`/`output_data` on `shared.processing_jobs`) for semi-structured external system payloads. All spatial data uses PostGIS geometry columns rather than separate lat/lon columns.
 
 ---
 
@@ -166,7 +166,7 @@ erDiagram
 
 ## 3. Data Dictionary
 
-### 3.1 `shared.Locations`
+### 3.1 `shared.locations`
 
 **Description:** Forest plot locations with spatial boundaries, elevation, soil, and climate context. Central reference table — all domain data links back to a Location.
 
@@ -180,8 +180,8 @@ erDiagram
 | `Elevation_m` | NUMERIC(8,2) | YES | NULL | — | Site elevation in meters |
 | `Slope_deg` | NUMERIC(5,2) | YES | NULL | 0–90 | Slope in degrees |
 | `Aspect` | VARCHAR(3) | YES | NULL | N/NE/E/SE/S/SW/W/NW | Cardinal aspect direction |
-| `soil_type_id` | INTEGER | YES | NULL | FK → `shared.SoilTypes` | USDA soil classification |
-| `climate_zone_id` | INTEGER | YES | NULL | FK → `shared.ClimateZones` | Köppen climate zone |
+| `soil_type_id` | INTEGER | YES | NULL | FK → `shared.soil_types` | USDA soil classification |
+| `climate_zone_id` | INTEGER | YES | NULL | FK → `shared.climate_zones` | Köppen climate zone |
 | `forest_growth_region` | VARCHAR(16) | YES | NULL | — | German `Wuchsgebiet.Wuchsbezirk` code, e.g. `99.73.13`. Keys silvaR's climate table |
 | `soil_moistness` | SMALLINT | YES | NULL | 1–9 | SILVA soil moisture class (1 = very dry, 5 = fresh, 9 = very wet) |
 | `soil_nutrient_supply` | SMALLINT | YES | NULL | 1–5 | SILVA nutrient supply class (1 = very low, 5 = very high) |
@@ -192,11 +192,11 @@ erDiagram
 
 **Indexes:** `GIST(Boundary)`, `GIST(center_point)`, `(soil_type_id)`, `(climate_zone_id)`
 
-**Writing site attributes:** `Elevation_m`, `Slope_deg`, `Aspect`, `soil_type_id`, `climate_zone_id`, `forest_growth_region`, `soil_moistness` and `soil_nutrient_supply` are written by the `public.set_location_attributes` RPC, which records a `shared.AttributeProvenance` row for each in the same transaction. Those eight are the complete set it accepts; it raises on any other key. See [api-spec.md §3.4](api-spec.md).
+**Writing site attributes:** `Elevation_m`, `Slope_deg`, `Aspect`, `soil_type_id`, `climate_zone_id`, `forest_growth_region`, `soil_moistness` and `soil_nutrient_supply` are written by the `public.set_location_attributes` RPC, which records a `shared.attribute_provenance` row for each in the same transaction. Those eight are the complete set it accepts; it raises on any other key. See [api-spec.md §3.4](api-spec.md).
 
 ---
 
-### 3.2 `shared.Species`
+### 3.2 `shared.species`
 
 **Description:** Tree species reference with growth characteristics and GBIF validation.
 
@@ -218,7 +218,7 @@ erDiagram
 
 ---
 
-### 3.3 `shared.Campaigns`
+### 3.3 `shared.campaigns`
 
 **Description:** Data collection campaigns grouping related field work (LiDAR flights, field inventories, sensor deployments).
 
@@ -227,7 +227,7 @@ erDiagram
 | `campaign_id` | SERIAL | NO | PRIMARY KEY | — |
 | `campaign_name` | VARCHAR(200) | NO | UNIQUE | Unique campaign name |
 | `campaign_type` | VARCHAR(50) | NO | lidar_flight / field_inventory / sensor_deployment / drone_survey / manual_update | Campaign type |
-| `location_id` | INTEGER | YES | FK → `shared.Locations` ON DELETE SET NULL | Associated location |
+| `location_id` | INTEGER | YES | FK → `shared.locations` ON DELETE SET NULL | Associated location |
 | `start_date` | DATE | NO | — | Campaign start date |
 | `end_date` | DATE | YES | ≥ start_date | Campaign end date |
 | `Methodology` | TEXT | YES | — | Data collection methodology |
@@ -235,7 +235,7 @@ erDiagram
 
 ---
 
-### 3.4 `trees.Trees`
+### 3.4 `trees.trees`
 
 **Description:** Tree measurement and simulation rows. Each row is one physical-tree record within a specific forest state (Variant). `tree_entity_id` is the stable identity across all rows. `variant_id` groups all rows belonging to the same time step / scenario snapshot.
 
@@ -243,16 +243,16 @@ erDiagram
 |--------|------|------|-------------|-------------|
 | `tree_id` | SERIAL | NO | PRIMARY KEY | Unique row identifier |
 | `tree_entity_id` | UUID | NO | DEFAULT gen_random_uuid() | Persistent ID for the physical tree across all rows |
-| `variant_id` | INTEGER | YES | FK → `shared.Variants` ON DELETE SET NULL | Forest snapshot group (one time step in a scenario) |
-| `parent_tree_id` | INTEGER | YES | FK → `trees.Trees` ON DELETE SET NULL | Parent row in lineage chain |
-| `point_cloud_id` | INTEGER | YES | FK → `pointclouds.PointClouds` ON DELETE SET NULL | Source LiDAR scan |
-| `campaign_id` | INTEGER | YES | FK → `shared.Campaigns` | Data collection campaign |
-| `location_id` | INTEGER | NO | FK → `shared.Locations` ON DELETE CASCADE | Plot location |
-| `plot_id` | INTEGER | YES | FK → `shared.Plots` ON DELETE SET NULL | Sub-plot within location |
-| `scenario_id` | INTEGER | YES | FK → `shared.Scenarios` ON DELETE SET NULL | Simulation scenario |
-| `variant_type_id` | INTEGER | NO | FK → `shared.VariantTypes` | original / processed / simulated_growth / etc. |
-| `species_id` | INTEGER | YES | FK → `shared.Species` | Tree species |
-| `tree_status_id` | INTEGER | YES | FK → `trees.TreeStatus` | healthy / stressed / declining / dead / harvested / missing |
+| `variant_id` | INTEGER | YES | FK → `shared.variants` ON DELETE SET NULL | Forest snapshot group (one time step in a scenario) |
+| `parent_tree_id` | INTEGER | YES | FK → `trees.trees` ON DELETE SET NULL | Parent row in lineage chain |
+| `point_cloud_id` | INTEGER | YES | FK → `pointclouds.point_clouds` ON DELETE SET NULL | Source LiDAR scan |
+| `campaign_id` | INTEGER | YES | FK → `shared.campaigns` | Data collection campaign |
+| `location_id` | INTEGER | NO | FK → `shared.locations` ON DELETE CASCADE | Plot location |
+| `plot_id` | INTEGER | YES | FK → `shared.plots` ON DELETE SET NULL | Sub-plot within location |
+| `scenario_id` | INTEGER | YES | FK → `shared.scenarios` ON DELETE SET NULL | Simulation scenario |
+| `variant_type_id` | INTEGER | NO | FK → `shared.variant_types` | original / processed / simulated_growth / etc. |
+| `species_id` | INTEGER | YES | FK → `shared.species` | Tree species |
+| `tree_status_id` | INTEGER | YES | FK → `trees.tree_status` | healthy / stressed / declining / dead / harvested / missing |
 | `measurement_date` | DATE | YES | — | Field measurement date |
 | `DataSourceType` | VARCHAR(50) | YES | lidar / field / photogrammetry / estimated / simulated | How data was acquired |
 | `Height_m` | NUMERIC(6,2) | YES | 0–200 | Total tree height (m) |
@@ -271,9 +271,9 @@ erDiagram
 | `position_confidence` | NUMERIC(3,2) | YES | 0–1 | Position accuracy confidence |
 | `height_confidence` | NUMERIC(3,2) | YES | 0–1 | Height measurement confidence |
 | `tree_number` | INTEGER | YES | — | Local tree ID within location/plot |
-| `sensor_ref` | VARCHAR(100) | YES | — | Source-agnostic reference to the sensor cluster on this tree; matches the prefix of `sensor.Sensors.serial_number` so all of a tree's sensors resolve from it. Carries no provider semantics (for current Ecosense data the value is the external name prefix, e.g. `Beech_Mixed_8`). NULL if not instrumented. See §3.9 linking notes. |
-| `crown_class_id` | INTEGER | YES | FK → `trees.CrownClasses` | Crown competitive/social position (dominant/co_dominant/intermediate/overtopped/open_grown) — FIA `CCLCD` / NEON `canopyPosition` analog |
-| `damage_agent_id` | INTEGER | YES | FK → `trees.DamageAgents` | Primary agent responsible for observed damage or decline — FIA `AGENTCD` analog |
+| `sensor_ref` | VARCHAR(100) | YES | — | Source-agnostic reference to the sensor cluster on this tree; matches the prefix of `sensor.sensors.serial_number` so all of a tree's sensors resolve from it. Carries no provider semantics (for current Ecosense data the value is the external name prefix, e.g. `Beech_Mixed_8`). NULL if not instrumented. See §3.9 linking notes. |
+| `crown_class_id` | INTEGER | YES | FK → `trees.crown_classes` | Crown competitive/social position (dominant/co_dominant/intermediate/overtopped/open_grown) — FIA `CCLCD` / NEON `canopyPosition` analog |
+| `damage_agent_id` | INTEGER | YES | FK → `trees.damage_agents` | Primary agent responsible for observed damage or decline — FIA `AGENTCD` analog |
 | `Defoliation_percent` | NUMERIC(5,2) | YES | 0–100 | ICP Forests-style defoliation assessment |
 | `Discolouration_percent` | NUMERIC(5,2) | YES | 0–100 | ICP Forests-style foliage discolouration assessment |
 | `CrownTransparency_percent` | NUMERIC(5,2) | YES | 0–100 | ICP Forests-style crown transparency assessment |
@@ -282,17 +282,17 @@ erDiagram
 
 ---
 
-### 3.5 `trees.Stems`
+### 3.5 `trees.stems`
 
 **Description:** Individual stem measurements for multi-stem trees. stem_number=1 is the main stem.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
 | `stem_id` | SERIAL | NO | PRIMARY KEY | — |
-| `tree_id` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE | Parent tree row |
+| `tree_id` | INTEGER | NO | FK → `trees.trees` ON DELETE CASCADE | Parent tree row |
 | `stem_number` | INTEGER | NO | ≥ 1, UNIQUE with tree_id | 1 = main stem |
-| `taper_type_id` | INTEGER | YES | FK → `trees.TaperTypes` | Stem taper form |
-| `straightness_type_id` | INTEGER | YES | FK → `trees.StraightnessTypes` | Stem straightness |
+| `taper_type_id` | INTEGER | YES | FK → `trees.taper_types` | Stem taper form |
+| `straightness_type_id` | INTEGER | YES | FK → `trees.straightness_types` | Stem straightness |
 | `DBH_cm` | NUMERIC(6,2) | YES | 0–1000 | Diameter at breast height (1.3 m) in cm |
 | `taper_ratio` | NUMERIC(4,3) | YES | 0–1 | Top/bottom diameter ratio |
 | `Sweep_cm_per_m` | NUMERIC(5,2) | YES | ≥ 0 | Max horizontal deviation per meter |
@@ -303,46 +303,46 @@ erDiagram
 
 ---
 
-### 3.5a `trees.CrownClasses` and `trees.DamageAgents`
+### 3.5a `trees.crown_classes` and `trees.damage_agents`
 
-**Description:** Read-only reference tables added to align `trees.Trees` with variables standard across FIA, NEON, and ICP Forests inventory designs.
+**Description:** Read-only reference tables added to align `trees.trees` with variables standard across FIA, NEON, and ICP Forests inventory designs.
 
 | Table | Key Column | Allowed Values |
 |-------|-----------|-----------------|
-| `trees.CrownClasses` | `crown_class_name` | dominant, co_dominant, intermediate, overtopped, open_grown |
-| `trees.DamageAgents` | `damage_agent_name` | none, insect, disease, fire, wind, snow_ice, drought, mechanical, animal, human_activity, competition, unknown |
+| `trees.crown_classes` | `crown_class_name` | dominant, co_dominant, intermediate, overtopped, open_grown |
+| `trees.damage_agents` | `damage_agent_name` | none, insect, disease, fire, wind, snow_ice, drought, mechanical, animal, human_activity, competition, unknown |
 
 **Lookup data source:** `data/lookups/crown_classes.csv`, `data/lookups/damage_agents.csv`
 
-### 3.5b `trees.QSMs` and `trees.QSMCylinders`
+### 3.5b `trees.qsms` and `trees.qsm_cylinders`
 
-**Description:** QSM (Quantitative Structure Model) reconstructions and their cylinder geometry — the first schema step of the CityGML/QSM alignment (XRFF-264/265; see `citygml-qsm-mapping.md`). `trees.QSMs` is variant-like: the same physical tree (`tree_entity_id`) can have several reconstructions from different scans, tools, or parameter sets. QSM-derived volume/DBH/height/crown-area are kept separate from `trees.Trees`'s allometric equivalents so the two estimation methods can be validated against each other rather than conflated.
+**Description:** QSM (Quantitative Structure Model) reconstructions and their cylinder geometry — the first schema step of the CityGML/QSM alignment (XRFF-264/265; see `citygml-qsm-mapping.md`). `trees.qsms` is variant-like: the same physical tree (`tree_entity_id`) can have several reconstructions from different scans, tools, or parameter sets. QSM-derived volume/DBH/height/crown-area are kept separate from `trees.trees`'s allometric equivalents so the two estimation methods can be validated against each other rather than conflated.
 
-`trees.QSMCylinders` adopts the Real Twig / rTwig standardised cylinder column set directly ([aidanmorales.github.io/rTwig](https://aidanmorales.github.io/rTwig), "Dictionary" vignette) rather than inventing a new one, so ingesting a published rTwig CSV is a copy, not a transform. Only the source geometry/topology columns are stored (start point, axis, length, radius, parent, branch identity/order/position); rTwig's derived tree/segment metrics (growth length, distances, pipe-model outputs, segment ids) are not — they're recomputable from the stored geometry and would be speculative to store before a consumer needs them.
+`trees.qsm_cylinders` adopts the Real Twig / rTwig standardised cylinder column set directly ([aidanmorales.github.io/rTwig](https://aidanmorales.github.io/rTwig), "Dictionary" vignette) rather than inventing a new one, so ingesting a published rTwig CSV is a copy, not a transform. Only the source geometry/topology columns are stored (start point, axis, length, radius, parent, branch identity/order/position); rTwig's derived tree/segment metrics (growth length, distances, pipe-model outputs, segment ids) are not — they're recomputable from the stored geometry and would be speculative to store before a consumer needs them.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
 | `qsm_id` | BIGSERIAL | NO | PRIMARY KEY | — |
 | `tree_entity_id` | UUID | NO | — | Stable physical-tree identity; groups QSMs of the same tree across scans/tools |
-| `tree_id` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE | Measurement row this QSM was derived from |
-| `point_cloud_id` | INTEGER | YES | FK → `pointclouds.PointClouds` ON DELETE SET NULL | Source scan — provenance anchor |
-| `process_id` | INTEGER | YES | FK → `shared.Processes` ON DELETE SET NULL | TreeQSM/rTwig/SmartQSM + version |
+| `tree_id` | INTEGER | NO | FK → `trees.trees` ON DELETE CASCADE | Measurement row this QSM was derived from |
+| `point_cloud_id` | INTEGER | YES | FK → `pointclouds.point_clouds` ON DELETE SET NULL | Source scan — provenance anchor |
+| `process_id` | INTEGER | YES | FK → `shared.processes` ON DELETE SET NULL | TreeQSM/rTwig/SmartQSM + version |
 | `lod` | SMALLINT | YES | 0–4 | CityGML LoD this reconstruction supports (expect 3 or 4) |
 | `local_crs` | TEXT | YES | — | CRS of `QSMCylinders` coordinates, or the literal `local` |
 | `origin_position` | GEOMETRY(PointZ, 4326) | YES | — | Georeferences the local cylinder frame |
 | `cylinder_count` | INTEGER | YES | ≥ 0 | — |
-| `total_volume_m3`, `trunk_volume_m3`, `branch_volume_m3` | NUMERIC(10,3) | YES | ≥ 0 | QSM-derived volumes — distinct from `trees.Trees.volume_m3` |
-| `dbh_qsm_cm` | NUMERIC(6,2) | YES | 0–1000 | DBH from the QSM — validates against `trees.Stems.DBH_cm` |
+| `total_volume_m3`, `trunk_volume_m3`, `branch_volume_m3` | NUMERIC(10,3) | YES | ≥ 0 | QSM-derived volumes — distinct from `trees.trees.volume_m3` |
+| `dbh_qsm_cm` | NUMERIC(6,2) | YES | 0–1000 | DBH from the QSM — validates against `trees.stems.DBH_cm` |
 | `height_qsm_m` | NUMERIC(6,2) | YES | 0–200 | — |
 | `crown_area_qsm_m2` | NUMERIC(10,2) | YES | ≥ 0 | — |
 | `is_corrected` | BOOLEAN | NO | DEFAULT false | Raw TreeQSM (false) vs Real Twig radius-corrected (true) |
 
-**`trees.QSMCylinders`** (~10³–10⁴ rows per tree):
+**`trees.qsm_cylinders`** (~10³–10⁴ rows per tree):
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
-| `cylinder_id` | BIGSERIAL | NO | PRIMARY KEY | — |
-| `qsm_id` | BIGINT | NO | FK → `trees.QSMs` ON DELETE CASCADE | — |
+| `qsm_cylinder_id` | BIGSERIAL | NO | PRIMARY KEY | — |
+| `qsm_id` | BIGINT | NO | FK → `trees.qsms` ON DELETE CASCADE | — |
 | `cylinder_index` | INTEGER | NO | UNIQUE with `qsm_id` | Cylinder id within the QSM, as published (rTwig `id`) |
 | `parent_cylinder_index` | INTEGER | YES | not FK — self-reference by index | Matches the source files; 0 = base cylinder |
 | `start_point` | GEOMETRY(PointZ) | YES | — | Cylinder base, in the QSM's local frame |
@@ -352,17 +352,17 @@ erDiagram
 | `branch_index` | INTEGER | YES | — | rTwig `branch` |
 | `branch_order` | INTEGER | YES | ≥ 0 | 0 = trunk |
 | `branch_position` | INTEGER | YES | — | Position within the branch |
-| `part_type_id` | SMALLINT | YES | FK → `trees.TreePartTypes` | CityGML part semantic (trunk/branch/twig); see the part_type assignment rule in §3.5c |
+| `part_type_id` | SMALLINT | YES | FK → `trees.tree_part_types` | CityGML part semantic (trunk/branch/twig); see the part_type assignment rule in §3.5c |
 
-Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not exposed through a `public.*` view (unlike `trees.QSMs`): every other public view in this schema is one-row-per-entity, and there is no client query pattern yet for a per-tree cylinder cloud of this size — XRFF-269 (`qsm_to_pve` spike) will define the real access shape. The table is already reachable via the `trees` schema (`PGRST_DB_SCHEMAS`), gated by the same RLS policies a public view would carry.
+Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not exposed through a `public.*` view (unlike `trees.qsms`): every other public view in this schema is one-row-per-entity, and there is no client query pattern yet for a per-tree cylinder cloud of this size — XRFF-269 (`qsm_to_pve` spike) will define the real access shape. The table is already reachable via the `trees` schema (`PGRST_DB_SCHEMAS`), gated by the same RLS policies a public view would carry.
 
 **Lookup data source:** `data/lookups/tree_part_types.csv` (§3.5c).
 
 ---
 
-### 3.5c `trees.TreePartTypes` and `trees.TreeGraphEdges`
+### 3.5c `trees.tree_part_types` and `trees.tree_graph_edges`
 
-**Description:** CityGML tree semantics and topology (XRFF-266; `citygml-qsm-mapping.md` §4). `trees.TreePartTypes` is a read-only lookup mirroring Ambarwari et al.'s CityGML feature classes (root/trunk/branch/twig/leaf/crown) — the join point for a future CityGML ADE. Not every value is assignable to a `trees.QSMCylinders` row today: only trunk/branch/twig come from QSM geometry.
+**Description:** CityGML tree semantics and topology (XRFF-266; `citygml-qsm-mapping.md` §4). `trees.tree_part_types` is a read-only lookup mirroring Ambarwari et al.'s CityGML feature classes (root/trunk/branch/twig/leaf/crown) — the join point for a future CityGML ADE. Not every value is assignable to a `trees.qsm_cylinders` row today: only trunk/branch/twig come from QSM geometry.
 
 **Part_type assignment rule** (applied by `scripts/import/import_qsm.py --twig-radius-mm`, not a stored/computed column):
 1. `branch_order = 0` → `trunk`
@@ -371,12 +371,12 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 
 `twig_radius_m` is the species-specific value from rTwig's own `twigs`/`twigs_index` reference database — the same value used to correct that QSM's cylinder radii in the first place.
 
-`trees.TreeGraphEdges` materialises QSM topology (Ambarwari et al.'s Node/Edge model) — but only edges whose type deviates from the default. Every QSM cylinder has exactly one parent, so the full edge set already exists as `trees.QSMCylinders.parent_cylinder_index`; a row here overrides that default only where the edge's provenance needs recording.
+`trees.tree_graph_edges` materialises QSM topology (Ambarwari et al.'s Node/Edge model) — but only edges whose type deviates from the default. Every QSM cylinder has exactly one parent, so the full edge set already exists as `trees.qsm_cylinders.parent_cylinder_index`; a row here overrides that default only where the edge's provenance needs recording.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
-| `edge_id` | BIGSERIAL | NO | PRIMARY KEY | — |
-| `qsm_id` | BIGINT | NO | FK → `trees.QSMs` ON DELETE CASCADE | — |
+| `tree_graph_edge_id` | BIGSERIAL | NO | PRIMARY KEY | — |
+| `qsm_id` | BIGINT | NO | FK → `trees.qsms` ON DELETE CASCADE | — |
 | `from_cylinder_index`, `to_cylinder_index` | INTEGER | NO | UNIQUE with `qsm_id` | The CityGML Edge's 2 Nodes (parent → child `cylinder_index`) |
 | `edge_type` | TEXT | NO | `observed` \| `synthetic` \| `derived` | See below |
 
@@ -386,20 +386,20 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 
 ---
 
-### 3.5d `trees.RootSystemTypes` and `trees.Roots`
+### 3.5d `trees.root_system_types` and `trees.roots`
 
-**Description:** Root system classification and (eventually) geometry (XRFF-266), per Guerrero Iñiguez (2017) — the paper Ambarwari et al. themselves name for root coupling. Root was originally out of scope for lack of a data source; root system type correlates with species well enough to be a documented default today (`source = 'species_default'`), geometry columns left NULL until measured — classifiable now, geometrized later. `trees.RootSystemTypes` is a 3-value lookup (Köstler et al. 1968 root-morphology classification: `tap_root` | `heart_root` | `lateral_root`), same pattern as `trees.CrownClasses`.
+**Description:** Root system classification and (eventually) geometry (XRFF-266), per Guerrero Iñiguez (2017) — the paper Ambarwari et al. themselves name for root coupling. Root was originally out of scope for lack of a data source; root system type correlates with species well enough to be a documented default today (`source = 'species_default'`), geometry columns left NULL until measured — classifiable now, geometrized later. `trees.root_system_types` is a 3-value lookup (Köstler et al. 1968 root-morphology classification: `tap_root` | `heart_root` | `lateral_root`), same pattern as `trees.crown_classes`.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
 | `root_id` | BIGSERIAL | NO | PRIMARY KEY | — |
 | `tree_entity_id` | UUID | NO | — | Stable physical-tree identity |
-| `tree_id` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE | — |
-| `root_system_type_id` | SMALLINT | NO | FK → `trees.RootSystemTypes` | — |
+| `tree_id` | INTEGER | NO | FK → `trees.trees` ON DELETE CASCADE | — |
+| `root_system_type_id` | SMALLINT | NO | FK → `trees.root_system_types` | — |
 | `lod` | SMALLINT | YES | 0–4 | Which Guerrero Iñiguez detail level this row represents |
-| `geometry_class` | TEXT | YES | `implicit` \| `explicit` | Block model (LoD1-3) vs surface-projected (LoD4) — same column/values as `trees.TreeAssets.geometry_class` (XRFF-267) |
+| `geometry_class` | TEXT | YES | `implicit` \| `explicit` | Block model (LoD1-3) vs surface-projected (LoD4) — same column/values as `trees.tree_assets.geometry_class` (XRFF-267) |
 | `root_depth_m`, `root_spread_radius_m` | NUMERIC(6,2) | YES | ≥ 0 | Block-model parameters; NULL until measured |
-| `process_id` | INTEGER | YES | FK → `shared.Processes` ON DELETE SET NULL | How `root_system_type_id` was determined |
+| `process_id` | INTEGER | YES | FK → `shared.processes` ON DELETE SET NULL | How `root_system_type_id` was determined |
 | `source` | TEXT | NO | `species_default` \| `field_observed` \| `measured` | — |
 
 **Species-default seed:** `scripts/seed/root_and_foliage_defaults.sql` seeds one `species_default` row per tree of our 11-species canonical catalog (see `memory/publication-canonical-numbers.md` / growpy's `config/tree_asset_lookup.csv`), classified per Köstler et al. (1968): tap root — *Quercus robur, Abies alba, Pinus sylvestris, Pseudotsuga menziesii*; heart root — *Fagus sylvatica, Acer pseudoplatanus, Fraxinus excelsior, Tilia cordata*; lateral root — *Picea abies, Prunus avium, Betula pendula*.
@@ -408,36 +408,36 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 
 ---
 
-### 3.5e `trees.CrownFoliageProfiles`
+### 3.5e `trees.crown_foliage_profiles`
 
 **Description:** Crown leaf area density/distribution (XRFF-266) — not per-leaf geometry, which stays out of scope (QSM is a wood-only skeleton, Raumonen et al. 2013). Feeds growpy/PVE's existing procedural leaf-instancing path with a real fitted/literature density instead of an arbitrary default, once species-specific shape parameters exist.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
-| `profile_id` | BIGSERIAL | NO | PRIMARY KEY | — |
-| `tree_id` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE | — |
-| `process_id` | INTEGER | YES | FK → `shared.Processes` ON DELETE SET NULL | Method/paper the distribution came from |
+| `crown_foliage_profile_id` | BIGSERIAL | NO | PRIMARY KEY | — |
+| `tree_id` | INTEGER | NO | FK → `trees.trees` ON DELETE CASCADE | — |
+| `process_id` | INTEGER | YES | FK → `shared.processes` ON DELETE SET NULL | Method/paper the distribution came from |
 | `distribution_type` | TEXT | NO | `beta` \| `johnson_sb` \| `uniform` | `uniform` = no species-specific shape known yet, not a placeholder pretending to be fitted data |
 | `vertical_params`, `horizontal_params` | NUMERIC[] | YES | — | Distribution shape parameters; NULL when `uniform` |
 | `total_leaf_area_m2` | NUMERIC(10,2) | YES | ≥ 0 | — |
 | `source` | TEXT | NO | `species_literature_default` \| `fitted` \| `measured` | — |
 
-**Registered processes:** `shared.Processes` rows for Le Port, Bosc, Champion & Loustau (2000) (Beta PDFs, doi:10.1051/forest:2000110) and Jeréz, Dean, Cao & Roberts (2005) (Johnson SB function, doi:10.1093/forestscience/51.2.93), via `scripts/seed/root_and_foliage_defaults.sql`. Neither paper studied any of our 11 species (Maritime pine and loblolly pine respectively), so the seed script's per-tree rows use `distribution_type = 'uniform'` with no `process_id` rather than fabricating species-specific Beta/Johnson-SB parameters attributed to either paper.
+**Registered processes:** `shared.processes` rows for Le Port, Bosc, Champion & Loustau (2000) (Beta PDFs, doi:10.1051/forest:2000110) and Jeréz, Dean, Cao & Roberts (2005) (Johnson SB function, doi:10.1093/forestscience/51.2.93), via `scripts/seed/root_and_foliage_defaults.sql`. Neither paper studied any of our 11 species (Maritime pine and loblolly pine respectively), so the seed script's per-tree rows use `distribution_type = 'uniform'` with no `process_id` rather than fabricating species-specific Beta/Johnson-SB parameters attributed to either paper.
 
 ---
 
-### 3.6 `pointclouds.PointClouds`
+### 3.6 `pointclouds.point_clouds`
 
 **Description:** LiDAR point cloud records. Original scans and processed derivatives share the same table, linked via `parent_point_cloud_id`. File content is stored in S3; `file_path` holds the S3 URI.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
 | `point_cloud_id` | SERIAL | NO | PRIMARY KEY | — |
-| `parent_point_cloud_id` | INTEGER | YES | FK → `pointclouds.PointClouds` | Parent in processing lineage |
-| `location_id` | INTEGER | NO | FK → `shared.Locations` ON DELETE CASCADE | — |
-| `campaign_id` | INTEGER | YES | FK → `shared.Campaigns` | Acquisition campaign |
-| `scanner_id` | INTEGER | YES | FK → `pointclouds.Scanners` | Hardware used |
-| `variant_type_id` | INTEGER | NO | FK → `shared.VariantTypes` | original / processed / etc. |
+| `parent_point_cloud_id` | INTEGER | YES | FK → `pointclouds.point_clouds` | Parent in processing lineage |
+| `location_id` | INTEGER | NO | FK → `shared.locations` ON DELETE CASCADE | — |
+| `campaign_id` | INTEGER | YES | FK → `shared.campaigns` | Acquisition campaign |
+| `scanner_id` | INTEGER | YES | FK → `pointclouds.scanners` | Hardware used |
+| `variant_type_id` | INTEGER | NO | FK → `shared.variant_types` | original / processed / etc. |
 | `file_path` | TEXT | NO | CHECK s3://bucket/path.{las,laz,ply} | S3 URI to point cloud file |
 | `platform_type` | VARCHAR(50) | YES | terrestrial / aerial / mobile / UAV | Scanning platform |
 | `scan_bounds` | GEOMETRY(Polygon, 4326) | YES | GIST index | Coverage area in WGS84 |
@@ -453,18 +453,18 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 
 ---
 
-### 3.7 `sensor.Sensors`
+### 3.7 `sensor.sensors`
 
 **Description:** Physical sensor installations with hardware metadata, spatial position, and generic external-source fields (source-agnostic; Aquarius is one of many possible providers).
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
 | `sensor_id` | SERIAL | NO | PRIMARY KEY | — |
-| `location_id` | INTEGER | NO | FK → `shared.Locations` ON DELETE CASCADE | Research site |
-| `plot_id` | INTEGER | YES | FK → `shared.Plots` ON DELETE SET NULL | Named monitoring sub-area within the location |
+| `location_id` | INTEGER | NO | FK → `shared.locations` ON DELETE CASCADE | Research site |
+| `plot_id` | INTEGER | YES | FK → `shared.plots` ON DELETE SET NULL | Named monitoring sub-area within the location |
 | `source` | VARCHAR(50) | YES | — | External provider this data comes from, e.g. `aquarius` (one of many) |
-| `sensor_type_id` | INTEGER | NO | FK → `sensor.SensorTypes` | Sensor classification |
-| `campaign_id` | INTEGER | YES | FK → `shared.Campaigns` | Deployment campaign |
+| `sensor_type_id` | INTEGER | NO | FK → `sensor.sensor_types` | Sensor classification |
+| `campaign_id` | INTEGER | YES | FK → `shared.campaigns` | Deployment campaign |
 | `sensor_model` | VARCHAR(200) | NO | — | Hardware model name |
 | `serial_number` | VARCHAR(100) | YES | — | Hardware serial number |
 | `Position` | GEOMETRY(Point, 4326) | NO | NOT NULL, GIST index | Sensor location in WGS84 |
@@ -481,19 +481,19 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 
 ---
 
-### 3.8 `sensor.SensorReadings`
+### 3.8 `sensor.sensor_readings`
 
 **Description:** Time-series environmental measurements. High-volume table; the unique index on `(sensor_id, Timestamp)` serves every per-sensor time-series query (a btree is read backwards for `ORDER BY Timestamp DESC`) and makes `bulk_insert_readings` idempotent. Series that sample faster than every 15 minutes are stored at one reading per hour — the raw point nearest each hour boundary, timestamp as measured, not a mean — by the ingesting connector and, for rows loaded before 2026-09-16, by migration `44-thin-fast-series-to-hourly.sql`; the rule is spelled out in that file and in `aquarius_connector.sync.nearest_hour_samples`, and the two must agree.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
 | `ReadingID` | BIGSERIAL | NO | PRIMARY KEY | — |
-| `sensor_id` | INTEGER | NO | FK → `sensor.Sensors` ON DELETE CASCADE | — |
+| `sensor_id` | INTEGER | NO | FK → `sensor.sensors` ON DELETE CASCADE | — |
 | `Timestamp` | TIMESTAMPTZ | NO | UNIQUE with sensor_id | Measurement timestamp |
 | `Value` | NUMERIC(12,4) | NO | — | Measured value |
 | `Quality` | VARCHAR(50) | YES | good / suspect / bad / missing / calibration | Data quality flag |
-| `scenario_id` | INTEGER | YES | FK → `shared.Scenarios` | NULL for real readings |
-| `battery_voltage` | NUMERIC(4,2) | YES | — | Battery voltage at reading time |
+| `scenario_id` | INTEGER | YES | FK → `shared.scenarios` | NULL for real readings |
+| `battery_voltage_v` | NUMERIC(4,2) | YES | — | Battery voltage at reading time |
 | `signal_strength` | NUMERIC(6,2) | YES | — | Wireless signal strength (dBm) |
 
 **Key indexes:** UNIQUE `(sensor_id, Timestamp)` (covers all per-sensor time-series queries), `(Timestamp DESC)`, `(Quality)`, `(scenario_id)`. The former `(sensor_id, Timestamp DESC)` and `(sensor_id)` indexes duplicated the unique key and were dropped 2026-09-16 (2.1 GB on dev).
@@ -508,32 +508,32 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
-| `sensor_tree_link_id` | SERIAL | NO | PRIMARY KEY | Renamed from `sensortreelinkid` 2026-09-22 (XRFF-488) |
-| `sensor_id` | INTEGER | NO | FK → `sensor.Sensors` ON DELETE CASCADE, UNIQUE with tree_id | — |
-| `tree_id` | INTEGER | NO | FK → `trees.Trees` ON DELETE CASCADE, UNIQUE with sensor_id | — |
+| `sensor_tree_link_id` | SERIAL | NO | PRIMARY KEY | Renamed from `sensor_tree_link_id` 2026-09-22 (XRFF-488) |
+| `sensor_id` | INTEGER | NO | FK → `sensor.sensors` ON DELETE CASCADE, UNIQUE with tree_id | — |
+| `tree_id` | INTEGER | NO | FK → `trees.trees` ON DELETE CASCADE, UNIQUE with sensor_id | — |
 | `description` | TEXT | YES | — | Link provenance |
 
 **How links are created.** Aquarius names each sensor time-series with a per-species, per-plot-type sequence number (e.g. `Beech_Mixed_8`) that is *independent* of our inventory tree numbering (`plot_id` × `tree_number`), and Aquarius does not carry the inventory ID. The field-surveyed map `data/reference/ecosense_sensor_tree_map.csv` bridges the two. `scripts/import/link_sensors_to_trees.py`:
 
-1. Backfills `trees.Trees.sensor_ref` (resolved by `plot_id` + `tree_number`).
+1. Backfills `trees.trees.sensor_ref` (resolved by `plot_id` + `tree_number`).
 2. Links every sensor whose `serial_number` prefix equals a tree's `sensor_ref` — the whole monitoring cluster (dendrometer, sap flow, stem water potential, and the surrounding soil moisture / soil temperature probes).
 
 Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING`). The older `sensor.link_sensors_to_trees_by_pattern()` function is deprecated — it guessed the tree from the label number, which is ambiguous across plots.
 
 ---
 
-### 3.9 `environments.Environments`
+### 3.9 `environments.environments`
 
 **Description:** Environmental condition variants — aggregated from sensor data or defined for simulation scenarios.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `environment_id` | SERIAL | PRIMARY KEY | — |
-| `location_id` | INTEGER | FK → `shared.Locations` ON DELETE CASCADE | — |
-| `scenario_id` | INTEGER | FK → `shared.Scenarios` ON DELETE SET NULL | NULL for a non-scenario row |
-| `variant_type_id` | INTEGER | FK → `shared.VariantTypes` | sensor_derived / model_output / etc. |
+| `location_id` | INTEGER | FK → `shared.locations` ON DELETE CASCADE | — |
+| `scenario_id` | INTEGER | FK → `shared.scenarios` ON DELETE SET NULL | NULL for a non-scenario row |
+| `variant_type_id` | INTEGER | FK → `shared.variant_types` | sensor_derived / model_output / etc. |
 | `variant_name` | VARCHAR(300) | NOT NULL | Part of the natural key — use a deterministic name (`cmip6_ssp245_2041_2070`) |
-| `process_id` | INTEGER | FK → `shared.Processes` ON DELETE SET NULL | What produced the row: dataset, version, aggregation method, citation, licence |
+| `process_id` | INTEGER | FK → `shared.processes` ON DELETE SET NULL | What produced the row: dataset, version, aggregation method, citation, licence |
 | `avg_temperature_c` | NUMERIC(6,2) | −50 to 60 | Average temperature (°C) |
 | `avg_humidity_percent` | NUMERIC(5,2) | 0–100 | Average relative humidity (%) |
 | `total_precipitation_mm` | NUMERIC(8,2) | ≥ 0 | Total precipitation (mm) |
@@ -553,16 +553,16 @@ Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING
 
 ---
 
-### 3.10 `imagery.Images`
+### 3.10 `imagery.images`
 
 **Description:** Aerial and ground-based imagery with spatial metadata and camera parameters.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `image_id` | SERIAL | PRIMARY KEY | — |
-| `location_id` | INTEGER | FK → `shared.Locations` ON DELETE CASCADE | — |
-| `plot_id` | INTEGER | FK → `shared.Plots` ON DELETE SET NULL | Sub-plot |
-| `campaign_id` | INTEGER | FK → `shared.Campaigns` ON DELETE SET NULL | — |
+| `location_id` | INTEGER | FK → `shared.locations` ON DELETE CASCADE | — |
+| `plot_id` | INTEGER | FK → `shared.plots` ON DELETE SET NULL | Sub-plot |
+| `campaign_id` | INTEGER | FK → `shared.campaigns` ON DELETE SET NULL | — |
 | `file_path` | TEXT | NOT NULL | Path or URI to image file |
 | `file_format` | VARCHAR(20) | jpg / png / tiff / raw / geotiff | Image format |
 | `Position` | GEOMETRY(Point, 4326) | GIST index | Camera capture position in WGS84 |
@@ -574,13 +574,13 @@ Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING
 
 ---
 
-### 3.11 `shared.AuditLog` (and junction tables)
+### 3.11 `shared.audit_log` (and junction tables)
 
-**Description:** Field-level change tracking. Each change is one row in `shared.AuditLog`, linked to the affected domain entity via a junction table.
+**Description:** Field-level change tracking. Each change is one row in `shared.audit_log`, linked to the affected domain entity via a junction table.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `audit_id` | BIGSERIAL PK | — |
+| `audit_log_id` | BIGSERIAL PK | — |
 | `field_name` | VARCHAR(200) | Name of changed field |
 | `old_value` | TEXT | Previous value (JSON text) |
 | `new_value` | TEXT | New value (JSON text) |
@@ -590,24 +590,24 @@ Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING
 | `change_type` | VARCHAR(50) | field_update / bulk_update / revert / insert / delete |
 | `ip_address` | INET | Client IP |
 
-**Junction tables:** `shared.AuditLog_Trees`, `shared.AuditLog_PointClouds`, `shared.AuditLog_Environments`, `shared.AuditLog_Stems`
+**Junction tables:** `shared.audit_log_trees`, `shared.audit_log_point_clouds`, `shared.audit_log_environments`, `shared.audit_log_stems`
 
 ---
 
-### 3.12 `trees.GrowthSimulations`
+### 3.12 `trees.growth_simulations`
 
-**Description:** Per-tree dimensional projections produced by external forest growth simulators (SILVA, FVS, iLand, manual). One row = one tree entity at one projected year under one simulation run. Rows from the same run share a `run_id` UUID.
+**Description:** Per-tree dimensional projections produced by external forest growth simulators (SILVA, FVS, iLand, manual). One row = one tree entity at one projected year under one simulation run. Rows from the same run share a `simulation_run_id` UUID.
 
 | Column | Type | Null | Description |
 |--------|------|------|-------------|
 | `growth_simulation_id` | BIGSERIAL | No | Surrogate PK |
-| `run_id` | UUID | No | FK → `trees.SimulationRuns.run_id`; groups all rows from a single simulator execution |
-| `tree_entity_id` | UUID | No | Stable physical-tree identity (matches `trees.Trees.tree_entity_id`) |
-| `base_tree_id` | INTEGER | Yes | FK → `trees.Trees.tree_id`; starting-point measurement row |
-| `location_id` | INTEGER | Yes | FK → `shared.Locations` |
-| `plot_id` | INTEGER | Yes | FK → `shared.Plots` |
-| `scenario_id` | INTEGER | Yes | FK → `shared.Scenarios` |
-| `species_id` | INTEGER | Yes | FK → `shared.Species` |
+| `simulation_run_id` | UUID | No | FK → `trees.simulation_runs.simulation_run_id`; groups all rows from a single simulator execution |
+| `tree_entity_id` | UUID | No | Stable physical-tree identity (matches `trees.trees.tree_entity_id`) |
+| `base_tree_id` | INTEGER | Yes | FK → `trees.trees.tree_id`; starting-point measurement row |
+| `location_id` | INTEGER | Yes | FK → `shared.locations` |
+| `plot_id` | INTEGER | Yes | FK → `shared.plots` |
+| `scenario_id` | INTEGER | Yes | FK → `shared.scenarios` |
+| `species_id` | INTEGER | Yes | FK → `shared.species` |
 | `simulator_name` | VARCHAR(100) | No | One of: SILVA, FVS, iLand, manual, other |
 | `simulator_version` | VARCHAR(50) | Yes | Simulator version string |
 | `projection_year` | INTEGER | No | Target calendar year (1900–2300) |
@@ -622,32 +622,32 @@ Run after tree and sensor data are imported; idempotent (`ON CONFLICT DO NOTHING
 | `carbon_content_kg` | NUMERIC(12,2) | Yes | Carbon equivalent |
 | `health_score` | NUMERIC(3,2) | Yes | 0.0–1.0 vitality score |
 | `Mortality` | BOOLEAN | No | True if tree dies in this projection step |
-| `stand_basal_area_m2ha` | NUMERIC(8,4) | Yes | Stand-level basal area (same for all trees in run_id+Year) |
+| `stand_basal_area_m2ha` | NUMERIC(8,4) | Yes | Stand-level basal area (same for all trees in simulation_run_id+Year) |
 | `stand_volume_m3ha` | NUMERIC(10,3) | Yes | Stand-level volume |
 | `stand_biomass_tha` | NUMERIC(10,3) | Yes | Stand-level biomass |
 | `stand_stem_count_ha` | INTEGER | Yes | Stand-level stem density |
 | `created_at` | TIMESTAMPTZ | No | Insert timestamp |
 | `created_by` | VARCHAR(200) | Yes | Script or user that wrote the row |
 
-**Public API views:** `public.growth_simulations` (flat view with resolved scenario and species names) and `public.simulation_runs` (one row per run, over `trees.SimulationRuns` — identity, parameters and trajectory size, for run selectors). Both are read-only via the API; the writer is [silva-connector](../../silva-connector), which inserts into `trees.SimulationRuns` and `trees.GrowthSimulations` directly over libpq. See [silva-coupling.md](silva-coupling.md).
+**Public API views:** `public.growth_simulations` (flat view with resolved scenario and species names) and `public.simulation_runs` (one row per run, over `trees.simulation_runs` — identity, parameters and trajectory size, for run selectors). Both are read-only via the API; the writer is [silva-connector](../../silva-connector), which inserts into `trees.simulation_runs` and `trees.growth_simulations` directly over libpq. See [silva-coupling.md](silva-coupling.md).
 
-### 3.12a `trees.SimulationRuns`
+### 3.12a `trees.simulation_runs`
 
-**Description:** One row per simulator execution: what was simulated and how it was configured. `trees.GrowthSimulations.run_id` is a foreign key onto this table, so a trajectory cannot exist without a record of what produced it. Added by XRFF-374 — before it, two runs differing only by `--seed` were indistinguishable after the fact.
+**Description:** One row per simulator execution: what was simulated and how it was configured. `trees.growth_simulations.simulation_run_id` is a foreign key onto this table, so a trajectory cannot exist without a record of what produced it. Added by XRFF-374 — before it, two runs differing only by `--seed` were indistinguishable after the fact.
 
 | Column | Type | Null | Description |
 |--------|------|------|-------------|
-| `run_id` | UUID | No | PK; the run identity carried on every trajectory row |
-| `location_id` | INTEGER | No | FK → `shared.Locations` |
-| `scenario_id` | INTEGER | Yes | FK → `shared.Scenarios` |
-| `base_variant_id` | INTEGER | Yes | FK → `shared.Variants`; the forest state projected forward. Stored as a reference, not a name — variant names are reused and deleted by `--replace` |
+| `simulation_run_id` | UUID | No | PK; the run identity carried on every trajectory row |
+| `location_id` | INTEGER | No | FK → `shared.locations` |
+| `scenario_id` | INTEGER | Yes | FK → `shared.scenarios` |
+| `base_variant_id` | INTEGER | Yes | FK → `shared.variants`; the forest state projected forward. Stored as a reference, not a name — variant names are reused and deleted by `--replace` |
 | `base_year` | INTEGER | Yes | Calendar year of the base variant (year zero) |
 | `simulator_name` | VARCHAR(100) | No | One of: SILVA, FVS, iLand, manual, other |
 | `simulator_version` | VARCHAR(50) | Yes | Simulator version string |
-| `process_id` | INTEGER | Yes | FK → `shared.Processes`; algorithm, version, citation |
+| `process_id` | INTEGER | Yes | FK → `shared.processes`; algorithm, version, citation |
 | `horizon_years` | INTEGER | Yes | Projection horizon as requested |
 | `seed` | INTEGER | Yes | Random seed |
-| `mortality_enabled` | BOOLEAN | Yes | True if the simulator was allowed to kill trees |
+| `is_mortality_enabled` | BOOLEAN | Yes | True if the simulator was allowed to kill trees |
 | `promoted` | BOOLEAN | Yes | True if the run was promoted to the variant chain UE reads |
 | `run_params` | JSONB | No | Simulator-specific named parameters, e.g. `{"competition": "sf_polygon"}`. Named parameters only — never a command line |
 | `created_at` | TIMESTAMPTZ | No | Insert timestamp |
@@ -657,43 +657,43 @@ Simulator-agnostic parameters are columns; everything simulator-specific lives i
 
 ---
 
-### 3.13 `shared.Processes` and `shared.ProcessParameters`
+### 3.13 `shared.processes` and `shared.process_parameters`
 
 **Description:** Algorithm/process registry with academic attribution and versioning. Parameters are stored separately and linked to variant records via junction tables.
 
 | Table | Key Columns | Description |
 |-------|------------|-------------|
-| `shared.Processes` | `(process_name, Version)` UNIQUE | Algorithm registry with citation and metrics |
-| `shared.ProcessParameters` | `parameter_name`, `parameter_value`, `data_type` | Individual parameter name/value pairs |
-| `shared.ProcessMetrics` | `metric_name` in (accuracy/precision/recall/f1_score/rmse/mae/r_squared) | Published performance metrics |
-| `shared.ProcessingJobs` | `external_job_id` UNIQUE, `Status`, `input_data` JSONB, `output_data` JSONB | External workflow tracking |
-| `shared.AttributeProvenance` | `(location_id, column_name)` UNIQUE | Where each acquired `shared.Locations` value came from |
+| `shared.processes` | `(process_name, Version)` UNIQUE | Algorithm registry with citation and metrics |
+| `shared.process_parameters` | `parameter_name`, `parameter_value`, `data_type` | Individual parameter name/value pairs |
+| `shared.process_metrics` | `metric_name` in (accuracy/precision/recall/f1_score/rmse/mae/r_squared) | Published performance metrics |
+| `shared.processing_jobs` | `external_job_id` UNIQUE, `Status`, `input_data` JSONB, `output_data` JSONB | External workflow tracking |
+| `shared.attribute_provenance` | `(location_id, column_name)` UNIQUE | Where each acquired `shared.locations` value came from |
 
-**Parameter junction tables:** `shared.ProcessParameters_Trees`, `shared.ProcessParameters_PointClouds`, `shared.ProcessParameters_Environments`, `shared.ProcessParameters_Stems`
+**Parameter junction tables:** `shared.process_parameters_trees`, `shared.process_parameters_point_clouds`, `shared.process_parameters_environments`, `shared.process_parameters_stems`
 
 **`Category`** is one of `detection`, `classification`, `simulation`, `analysis`, `aggregation`, `acquisition`. The last was added 2026-09-02 for fetches from external open-data sources — ERA5, SoilGrids, a Thünen layer — as opposed to computation over data already held. `param_schema` (JSONB) describes the parameters a runnable workflow accepts; it never holds a command line or host path, because what a workflow *does* is defined only in the runner's private config.
 
 ---
 
-### 3.14 `shared.AttributeProvenance`
+### 3.14 `shared.attribute_provenance`
 
-**Description:** Where each value in a `shared.Locations` column came from — one row per (location, column), replaced when the value is refreshed. `environments.Environments` carries a `process_id` of its own; `shared.Locations` had nothing, and this database is published, so an acquired attribute has to be able to name its source.
+**Description:** Where each value in a `shared.locations` column came from — one row per (location, column), replaced when the value is refreshed. `environments.environments` carries a `process_id` of its own; `shared.locations` had nothing, and this database is published, so an acquired attribute has to be able to name its source.
 
-A table rather than N `*_source` columns on `shared.Locations`: the alternative is three columns per attribute, a schema change every time a source is added, and ~24 mostly-NULL columns on a two-row table.
+A table rather than N `*_source` columns on `shared.locations`: the alternative is three columns per attribute, a schema change every time a source is added, and ~24 mostly-NULL columns on a two-row table.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `attribute_provenance_id` | SERIAL | PRIMARY KEY | — |
-| `location_id` | INTEGER | NOT NULL, FK → `shared.Locations` ON DELETE CASCADE | — |
-| `column_name` | VARCHAR(64) | NOT NULL | The `shared.Locations` column this row describes. Not FK-checkable; the allowed set is enforced by `set_location_attributes`, the only writer |
-| `process_id` | INTEGER | NOT NULL, FK → `shared.Processes` ON DELETE RESTRICT | The source: name, version, licence, citation. NOT NULL by design — an acquired value with no registered source is what this table exists to prevent |
+| `location_id` | INTEGER | NOT NULL, FK → `shared.locations` ON DELETE CASCADE | — |
+| `column_name` | VARCHAR(64) | NOT NULL | The `shared.locations` column this row describes. Not FK-checkable; the allowed set is enforced by `set_location_attributes`, the only writer |
+| `process_id` | INTEGER | NOT NULL, FK → `shared.processes` ON DELETE RESTRICT | The source: name, version, licence, citation. NOT NULL by design — an acquired value with no registered source is what this table exists to prevent |
 | `fetched_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | When the value was retrieved, which is neither when the source published it nor when the row was written |
 | `source_uri` | TEXT | — | API request URL, DOI or file identifier, so a value traces to one retrieval and not just to a dataset |
 | `license` | VARCHAR(100) | — | e.g. `CC-BY-4.0`, `Copernicus`. Per value, because this database is published and attribution requirements travel with the data |
 
 **UNIQUE `(location_id, column_name)`** is what makes `set_location_attributes` idempotent — the same structural device as `ON CONFLICT (external_id)` in `bulk_upsert_sensors`.
 
-**Reading it:** `public.attributeprovenance` (`security_invoker='on'`) resolves the process name, version and citation. `GET /rest/v1/attributeprovenance`.
+**Reading it:** `public.attribute_provenance` (`security_invoker='on'`) resolves the process name, version and citation. `GET /rest/v1/attribute_provenance`.
 
 ---
 
@@ -703,31 +703,31 @@ A table rather than N `*_source` columns on `shared.Locations`: the alternative 
 
 | Child Table | Column | Parent Table | On Delete |
 |------------|--------|-------------|-----------|
-| `shared.Plots` | `location_id` | `shared.Locations` | CASCADE |
-| `trees.Trees` | `location_id` | `shared.Locations` | CASCADE |
-| `trees.Trees` | `variant_id` | `shared.Variants` | SET NULL |
-| `trees.Trees` | `parent_tree_id` | `trees.Trees` | SET NULL |
-| `trees.Trees` | `point_cloud_id` | `pointclouds.PointClouds` | SET NULL |
-| `trees.Stems` | `tree_id` | `trees.Trees` | CASCADE |
-| `sensor.Sensors` | `location_id` | `shared.Locations` | CASCADE |
-| `sensor.SensorReadings` | `sensor_id` | `sensor.Sensors` | CASCADE |
-| `sensor.SensorTreeLinks` | `sensor_id` | `sensor.Sensors` | CASCADE |
-| `sensor.SensorTreeLinks` | `tree_id` | `trees.Trees` | CASCADE |
-| `pointclouds.PointClouds` | `location_id` | `shared.Locations` | CASCADE |
-| `imagery.Images` | `location_id` | `shared.Locations` | CASCADE |
+| `shared.plots` | `location_id` | `shared.locations` | CASCADE |
+| `trees.trees` | `location_id` | `shared.locations` | CASCADE |
+| `trees.trees` | `variant_id` | `shared.variants` | SET NULL |
+| `trees.trees` | `parent_tree_id` | `trees.trees` | SET NULL |
+| `trees.trees` | `point_cloud_id` | `pointclouds.point_clouds` | SET NULL |
+| `trees.stems` | `tree_id` | `trees.trees` | CASCADE |
+| `sensor.sensors` | `location_id` | `shared.locations` | CASCADE |
+| `sensor.sensor_readings` | `sensor_id` | `sensor.sensors` | CASCADE |
+| `sensor.sensor_tree_links` | `sensor_id` | `sensor.sensors` | CASCADE |
+| `sensor.sensor_tree_links` | `tree_id` | `trees.trees` | CASCADE |
+| `pointclouds.point_clouds` | `location_id` | `shared.locations` | CASCADE |
+| `imagery.images` | `location_id` | `shared.locations` | CASCADE |
 
 ### 4.2 Key Check Constraints
 
 | Table | Constraint | Description |
 |-------|-----------|-------------|
-| `trees.Trees` | `DataSourceType IN (lidar, field, photogrammetry, estimated, simulated)` | Valid data source values |
-| `trees.Trees` | `Height_m > 0 AND Height_m <= 200` | Plausible tree height range |
-| `trees.Trees` | `crown_base_height_m <= Height_m` | Physical constraint |
-| `pointclouds.PointClouds` | `file_path ~ '^s3://...(las|laz|ply)$'` | S3 URI format validation |
-| `sensor.SensorReadings` | `Quality IN (good, suspect, bad, missing, calibration)` | Valid quality flags |
-| `sensor.SensorReadings` | UNIQUE `(sensor_id, Timestamp)` | Idempotent bulk insert support |
-| `shared.Locations` | `Slope_deg BETWEEN 0 AND 90` | Valid slope range |
-| `shared.Campaigns` | `end_date >= start_date` | Valid date range |
+| `trees.trees` | `DataSourceType IN (lidar, field, photogrammetry, estimated, simulated)` | Valid data source values |
+| `trees.trees` | `Height_m > 0 AND Height_m <= 200` | Plausible tree height range |
+| `trees.trees` | `crown_base_height_m <= Height_m` | Physical constraint |
+| `pointclouds.point_clouds` | `file_path ~ '^s3://...(las|laz|ply)$'` | S3 URI format validation |
+| `sensor.sensor_readings` | `Quality IN (good, suspect, bad, missing, calibration)` | Valid quality flags |
+| `sensor.sensor_readings` | UNIQUE `(sensor_id, Timestamp)` | Idempotent bulk insert support |
+| `shared.locations` | `Slope_deg BETWEEN 0 AND 90` | Valid slope range |
+| `shared.campaigns` | `end_date >= start_date` | Valid date range |
 
 ---
 
@@ -739,26 +739,26 @@ All geometry columns use GIST indexes:
 
 | Table | Column | Purpose |
 |-------|--------|---------|
-| `shared.Locations` | `Boundary`, `center_point` | Spatial queries on plot extent |
-| `shared.Plots` | `Boundary`, `center_point` | Sub-plot spatial queries |
-| `trees.Trees` | `Position`, `crown_boundary` | Tree position and crown overlap queries |
-| `sensor.Sensors` | `Position` | Sensor proximity queries |
-| `pointclouds.PointClouds` | `scan_bounds` | Point cloud coverage queries |
-| `imagery.Images` | `Position` | Camera position queries |
-| `forest_floor.Deadwood` | `Position` | Deadwood position queries |
+| `shared.locations` | `Boundary`, `center_point` | Spatial queries on plot extent |
+| `shared.plots` | `Boundary`, `center_point` | Sub-plot spatial queries |
+| `trees.trees` | `Position`, `crown_boundary` | Tree position and crown overlap queries |
+| `sensor.sensors` | `Position` | Sensor proximity queries |
+| `pointclouds.point_clouds` | `scan_bounds` | Point cloud coverage queries |
+| `imagery.images` | `Position` | Camera position queries |
+| `forest_floor.deadwood` | `Position` | Deadwood position queries |
 
 ### 5.2 Time-Series Indexes
 
 | Table | Index | Purpose |
 |-------|-------|---------|
-| `sensor.SensorReadings` | UNIQUE `(sensor_id, Timestamp)` | Primary time-series access pattern and idempotent insert |
-| `sensor.SensorReadings` | `(Timestamp DESC)` | Cross-sensor time range queries |
-| `pointclouds.PointClouds` | `(scan_date DESC)` | Latest scan retrieval |
-| `trees.Trees` | `(measurement_date DESC)` | Latest measurement retrieval |
+| `sensor.sensor_readings` | UNIQUE `(sensor_id, Timestamp)` | Primary time-series access pattern and idempotent insert |
+| `sensor.sensor_readings` | `(Timestamp DESC)` | Cross-sensor time range queries |
+| `pointclouds.point_clouds` | `(scan_date DESC)` | Latest scan retrieval |
+| `trees.trees` | `(measurement_date DESC)` | Latest measurement retrieval |
 
 ### 5.3 Lineage Indexes
 
-`parent_tree_id`, `parent_point_cloud_id`, and `parent_environment_id` are indexed on their respective tables to support recursive lineage traversal. `trees.Trees.variant_id` is indexed to support fast tree-catalogue queries (`GET /ue_trees?variant_id=eq.X`).
+`parent_tree_id`, `parent_point_cloud_id`, and `parent_environment_id` are indexed on their respective tables to support recursive lineage traversal. `trees.trees.variant_id` is indexed to support fast tree-catalogue queries (`GET /ue_trees?variant_id=eq.X`).
 
 ---
 
@@ -806,18 +806,25 @@ For new schema changes: add a new timestamped file under `supabase/migrations/` 
 
 ### 7.2 Naming Conventions
 
-Every identifier in the database is **lowercase snake_case**. Tables are created
-unquoted, so PostgreSQL folds them to lowercase regardless of how the DDL spells
-them — `CREATE TABLE trees.Trees` produces `trees.trees`. This document and
-`AGENTS.md` render table names PascalCase (`shared.ProcessingJobs`) for
-readability; that is a *prose* convention, not the stored name. Quote nothing and
-the two never diverge.
+Every identifier in the database is **lowercase snake_case**, tables included.
+
+Tables are created unquoted, so PostgreSQL folds them to lowercase regardless of
+how the DDL spells them: `CREATE TABLE trees.GrowthSimulations` stores
+`growthsimulations`. That fold is how the word boundaries were lost in the first
+place, and why 52 tables were renamed on 2026-09-23 — the columns had always been
+snake_case, the tables never were.
+
+These docs used to render table names PascalCase (`shared.ProcessingJobs`) as a
+readability convention over a squashed real name. That rendering is gone. It
+bought nothing once the real name became `shared.processing_jobs`, and it
+actively misled, because a reader could reasonably type what the page showed.
+Write the identifier the database holds.
 
 | Element | Convention | Example |
 |---------|-----------|---------|
 | Schemas | lowercase, single word where possible | `shared`, `trees`, `sensor`, `forest_floor` |
-| Tables | lowercase, **plural**, no separator between words | `trees`, `sensorreadings`, `growthsimulations` |
-| Junction tables | the two table names joined by `_` | `processparameters_trees`, `auditlog_stems` |
+| Tables | lowercase **snake_case**, plural | `trees`, `sensor_readings`, `growth_simulations` |
+| Junction tables | the two table names joined by `_` | `process_parameters_trees`, `audit_log_stems` |
 | Columns | lowercase snake_case | `crown_base_height_m`, `simulator_version` |
 | Primary keys | `{singular_stem}_id`, matching the table | `location_id` on `shared.locations` |
 | Foreign keys | the parent's PK name, unchanged | `location_id` referencing `shared.locations.location_id` |
@@ -834,16 +841,16 @@ what is mechanically checkable against a live connection — identifier case, th
 `_id` rule, FK-to-parent agreement, PK shape, lookup labels, boolean prefixes,
 unit suffixes, CHECK coverage, and view aliases that strip a `_name` or unit
 suffix. It cannot see a *missing* word separator inside an otherwise lowercase
-name (`sensortreelinkid` reads as valid snake_case to a regex); that class is
+name (`sensor_tree_link_id` reads as valid snake_case to a regex); that class is
 caught indirectly, via the PK-shape and view-alias rules, or not at all.
 
 1. **Every foreign-key column ends in `_id`** — 118 of 118, no exceptions.
 2. **A foreign key carries the parent's PK name.** Ten FK edges currently differ,
    and each is a deliberate qualifier on a self-reference or a role
    (`parent_tree_id`, `base_variant_id`, `climate_pathway_id` →
-   `climatepathways.pathway_id`). A *new* FK should not add to that list.
+   `climatepathways.climate_pathway_id`). A *new* FK should not add to that list.
 3. **A lookup's `_name` stem matches its own `_id` stem.** Three legacy tables
-   break this (`branchelongationhabits`, `phanerophyteheightclasses`,
+   break this (`branch_elongation_habits`, `phanerophyte_height_classes`,
    `straightnesstypes` — XRFF-487); do not copy them.
 
 **Units.** A column holding a physical quantity carries its unit, always as the
@@ -851,7 +858,7 @@ last token. Compound units are written numerator-then-denominator with no `per`:
 `stand_volume_m3ha`, `wood_density_kg_m3`, `nutrient_nitrogen_mg_kg`.
 Dimensionless ratios and scores take no suffix (`crown_ratio`, `health_score`).
 One concept is deliberately stored in two units — `height_m` on trees,
-`height_cm` on `forest_floor.groundvegetation`, where metres would be mostly
+`height_cm` on `forest_floor.ground_vegetation`, where metres would be mostly
 zeroes; the suffix is what keeps that safe.
 
 **Enumerated text.** A `*_type` / `*_status` / `*_class` column is guarded by a

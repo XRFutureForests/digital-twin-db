@@ -23,7 +23,7 @@ The Digital Forest Twin is a PostgreSQL-based spatial database for forest resear
 
 Two upstream sources feed the twin beyond direct field surveys and growth simulations:
 
-- **Point clouds** are acquired and processed upstream on [3Dtrees.earth](https://www.3dtrees.earth), which handles upload, standardization, and prediction-enrichment of TLS/MLS/ULS/ALS scans. The resulting processing variants (standardized, prediction-enriched) are registered into `pointclouds.PointClouds`, preserving lineage back to the source scan via `parent_point_cloud_id`.
+- **Point clouds** are acquired and processed upstream on [3Dtrees.earth](https://www.3dtrees.earth), which handles upload, standardization, and prediction-enrichment of TLS/MLS/ULS/ALS scans. The resulting processing variants (standardized, prediction-enriched) are registered into `pointclouds.point_clouds`, preserving lineage back to the source scan via `parent_point_cloud_id`.
 - **Live data** covers any continuously updating measurement relevant to a location — both physical sensor networks (e.g. the Ecosense Forest deployment: soil moisture, sap flow, stem radial variation) and external environmental feeds such as weather or climate data. The `sensor` schema's `external_id`/`ExternalMetadata` columns are source-agnostic by design; the Aquarius API is the current live implementation, not the only one the schema supports.
 
 ---
@@ -162,7 +162,7 @@ flowchart LR
 | | Schema | Domain |
 |---|---|---|
 | 🟨 | `shared` | Reference & audit tables used across all domains |
-| ⬜ | `pointclouds` | LiDAR scans and scanner hardware |
+| ⬜ | `point_clouds` | LiDAR scans and scanner hardware |
 | 🟩 | `trees` | Tree inventory, stems, morphology, phenology |
 | 🟧 | `sensor` | Environmental sensors and time-series readings |
 | 🟦 | `environments` | Aggregated environmental conditions |
@@ -348,7 +348,7 @@ erDiagram
 | **PhenologyObservations** | Tree phenology observations tracking seasonal development phases (bud_break, leaf_out, flowering, fruit_set, leaf_color, leaf_fall, dormancy) |
 | **Deadwood** | Dead wood inventory including standing dead, fallen logs, stumps, and branches with decay classification (1-5) |
 | **GroundVegetation** | Ground vegetation survey records by plot and layer (herb, shrub, moss, litter, fern, grass) |
-| **GrowthSimulations** | Per-tree dimensional projections from external growth simulators (SILVA, FVS, iLand, manual) at discrete future years, keyed by `run_id` and `tree_entity_id`; powers the Unreal Time Machine feature |
+| **GrowthSimulations** | Per-tree dimensional projections from external growth simulators (SILVA, FVS, iLand, manual) at discrete future years, keyed by `simulation_run_id` and `tree_entity_id`; powers the Unreal Time Machine feature |
 
 ### 4. 🟧 Sensor Schema
 
@@ -609,7 +609,7 @@ flowchart LR
 | Database | PostgreSQL 15 + PostGIS |
 | Infrastructure | Self-hosted Supabase |
 | REST API | PostgREST (auto-generated) |
-| Job queue | `shared.processingjobs` + `request_job()` RPC, claimed by a systemd runner |
+| Job queue | `shared.processing_jobs` + `request_job()` RPC, claimed by a systemd runner |
 | Data Import | Python scripts |
 | Visualization | Unreal Engine 5 |
 
@@ -642,7 +642,7 @@ WHERE t.location_id = 4;
 
 -- Sensor readings for tree correlation
 SELECT sr.timestamp, sr.value, stl.tree_id
-FROM sensor.sensorreadings sr
+FROM sensor.sensor_readings sr
 JOIN sensor.sensor_tree_links stl ON sr.sensor_id = stl.sensor_id
 WHERE sr.timestamp > NOW() - INTERVAL '30 days';
 ```

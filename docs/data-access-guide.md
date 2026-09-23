@@ -15,7 +15,7 @@ curl "http://<SERVER_OR_LOCALHOST>:8000/rest/v1/species" \
   -H "apikey: <ANON_KEY>"
 ```
 
-Read access covers every public view: `species`, `locations`, `trees`, `ue_trees`, `scenarios`, `varianttypes`, `sensors`, `sensorreadings`, `growth_simulations`, `simulation_runs`, and all morphology lookups.
+Read access covers every public view: `species`, `locations`, `trees`, `ue_trees`, `scenarios`, `variant_types`, `sensors`, `sensor_readings`, `growth_simulations`, `simulation_runs`, and all morphology lookups.
 
 ---
 
@@ -47,7 +47,7 @@ Available scripts:
 | `scripts/import/import_trees.py` | Bulk upsert tree inventory CSV |
 | `scripts/import/ingest_sensor_data.py` | Sync sensors + readings from any provider (see [aquarius-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) for Aquarius) |
 | `scripts/import/link_sensors_to_trees.py` | Link sensors to their nearest tree |
-| [silva-connector](../../silva-connector) (separate repo, R) | Run SILVA and write `trees.SimulationRuns` + `trees.GrowthSimulations` + the variant chain, over libpq |
+| [silva-connector](../../silva-connector) (separate repo, R) | Run SILVA and write `trees.simulation_runs` + `trees.growth_simulations` + the variant chain, over libpq |
 | `scripts/admin/refresh_lookups.py` | Reload lookup CSVs without a full DB reset |
 
 ### Option C — Direct API with a user JWT
@@ -263,17 +263,17 @@ UPDATE trees."Trees" SET "Height_m" = 22.5 WHERE "tree_id" = 1234;
 UPDATE trees."Stems" SET "DBH_cm" = 31.2 WHERE "stem_id" = 5678;
 ```
 
-**Automatic audit logging:** AFTER UPDATE triggers on `trees.Trees`, `trees.Stems`, `trees.PhenologyObservations`, `environments.Environments`, and `pointclouds.PointClouds` log every change to `shared.AuditLog`. The log records the field name, old value, new value, timestamp, and the GoTrue user ID of whoever made the change. No manual action is required. `trees.Deadwood` and `trees.GroundVegetation` moved to their own `forest_floor` schema and are not audited (site/plot-level surveys, not per-tree records).
+**Automatic audit logging:** AFTER UPDATE triggers on `trees.trees`, `trees.stems`, `trees.phenology_observations`, `environments.environments`, and `pointclouds.point_clouds` log every change to `shared.audit_log`. The log records the field name, old value, new value, timestamp, and the GoTrue user ID of whoever made the change. No manual action is required. `forest_floor.deadwood` and `forest_floor.ground_vegetation` moved to their own `forest_floor` schema and are not audited (site/plot-level surveys, not per-tree records).
 
 Audited fields:
 
 | Table | Fields automatically logged |
 |-------|----------------------------|
-| `trees.Trees` | `Height_m`, `crown_width_m`, `health_score`, `tree_status_id` |
-| `trees.Stems` | `DBH_cm`, `stem_height_m` |
-| `environments.Environments` | `avg_temperature_c`, `stress_factor` |
-| `pointclouds.PointClouds` | `processing_status` |
-| `trees.PhenologyObservations` | `phenophase_status`, `intensity_percent` |
+| `trees.trees` | `Height_m`, `crown_width_m`, `health_score`, `tree_status_id` |
+| `trees.stems` | `DBH_cm`, `stem_height_m` |
+| `environments.environments` | `avg_temperature_c`, `stress_factor` |
+| `pointclouds.point_clouds` | `processing_status` |
+| `trees.phenology_observations` | `phenophase_status`, `intensity_percent` |
 
 Changes to other fields (e.g., `species_id`, `measurement_date`) are not automatically audited by the trigger. To add a field, edit the `WHEN 'trees' THEN` block in `shared.audit_update_trigger()` (see `AGENTS.md` §"Schema Migrations" for how to ship the change) — follow the existing pattern:
 ```sql
@@ -302,5 +302,5 @@ SELECT * FROM shared.recent_changes ORDER BY "Timestamp" DESC LIMIT 50;
 
 ```sql
 -- Revert a specific audit entry (creates a compensating log entry)
-SELECT shared.revert_field_change(<audit_id>, 'Corrected data entry error');
+SELECT shared.revert_field_change(<audit_log_id>, 'Corrected data entry error');
 ```

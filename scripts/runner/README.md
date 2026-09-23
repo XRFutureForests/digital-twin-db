@@ -20,7 +20,7 @@ python scripts/runner/runner.py reap     # fail jobs whose process is gone
 
 | Half | Where | Says |
 |---|---|---|
-| Name and parameters | `shared.Processes.workflow_key` + `param_schema` | *that* a workflow exists and what it accepts |
+| Name and parameters | `shared.processes.workflow_key` + `param_schema` | *that* a workflow exists and what it accepts |
 | Command | `config/workflows.toml`, per host, gitignored | *what* that name runs |
 
 The runner claims a job only when its workflow appears in **both**. Nothing a

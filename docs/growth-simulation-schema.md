@@ -1,25 +1,25 @@
 # Growth Simulation Schema
 
 **Issue:** XRFF-243  
-**Schema file:** `docker/volumes/db/init/10-baseline-schema.sql` (`trees.GrowthSimulations`), `21-add-simulationruns-and-queue-columns.sql` (`trees.SimulationRuns`)
+**Schema file:** `docker/volumes/db/init/10-baseline-schema.sql` (`trees.growth_simulations`), `21-add-simulationruns-and-queue-columns.sql` (`trees.simulation_runs`)
 
 ---
 
 ## Purpose
 
-`trees.GrowthSimulations` is the write target for all forest growth simulator output. It stores per-tree dimensional projections at discrete future time steps, produced by simulators such as SILVA, FVS, or iLand, then served to UE via PostgREST for the Time Machine feature.
+`trees.growth_simulations` is the write target for all forest growth simulator output. It stores per-tree dimensional projections at discrete future time steps, produced by simulators such as SILVA, FVS, or iLand, then served to UE via PostgREST for the Time Machine feature.
 
 ---
 
 ## Key concepts
 
-### run_id
+### simulation_run_id
 
-A UUID that groups every row produced by a single simulator execution. All rows sharing a `run_id` represent a complete, internally consistent forest state trajectory. UE uses `run_id` when it needs to compare two simulation runs side by side.
+A UUID that groups every row produced by a single simulator execution. All rows sharing a `simulation_run_id` represent a complete, internally consistent forest state trajectory. UE uses `simulation_run_id` when it needs to compare two simulation runs side by side.
 
 ### tree_entity_id
 
-The stable UUID for a physical tree, shared across all `trees.Trees` variant rows and all `trees.GrowthSimulations` rows. This is the join key between the measured baseline state and the projected future states.
+The stable UUID for a physical tree, shared across all `trees.trees` variant rows and all `trees.growth_simulations` rows. This is the join key between the measured baseline state and the projected future states.
 
 ### projection_year
 
@@ -27,22 +27,22 @@ The calendar year the row describes. A typical SILVA run might output years 2025
 
 ### base_tree_id
 
-The `trees.Trees.tree_id` row used as the simulation starting point (e.g. the 2024 field inventory row). Allows tracing which baseline measurement the projection was derived from.
+The `trees.trees.tree_id` row used as the simulation starting point (e.g. the 2024 field inventory row). Allows tracing which baseline measurement the projection was derived from.
 
 ---
 
 ## Table structure
 
 ```
-trees.GrowthSimulations
+trees.growth_simulations
 ├── growth_simulation_id BIGSERIAL PK
-├── run_id             UUID (groups one complete run)
+├── simulation_run_id             UUID (groups one complete run)
 ├── tree_entity_id      UUID (FK: stable tree identity)
-├── base_tree_id        → trees.Trees.tree_id (input measurement)
-├── location_id        → shared.Locations
-├── plot_id            → shared.Plots
-├── scenario_id        → shared.Scenarios (location-scoped, e.g. natural_growth)
-├── species_id         → shared.Species
+├── base_tree_id        → trees.trees.tree_id (input measurement)
+├── location_id        → shared.locations
+├── plot_id            → shared.plots
+├── scenario_id        → shared.scenarios (location-scoped, e.g. natural_growth)
+├── species_id         → shared.species
 ├── simulator_name     SILVA | FVS | iLand | manual | other
 ├── simulator_version  free text
 ├── projection_year    integer (1900–2300)
@@ -55,7 +55,7 @@ trees.GrowthSimulations
 │   ├── health_score (0–1)
 │   └── mortality (boolean)
 │
-└── Stand-level aggregates (repeated across all trees in a run_id+Year)
+└── Stand-level aggregates (repeated across all trees in a simulation_run_id+Year)
     ├── stand_basal_area_m2ha
     ├── stand_volume_m3ha
     ├── stand_biomass_tha
@@ -83,7 +83,7 @@ GET /growth_simulations?location_id=eq.1&projection_year=eq.2075
 
 ### `public.simulation_runs`
 
-One row per `run_id` — summary of the run (simulator, scenario, year range, tree count). Use to populate a simulation run selector in UE before loading detailed data.
+One row per `simulation_run_id` — summary of the run (simulator, scenario, year range, tree count). Use to populate a simulation run selector in UE before loading detailed data.
 
 ```
 GET /simulation_runs
@@ -108,17 +108,17 @@ GET /simulation_runs?scenario_name=eq.natural_growth
 
 1. Confirm `simulator_name` is one of `SILVA | FVS | iLand | manual | other`. If adding a new name, update the CHECK constraint in the schema migration and add an `ALTER TABLE` migration.
 2. Map simulator output columns to the table columns (see XRFF-244 for the SILVA input view).
-3. Set `run_id = gen_random_uuid()` at the start of the write-back script; use the same value for all rows in that run.
-4. Always set `base_tree_id` to the `trees.Trees.tree_id` row that was used as the simulation starting point.
-5. Populate `species_id` via `SELECT species_id FROM shared.Species WHERE scientific_name = '...'`.
+3. Set `simulation_run_id = gen_random_uuid()` at the start of the write-back script; use the same value for all rows in that run.
+4. Always set `base_tree_id` to the `trees.trees.tree_id` row that was used as the simulation starting point.
+5. Populate `species_id` via `SELECT species_id FROM shared.species WHERE scientific_name = '...'`.
 
 ---
 
-## Relationship to `trees.Trees`
+## Relationship to `trees.trees`
 
-`trees.Trees` holds **snapshot variants** — discrete measured or estimated states of a tree at a point in time. `trees.GrowthSimulations` holds **trajectory projections** — the output of a mathematical model predicting how those trees will develop over decades.
+`trees.trees` holds **snapshot variants** — discrete measured or estimated states of a tree at a point in time. `trees.growth_simulations` holds **trajectory projections** — the output of a mathematical model predicting how those trees will develop over decades.
 
-The two tables are complementary: `trees.Trees` is the source of truth for what was measured; `trees.GrowthSimulations` is where simulator output lands before potentially being promoted back into `trees.Trees` as `simulated_growth` variants (see XRFF-245).
+The two tables are complementary: `trees.trees` is the source of truth for what was measured; `trees.growth_simulations` is where simulator output lands before potentially being promoted back into `trees.trees` as `simulated_growth` variants (see XRFF-245).
 
 ---
 

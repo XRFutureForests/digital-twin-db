@@ -55,13 +55,13 @@ Two columns that look related but are **not** the same concept and should not be
 
 - `trees.trees.tree_status_id` (`shared.tree_status` lookup — alive/dead/etc.) describes
   *condition*, not class/function/usage.
-- `trees.trees.crown_class_id` (`trees.crownclasses` — dominant/co-dominant/etc.) describes
+- `trees.trees.crown_class_id` (`trees.crown_classes` — dominant/co-dominant/etc.) describes
   *competitive position*, not class/function/usage.
 
 **Decision for this pass:** do not invent `class`/`function`/`usage` columns speculatively — CityGML
 leaves them open-ended and we have no current consumer for them. The one place a code list is
 concretely needed is the **part-level semantic label** (root/trunk/branch/twig/leaf/crown), which
-is exactly what `trees.treeparttypes` (XRFF-266) is for — that is the CityGML *feature class*
+is exactly what `trees.tree_part_types` (XRFF-266) is for — that is the CityGML *feature class*
 distinction (`Root` vs `Trunk` vs `Branch`...), separate from the `class`/`function`/`usage`
 attributes each feature class carries. If/when we publish a CityGML ADE (XRFF-270), `class` /
 `function` / `usage` are where we'd register our own code lists; until then, note the gap and
@@ -77,11 +77,11 @@ additionally carries `branchLength`.
 | CityGML feature | Paper's extra attributes | Our representation | Note |
 |---|---|---|---|
 | `Root` | — | **In scope** — `trees.roots` (proposed, §3.1) | No root geometry exists in our pipeline today, but that is a data-availability gap, not a scope decision — the schema should be classifiable now and geometrizable later (§3.1) |
-| `Trunk` | `trunkLength` | `trees.stems` (`stem_height_m` ≈ `trunkLength`) **+** `trees.qsmcylinders` rows where `branch_order = 0` (XRFF-265) | Two representations at different resolutions: `trees.stems` is the per-tree allometric summary, `trees.qsmcylinders` is the measured geometry. Both are legitimate; they answer different questions |
-| `Crown` | — | `trees.trees.crown_width_m`, `crown_base_height_m`, `crown_boundary` (aggregate); no dedicated Crown row; foliage density via `trees.crownfoliageprofiles` (proposed, §3.2) | Crown is implicit in our schema as "everything on the tree above `crown_base_height_m`," not a materialised entity. QSM cylinders with `branch_order >= 1` are the crown's measured woody content; §3.2 covers its foliage |
-| `Branch` | `branchLength` | `trees.qsmcylinders` rows with `part_type_id = 'branch'`, `branch_order >= 1`; length is `sum(length_m)` along a `branch_index` run, not a stored column | Matches the paper's own construction (§3.3): trunk and branches are built from chained cylinders, not a single length attribute |
-| `Twig` | — | `trees.qsmcylinders` rows with `part_type_id = 'twig'` | Distinguished from `Branch` by the `branch_order` + radius threshold rule, defined in XRFF-266: `branch_order = 0` → trunk; `branch_order >= 1 AND radius_m <= twig_radius` → twig; `branch_order >= 1 AND radius_m > twig_radius` → branch. `twig_radius` is the species-specific value from rTwig's own `twigs`/`twigs_index` reference database (the same value `run_rtwig(twig_radius = ...)` already used to correct that QSM), passed as `--twig-radius-mm` to `scripts/import/import_qsm.py` at ingest time -- not a stored/computed column, since the threshold is an import-time parameter rather than schema. Root/leaf/crown are never assigned from cylinder geometry. |
-| `Leaf` | — | *none* (per-leaf geometry); density/distribution via `trees.crownfoliageprofiles` (§3.2) | QSM does not produce leaf geometry (Raumonen et al. 2013 QSM is a wood-only skeleton), and per-leaf storage stays out of scope — but the crown's foliage *density and distribution* is a well-studied, storable quantity distinct from per-leaf position (§3.2) |
+| `Trunk` | `trunkLength` | `trees.stems` (`stem_height_m` ≈ `trunkLength`) **+** `trees.qsm_cylinders` rows where `branch_order = 0` (XRFF-265) | Two representations at different resolutions: `trees.stems` is the per-tree allometric summary, `trees.qsm_cylinders` is the measured geometry. Both are legitimate; they answer different questions |
+| `Crown` | — | `trees.trees.crown_width_m`, `crown_base_height_m`, `crown_boundary` (aggregate); no dedicated Crown row; foliage density via `trees.crown_foliage_profiles` (proposed, §3.2) | Crown is implicit in our schema as "everything on the tree above `crown_base_height_m`," not a materialised entity. QSM cylinders with `branch_order >= 1` are the crown's measured woody content; §3.2 covers its foliage |
+| `Branch` | `branchLength` | `trees.qsm_cylinders` rows with `part_type_id = 'branch'`, `branch_order >= 1`; length is `sum(length_m)` along a `branch_index` run, not a stored column | Matches the paper's own construction (§3.3): trunk and branches are built from chained cylinders, not a single length attribute |
+| `Twig` | — | `trees.qsm_cylinders` rows with `part_type_id = 'twig'` | Distinguished from `Branch` by the `branch_order` + radius threshold rule, defined in XRFF-266: `branch_order = 0` → trunk; `branch_order >= 1 AND radius_m <= twig_radius` → twig; `branch_order >= 1 AND radius_m > twig_radius` → branch. `twig_radius` is the species-specific value from rTwig's own `twigs`/`twigs_index` reference database (the same value `run_rtwig(twig_radius = ...)` already used to correct that QSM), passed as `--twig-radius-mm` to `scripts/import/import_qsm.py` at ingest time -- not a stored/computed column, since the threshold is an import-time parameter rather than schema. Root/leaf/crown are never assigned from cylinder geometry. |
+| `Leaf` | — | *none* (per-leaf geometry); density/distribution via `trees.crown_foliage_profiles` (§3.2) | QSM does not produce leaf geometry (Raumonen et al. 2013 QSM is a wood-only skeleton), and per-leaf storage stays out of scope — but the crown's foliage *density and distribution* is a well-studied, storable quantity distinct from per-leaf position (§3.2) |
 
 ### 3.1 Root — in scope, via Guerrero Iñiguez (2017)
 
@@ -103,7 +103,7 @@ gap:
   per-tree measured geometry. That is exactly the situation we are in until a root data source
   exists (ground-penetrating radar, excavation — neither is in our pipeline today).
 
-**Proposed `trees.roots`** (feeds XRFF-266, alongside `trees.treeparttypes` — `root` is already
+**Proposed `trees.roots`** (feeds XRFF-266, alongside `trees.tree_part_types` — `root` is already
 one of its six values):
 
 | Column | Type | Note |
@@ -111,7 +111,7 @@ one of its six values):
 | `root_id` | BIGSERIAL PK | |
 | `tree_entity_id` | UUID | |
 | `tree_id` | INTEGER FK → `trees.trees` | |
-| `root_system_type_id` | SMALLINT FK → new lookup `trees.rootsystemtypes` | `tap_root` / `heart_root` / `lateral_root`, same lookup pattern as `trees.treeparttypes` — CSV in `data/lookups/` |
+| `root_system_type_id` | SMALLINT FK → new lookup `trees.root_system_types` | `tap_root` / `heart_root` / `lateral_root`, same lookup pattern as `trees.tree_part_types` — CSV in `data/lookups/` |
 | `lod` | SMALLINT | Which of Guerrero's detail levels this row represents |
 | `geometry_class` | TEXT | `implicit` (block model, LoD1–3) or `explicit` (surface-projected, LoD4) — mirrors the `trees.treeassets.geometry_class` decision in §5 |
 | `root_depth_m`, `root_spread_radius_m` | NUMERIC | The block-model parameters; populated from the appropriate case whether classified or measured |
@@ -120,7 +120,7 @@ one of its six values):
 
 **What unblocks this today, with no new data collection:** root system type correlates
 strongly with species and is documented in standard silvics references (root morphology is a
-routine part of species silvics descriptions) — so `trees.rootsystemtypes` can be populated
+routine part of species silvics descriptions) — so `trees.root_system_types` can be populated
 per-`species_id` as a documented default (`source = 'species_default'`) now, geometry columns
 left null until we have anything to measure. This is what turns Root from "no path" into
 "classifiable now, geometrized later," which is the scope this section commits to.
@@ -149,11 +149,11 @@ existing procedural leaf-instancing path (the alignment doc §5 already notes le
 instanced on terminal twigs, not measured) — the difference is that instancing density becomes
 **parameterised from a real fitted or literature distribution**, not an arbitrary default.
 
-**Proposed `trees.crownfoliageprofiles`** (feeds XRFF-266):
+**Proposed `trees.crown_foliage_profiles`** (feeds XRFF-266):
 
 | Column | Type | Note |
 |---|---|---|
-| `profile_id` | BIGSERIAL PK | |
+| `crown_foliage_profile_id` | BIGSERIAL PK | |
 | `tree_id` | INTEGER FK → `trees.trees` | |
 | `process_id` | INTEGER FK → `shared.processes` | Which method/paper the distribution came from (register Le Port 2000 / Jeréz 2005 / a future in-house fit as processes, same pattern as TreeQSM) |
 | `distribution_type` | TEXT | `beta` \| `johnson_sb` \| `uniform` (fallback default) |
@@ -165,7 +165,7 @@ Same "classifiable now" argument as §3.1: species-level Beta or Johnson-SB para
 literature are a legitimate `source = 'species_literature_default'` row today; nothing here
 requires new field data collection before the table is useful.
 
-## 4. Topology: `Node` / `Edge` → `trees.treegraphedges`
+## 4. Topology: `Node` / `Edge` → `trees.tree_graph_edges`
 
 Figure 4 shows `Node`/`Edge` as a separate graph structure connected into the Root/Trunk/Crown/
 Branch/Twig/Leaf hierarchy, with the diagram marking an `Edge` as relating exactly **2** `Node`s.
@@ -173,8 +173,8 @@ Per §3.4, each tree part is a node and relationships between parts are edges, "
 from point cloud data... using point and line geometry."
 
 We get nodes for free — a QSM cylinder endpoint *is* a node — so only edges need a table
-(`trees.treegraphedges`, XRFF-266). No separate `trees.nodes` table: materialising every cylinder
-endpoint as its own row would duplicate `trees.qsmcylinders` for no query benefit PostgreSQL
+(`trees.tree_graph_edges`, XRFF-266). No separate `trees.nodes` table: materialising every cylinder
+endpoint as its own row would duplicate `trees.qsm_cylinders` for no query benefit PostgreSQL
 doesn't already give us via the `cylinder_index`/`parent_cylinder_index` chain.
 
 ## 5. LoD ladder
@@ -203,7 +203,7 @@ boundary.
 
 §3.3 confirms the approach XRFF-265 already assumes: trunk and branches as chained cylinders with
 differing start/end radii, twigs as a cylinder plus a terminal truncated cone, leaves as flat
-polygons distributed on branches from point-cloud-derived placement. `trees.qsmcylinders`
+polygons distributed on branches from point-cloud-derived placement. `trees.qsm_cylinders`
 (radius-only, no separate start/end radius pair) covers trunk/branch/twig directly; the paper's
 "truncated cone" detail for twig tips is a rendering nicety our cylinder table doesn't need to
 special-case — a very-short, tapering final cylinder segment already approximates it, and going
@@ -212,7 +212,7 @@ further is downstream (growpy/PVE) work, not a storage concern.
 ## 7. Open questions carried into XRFF-265–267
 
 Most of what this mapping originally flagged as gaps are now resolved into proposed schema
-(§3.1 `trees.roots`, §3.2 `trees.crownfoliageprofiles`, §5 `geometry_class`) — these three feed
+(§3.1 `trees.roots`, §3.2 `trees.crown_foliage_profiles`, §5 `geometry_class`) — these three feed
 into XRFF-266/267's acceptance criteria as new items, not just documentation. What remains open:
 
 - **Multi-stem `trunkDiameter` aggregation — resolved, with a caveat.** CityGML's
@@ -241,6 +241,6 @@ into XRFF-266/267's acceptance criteria as new items, not just documentation. Wh
 
 - [`../../xr-future-forests-lab/obsidian/xr-future-forests-lab/03-DATA-TIER/citygml-qsm-alignment.md`](../../xr-future-forests-lab/obsidian/xr-future-forests-lab/03-DATA-TIER/citygml-qsm-alignment.md) — full design note (XRFF-264 parent)
 - [database-schema.md](database-schema.md) — current schema data dictionary
-- XRFF-265 — `trees.qsms` / `trees.qsmcylinders`
-- XRFF-266 — `trees.treeparttypes` / `trees.treegraphedges`
+- XRFF-265 — `trees.qsms` / `trees.qsm_cylinders`
+- XRFF-266 — `trees.tree_part_types` / `trees.tree_graph_edges`
 - XRFF-267 — LoD field, `position_3d`, `trees.treeassets`

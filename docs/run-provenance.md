@@ -1,9 +1,9 @@
 # Run Provenance — RO-Crate
 
 **Issues:** XRFF-407
-**Status:** Live for `trees.SimulationRuns`. Emits for both recorded SILVA runs.
+**Status:** Live for `trees.simulation_runs`. Emits for both recorded SILVA runs.
 
-`shared.Processes` says a process exists. `trees.SimulationRuns` says a run
+`shared.processes` says a process exists. `trees.simulation_runs` says a run
 happened. Neither states the binding that makes a result reproducible by someone
 outside the lab: *this input state + this software version + these parameters
 produced these rows*. `scripts/provenance/emit_ro_crate.py` writes that binding
@@ -28,11 +28,11 @@ The obvious reading of XRFF-407 is that each connector writes its own crate at
 the end of its run. That would be five bespoke emitters across two runtimes —
 silva-connector is R, the rest are Python — and all five would be rewritten when
 the XRFF-346 job runner lands and every run starts flowing through
-`shared.ProcessingJobs`.
+`shared.processing_jobs`.
 
 Every fact a crate needs is already in the database, so the crate is generated
-*from* the database. Today that means `trees.SimulationRuns`, which is the only
-table holding complete run records: `shared.ProcessingJobs` exists, has the right
+*from* the database. Today that means `trees.simulation_runs`, which is the only
+table holding complete run records: `shared.processing_jobs` exists, has the right
 shape, and has never held a row. When the runner lands, a `--job-id` path reads
 the same structure out of `ProcessingJobs` and every connector is covered without
 any connector changing.
@@ -56,29 +56,29 @@ recorded.
 The crates are **detached**: no payload files, because the outputs are database
 rows. Entities reference those rows by PostgREST collection URI and reuse the
 identifiers we already own — the Zenodo DOI on `digital-twin-db`, an ORCID for
-the author, and the `citation` already stored on the `shared.Processes` row.
+the author, and the `citation` already stored on the `shared.processes` row.
 
 ## What a crate asserts, and how strongly
 
 | Element | Source | Strength |
 |---|---|---|
-| Software, version, citation, author | `shared.Processes` | recorded |
+| Software, version, citation, author | `shared.processes` | recorded |
 | Parameters | `SimulationRuns` typed columns + `run_params` jsonb | recorded |
 | Input state | `base_variant_id` | recorded |
-| Trajectory rows | `GrowthSimulations.run_id` | recorded, exact |
+| Trajectory rows | `GrowthSimulations.simulation_run_id` | recorded, exact |
 | Projected variants | walk of `parent_variant_id` | **derived** |
 | Time | `created_at` | **approximate** |
 
 The last two are stated as limitations inside the crate itself rather than
 smoothed over:
 
-* **Variants carry no `run_id`.** The output chain is recovered by walking
+* **Variants carry no `simulation_run_id`.** The output chain is recovered by walking
   `parent_variant_id` down from the base variant and keeping the
   `simulated_growth` ones. That is unambiguous only while a single promoted chain
   descends from a given baseline; two promoted runs from the same baseline would
-  be indistinguishable. Adding `run_id` to `shared.Variants` would close this.
+  be indistinguishable. Adding `simulation_run_id` to `shared.variants` would close this.
 * **`created_at` is not the run's end.** The connector writes the
-  `SimulationRuns` row *before* the trajectory, because `GrowthSimulations.run_id`
+  `SimulationRuns` row *before* the trajectory, because `GrowthSimulations.simulation_run_id`
   is an FK onto it. So the timestamp follows the simulation and precedes every
   result row. It is emitted as `startTime`, which is the strongest true claim
   available; `endTime` is omitted rather than guessed. Recording real

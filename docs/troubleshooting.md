@@ -428,7 +428,7 @@ docker system prune -a
 docker exec -it dftdb-db psql -U postgres -c "\dn"
 ```
 
-Should show: `shared`, `trees`, `pointclouds`, `sensor`, `environments`
+Should show: `shared`, `trees`, `point_clouds`, `sensor`, `environments`
 
 **Step 2: Check if tables exist**
 
