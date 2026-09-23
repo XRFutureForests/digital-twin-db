@@ -42,7 +42,7 @@ DOMAIN_SCHEMAS = (
 KNOWN = {
     "public.ue_sensors.linked_tree_scientificname": "XRFF-485",
     "public.ue_sensors.sensor_type": "XRFF-485",
-    "public.ue_sensorreadings.sensor_type": "XRFF-485",
+    "public.ue_sensor_readings.sensor_type": "XRFF-485",
     "public.variants.management_regime": "XRFF-485",
     "public.variants.climate_pathway": "XRFF-485",
     "public.ue_variants.management_regime": "XRFF-485",

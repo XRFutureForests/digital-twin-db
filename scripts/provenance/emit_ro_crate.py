@@ -82,7 +82,7 @@ SOFTWARE_URLS = {
 }
 
 RUN_QUERY = """
-    SELECT r.run_id, r.location_id, r.scenario_id, r.base_variant_id,
+    SELECT r.simulation_run_id, r.location_id, r.scenario_id, r.base_variant_id,
            r.base_year, r.simulator_name, r.simulator_version, r.process_id,
            r.horizon_years, r.seed, r.mortality_enabled, r.promoted,
            r.run_params, r.created_at, r.created_by,
@@ -97,9 +97,9 @@ RUN_QUERY = """
 """
 
 
-def fetch_runs(cur, run_id=None):
-    if run_id:
-        cur.execute(RUN_QUERY + " WHERE r.run_id = %s", (run_id,))
+def fetch_runs(cur, simulation_run_id=None):
+    if simulation_run_id:
+        cur.execute(RUN_QUERY + " WHERE r.simulation_run_id = %s", (simulation_run_id,))
     else:
         cur.execute(RUN_QUERY + " ORDER BY r.created_at")
     cols = [d[0] for d in cur.description]
@@ -111,7 +111,7 @@ def fetch_outputs(cur, run):
 
     Two different strengths of evidence, and the crate says which is which:
 
-    * `trees.growth_simulations` rows carry `run_id`, so they are attributed
+    * `trees.growth_simulations` rows carry `simulation_run_id`, so they are attributed
       exactly.
     * `shared.Variants` do not. The chain is recovered by walking
       `parent_variant_id` down from the base variant, which is correct as long
@@ -121,8 +121,8 @@ def fetch_outputs(cur, run):
     """
     cur.execute(
         "SELECT COUNT(*), MIN(projection_year), MAX(projection_year) "
-        "FROM trees.growth_simulations WHERE run_id = %s",
-        (run["run_id"],),
+        "FROM trees.growth_simulations WHERE simulation_run_id = %s",
+        (run["simulation_run_id"],),
     )
     n_traj, y0, y1 = cur.fetchone()
 
@@ -181,7 +181,7 @@ def parameter_entities(run):
             continue
         out.append(
             {
-                "@id": f"#{run['run_id']}-param-{key}",
+                "@id": f"#{run['simulation_run_id']}-param-{key}",
                 "@type": "PropertyValue",
                 "name": key,
                 "value": value if isinstance(value, (int, float, bool)) else str(value),
@@ -191,18 +191,18 @@ def parameter_entities(run):
 
 
 def build_crate(run, outputs, api_base):
-    run_id = str(run["run_id"])
-    action_id = f"#run-{run_id}"
+    simulation_run_id = str(run["simulation_run_id"])
+    action_id = f"#run-{simulation_run_id}"
     software_id = SOFTWARE_URLS.get(
         run["process_name"], f"#process-{run['process_id']}"
     )
     base_variant_id = f"{api_base}/variants?variant_id=eq.{run['base_variant_id']}"
-    trajectory_id = f"{api_base}/growth_simulations?run_id=eq.{run_id}"
+    trajectory_id = f"{api_base}/growth_simulations?simulation_run_id=eq.{simulation_run_id}"
 
     params = parameter_entities(run)
 
     # created_at is written at the START of the write-back transaction, before
-    # any result row, because GrowthSimulations.run_id is a FK onto this table.
+    # any result row, because GrowthSimulations.simulation_run_id is a FK onto this table.
     # So it is neither the moment SILVA began computing nor the moment the run
     # finished. It is recorded as startTime, which is the strongest true claim
     # available, and the description says so rather than implying a precision
@@ -220,7 +220,7 @@ def build_crate(run, outputs, api_base):
             "@id": "./",
             "@type": "Dataset",
             "name": (
-                f"{run['simulator_name']} run {run_id[:8]} — "
+                f"{run['simulator_name']} run {simulation_run_id[:8]} — "
                 f"{run['location_name'] or 'unknown location'}"
             ),
             "description": (
@@ -290,11 +290,11 @@ def build_crate(run, outputs, api_base):
         {
             "@id": trajectory_id,
             "@type": "Dataset",
-            "name": f"Per-tree trajectory rows for run {run_id[:8]}",
+            "name": f"Per-tree trajectory rows for run {simulation_run_id[:8]}",
             "description": (
                 f"{outputs['trajectory_rows']} rows in trees.growth_simulations, "
                 f"{outputs['year_from']}–{outputs['year_to']}. Attributed to this run "
-                f"exactly, by run_id."
+                f"exactly, by simulation_run_id."
             ),
         },
     ]
@@ -308,7 +308,7 @@ def build_crate(run, outputs, api_base):
                 f"({variant['simulation_year']})",
                 "description": (
                     "Attributed by walking parent_variant_id from the base variant: "
-                    "shared.Variants carries no run_id, so this link is derived, not "
+                    "shared.Variants carries no simulation_run_id, so this link is derived, not "
                     "recorded. It is unambiguous only while one promoted chain "
                     "descends from a given baseline."
                 ),
@@ -325,7 +325,7 @@ def build_crate(run, outputs, api_base):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--run-id", help="trees.simulation_runs.run_id (uuid)")
+    g.add_argument("--run-id", help="trees.simulation_runs.simulation_run_id (uuid)")
     g.add_argument("--all", action="store_true", help="emit a crate per recorded run")
     g.add_argument("--list", action="store_true", help="list recorded runs and exit")
     ap.add_argument("-o", "--out-dir", default="crates", help="output directory")
@@ -334,7 +334,7 @@ def main():
 
     conn = get_db_connection()
     cur = conn.cursor()
-    runs = fetch_runs(cur, args.run_id)
+    runs = fetch_runs(cur, args.simulation_run_id)
 
     if not runs:
         print("No matching runs in trees.simulation_runs.", file=sys.stderr)
@@ -343,7 +343,7 @@ def main():
     if args.list:
         for r in runs:
             print(
-                f"{r['run_id']}  {r['simulator_name']} {r['simulator_version']:>12}  "
+                f"{r['simulation_run_id']}  {r['simulator_name']} {r['simulator_version']:>12}  "
                 f"{r['location_name']:<12} {r['base_year']}+{r['horizon_years']}y  "
                 f"{r['created_at']:%Y-%m-%d}"
             )
@@ -353,7 +353,7 @@ def main():
     for run in runs:
         outputs = fetch_outputs(cur, run)
         crate = build_crate(run, outputs, args.api_base.rstrip("/"))
-        crate_dir = out_root / f"run-{run['run_id']}"
+        crate_dir = out_root / f"run-{run['simulation_run_id']}"
         crate_dir.mkdir(parents=True, exist_ok=True)
         target = crate_dir / "ro-crate-metadata.json"
         target.write_text(json.dumps(crate, indent=2) + "\n", encoding="utf-8")

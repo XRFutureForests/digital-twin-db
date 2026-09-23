@@ -122,7 +122,7 @@ def test_outputs_reference_the_run(crates):
     for run, crate in crates:
         act = next(e for e in crate["@graph"] if e.get("@type") == "CreateAction")
         results = {r["@id"] for r in act["result"]}
-        assert any(str(run["run_id"]) in r for r in results), "trajectory not attributed"
+        assert any(str(run["simulation_run_id"]) in r for r in results), "trajectory not attributed"
         assert len(results) > 1, "projected variants missing from results"
 
 

@@ -294,7 +294,7 @@ def main() -> None:
 
     if sim_filled:
         # trees.growth_simulations is append-only trajectory output and carries
-        # no audit trigger; provenance for it is the run_id plus simulator_name
+        # no audit trigger; provenance for it is the simulation_run_id plus simulator_name
         # already on the row, and this script's shared.Processes entry.
         execute_values(
             cur,
