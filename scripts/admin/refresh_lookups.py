@@ -45,6 +45,12 @@ AVAILABLE_TABLES = {
     ),
     "axis_structures": ("axis_structures.csv", "Tree axis structure models"),
     "growth_forms": ("growth_forms.csv", "Tree growth form types"),
+    # These three exist in shared.refresh_lookup but were missing here, so
+    # --all silently skipped them. The two lists are maintained by hand and
+    # nothing checks they agree (XRFF-496).
+    "data_source_types": ("data_source_types.csv", "Tree data source types"),
+    "crown_classes": ("crown_classes.csv", "Crown class definitions"),
+    "damage_agents": ("damage_agents.csv", "Damage agent types"),
 }
 
 

@@ -1,16 +1,16 @@
 SensorTypeName,Description,TypicalUnit,TypicalRangeMin,TypicalRangeMax
-temperature,Air or soil temperature sensor,°C,-50,60
-humidity,Relative humidity sensor,%,0,100
+temperature,Air or soil temperature sensor,deg_c,-50,60
+humidity,Relative humidity sensor,percent,0,100
 co2,Carbon dioxide concentration sensor,ppm,200,2000
 light,Light intensity or PAR sensor,lux,0,200000
-soil_moisture,Soil volumetric water content,%,0,100
-wind_speed,Wind speed anemometer,m/s,0,50
-wind_direction,Wind direction vane,degrees,0,360
+soil_moisture,Soil volumetric water content,percent,0,100
+wind_speed,Wind speed anemometer,m_s,0,50
+wind_direction,Wind direction vane,deg,0,360
 precipitation,Rain gauge,mm,0,500
-barometric_pressure,Atmospheric pressure,hPa,900,1100
-solar_radiation,Solar irradiance,W/m²,0,1500
-soil_temperature,Subsurface soil temperature,°C,-20,40
-leaf_wetness,Leaf surface moisture,units,0,15
-sap_flow,Tree sap flow rate,g/h,0,10000
-stem_radial_variation,Dendrometer readings for stem radial variation,mV,0,5000
-stem_water_potential,Stem xylem water potential read through a pressure transducer. Negative under tension.,MPa,-10,1
+barometric_pressure,Atmospheric pressure,hpa,900,1100
+solar_radiation,Solar irradiance,w_m2,0,1500
+soil_temperature,Subsurface soil temperature,deg_c,-20,40
+leaf_wetness,Leaf surface moisture,,0,15
+sap_flow,Tree sap flow rate,g_h,0,10000
+stem_radial_variation,Dendrometer readings for stem radial variation,mv,0,5000
+stem_water_potential,Stem xylem water potential read through a pressure transducer. Negative under tension.,mpa,-10,1

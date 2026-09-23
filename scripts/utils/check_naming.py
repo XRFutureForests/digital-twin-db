@@ -66,9 +66,6 @@ KNOWN = {
     "sensor.sensors.accuracy": "XRFF-490",
     "environments.location_environment_summary.avg_temperature": "XRFF-485",
     "environments.location_environment_summary.avg_humidity": "XRFF-485",
-    "sensor.sensors.reading_type": "XRFF-489",
-    "sensor.sensors.unit": "XRFF-489",
-    "sensor.sensor_types.typical_unit": "XRFF-489",
     "public.ue_trees.competition": "XRFF-490",
     "sensor.sensor_tree_view.sensor_active": "XRFF-490",
 }
@@ -80,6 +77,9 @@ ROLE_QUALIFIED_FKS = {
     "pointclouds.point_clouds.parent_point_cloud_id",
     "shared.variants.parent_variant_id",
     "trees.trees.parent_tree_id",
+    # A natural-key FK with a role qualifier: the *typical* unit for a sensor
+    # type, as opposed to the unit a given sensor actually reports.
+    "sensor.sensor_types.typical_unit",
     "shared.scenarios.climate_pathway_id",
     "shared.scenarios.management_regime_id",
     "trees.growth_simulations.base_tree_id",
@@ -238,15 +238,24 @@ def main():
         if not SNAKE_CASE.match(t):
             report(f"{s}.{t}", "table name not lowercase snake_case")
 
-    # 2. Every foreign-key column ends in _id.
-    for (s, t, c) in fk:
-        if not c.endswith("_id"):
+    # 2. Every foreign-key column ends in _id -- unless it references a natural
+    #    key rather than a surrogate one. sensor.Sensors.unit references
+    #    sensor.Units.unit_name, which is the whole point of that lookup: the
+    #    stored value is the unit, not an opaque id.
+    for (s, t, c), (_parent, pcol) in fk.items():
+        if not c.endswith("_id") and pcol.endswith("_id"):
             report(f"{s}.{t}.{c}", "foreign key does not end in _id")
 
     # 3. A foreign key carries the parent's PK name, unless it names a role.
     for (s, t, c), (parent, pc) in fk.items():
-        if c != pc and f"{s}.{t}.{c}" not in ROLE_QUALIFIED_FKS:
-            report(f"{s}.{t}.{c}", f"differs from parent {parent}({pc})")
+        if c == pc or f"{s}.{t}.{c}" in ROLE_QUALIFIED_FKS:
+            continue
+        # A natural-key FK carries the parent column's stem, not its full name:
+        # sensors.unit -> units.unit_name. Requiring an exact match would force
+        # the column to be called unit_name, which reads wrong on a sensor.
+        if not pc.endswith("_id") and pc.rsplit("_", 1)[0] == c:
+            continue
+        report(f"{s}.{t}.{c}", f"differs from parent {parent}({pc})")
 
     # 4. A single-column PK is <table stem>_id.
     for (s, t), cols in pk.items():
@@ -303,6 +312,10 @@ def main():
         if (s, t) not in base or dtype not in ("text", "character varying"):
             continue
         if not enum_like.search(c) or f"{s}.{t}.{c}" in UNCONSTRAINED_BY_DESIGN:
+            continue
+        # A foreign key to a lookup is a stronger guarantee than a CHECK, and
+        # unlike a CHECK it cannot drift from a second copy of the same list.
+        if (s, t, c) in fk:
             continue
         if not any(re.search(rf"\b{re.escape(c)}\b", d) for d in checks[(s, t)]):
             report(f"{s}.{t}.{c}", "enumerated text without a CHECK constraint")
