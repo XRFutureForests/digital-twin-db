@@ -115,7 +115,7 @@ def main() -> None:
         JOIN shared.species sp USING (species_id)
         JOIN shared.variants v USING (variant_id)
         JOIN shared.locations l ON l.location_id = t.location_id
-        WHERE v.variant_type_id = (SELECT variant_type_id FROM shared.varianttypes
+        WHERE v.variant_type_id = (SELECT variant_type_id FROM shared.variant_types
                                    WHERE variant_type_name = 'original')
           AND t.height_m IS NOT NULL AND t.age_years IS NULL
     """
@@ -200,7 +200,7 @@ def main() -> None:
            WHERE sim.tree_entity_id = base.tree_entity_id
              AND base.variant_id IN (SELECT variant_id FROM shared.variants
                                      WHERE variant_type_id = (SELECT variant_type_id
-                                       FROM shared.varianttypes WHERE variant_type_name = 'original'))
+                                       FROM shared.variant_types WHERE variant_type_name = 'original'))
              AND base.age_years IS NOT NULL
              AND sim.age_years IS NULL
              AND sim.tree_id <> base.tree_id"""

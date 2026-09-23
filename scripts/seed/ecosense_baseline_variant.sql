@@ -44,7 +44,7 @@ INSERT INTO shared.Variants (location_id, scenario_id, variant_type_id, variant_
 SELECT
     (SELECT location_id FROM shared.Locations WHERE location_name = 'ecosense'),
     (SELECT s.scenario_id FROM shared.Scenarios s JOIN shared.Locations l ON s.location_id = l.location_id WHERE l.location_name = 'ecosense' AND s.scenario_name = 'natural_growth'),
-    (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'original'),
+    (SELECT variant_type_id FROM shared.variant_types WHERE variant_type_name = 'original'),
     'baseline_2025',
     2025,
     0,
@@ -69,5 +69,5 @@ SET
 FROM shared.Locations l
 WHERE t.location_id = l.location_id
   AND l.location_name = 'ecosense'
-  AND t.variant_type_id = (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'original')
+  AND t.variant_type_id = (SELECT variant_type_id FROM shared.variant_types WHERE variant_type_name = 'original')
   AND (t.variant_id IS NULL OR t.scenario_id IS NULL);

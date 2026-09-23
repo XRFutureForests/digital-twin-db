@@ -147,7 +147,7 @@ def estimate(rows):
 
     Returns (filled, skipped, out_of_range), where filled is
     [(id, agb, carbon), ...]. Shared by the trees.Trees and
-    trees.GrowthSimulations passes so both use identical equations, fitted
+    trees.growth_simulations passes so both use identical equations, fitted
     ranges and skip rules -- the two tables must not disagree about the biomass
     of the same tree.
     """
@@ -231,7 +231,7 @@ def main() -> None:
     tree_filled, tree_skipped, tree_oor = estimate(tree_rows)
     report("Trees", len(tree_rows), tree_filled, tree_skipped, tree_oor)
 
-    # ---- Pass 2: trees.GrowthSimulations (the SILVA trajectory)
+    # ---- Pass 2: trees.growth_simulations (the SILVA trajectory)
     #
     # silva-connector writes geometry and stand metrics but no biomass, so
     # these stayed NULL while the mirrored simulated_growth rows in trees.Trees
@@ -241,7 +241,7 @@ def main() -> None:
     # exists with no trees.Trees rows to copy from.
     gsql = """
         SELECT g.growth_simulation_id, sp.scientific_name, g.dbh_cm, g.height_m
-        FROM trees.growthsimulations g
+        FROM trees.growth_simulations g
         JOIN shared.species sp ON sp.species_id = g.species_id
         LEFT JOIN shared.locations l ON l.location_id = g.location_id
         WHERE g.dbh_cm IS NOT NULL AND g.height_m IS NOT NULL
@@ -293,12 +293,12 @@ def main() -> None:
         n_trees = cur.rowcount
 
     if sim_filled:
-        # trees.GrowthSimulations is append-only trajectory output and carries
+        # trees.growth_simulations is append-only trajectory output and carries
         # no audit trigger; provenance for it is the run_id plus simulator_name
         # already on the row, and this script's shared.Processes entry.
         execute_values(
             cur,
-            """UPDATE trees.growthsimulations g
+            """UPDATE trees.growth_simulations g
                SET biomass_kg = v.agb, carbon_content_kg = v.carbon
                FROM (VALUES %s) AS v(growth_simulation_id, agb, carbon)
                WHERE g.growth_simulation_id = v.growth_simulation_id"""

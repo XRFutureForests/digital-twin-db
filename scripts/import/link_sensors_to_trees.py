@@ -86,7 +86,7 @@ def backfill_aquarius_names(conn, mappings):
             FROM trees.trees t
             JOIN shared.locations l ON t.location_id = l.location_id
             JOIN shared.plots p ON t.plot_id = p.plot_id
-            JOIN shared.varianttypes vt ON t.variant_type_id = vt.variant_type_id
+            JOIN shared.variant_types vt ON t.variant_type_id = vt.variant_type_id
             WHERE l.location_name = 'ecosense'
               AND p.plot_number = %s
               AND t.tree_number = %s
@@ -228,7 +228,7 @@ def verify_links(conn):
         SELECT st.sensor_type_name, COUNT(*)
         FROM sensor.sensor_tree_links stl
         JOIN sensor.sensors s ON stl.sensor_id = s.sensor_id
-        JOIN sensor.sensortypes st ON s.sensor_type_id = st.sensor_type_id
+        JOIN sensor.sensor_types st ON s.sensor_type_id = st.sensor_type_id
         GROUP BY st.sensor_type_name
         ORDER BY COUNT(*) DESC
         """

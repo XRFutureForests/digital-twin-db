@@ -133,7 +133,7 @@ def main():
         SET height_m = %s,
             height_source = %s,
             data_source_type_id = (
-                SELECT data_source_type_id FROM trees.DataSourceTypes
+                SELECT data_source_type_id FROM trees.data_source_types
                 WHERE data_source_type_name = 'estimated'
             ),
             updated_at = NOW(),

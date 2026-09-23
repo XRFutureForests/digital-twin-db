@@ -4,7 +4,7 @@
 #
 # WHAT IS AND IS NOT IN HERE, AND WHY
 # -----------------------------------
-# `sensor.sensorreadings` is excluded -- its DATA, not its definition, via
+# `sensor.sensor_readings` is excluded -- its DATA, not its definition, via
 # --exclude-table-data, so a restore still has the table and its indexes and
 # lands empty rather than missing.
 #
@@ -57,7 +57,7 @@ TMP="$TARGET.partial"
 log "dumping $DB_NAME from $CONTAINER (excluding sensorreadings data)"
 if ! docker exec "$CONTAINER" pg_dump \
         -U "$DB_USER" -d "$DB_NAME" \
-        --exclude-table-data='sensor.sensorreadings' \
+        --exclude-table-data='sensor.sensor_readings' \
      | gzip -6 > "$TMP"; then
     log "FATAL: pg_dump failed"
     rm -f -- "$TMP"

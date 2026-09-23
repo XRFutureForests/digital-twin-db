@@ -2,7 +2,7 @@
 """Emit a Process Run Crate (RO-Crate) for one recorded pipeline run.
 
 XRFF-407. `shared.Processes` records that a process exists and
-`trees.SimulationRuns` records that a run happened. What no artefact stated
+`trees.simulation_runs` records that a run happened. What no artefact stated
 until now is the full binding -- *this input state + this software version +
 these parameters produced these rows* -- which is what makes a result
 reproducible and citable by someone outside the lab.
@@ -13,11 +13,11 @@ The obvious reading of XRFF-407 is "each connector writes its own crate". That
 would mean five bespoke emitters, written against five different runtimes (the
 SILVA connector is R, the rest are Python), all of which would be rewritten when
 the XRFF-346 job runner lands and every run starts flowing through
-`shared.ProcessingJobs`.
+`shared.processing_jobs`.
 
 Every fact a crate needs is already in the database, so the crate is generated
-*from* the database instead. Today that means `trees.SimulationRuns` (the only
-table holding complete run records -- `shared.ProcessingJobs` exists but has
+*from* the database instead. Today that means `trees.simulation_runs` (the only
+table holding complete run records -- `shared.processing_jobs` exists but has
 never held a row). When the runner lands, `--job-id` reads the same shape out of
 `ProcessingJobs` and every connector is covered without touching any of them.
 
@@ -89,7 +89,7 @@ RUN_QUERY = """
            p.process_name, p.algorithm_name, p.version AS process_version,
            p.description AS process_description, p.author, p.citation,
            l.location_name, s.scenario_name, bv.variant_name AS base_variant_name
-    FROM trees.simulationruns r
+    FROM trees.simulation_runs r
     LEFT JOIN shared.processes p ON p.process_id = r.process_id
     LEFT JOIN shared.locations l ON l.location_id = r.location_id
     LEFT JOIN shared.scenarios s ON s.scenario_id = r.scenario_id
@@ -111,7 +111,7 @@ def fetch_outputs(cur, run):
 
     Two different strengths of evidence, and the crate says which is which:
 
-    * `trees.GrowthSimulations` rows carry `run_id`, so they are attributed
+    * `trees.growth_simulations` rows carry `run_id`, so they are attributed
       exactly.
     * `shared.Variants` do not. The chain is recovered by walking
       `parent_variant_id` down from the base variant, which is correct as long
@@ -121,7 +121,7 @@ def fetch_outputs(cur, run):
     """
     cur.execute(
         "SELECT COUNT(*), MIN(projection_year), MAX(projection_year) "
-        "FROM trees.growthsimulations WHERE run_id = %s",
+        "FROM trees.growth_simulations WHERE run_id = %s",
         (run["run_id"],),
     )
     n_traj, y0, y1 = cur.fetchone()
@@ -254,7 +254,7 @@ def build_crate(run, outputs, api_base):
             "name": f"{run['simulator_name']} projection {run['base_year']}–"
             f"{run['base_year'] + (run['horizon_years'] or 0)}",
             "description": (
-                "startTime is trees.SimulationRuns.created_at, which the connector "
+                "startTime is trees.simulation_runs.created_at, which the connector "
                 "writes at the start of the write-back transaction (GrowthSimulations "
                 "carries a FK onto it). It therefore precedes every result row and "
                 "follows the simulation itself; true simulation start and end are not "
@@ -292,7 +292,7 @@ def build_crate(run, outputs, api_base):
             "@type": "Dataset",
             "name": f"Per-tree trajectory rows for run {run_id[:8]}",
             "description": (
-                f"{outputs['trajectory_rows']} rows in trees.GrowthSimulations, "
+                f"{outputs['trajectory_rows']} rows in trees.growth_simulations, "
                 f"{outputs['year_from']}–{outputs['year_to']}. Attributed to this run "
                 f"exactly, by run_id."
             ),
@@ -325,7 +325,7 @@ def build_crate(run, outputs, api_base):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--run-id", help="trees.SimulationRuns.run_id (uuid)")
+    g.add_argument("--run-id", help="trees.simulation_runs.run_id (uuid)")
     g.add_argument("--all", action="store_true", help="emit a crate per recorded run")
     g.add_argument("--list", action="store_true", help="list recorded runs and exit")
     ap.add_argument("-o", "--out-dir", default="crates", help="output directory")
@@ -337,7 +337,7 @@ def main():
     runs = fetch_runs(cur, args.run_id)
 
     if not runs:
-        print("No matching runs in trees.SimulationRuns.", file=sys.stderr)
+        print("No matching runs in trees.simulation_runs.", file=sys.stderr)
         return 1
 
     if args.list:

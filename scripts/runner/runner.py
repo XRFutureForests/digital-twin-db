@@ -131,14 +131,14 @@ def claim_one(conn, cfg: RunnerConfig, claimable: dict[str, Workflow]):
     with conn.cursor() as cur:
         cur.execute(
             """
-            UPDATE shared.ProcessingJobs
+            UPDATE shared.processing_jobs
                SET status      = 'running',
                    started_at  = now(),
                    claimed_by  = %s,
                    attempts    = attempts + 1
              WHERE processing_job_id = (
                  SELECT processing_job_id
-                   FROM shared.ProcessingJobs
+                   FROM shared.processing_jobs
                   WHERE status = 'pending'
                     AND workflow_name = ANY(%s)
                     AND attempts < max_attempts
@@ -185,7 +185,7 @@ def finish(
         if status == "pending":
             cur.execute(
                 """
-                UPDATE shared.ProcessingJobs
+                UPDATE shared.processing_jobs
                    SET status          = 'pending',
                        started_at      = NULL,
                        claimed_by      = NULL,
@@ -200,7 +200,7 @@ def finish(
         else:
             cur.execute(
                 """
-                UPDATE shared.ProcessingJobs
+                UPDATE shared.processing_jobs
                    SET status        = %s,
                        completed_at  = now(),
                        error_message = %s,
@@ -339,7 +339,7 @@ def cmd_reap(conn, cfg: RunnerConfig) -> int:
             cur.execute(
                 """
                 SELECT processing_job_id, attempts, max_attempts, started_at
-                  FROM shared.ProcessingJobs
+                  FROM shared.processing_jobs
                  WHERE status        = 'running'
                    AND claimed_by    = %s
                    AND workflow_name = %s

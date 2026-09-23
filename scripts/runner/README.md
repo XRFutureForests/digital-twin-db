@@ -1,6 +1,6 @@
 # Job runner
 
-Drains `shared.ProcessingJobs`: claims pending work, runs the connectors'
+Drains `shared.processing_jobs`: claims pending work, runs the connectors'
 existing CLIs as subprocesses, and records what happened. Jobs get there
 through `public.request_job()`, which is what Studio and Unreal call.
 
@@ -59,7 +59,7 @@ question describes only exists on a host configured to run both.
 
 If one ever is, reach for `max_jobs` and cron frequency before adding lanes —
 a `priority` column no runner consults would be worse than none, which is the
-same reasoning that kept one out of `shared.ProcessingJobs` to begin with.
+same reasoning that kept one out of `shared.processing_jobs` to begin with.
 
 ## Arguments are derived, not listed
 

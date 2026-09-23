@@ -38,7 +38,7 @@ INSERT INTO shared.Variants (location_id, scenario_id, variant_type_id, variant_
 SELECT
     (SELECT location_id FROM shared.Locations WHERE location_name = 'mathisle'),
     (SELECT s.scenario_id FROM shared.Scenarios s JOIN shared.Locations l ON s.location_id = l.location_id WHERE l.location_name = 'mathisle' AND s.scenario_name = 'natural_growth'),
-    (SELECT variant_type_id FROM shared.VariantTypes WHERE variant_type_name = 'original'),
+    (SELECT variant_type_id FROM shared.variant_types WHERE variant_type_name = 'original'),
     'baseline_2025',
     2025, 0, 0,
     'Mathisle field measurements, March 2025'

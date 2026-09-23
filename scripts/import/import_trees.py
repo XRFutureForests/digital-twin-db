@@ -181,12 +181,12 @@ def validate_foreign_keys(df, conn):
                 plot_names = [f"{int(pid)}={valid_plots[int(pid)]}" for pid in plot_ids]
                 print(f"  Plots: {', '.join(plot_names)}")
 
-    # Check DataSourceType values exist in trees.DataSourceTypes (warn only)
+    # Check DataSourceType values exist in trees.data_source_types (warn only)
     if "DataSourceType" in df.columns:
         ds_values = df["DataSourceType"].dropna().unique()
         if len(ds_values) > 0:
             cur.execute(
-                "SELECT data_source_type_name FROM trees.DataSourceTypes"
+                "SELECT data_source_type_name FROM trees.data_source_types"
             )
             valid_ds_names = {row[0].lower() for row in cur.fetchall()}
             unknown_ds = [
@@ -194,7 +194,7 @@ def validate_foreign_keys(df, conn):
             ]
             if unknown_ds:
                 warnings.append(
-                    f"DataSourceType values not found in trees.DataSourceTypes: {unknown_ds}"
+                    f"DataSourceType values not found in trees.data_source_types: {unknown_ds}"
                 )
 
     # Check ScenarioNames exist (warn only — unknown scenarios will be created on import)
@@ -286,14 +286,14 @@ def import_trees(df, dry_run=False):
     datasource_type_id_map: dict[str, int] | None = None
     try:
         cur.execute(
-            "SELECT data_source_type_name, data_source_type_id FROM trees.DataSourceTypes"
+            "SELECT data_source_type_name, data_source_type_id FROM trees.data_source_types"
         )
         datasource_type_id_map = {
             row[0].lower(): row[1] for row in cur.fetchall()
         }
     except psycopg2.errors.UndefinedTable:
         conn.rollback()
-        print("  Warning: trees.DataSourceTypes not found — using legacy DataSourceType string column")
+        print("  Warning: trees.data_source_types not found — using legacy DataSourceType string column")
 
     # Build insert values
     has_position_original = (

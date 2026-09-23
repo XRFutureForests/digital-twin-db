@@ -59,16 +59,16 @@ KNOWN = {
     # names it explicitly and shorter rather than letting the default ride.
     "shared.auditlog_phenologyobservations_phenology_observation_id_fkey": "XRFF-497",
     "public.simulation_runs.base_variant": "XRFF-485",
-    "trees.growthsimulations.mortality": "XRFF-490",
-    "trees.simulationruns.promoted": "XRFF-490",
-    "trees.simulationruns.mortality_enabled": "XRFF-490",
-    "sensor.sensorreadings.battery_voltage": "XRFF-490",
+    "trees.growth_simulations.mortality": "XRFF-490",
+    "trees.simulation_runs.promoted": "XRFF-490",
+    "trees.simulation_runs.mortality_enabled": "XRFF-490",
+    "sensor.sensor_readings.battery_voltage": "XRFF-490",
     "sensor.sensors.accuracy": "XRFF-490",
     "environments.location_environment_summary.avg_temperature": "XRFF-485",
     "environments.location_environment_summary.avg_humidity": "XRFF-485",
     "sensor.sensors.reading_type": "XRFF-489",
     "sensor.sensors.unit": "XRFF-489",
-    "sensor.sensortypes.typical_unit": "XRFF-489",
+    "sensor.sensor_types.typical_unit": "XRFF-489",
     "public.ue_trees.competition": "XRFF-490",
     "sensor.sensor_tree_view.sensor_active": "XRFF-490",
 }
@@ -82,8 +82,8 @@ ROLE_QUALIFIED_FKS = {
     "trees.trees.parent_tree_id",
     "shared.scenarios.climate_pathway_id",
     "shared.scenarios.management_regime_id",
-    "trees.growthsimulations.base_tree_id",
-    "trees.simulationruns.base_variant_id",
+    "trees.growth_simulations.base_tree_id",
+    "trees.simulation_runs.base_variant_id",
         }
 
 # Provenance columns are deliberately not CHECK-guarded: a new writer with a new
@@ -91,7 +91,7 @@ ROLE_QUALIFIED_FKS = {
 UNCONSTRAINED_BY_DESIGN = {
     "trees.trees.height_source",
     "sensor.sensors.source",
-    "shared.processmetrics.source",
+    "shared.process_metrics.source",
 }
 
 SNAKE_CASE = re.compile(r"^[a-z][a-z0-9_]*$")

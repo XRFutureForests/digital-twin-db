@@ -1,6 +1,6 @@
 """Process Run Crate emission for recorded runs (XRFF-407).
 
-Checks the emitter against every run in trees.SimulationRuns: the crate must
+Checks the emitter against every run in trees.simulation_runs: the crate must
 satisfy the Process Run Crate 0.5 MUSTs, resolve all of its own references, and
 carry the parameters that make the run reproducible.
 
@@ -37,7 +37,7 @@ def crates():
     cur = conn.cursor()
     runs = fetch_runs(cur)
     if not runs:
-        pytest.skip("no runs in trees.SimulationRuns")
+        pytest.skip("no runs in trees.simulation_runs")
     out = [(r, build_crate(r, fetch_outputs(cur, r), API_BASE)) for r in runs]
     cur.close()
     conn.close()
