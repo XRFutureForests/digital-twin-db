@@ -827,6 +827,7 @@ Write the identifier the database holds.
 | Junction tables | the two table names joined by `_` | `process_parameters_trees`, `audit_log_stems` |
 | Columns | lowercase snake_case | `crown_base_height_m`, `simulator_version` |
 | Primary keys | `{singular_stem}_id`, matching the table | `location_id` on `shared.locations` |
+| Natural keys | a text PK or FK carries the value itself, not an `_id` | `shared.lookup_registry.logical_key`; `sensor.sensors.unit` → `sensor.units.unit_name` |
 | Foreign keys | the parent's PK name, unchanged | `location_id` referencing `shared.locations.location_id` |
 | Lookup label | `{same_stem}_name` beside the PK | `crown_shape_id` + `crown_shape_name` |
 | Measurements | trailing SI unit | `height_m`, `dbh_cm`, `volume_m3`, `lean_angle_deg`, `defoliation_percent` |

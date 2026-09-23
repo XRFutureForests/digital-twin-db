@@ -257,10 +257,17 @@ def main():
             continue
         report(f"{s}.{t}.{c}", f"differs from parent {parent}({pc})")
 
-    # 4. A single-column PK is <table stem>_id.
+    # 4. A single-column PK is <table stem>_id -- unless it is a natural key.
+    #    A text PK stores the identifier itself (shared.lookup_registry's
+    #    logical_key is the string callers pass), and _id would imply a
+    #    surrogate that is not there.
+    coltype = {(s, t, c): d for s, t, c, d, _ttype in columns}
     for (s, t), cols in pk.items():
-        if len(cols) == 1 and not cols[0].endswith("_id"):
-            report(f"{s}.{t}", f"primary key {cols[0]} does not end in _id")
+        if len(cols) != 1 or cols[0].endswith("_id"):
+            continue
+        if coltype.get((s, t, cols[0])) in ("text", "character varying"):
+            continue
+        report(f"{s}.{t}", f"primary key {cols[0]} does not end in _id")
 
     # 5. A lookup's _name stem matches its own _id stem.
     for (s, t), cols in cols_by_table.items():
