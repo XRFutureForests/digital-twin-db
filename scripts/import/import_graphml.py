@@ -3,14 +3,14 @@
 QSM topology GraphML import for Forest Digital Twin Database (XRFF-266)
 
 Imports a networkx-compatible GraphML tree graph (BioDiv-3DTrees publishes
-per-tree graphs in this format) into trees.TreeGraphEdges. Nodes carry a
-`cylinder_index` attribute matching trees.QSMCylinders.cylinder_index; edges
+per-tree graphs in this format) into trees.tree_graph_edges. Nodes carry a
+`cylinder_index` attribute matching trees.qsm_cylinders.cylinder_index; edges
 carry an `edge_type` attribute ('observed' | 'synthetic').
 
-Only non-'observed' edges are inserted: trees.qsmcylinders' own
+Only non-'observed' edges are inserted: trees.qsm_cylinders' own
 cylinder_index/parent_cylinder_index chain already IS the full edge set (a
 QSM cylinder tree has exactly one parent per cylinder), so an edge absent
-from trees.TreeGraphEdges is assumed 'observed' by default. See the XRFF-266
+from trees.tree_graph_edges is assumed 'observed' by default. See the XRFF-266
 migration's header comment for the full rationale and the edge_type values.
 
 Usage:
@@ -47,7 +47,7 @@ def insert_graph_edges(conn, qsm_id, graph):
     execute_values(
         cur,
         """
-        INSERT INTO trees.treegraphedges (qsm_id, from_cylinder_index, to_cylinder_index, edge_type)
+        INSERT INTO trees.tree_graph_edges (qsm_id, from_cylinder_index, to_cylinder_index, edge_type)
         VALUES %s
         ON CONFLICT (qsm_id, from_cylinder_index, to_cylinder_index) DO NOTHING
         """,

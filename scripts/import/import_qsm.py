@@ -5,7 +5,7 @@ QSM cylinder import for Forest Digital Twin Database (XRFF-265)
 Imports a Real Twig / rTwig standardised cylinder CSV
 (https://aidanmorales.github.io/rTwig, "Dictionary" vignette; same column
 semantics as the published BioDiv-3DTrees corrected QSM CSVs) into
-trees.QSMs + trees.QSMCylinders. One CSV = one QSM reconstruction for one tree.
+trees.QSMs + trees.qsm_cylinders. One CSV = one QSM reconstruction for one tree.
 
 Usage:
     python import_qsm.py <csv_file> --tree-id <id> [options]
@@ -90,7 +90,7 @@ def insert_qsm(conn, tree_id, df, args):
     part_type_ids = {}
     if twig_radius_m is not None:
         cur.execute(
-            "SELECT part_type_name, part_type_id FROM trees.treeparttypes WHERE part_type_name IN ('trunk', 'branch', 'twig')"
+            "SELECT part_type_name, part_type_id FROM trees.tree_part_types WHERE part_type_name IN ('trunk', 'branch', 'twig')"
         )
         part_type_ids = dict(cur.fetchall())
 
@@ -157,7 +157,7 @@ def insert_qsm(conn, tree_id, df, args):
     execute_values(
         cur,
         """
-        INSERT INTO trees.qsmcylinders (
+        INSERT INTO trees.qsm_cylinders (
             qsm_id, cylinder_index, parent_cylinder_index,
             start_point, axis, length_m, radius_m,
             branch_index, branch_order, branch_position, part_type_id

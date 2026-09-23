@@ -40,9 +40,6 @@ DOMAIN_SCHEMAS = (
 # because their source columns (serial_number, label) carry no suffix to drop. A finding listed here is reported as a known exception rather
 # than a failure. Keys are "schema.table.column" or "schema.table".
 KNOWN = {
-    "trees.branchelongationhabits.elongation_habit_name": "XRFF-487",
-    "trees.phanerophyteheightclasses.height_class_name": "XRFF-487",
-    "trees.straightnesstypes.straightness_name": "XRFF-487",
     "public.ue_sensors.linked_tree_scientificname": "XRFF-485",
     "public.ue_sensors.sensor_type": "XRFF-485",
     "public.ue_sensorreadings.sensor_type": "XRFF-485",
@@ -67,8 +64,6 @@ KNOWN = {
     "trees.simulationruns.mortality_enabled": "XRFF-490",
     "sensor.sensorreadings.battery_voltage": "XRFF-490",
     "sensor.sensors.accuracy": "XRFF-490",
-    "trees.straightnesstypes.deviation_angle_min": "XRFF-490",
-    "trees.straightnesstypes.deviation_angle_max": "XRFF-490",
     "environments.location_environment_summary.avg_temperature": "XRFF-485",
     "environments.location_environment_summary.avg_humidity": "XRFF-485",
     "sensor.sensors.reading_type": "XRFF-489",
@@ -82,16 +77,14 @@ KNOWN = {
 # a self-reference or a named role. Each is a decision, not drift.
 ROLE_QUALIFIED_FKS = {
     "environments.environments.parent_environment_id",
-    "pointclouds.pointclouds.parent_point_cloud_id",
+    "pointclouds.point_clouds.parent_point_cloud_id",
     "shared.variants.parent_variant_id",
     "trees.trees.parent_tree_id",
     "shared.scenarios.climate_pathway_id",
     "shared.scenarios.management_regime_id",
     "trees.growthsimulations.base_tree_id",
     "trees.simulationruns.base_variant_id",
-    "trees.trees.elongation_habit_id",
-    "trees.trees.height_class_id",
-}
+        }
 
 # Provenance columns are deliberately not CHECK-guarded: a new writer with a new
 # legitimate source should not need a migration to record it (XRFF-400).

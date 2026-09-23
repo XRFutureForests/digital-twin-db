@@ -1,5 +1,5 @@
 """
-Round-trip test for XRFF-265 (trees.QSMs / trees.QSMCylinders).
+Round-trip test for XRFF-265 (trees.QSMs / trees.qsm_cylinders).
 
 Loads a Real Twig / rTwig standardised cylinder CSV, ingests it via
 scripts/import/import_qsm.py, reads it back from the database, and compares
@@ -80,7 +80,7 @@ def test_qsm_round_trip(conn, existing_tree_id):
     assert float(db_volume) == pytest.approx(expected_volume, abs=5e-4)
 
     cur.execute(
-        "SELECT count(*), sum(pi() * radius_m^2 * length_m) FROM trees.qsmcylinders WHERE qsm_id = %s",
+        "SELECT count(*), sum(pi() * radius_m^2 * length_m) FROM trees.qsm_cylinders WHERE qsm_id = %s",
         (qsm_id,),
     )
     cyl_count, cyl_volume = cur.fetchone()
@@ -90,7 +90,7 @@ def test_qsm_round_trip(conn, existing_tree_id):
     cur.execute(
         """
         SELECT cylinder_index, parent_cylinder_index, radius_m, length_m, branch_order
-        FROM trees.qsmcylinders WHERE qsm_id = %s ORDER BY cylinder_index
+        FROM trees.qsm_cylinders WHERE qsm_id = %s ORDER BY cylinder_index
         """,
         (qsm_id,),
     )
@@ -107,8 +107,8 @@ def test_qsm_round_trip(conn, existing_tree_id):
     cur.execute(
         """
         SELECT c.cylinder_index, pt.part_type_name
-        FROM trees.qsmcylinders c
-        JOIN trees.treeparttypes pt ON pt.part_type_id = c.part_type_id
+        FROM trees.qsm_cylinders c
+        JOIN trees.tree_part_types pt ON pt.part_type_id = c.part_type_id
         WHERE c.qsm_id = %s ORDER BY c.cylinder_index
         """,
         (qsm_id,),

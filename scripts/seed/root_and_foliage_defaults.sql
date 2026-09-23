@@ -8,7 +8,7 @@
 -- What this does
 -- ==============
 -- 1. Registers Le Port et al. (2000) and Jeréz et al. (2005) as shared.Processes
---    rows -- the two crown-foliage-distribution methods trees.CrownFoliageProfiles
+--    rows -- the two crown-foliage-distribution methods trees.crown_foliage_profiles
 --    is designed around. Registered now so the citation exists in the
 --    Processes registry whenever a real fitted distribution is added later;
 --    neither paper studied any of our 11 species, so no CrownFoliageProfiles
@@ -21,7 +21,7 @@
 --    Waldbaeume" -- the standard European-forestry root-morphology
 --    classification (tap root / heart root / lateral root) that Guerrero
 --    Iniguez (2017) itself builds on.
--- 3. Seeds one trees.CrownFoliageProfiles row (distribution_type = 'uniform',
+-- 3. Seeds one trees.crown_foliage_profiles row (distribution_type = 'uniform',
 --    source = 'species_literature_default') for the same trees. 'uniform'
 --    here is an explicit "no species-specific shape parameters known yet"
 --    signal -- NOT a stand-in for real Beta/Johnson-SB parameters, which
@@ -114,17 +114,17 @@ SELECT
 FROM trees.Trees t
 JOIN shared.Species sp ON sp.species_id = t.species_id
 JOIN temp_species_root_defaults d ON d.scientific_name = sp.scientific_name
-JOIN trees.RootSystemTypes rst ON rst.root_system_type_name = d.root_system_type_name
+JOIN trees.root_system_types rst ON rst.root_system_type_name = d.root_system_type_name
 WHERE NOT EXISTS (
     SELECT 1 FROM trees.Roots r
     WHERE r.tree_id = t.tree_id AND r.source = 'species_default'
 );
 
 -- ============================================================
--- STEP 4: Seed trees.CrownFoliageProfiles (same trees, distribution_type = 'uniform')
+-- STEP 4: Seed trees.crown_foliage_profiles (same trees, distribution_type = 'uniform')
 -- ============================================================
 
-INSERT INTO trees.CrownFoliageProfiles (tree_id, process_id, distribution_type, vertical_params, horizontal_params, total_leaf_area_m2, source, created_by)
+INSERT INTO trees.crown_foliage_profiles (tree_id, process_id, distribution_type, vertical_params, horizontal_params, total_leaf_area_m2, source, created_by)
 SELECT
     t.tree_id,
     NULL,           -- no species-specific fit exists yet; not attributed to Le Port/Jerez
@@ -138,7 +138,7 @@ FROM trees.Trees t
 JOIN shared.Species sp ON sp.species_id = t.species_id
 JOIN temp_species_root_defaults d ON d.scientific_name = sp.scientific_name
 WHERE NOT EXISTS (
-    SELECT 1 FROM trees.CrownFoliageProfiles p
+    SELECT 1 FROM trees.crown_foliage_profiles p
     WHERE p.tree_id = t.tree_id AND p.source = 'species_literature_default'
 );
 
@@ -153,11 +153,11 @@ DECLARE
     profiles_count INTEGER;
 BEGIN
     SELECT COUNT(*) INTO roots_count FROM trees.Roots WHERE source = 'species_default';
-    SELECT COUNT(*) INTO profiles_count FROM trees.CrownFoliageProfiles WHERE source = 'species_literature_default';
+    SELECT COUNT(*) INTO profiles_count FROM trees.crown_foliage_profiles WHERE source = 'species_literature_default';
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Species-default Roots + CrownFoliageProfiles seeded';
     RAISE NOTICE '=======================================================';
     RAISE NOTICE '  trees.Roots (species_default):               % rows', roots_count;
-    RAISE NOTICE '  trees.CrownFoliageProfiles (literature_def.): % rows', profiles_count;
+    RAISE NOTICE '  trees.crown_foliage_profiles (literature_def.): % rows', profiles_count;
     RAISE NOTICE '=======================================================';
 END $$;

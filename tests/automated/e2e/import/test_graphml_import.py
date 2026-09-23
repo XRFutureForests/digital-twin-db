@@ -1,9 +1,9 @@
 """
-Round-trip test for XRFF-266 (trees.TreeGraphEdges).
+Round-trip test for XRFF-266 (trees.tree_graph_edges).
 
 Imports a QSM (reusing the XRFF-265 fixture/importer) and its companion
 GraphML topology graph, then confirms the full edge set -- reconstructed from
-trees.qsmcylinders' parent chain overridden by trees.TreeGraphEdges -- matches
+trees.qsm_cylinders' parent chain overridden by trees.tree_graph_edges -- matches
 the original graph exactly, including the observed/synthetic distinction.
 
 fixtures/sample_qsm_graph.graphml is a synthetic networkx-generated fixture
@@ -72,16 +72,16 @@ def test_graphml_edge_round_trip(conn, existing_tree_id):
 
     cur = conn.cursor()
     cur.execute(
-        "SELECT from_cylinder_index, to_cylinder_index, edge_type FROM trees.treegraphedges WHERE qsm_id = %s",
+        "SELECT from_cylinder_index, to_cylinder_index, edge_type FROM trees.tree_graph_edges WHERE qsm_id = %s",
         (qsm_id,),
     )
     override_rows = cur.fetchall()
     assert override_rows == [(3, 4, "synthetic")]
 
     # Reconstruct the full edge set from qsmcylinders' parent chain, with
-    # trees.TreeGraphEdges overriding the 'observed' default where present.
+    # trees.tree_graph_edges overriding the 'observed' default where present.
     cur.execute(
-        "SELECT cylinder_index, parent_cylinder_index FROM trees.qsmcylinders WHERE qsm_id = %s AND parent_cylinder_index != 0",
+        "SELECT cylinder_index, parent_cylinder_index FROM trees.qsm_cylinders WHERE qsm_id = %s AND parent_cylinder_index != 0",
         (qsm_id,),
     )
     overrides = {(f, t): et for f, t, et in override_rows}
