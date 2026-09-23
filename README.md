@@ -50,8 +50,8 @@ flowchart LR
 ```
 
 A **Location** is a site. It owns its own **Scenarios** (management regimes, unique per
-location). Each Scenario owns a chain of **Variants** — one per time step or projection,
-linked by `parent_variant_id`.
+location). Each Scenario owns a chain of **Variants** — snapshots of the stand, one per
+time step or projection, linked by `parent_variant_id`.
 
 `trees.Trees`, `pointclouds.PointClouds` and `environments.Environments` all key off that
 hierarchy through `variant_id` / `variant_type_id`. That is what makes

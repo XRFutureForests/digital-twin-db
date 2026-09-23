@@ -12,7 +12,7 @@ The digital twin DB stores multiple **forest states** in a strict three-level hi
 |------|---------|---------|
 | **Location** | A physical forest site | `ecosense`, `mathisle` |
 | **Scenario** | A `(management regime, climate pathway)` pair **at one site** that owns its baseline/initial conditions; `scenario_code = regime*10 + pathway` | `natural_growth` (10), `crop_tree_thinning_ssp370` (22) |
-| **Variant** | A state in that regime's timeline (baseline → growth → intervention) | `baseline_2025`, `silva_2035` |
+| **Variant** | A snapshot in that regime's timeline (baseline → growth → intervention) | `baseline_2025`, `silva_2035` |
 | **VariantType** | How the data was produced | `original`, `simulated_growth`, `model_output` |
 | **Tree row** | One tree's state at one time step | Tree #42 at height 22.5m in year 2035 |
 
@@ -25,7 +25,7 @@ shared.Locations   (which forest site: ecosense, mathisle)
               └── trees.Trees  (all trees at that state, joined by variant_id)
 ```
 
-**Scenarios are location-scoped** — `shared.Scenarios.location_id NOT NULL` and `UNIQUE(location_id, scenario_name)`. So a site like `ecosense` can hold several management regimes (`natural_growth`, and later e.g. `intensive_management`, `extensive_management`), each defining its own initial conditions and developing through its own variants. A scenario is *not* a single time step — the successive years are **variants** of it.
+**Scenarios are location-scoped** — `shared.Scenarios.location_id NOT NULL` and `UNIQUE(location_id, scenario_name)`. So a site like `ecosense` can hold several management regimes (`natural_growth`, and later e.g. `intensive_management`, `extensive_management`), each defining its own initial conditions and developing through its own variants. A scenario is *not* a single time step — the successive years are **variants** (snapshots) of it.
 
 **A scenario is a point on two axes (since 2026-09-14).** `shared.Scenarios` carries `management_regime_id` → `shared.ManagementRegimes` and `climate_pathway_id` → `shared.ClimatePathways`, both small-integer lookups with a name, and a generated `scenario_code = management_regime_id * 10 + climate_pathway_id`. That is what Unreal sorts on: the tens digit groups by regime, the units digit by pathway, and every id comes with its text.
 

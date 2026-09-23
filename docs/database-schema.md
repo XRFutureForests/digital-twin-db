@@ -243,7 +243,7 @@ erDiagram
 |--------|------|------|-------------|-------------|
 | `tree_id` | SERIAL | NO | PRIMARY KEY | Unique row identifier |
 | `tree_entity_id` | UUID | NO | DEFAULT gen_random_uuid() | Persistent ID for the physical tree across all rows |
-| `variant_id` | INTEGER | YES | FK → `shared.Variants` ON DELETE SET NULL | Forest state group (one time step in a scenario) |
+| `variant_id` | INTEGER | YES | FK → `shared.Variants` ON DELETE SET NULL | Forest snapshot group (one time step in a scenario) |
 | `parent_tree_id` | INTEGER | YES | FK → `trees.Trees` ON DELETE SET NULL | Parent row in lineage chain |
 | `point_cloud_id` | INTEGER | YES | FK → `pointclouds.PointClouds` ON DELETE SET NULL | Source LiDAR scan |
 | `campaign_id` | INTEGER | YES | FK → `shared.Campaigns` | Data collection campaign |
