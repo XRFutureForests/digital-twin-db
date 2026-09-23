@@ -58,6 +58,9 @@ KNOWN = {
     "sensor.sensor_tree_view.sensor_type": "XRFF-485",
     "sensor.sensor_tree_view.tree_species": "XRFF-485",
     "sensor.sensor_tree_view.tree_location": "XRFF-485",
+    # Already 60 bytes before any rename, and tier 1 takes it to 62. XRFF-497
+    # names it explicitly and shorter rather than letting the default ride.
+    "shared.auditlog_phenologyobservations_phenology_observation_id_fkey": "XRFF-497",
     "public.simulation_runs.base_variant": "XRFF-485",
     "trees.growthsimulations.mortality": "XRFF-490",
     "trees.simulationruns.promoted": "XRFF-490",
@@ -144,6 +147,50 @@ def main():
         WHERE ns.nspname IN ('{schemas}')
         """,
     )
+    routines = fetch(
+        cur,
+        f"""
+        SELECT n.nspname, p.proname, p.prosrc
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname IN ('{schemas}', 'public') AND p.prolang <> 12
+        """,
+    )
+    # Every name a function body could legitimately reference, so a miss is real.
+    known_names = {
+        (r[0], r[1])
+        for r in fetch(
+            cur,
+            f"""
+            SELECT n.nspname, c.relname FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname IN ('{schemas}', 'public', 'extensions', 'auth', 'storage')
+            UNION
+            SELECT n.nspname, p.proname FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname IN ('{schemas}', 'public', 'extensions', 'auth', 'storage')
+            UNION
+            SELECT n.nspname, t.typname FROM pg_type t
+            JOIN pg_namespace n ON n.oid = t.typnamespace
+            WHERE n.nspname IN ('{schemas}', 'public', 'extensions')
+            """,
+        )
+    }
+    identifiers = fetch(
+        cur,
+        f"""
+        SELECT n.nspname, c.relname, c.relkind::text FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname IN ('{schemas}')
+        UNION ALL
+        SELECT n.nspname, c.conname, 'constraint' FROM pg_constraint c
+        JOIN pg_class cl ON cl.oid = c.conrelid
+        JOIN pg_namespace n ON n.oid = cl.relnamespace
+        WHERE n.nspname IN ('{schemas}')
+        """,
+    )
+    reserved = {r[0] for r in fetch(
+        cur, "SELECT word FROM pg_get_keywords() WHERE catcode = 'R'")}
     viewdefs = fetch(
         cur,
         f"""
@@ -291,6 +338,46 @@ def main():
                     f"{s}.{t}.{alias}",
                     f"view alias drops '{dropped}' from {src_col}",
                 )
+
+
+    # 10. No function body may reference a relation that does not exist.
+    #     ALTER TABLE ... RENAME does not rewrite plpgsql bodies at all -- not
+    #     even static SQL, since bodies are stored as text and re-parsed at call
+    #     time. A renamed table therefore breaks every function that names it,
+    #     at call time rather than at migration time, and with CI off nothing
+    #     else will say so. This is the gate the rename plan depends on
+    #     (XRFF-495); it must report zero after every migration.
+    qualified = re.compile(
+        "(?<![A-Za-z0-9_])(" + "|".join(DOMAIN_SCHEMAS) + "|public)[.]([a-z_][a-z0-9_]*)",
+        re.IGNORECASE,
+    )
+    for s, fname, src in routines:
+        if not src:
+            continue
+        for sch, name in {(m[0].lower(), m[1].lower()) for m in qualified.findall(src)}:
+            if (sch, name) not in known_names:
+                report(
+                    f"{s}.{fname}",
+                    f"function body references {sch}.{name}, which does not exist",
+                )
+
+    # 11. Identifier length. PostgreSQL truncates at 63 bytes SILENTLY, in the
+    #     middle of the name, so a collision or a broken reference is the first
+    #     symptom. Warn well before the cliff: auto-generated names grow from
+    #     the table name, so a table comfortably under the limit can still
+    #     produce a constraint over it.
+    for s, ident, kind in identifiers:
+        n = len(ident.encode("utf-8"))
+        if n >= 63:
+            report(f"{s}.{ident}", f"identifier is {n} bytes -- at the 63-byte limit, so it "
+                                   "may already be a silent truncation")
+        elif n >= 60:
+            report(f"{s}.{ident}", f"identifier is {n} bytes, within 3 of the 63-byte limit")
+
+    # 12. No identifier may collide with a reserved word.
+    for s, ident, kind in identifiers:
+        if ident.lower() in reserved:
+            report(f"{s}.{ident}", f"identifier is a reserved word ({kind})")
 
     for line in known_hits:
         print(f"known   {line}")
