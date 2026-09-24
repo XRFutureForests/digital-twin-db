@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   planimetric work is done — both research sites 32632 (WGS 84 / UTM 32N), the frame the
   surveyed positions arrive in and the engine places from. Geometry storage stays
   EPSG:4326. Seeded from `data/lookups/locations.csv` (new `CrsEpsg` column) by both
-  lookup loaders and exposed on `public.locations`. Required by the Digital Forest Twin
+  lookup loaders and exposed on `public.locations`. Required by the Forest Digital Twin
   Schema profile's Core (one declared CRS per site). The file sorts before the `30-`/`31-`
   loaders that read the column; `11`–`29` were taken, hence the letter suffix.
 
