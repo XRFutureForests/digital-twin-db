@@ -35,23 +35,13 @@ DOMAIN_SCHEMAS = (
 
 # Deviations that predate the convention being written down, each with the issue
 # that tracks it. Not every deviation in an issue appears here -- only the ones a
-# rule below can actually detect. `ue_sensors.sensor_label` and
-# `ue_scenarios.climate_label` are real XRFF-485 findings that no rule catches,
-# because their source columns (serial_number, label) carry no suffix to drop. A finding listed here is reported as a known exception rather
+# rule below can actually detect. `ue_scenarios.climate_label` is a real XRFF-485
+# finding that no rule catches, because its source column (label) carries no
+# suffix to drop. A finding listed here is reported as a known exception rather
 # than a failure. Keys are "schema.table.column" or "schema.table".
 KNOWN = {
-    "public.ue_sensors.linked_tree_scientificname": "XRFF-485",
-    "public.ue_sensors.sensor_type": "XRFF-485",
-    "public.ue_sensor_readings.sensor_type": "XRFF-485",
     "public.variants.management_regime": "XRFF-485",
     "public.variants.climate_pathway": "XRFF-485",
-    "public.ue_variants.management_regime": "XRFF-485",
-    "public.ue_variants.climate_pathway": "XRFF-485",
-    "public.ue_scenarios.management_regime": "XRFF-485",
-    "public.ue_scenarios.climate_pathway": "XRFF-485",
-    "public.ue_trees.management_regime": "XRFF-485",
-    "public.ue_trees.climate_pathway": "XRFF-485",
-    "public.ue_sensors.linked_tree_species": "XRFF-485",
     "sensor.sensor_tree_view.sensor_type": "XRFF-485",
     "sensor.sensor_tree_view.tree_species": "XRFF-485",
     "sensor.sensor_tree_view.tree_location": "XRFF-485",
@@ -59,7 +49,6 @@ KNOWN = {
     "sensor.sensors.accuracy": "XRFF-490",
     "environments.location_environment_summary.avg_temperature": "XRFF-485",
     "environments.location_environment_summary.avg_humidity": "XRFF-485",
-    "public.ue_trees.competition": "XRFF-490",
     "sensor.sensor_tree_view.sensor_active": "XRFF-490",
     # Rule 13. Two of these are computed and will never have a base-table
     # counterpart -- they are carve-outs, not debt:

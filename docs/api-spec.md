@@ -169,7 +169,7 @@ The three `ue_*` views form the complete chain UE needs; join on stable keys:
 ```
 GET /ue_trees?variant_id=eq.<v>                              → tree catalogue (tree_id, tree_entity_id)
 GET /ue_sensors?linked_tree_entity_id=eq.<tree_entity_id>     → all sensors on that physical tree
-GET /ue_sensorreadings?sensor_id=eq.<sensor_id>&order=timestamp.desc&limit=96   → that sensor's readings
+GET /ue_sensor_readings?sensor_id=eq.<sensor_id>&order=timestamp.desc&limit=96   → that sensor's readings
 GET /ue_climate?location_id=eq.<id>&scenario_name=eq.ssp370&order=start_year  → that site's climate pathway, one row per window
 ```
 

@@ -877,10 +877,11 @@ column `COMMENT`.
 **The `public` API layer.** A view in `public` keeps its base table's name and
 its base columns' names. Where it joins a label in, the label column is
 `{stem}_name` (`location_name`, `scenario_name`). View *names* all follow it as
-of XRFF-486. View *columns* do not yet: 26 deviations remain, tracked in
-XRFF-485 and XRFF-490, because several are cached into Unreal DataTable JSON and
-cannot move without a coordinated change to the row structs — a renamed key
-imports as null, silently. Two of the 26 are permanent carve-outs rather than
+of XRFF-486. The `ue_*` view columns followed on 2026-09-25 (migration
+`20260925100000`), landed together with the Unreal row-struct update because a
+renamed key imports as null, silently. 15 view-column deviations remain in
+other views, tracked in XRFF-485 and XRFF-490. Two of them are permanent
+carve-outs rather than
 debt (`ue_scenarios.baseline_variant_id` and `shared.recent_changes.record_id`
 are both computed with `COALESCE`, so no base column corresponds).
 

@@ -275,9 +275,9 @@ instead (`docs/silva-coupling.md`, `docs/growth-simulation-schema.md`).
 ## UE variant switching — implementation notes
 
 In the HTTPS Blueprint:
-1. On level load, call `GET /ue_scenarios?location_id=eq.<id>&has_trees=eq.true&order=scenario_code` → populate a DataTable `DT_Scenarios` (keyed on `scenario_code`; `management_regime` and `climate_pathway` are the two dropdowns).
+1. On level load, call `GET /ue_scenarios?location_id=eq.<id>&has_trees=eq.true&order=scenario_code` → populate a DataTable `DT_Scenarios` (keyed on `scenario_code`; `management_regime_name` and `climate_pathway_name` are the two dropdowns).
 2. When user selects a scenario, call `GET /ue_variants?scenario_id=eq.<id>&order=sort_order` → populate a `DT_Variants` time-step selector (`simulation_year` for the slider, `variant_name` for the label).
 3. When user selects a time step, call `GET /ue_trees?variant_id=eq.<variant_id>` → repopulate `DT_Trees`. Skip rows with `tree_status_id = 5` (harvested — the tree is gone); render `4` (dead) as a snag; `NULL` means not recorded, treat as healthy.
 4. PCG graph re-runs → trees respawn at new heights/positions.
 
-The `ue_trees` view includes pre-flattened `latitude`/`longitude` — no PostGIS geometry parsing needed in Blueprint. It also carries the tree's projected source coordinates `original_x`/`original_y` (in `source_crs`, EPSG:32632 / UTM 32N), which UE places more reliably than WGS84 lat/lon. It also exposes `competition` (boolean), derived as `crown_base_height_m / height_m > 0.6` — trees where the live crown starts in the upper 40% are considered under competition pressure. See XRFF-242 for the blueprint implementation.
+The `ue_trees` view includes pre-flattened `latitude`/`longitude` — no PostGIS geometry parsing needed in Blueprint. It also carries the tree's projected source coordinates `original_x`/`original_y` (in `source_crs`, EPSG:32632 / UTM 32N), which UE places more reliably than WGS84 lat/lon. It also exposes `has_competition` (boolean), derived as `crown_base_height_m / height_m > 0.6` — trees where the live crown starts in the upper 40% are considered under competition pressure. See XRFF-242 for the blueprint implementation.
