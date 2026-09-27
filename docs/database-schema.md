@@ -504,7 +504,7 @@ Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not e
 
 ### 3.9 `sensor.sensor_tree_links` — sensor ↔ tree
 
-**Description:** Junction table linking each Ecosense sensor to the inventory tree its monitoring cluster is installed on. Exposed to the API via `public.sensor_tree_links` and consumed by `public.ue_sensors` (`linked_tree_*` fields).
+**Description:** Junction table linking each Ecosense sensor to the inventory tree its monitoring cluster is installed on. Exposed to the API via `public.sensor_tree_links` and consumed by `public.ue_sensors` (`tree_id`, `tree_entity_id` and the `linked_tree_*` fields).
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|

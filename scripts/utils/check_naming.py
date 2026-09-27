@@ -35,33 +35,17 @@ DOMAIN_SCHEMAS = (
 
 # Deviations that predate the convention being written down, each with the issue
 # that tracks it. Not every deviation in an issue appears here -- only the ones a
-# rule below can actually detect. `ue_scenarios.climate_label` is a real XRFF-485
-# finding that no rule catches, because its source column (label) carries no
-# suffix to drop. A finding listed here is reported as a known exception rather
-# than a failure. Keys are "schema.table.column" or "schema.table".
+# rule below can actually detect. A finding listed here is reported as a known
+# exception rather than a failure. Keys are "schema.table.column" or
+# "schema.table".
 KNOWN = {
-    "public.variants.management_regime": "XRFF-485",
-    "public.variants.climate_pathway": "XRFF-485",
-    "sensor.sensor_tree_view.sensor_type": "XRFF-485",
-    "sensor.sensor_tree_view.tree_species": "XRFF-485",
-    "sensor.sensor_tree_view.tree_location": "XRFF-485",
-    "public.simulation_runs.base_variant": "XRFF-485",
     "sensor.sensors.accuracy": "XRFF-490",
-    "environments.location_environment_summary.avg_temperature": "XRFF-485",
-    "environments.location_environment_summary.avg_humidity": "XRFF-485",
-    "sensor.sensor_tree_view.sensor_active": "XRFF-490",
-    # Rule 13. Two of these are computed and will never have a base-table
-    # counterpart -- they are carve-outs, not debt:
+    # Rule 13. Computed columns with no base-table counterpart, so nothing to
+    # rename -- carve-outs, not debt:
     #   ue_scenarios.baseline_variant_id  COALESCE(parent_variant_id, variant_id)
     #   recent_changes.record_id          COALESCE over five different PKs
-    # The other three are deliberate view-layer renames, and are debt in the
-    # same sense as the rest of XRFF-485: a client reading `linked_tree_id`
-    # cannot tell it joins `trees.trees.tree_id`.
-    "public.ue_scenarios.baseline_variant_id": "XRFF-485",
-    "shared.recent_changes.record_id": "XRFF-485",
-    "public.job_status.job_id": "XRFF-485",
-    "public.ue_sensors.linked_tree_id": "XRFF-485",
-    "public.ue_sensors.linked_tree_entity_id": "XRFF-485",
+    "public.ue_scenarios.baseline_variant_id": "carve-out: computed",
+    "shared.recent_changes.record_id": "carve-out: computed",
 }
 
 # FK edges where the local column deliberately qualifies the parent's PK name --
@@ -330,14 +314,16 @@ def main():
     #    column it cannot tell from an id, and `avg_temperature_c AS
     #    avg_temperature` hands it a number with no unit. Catches the one thing
     #    the snake_case regex cannot see: a *missing* separator, as in
-    #    `sp.scientific_name AS linked_tree_scientificname`.
-    alias_re = re.compile(r"(\w+)\.(\w+)\s+AS\s+(\w+)", re.IGNORECASE)
+    #    `sp.scientific_name AS linked_tree_scientificname`. An aggregate over
+    #    the column, `avg(e.avg_co2_ppm) AS avg_co2`, drops it just the same;
+    #    `array_agg(e.variant_name) AS variant_names` keeps it.
+    alias_re = re.compile(r"(\w+)\.(\w+)\)?\s+AS\s+(\w+)", re.IGNORECASE)
     for s, t, definition in viewdefs:
         for _tbl, src_col, alias in alias_re.findall(definition):
             if src_col == alias:
                 continue
             dropped = None
-            if src_col.endswith("_name") and not alias.endswith("_name"):
+            if src_col.endswith("_name") and not alias.endswith(("_name", "_names")):
                 dropped = "_name"
             else:
                 m = UNIT_SUFFIX.search(src_col)

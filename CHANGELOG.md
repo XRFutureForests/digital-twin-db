@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-09-27
+
+**The last view columns renamed to the naming convention (XRFF-485)**
+
+- `60-view-column-names-remaining.sql` / migration `20260927100000`, in place with
+  `ALTER VIEW ... RENAME COLUMN` (owner, grants and `security_invoker` kept):
+  - `public.variants`: `management_regime`, `climate_pathway` → `_name`
+  - `public.simulation_runs`: `base_variant` → `base_variant_name`
+  - `sensor.sensor_tree_view`: `sensor_type`, `tree_species`, `tree_location` → `_name`,
+    `sensor_active` → `is_sensor_active`
+  - `environments.location_environment_summary`: `avg_temperature` → `avg_temperature_c`,
+    `avg_humidity` → `avg_humidity_percent`, `avg_co2` → `avg_co2_ppm`
+  - `public.ue_scenarios`: `climate_label` → `climate_pathway_label`
+  - `public.ue_climate`: `variants`, `processes` → `variant_names`, `process_names`
+  - `public.ue_sensors` and `ue_sensor_state_at()`: `linked_tree_id` → `tree_id`;
+    `ue_sensors.linked_tree_entity_id` → `tree_entity_id`
+  - `public.job_status`: `job_id` → `processing_job_id`
+- **Breaking for two consumers.** `ST_Sensor` in Unreal reads `linked_tree_entity_id`, so
+  it imports as null until the struct field is renamed. `web/jobs/index.html` reads
+  `processing_job_id` now, so the page and the migration have to reach dt.unr together.
+- `scripts/utils/check_naming.py` rule 9 now also sees a suffix dropped through an
+  aggregate (`avg(e.avg_co2_ppm) AS avg_co2`). `KNOWN` is down to one XRFF-490 entry
+  plus two computed carve-outs.
+
 ### 2026-09-22
 
 **Naming conventions: written down correctly, two identifiers corrected, a checker added**

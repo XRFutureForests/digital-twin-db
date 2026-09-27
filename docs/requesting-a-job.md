@@ -107,7 +107,7 @@ makes scenario comparison possible.
 ## 3. Watch it
 
 ```sql
-select job_id, workflow_name, status, submitted_at, duration_seconds, error_message
+select processing_job_id, workflow_name, status, submitted_at, duration_seconds, error_message
 from job_status
 order by submitted_at desc
 limit 10;
@@ -124,7 +124,7 @@ limit 10;
 where the answer to "why did it fail" is:
 
 ```sql
-select output_data->>'stderr' from job_status where job_id = 42;
+select output_data->>'stderr' from job_status where processing_job_id = 42;
 ```
 
 You see your own jobs. Curators see everyone's.

@@ -578,7 +578,7 @@
         td.textContent = text === null || text === undefined ? "" : String(text);
         return td;
       }
-      tr.appendChild(cell(r.job_id));
+      tr.appendChild(cell(r.processing_job_id));
       tr.appendChild(cell(r.workflow_name));
 
       var st = document.createElement("td");
@@ -613,7 +613,7 @@
     var h = document.createElement("p");
     h.className = "help";
     h.style.marginTop = "14px";
-    h.textContent = "Job " + r.job_id + " — " + r.workflow_name + " " + (r.workflow_version || "");
+    h.textContent = "Job " + r.processing_job_id + " — " + r.workflow_name + " " + (r.workflow_version || "");
     host.appendChild(h);
 
     function block(title, text) {

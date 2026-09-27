@@ -81,8 +81,8 @@ two runs differing only by `--seed` would be indistinguishable.
 
 ```sql
 SELECT simulation_run_id, location_name, scenario_name,
-       base_variant, base_year, horizon_years,
-       seed, is_mortality_enabled, promoted,
+       base_variant_name, base_year, horizon_years,
+       seed, is_mortality_enabled, is_promoted,
        run_params ->> 'competition' AS competition,
        first_year, last_year, tree_count
 FROM   public.simulation_runs

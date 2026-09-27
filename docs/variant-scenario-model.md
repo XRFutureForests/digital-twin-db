@@ -100,9 +100,9 @@ The **VariantType** (original, simulated_growth, etc.) is a property of the *var
 ```
 GET /ue_scenarios?location_id=eq.1&has_trees=eq.true&order=scenario_code
 → [
-    {"scenario_id": 2,  "scenario_name": "natural_growth",            "scenario_code": 10, "management_regime": "natural_growth",     "climate_pathway": "historical", "climate_label": "historical", "variant_count": 11, "first_year": 2025, "last_year": 2075, ...},
-    {"scenario_id": 14, "scenario_name": "natural_growth_ssp370",     "scenario_code": 12, "management_regime": "natural_growth",     "climate_pathway": "ssp370",     "climate_label": "SSP3-7.0",  ...},
-    {"scenario_id": 16, "scenario_name": "crop_tree_thinning_ssp370", "scenario_code": 22, "management_regime": "crop_tree_thinning", "climate_pathway": "ssp370",     ...}
+    {"scenario_id": 2,  "scenario_name": "natural_growth",            "scenario_code": 10, "management_regime_name": "natural_growth",     "climate_pathway_name": "historical", "climate_pathway_label": "historical", "variant_count": 11, "first_year": 2025, "last_year": 2075, ...},
+    {"scenario_id": 14, "scenario_name": "natural_growth_ssp370",     "scenario_code": 12, "management_regime_name": "natural_growth",     "climate_pathway_name": "ssp370",     "climate_pathway_label": "SSP3-7.0",  ...},
+    {"scenario_id": 16, "scenario_name": "crop_tree_thinning_ssp370", "scenario_code": 22, "management_regime_name": "crop_tree_thinning", "climate_pathway_name": "ssp370",     ...}
   ]
 ```
 
@@ -148,7 +148,7 @@ Response fields (full `ue_trees` struct):
   "dbh_cm": 34.1,
   "age_years": 95,
   "health_score": 0.85,
-  "competition": false,
+  "has_competition": false,
   "sensor_ref": "Beech_Mixed_8",
   "has_sensors": true,
   "original_x": 416747.2247,
@@ -161,9 +161,9 @@ Response fields (full `ue_trees` struct):
   "variant_type_id": 4,
   "scenario_code": 10,
   "management_regime_id": 1,
-  "management_regime": "natural_growth",
+  "management_regime_name": "natural_growth",
   "climate_pathway_id": 0,
-  "climate_pathway": "historical",
+  "climate_pathway_name": "historical",
   "tree_status_id": 1,
   "tree_status_name": "healthy"
 }

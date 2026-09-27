@@ -168,12 +168,12 @@ The three `ue_*` views form the complete chain UE needs; join on stable keys:
 
 ```
 GET /ue_trees?variant_id=eq.<v>                              → tree catalogue (tree_id, tree_entity_id)
-GET /ue_sensors?linked_tree_entity_id=eq.<tree_entity_id>     → all sensors on that physical tree
+GET /ue_sensors?tree_entity_id=eq.<tree_entity_id>            → all sensors on that physical tree
 GET /ue_sensor_readings?sensor_id=eq.<sensor_id>&order=timestamp.desc&limit=96   → that sensor's readings
 GET /ue_climate?location_id=eq.<id>&scenario_name=eq.ssp370&order=start_year  → that site's climate pathway, one row per window
 ```
 
-Join sensors to trees by **`linked_tree_entity_id`** (the persistent physical-tree UUID), not `linked_tree_id` (a single variant row) — this keeps the link stable across growth variants. `ue_sensors` also carries the latest reading inline (plus `sensor_model` = real instrument, `data_owner`, the generic `source` = provider e.g. `aquarius`, and `plot_name` = the sensor's monitoring sub-area), so a per-tree sensor list needs no extra readings or `/sensors` call. `linked_tree_*` is populated by `scripts/import/link_sensors_to_trees.py` (see [database-schema.md §3.9](database-schema.md)); meteo/soil-station sensors have `NULL` tree fields. The twelve soil probes on one tree are told apart by the placement parsed from the label: `placement_ring` (`stem` | `middle` | `edge`, near → far), `placement_direction` (`N` | `E` | `S` | `W` | `NE`), `placement_depth_cm` and `placement_distance_cm`; `NULL` means the label says nothing (migration `20260924100000`).
+Join sensors to trees by **`tree_entity_id`** (the persistent physical-tree UUID), not `tree_id` (a single variant row) — this keeps the link stable across growth variants. `ue_sensors` also carries the latest reading inline (plus `sensor_model` = real instrument, `data_owner`, the generic `source` = provider e.g. `aquarius`, and `plot_name` = the sensor's monitoring sub-area), so a per-tree sensor list needs no extra readings or `/sensors` call. `tree_id`, `tree_entity_id` and `linked_tree_*` are populated by `scripts/import/link_sensors_to_trees.py` (see [database-schema.md §3.9](database-schema.md)); meteo/soil-station sensors have `NULL` tree fields. The twelve soil probes on one tree are told apart by the placement parsed from the label: `placement_ring` (`stem` | `middle` | `edge`, near → far), `placement_direction` (`N` | `E` | `S` | `W` | `NE`), `placement_depth_cm` and `placement_distance_cm`; `NULL` means the label says nothing (migration `20260924100000`).
 
 `ue_trees` also carries `sensor_ref` and a `has_sensors` boolean, so UE can flag instrumented trees without a second query — filter with `GET /ue_trees?has_sensors=eq.true`.
 

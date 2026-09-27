@@ -268,7 +268,7 @@ def main():
         print("=" * 80)
         print(f"Created {inserted} new sensor-tree links")
         print("\nQuery linked data:")
-        print("  SELECT * FROM public.ue_sensors WHERE linked_tree_id IS NOT NULL;")
+        print("  SELECT * FROM public.ue_sensors WHERE tree_id IS NOT NULL;")
         return 0
 
     except Exception as e:
