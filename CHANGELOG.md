@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-10-08
+
+**`ue_trees` has projected coordinates for every variant**
+
+- `62-ue-trees-silva-positions.sql` / migration `20261008100000`: `original_x`,
+  `original_y` and `source_crs` fall back to `position` transformed into the location's CRS
+  when a row has no `position_original`. The SILVA variants are written that way, so before
+  this all ten simulated years of ECOSENSE (and every MathIsle variant) returned NULL, and
+  Unreal placed every simulated tree at UTM (0,0). The fallback reproduces the baseline UTM
+  position of the same `tree_entity_id` to < 1e-8 m. Same columns, names and types; no
+  consumer change beyond re-fetching.
+- Applied on dev. Not on dt.unr: Unreal reads the dev database through JSON bundles for
+  now, and moving dev to the server (XRFF-491) is a separate task.
+
 ### 2026-09-27
 
 **The last view columns renamed to the naming convention (XRFF-485)**
