@@ -211,6 +211,7 @@ erDiagram
 | `growth_rate` | VARCHAR(20) | YES | very_slow / slow / moderate / fast / very_fast | Growth rate classification |
 | `shade_tolerance` | VARCHAR(20) | YES | very_low / low / moderate / high / very_high | Shade tolerance level |
 | `is_deciduous` | BOOLEAN | YES | — | Deciduous (true) or evergreen (false) |
+| `leaf_type` | VARCHAR(20) | YES | needleleaf / broadleaf | Leaf habit, independent of `is_deciduous` (larch: deciduous and needleleaf). Set by migration `20261008120000`, not by the CSV |
 | `gbif_key` | INTEGER | YES | — | GBIF taxon key for validation |
 | `gbif_accepted_name` | VARCHAR(200) | YES | — | GBIF accepted scientific name |
 

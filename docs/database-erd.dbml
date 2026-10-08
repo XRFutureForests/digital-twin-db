@@ -69,6 +69,7 @@ Table shared.species {
   growth_rate varchar [note: 'slow, moderate, fast']
   shade_tolerance varchar [note: 'low, moderate, high, very_high']
   is_deciduous boolean [note: 'true=deciduous, false=evergreen, NULL=unknown']
+  leaf_type varchar [note: 'needleleaf or broadleaf, independent of is_deciduous (larch = needleleaf)']
 }
 
 Table shared.scenarios {

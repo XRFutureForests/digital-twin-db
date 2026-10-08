@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-10-08
 
+**Species carry a leaf type, and `ue_trees` publishes it**
+
+- `63-species-leaf-type.sql` / migration `20261008120000`: new column
+  `shared.species.leaf_type` (`needleleaf` / `broadleaf`), filled for all 14 species, and
+  appended as the last column of `public.ue_trees`. `is_deciduous` could not serve: European
+  Larch is a deciduous conifer, and the Copernicus leaf-type map the Unreal forest reads
+  counts it as coniferous. The species loaders upsert a fixed column list, so a lookup reload
+  keeps the values; a species added later through the CSV arrives with `leaf_type` NULL.
+- Unreal: `ST_Tree` needs a `leaf_type` String field before DT_Trees is re-fetched.
+- Applied on dev. Not on dt.unr (XRFF-491).
+
 **`ue_trees` has projected coordinates for every variant**
 
 - `62-ue-trees-silva-positions.sql` / migration `20261008100000`: `original_x`,
