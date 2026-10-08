@@ -42,7 +42,15 @@ REQUIRED_COLUMNS = [
 
 # Present in the standardised dictionary but not stored -- see the migration's
 # header comment for why (derived metrics, recomputable from stored geometry).
-OPTIONAL_COLUMNS = ["branch", "branch_order", "branch_position"]
+# raw_radius and is_virtual are stored (migration 20261006120000): the unmodified fit and
+# TreeQSM's gap-bridging flag, which growpy.structure's exchange table also carries.
+OPTIONAL_COLUMNS = [
+    "branch",
+    "branch_order",
+    "branch_position",
+    "raw_radius",
+    "is_virtual",
+]
 
 CREATED_BY = "import_qsm"
 
@@ -53,6 +61,13 @@ def validate_csv(df):
         raise ValueError(f"CSV is missing required rTwig columns: {missing}")
     if df.empty:
         raise ValueError("CSV has no cylinder rows")
+
+
+def _optional_float(row, column):
+    """A float column that may be absent from the CSV or empty in a row (-> NULL)."""
+    if column not in row.index or pd.isna(row[column]):
+        return None
+    return float(row[column])
 
 
 def cylinder_volume_m3(radius, length):
@@ -151,6 +166,8 @@ def insert_qsm(conn, tree_id, df, args):
                 branch_order,
                 int(r["branch_position"]) if "branch_position" in df.columns else None,
                 part_type_id,
+                _optional_float(r, "raw_radius"),
+                bool(r["is_virtual"]) if "is_virtual" in df.columns else False,
             )
         )
 
@@ -160,12 +177,13 @@ def insert_qsm(conn, tree_id, df, args):
         INSERT INTO trees.qsm_cylinders (
             qsm_id, cylinder_index, parent_cylinder_index,
             start_point, axis, length_m, radius_m,
-            branch_index, branch_order, branch_position, part_type_id
+            branch_index, branch_order, branch_position, part_type_id,
+            raw_radius_m, is_virtual
         )
         VALUES %s
         """,
         rows,
-        template="(%s, %s, %s, ST_MakePoint(%s, %s, %s), %s, %s, %s, %s, %s, %s, %s)",
+        template="(%s, %s, %s, ST_MakePoint(%s, %s, %s), %s, %s, %s, %s, %s, %s, %s, %s, %s)",
     )
 
     return qsm_id, len(rows), total_volume

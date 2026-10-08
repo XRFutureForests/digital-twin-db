@@ -318,7 +318,7 @@ erDiagram
 
 **Description:** QSM (Quantitative Structure Model) reconstructions and their cylinder geometry — the first schema step of the CityGML/QSM alignment (XRFF-264/265; see `citygml-qsm-mapping.md`). `trees.qsms` is variant-like: the same physical tree (`tree_entity_id`) can have several reconstructions from different scans, tools, or parameter sets. QSM-derived volume/DBH/height/crown-area are kept separate from `trees.trees`'s allometric equivalents so the two estimation methods can be validated against each other rather than conflated.
 
-`trees.qsm_cylinders` adopts the Real Twig / rTwig standardised cylinder column set directly ([aidanmorales.github.io/rTwig](https://aidanmorales.github.io/rTwig), "Dictionary" vignette) rather than inventing a new one, so ingesting a published rTwig CSV is a copy, not a transform. Only the source geometry/topology columns are stored (start point, axis, length, radius, parent, branch identity/order/position); rTwig's derived tree/segment metrics (growth length, distances, pipe-model outputs, segment ids) are not — they're recomputable from the stored geometry and would be speculative to store before a consumer needs them.
+`trees.qsm_cylinders` adopts the Real Twig / rTwig standardised cylinder column set directly ([aidanmorales.github.io/rTwig](https://aidanmorales.github.io/rTwig), "Dictionary" vignette) rather than inventing a new one, so ingesting a published rTwig CSV is a copy, not a transform. Only the source geometry/topology columns are stored (start point, axis, length, radius and raw radius, virtual flag, parent, branch identity/order/position); rTwig's derived tree/segment metrics (growth length, distances, pipe-model outputs, segment ids) are not — they're recomputable from the stored geometry and would be speculative to store before a consumer needs them. `raw_radius_m`, `is_virtual` and the zero-length allowance were added by migration `20261006120000` after standardising about 7,000 published QSMs showed the first import would otherwise lose the unmodified fit or abort. growpy's `growpy-qsm-standardize` writes this table's convention (1-based `id`, `parent` 0 for the base, `axis_*` unit vector), so one tree's rows of its `cylinders.csv.gz` (without the `tree_uid` column) are what `import_qsm.py` reads.
 
 | Column | Type | Null | Constraints | Description |
 |--------|------|------|-------------|-------------|
@@ -347,11 +347,13 @@ erDiagram
 | `parent_cylinder_index` | INTEGER | YES | not FK — self-reference by index | Matches the source files; 0 = base cylinder |
 | `start_point` | GEOMETRY(PointZ) | YES | — | Cylinder base, in the QSM's local frame |
 | `axis` | DOUBLE PRECISION[3] | YES | length = 3 if set | Unit vector, base → top |
-| `length_m` | NUMERIC(8,4) | NO | > 0 | — |
-| `radius_m` | NUMERIC(8,5) | NO | ≥ 0 | — |
-| `branch_index` | INTEGER | YES | — | rTwig `branch` |
-| `branch_order` | INTEGER | YES | ≥ 0 | 0 = trunk |
-| `branch_position` | INTEGER | YES | — | Position within the branch |
+| `length_m` | NUMERIC(8,4) | NO | ≥ 0 | 0 is allowed: TreeQSM output contains zero-length cylinders that other cylinders hang off |
+| `radius_m` | NUMERIC(8,5) | NO | ≥ 0 | Radius as the source delivered it (corrected where the source corrects) |
+| `raw_radius_m` | NUMERIC(8,5) | YES | ≥ 0 | Fit before any correction (rTwig `raw_radius`, TreeQSM `UnmodRadius`); NULL when the source does not keep it |
+| `is_virtual` | BOOLEAN | NO | DEFAULT false | Cylinder added to bridge a gap in the cloud (TreeQSM `added`, TreeML `addedVirtual`) |
+| `branch_index` | INTEGER | YES | — | Axis id from 1, by the lab's single axis rule (the child with the longer supported subtree continues the axis), not the producing tool's own id |
+| `branch_order` | INTEGER | YES | ≥ 0 | Axis order, 0 = trunk, same rule |
+| `branch_position` | INTEGER | YES | — | Position along the axis, from 1 at its base |
 | `part_type_id` | SMALLINT | YES | FK → `trees.tree_part_types` | CityGML part semantic (trunk/branch/twig); see the part_type assignment rule in §3.5c |
 
 Indexed on `(qsm_id, branch_order)` and `(qsm_id, parent_cylinder_index)`. Not exposed through a `public.*` view (unlike `trees.qsms`): every other public view in this schema is one-row-per-entity, and there is no client query pattern yet for a per-tree cylinder cloud of this size — XRFF-269 (`qsm_to_pve` spike) will define the real access shape. The table is already reachable via the `trees` schema (`PGRST_DB_SCHEMAS`), gated by the same RLS policies a public view would carry.
