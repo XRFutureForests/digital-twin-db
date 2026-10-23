@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-10-23
+
+**`ue_sensor_readings` publishes the sensor's `location_id`**
+
+- `64-ue-sensor-readings-location.sql` / migration `20261023120000`: `s.location_id`
+  appended as the last column of `public.ue_sensor_readings`, so a site fetches only its own
+  readings with `?location_id=eq.<site>`. Before this, Unreal's readings fetcher took the
+  newest 100,000 readings of all locations for every site. Same columns, names and types
+  otherwise; `security_invoker` and the owner are unchanged.
+- Unreal: the readings fetcher adds the filter; `ST_SensorReading` needs no new field.
+- Applied on dev (as `supabase_admin`, the view's owner). Not on dt.unr (XRFF-491).
+
 ### 2026-10-08
 
 **Species carry a leaf type, and `ue_trees` publishes it**
