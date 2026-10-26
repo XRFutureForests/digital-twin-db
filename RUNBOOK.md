@@ -210,6 +210,8 @@ python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
 # 3. baseline variants (schema-owning DDL runs as supabase_admin, not postgres)
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_baseline_variant.sql
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/mathisle_baseline_variant.sql
+# 396 ecosense TLS canopy heights -> yield-table heights (before any derived-value fill)
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_canopy_height_fix.sql
 
 # 4. sensors + readings, then link
 python scripts/import/ingest_sensor_data.py sensors  data/imports/my_sensors.csv

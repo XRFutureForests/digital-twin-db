@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-10-26
+
+**ecosense baseline: 396 canopy heights replaced by yield-table heights**
+
+- `scripts/seed/ecosense_canopy_height_fix.sql` (new, run after the import and
+  `ecosense_baseline_variant.sql`): 396 of the 1,198 measured ecosense heights were the
+  canopy surface sampled at the stem, not the stem's own height. For example, small beech
+  stood at 27–29 m with 5 cm stems. Their DBH is right. Each gets growpy's yield-table height
+  for its DBH (`height_source` = `allometric_yield_table`), and the TLS value moves to
+  `field_notes` as `tls_canopy_height_m`. The values derived from the old height (crown width
+  and base, volumes, age, biomass, carbon) are cleared for the fills.
+- **Keys:** location + plot + tree number, or the surveyed position for the four stems without
+  a number.
+- **Re-run:** guarded on the current height, so a re-run changes nothing.
+- **Applied on dev, 2026-10-26,** followed by the fills and the eight ecosense SILVA chains
+  (`--replace`). Not on dt.unr.
+
 ### 2026-10-23
 
 **`ue_sensor_readings` publishes the sensor's `location_id`**
