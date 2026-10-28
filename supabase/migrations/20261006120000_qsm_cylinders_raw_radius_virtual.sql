@@ -29,6 +29,8 @@
 -- continues the axis), not each tool's own branch ids, so QSMs from different tools
 -- compare. The source's ids are not stored. In the datasets checked the rule agrees with
 -- TreeQSM's own continuation at about 94 % of forks.
+--
+-- Mirrored to init 61-qsm-cylinders-raw-radius-virtual.sql.
 -- =============================================================================
 
 ALTER TABLE trees.qsm_cylinders

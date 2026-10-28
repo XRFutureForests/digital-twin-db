@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-10-28
+
+**dt.unr brought level with dev (XRFF-491)**
+
+- The 21 migrations from `20260916130000` to `20261023120000` were applied on dt.unr in one
+  transaction, including the snake_case rename. Every entry below that says "Not on dt.unr"
+  is now on dt.unr. Schema fingerprint (columns, functions, views, indexes) identical to dev.
+- Data: the trees, variants, SILVA runs and growth simulations, sensors, scenarios,
+  processes and audit log were copied from dev, so dt.unr now carries the 2026-10-26 canopy
+  height fix and the re-run ecosense chains. Sensor readings were already identical and stay;
+  `shared.processing_jobs` keeps the server's own history.
+
+**QSM cylinder columns now ship in a fresh init**
+
+- `61-qsm-cylinders-raw-radius-virtual.sql` (new) mirrors migration `20261006120000`:
+  `trees.qsm_cylinders.raw_radius_m` and `is_virtual`, and `length_m >= 0` instead of `> 0`.
+  The migration had no init mirror, so a fresh stack lacked both columns and
+  `import_qsm.py` failed against it. The migration itself had also never been applied on
+  dev; it is now applied on dev and dt.unr.
+
 ### 2026-10-26
 
 **ecosense baseline: 396 canopy heights replaced by yield-table heights**
