@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-10-28
 
+**`ue_sensor_readings_latest(p_limit, p_location_id)`: the newest readings, sorted by sensor**
+
+- New RPC returning the newest `p_limit` rows of `ue_sensor_readings` (optionally one site),
+  sorted by `sensor_id`, then `timestamp_unix`, so Unreal's `DT_SensorReadings` reads one
+  sensor's series at a time. `GET /rest/v1/rpc/ue_sensor_readings_latest?p_limit=100000`.
+  Same 100,000 rows as `?order=timestamp.desc&limit=100000`; filter by site with
+  `p_location_id`, not `?location_id=eq.` (a PostgREST filter on an RPC applies after the
+  limit). An `ORDER BY` on the view was rejected: it made the all-sites fetch 24 s instead of
+  0.1 s. Migration `20261028120000` + init `65-ue-sensor-readings-latest.sql`. Dev only; not
+  on dt.unr.
+
 **dt.unr brought level with dev (XRFF-491)**
 
 - The 21 migrations from `20260916130000` to `20261023120000` were applied on dt.unr in one
