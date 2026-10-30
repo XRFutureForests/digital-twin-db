@@ -1,9 +1,8 @@
-# Usage
-#   Start:              docker compose up
-#   With helpers:       docker compose -f docker-compose.yml -f ./dev/docker-compose.dev.yml up
+# Usage (from docker/)
+#   Start:              docker compose up -d
 #   Stop:               docker compose down
-#   Destroy:            docker compose -f docker-compose.yml -f ./dev/docker-compose.dev.yml down -v --remove-orphans
-#   Reset everything:  ./reset.sh
+#   Destroy:            docker compose down -v --remove-orphans   # deletes all data
+#   Reset and reload:   RUNBOOK.md §6
 
 name: digital_forest_twin_db
 

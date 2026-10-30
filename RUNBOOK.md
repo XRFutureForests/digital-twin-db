@@ -7,20 +7,29 @@ the variant model that shapes it, see [README.md](README.md).
 
 ## 1. Start the stack
 
+`docker/.env` carries the passwords, JWT secrets and API keys. It is gitignored. Get the team's
+copy from the password manager, or create your own from the template and generate every secret
+(§9):
+
+```bash
+cp docker/.env.example docker/.env     # then replace every CHANGE_ME value
+```
+
+`.env.example` alone does not start a working stack: its keys are placeholders.
+
 ```bash
 cd docker
-docker compose up -d      # ~30 s
+docker compose up -d      # first run builds the db image and pulls the rest; later ~30 s
 docker compose ps         # every service should read "healthy"
 ```
 
+Run compose from `docker/` — there is no compose file at the repo root.
+
 | Access point | URL |
 |--------------|-----|
-| Supabase Studio | <http://localhost:54323> |
+| Supabase Studio | <http://localhost:54323> — no login on this port; Kong's `:8000/` route asks for `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD` |
 | REST API (Kong) | <http://localhost:8000/rest/v1> |
-| PostgreSQL | `localhost:5432` — Supavisor pooler |
-
-`docker/.env` carries the passwords, JWT secrets and API keys. Gitignored; regenerate
-everything before any deployment.
+| PostgreSQL | `localhost:5432` — Supavisor pooler; user `postgres.<POOLER_TENANT_ID>` (e.g. `postgres.digital-forest-twin-local`), password `POSTGRES_PASSWORD` |
 
 If a service shows `Exit` or `Restarting`:
 
@@ -28,17 +37,15 @@ If a service shows `Exit` or `Restarting`:
 docker compose logs <service-name>
 ```
 
-Deeper container issues: [docs/docker/README.md](docs/docker/README.md),
-[docs/docker/TROUBLESHOOTING.md](docs/docker/TROUBLESHOOTING.md).
-
-Full local setup: [docs/local-deployment-guide.md](docs/local-deployment-guide.md).
+Symptom-by-symptom: [docs/troubleshooting.md](docs/troubleshooting.md). Container stack
+reference: [docs/docker/README.md](docs/docker/README.md).
 
 ---
 
 ## 2. Python environment
 
 ```bash
-conda env create -f environment.yml
+conda env create -f environment.yml     # from the repo root
 conda activate digital-twin
 ```
 
@@ -50,7 +57,8 @@ features.
 
 ## 3. Load data
 
-The database initialises empty of user data. Import in this order so foreign keys resolve:
+The database initialises with lookup tables but no forest data. Import in this order so foreign
+keys resolve:
 
 ```mermaid
 flowchart LR
@@ -74,15 +82,16 @@ lookup, with worked Python and R examples:
 Ingestion is provider-agnostic. `ingest_sensor_data.py` loads sensors and readings from any
 CSV or JSON via the two source-agnostic bulk RPCs (`bulk_upsert_sensors`,
 `bulk_insert_readings`). Both are **idempotent** — re-running the same export is always safe.
+The file names below are placeholders for your own export.
 
 ```bash
-python scripts/import/ingest_sensor_data.py sensors  data/imports/my_sensors.csv --dry-run
-python scripts/import/ingest_sensor_data.py sensors  data/imports/my_sensors.csv
-python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
+python scripts/import/ingest_sensor_data.py sensors  <sensors.csv> --dry-run
+python scripts/import/ingest_sensor_data.py sensors  <sensors.csv>
+python scripts/import/ingest_sensor_data.py readings <readings.json>
 
 # different column names in the source
-python scripts/import/ingest_sensor_data.py sensors data/imports/vendor_export.csv \
-    --mapping data/imports/vendor_mapping.json
+python scripts/import/ingest_sensor_data.py sensors <vendor_export.csv> \
+    --mapping <vendor_mapping.json>
 
 python scripts/import/link_sensors_to_trees.py
 ```
@@ -91,9 +100,11 @@ A mapping file is a flat JSON object of `{"source_column": "rpc_field_name"}`.
 `ingest_sensor_data.py --help` lists required fields, `position` vs `latitude`/`longitude`,
 and the valid `quality` values.
 
-Aquarius is one such provider; its sync lives in
+The lab's own sensor data comes from two connector repos, each with its own README:
 [aquarius-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector)
-and talks to this database through the same two RPCs.
+(talks to this database through the same two RPCs) and
+[open-data-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/open-data-connector)
+(weather, climate, soil).
 
 ### Reference data
 
@@ -147,7 +158,8 @@ Endpoint reference: [docs/api-spec.md](docs/api-spec.md). Query patterns per cli
 `dftdb-db` publishes no host port, so admin work goes through the container:
 
 ```bash
-docker exec -it dftdb-db psql -U postgres
+docker exec -it dftdb-db psql -U postgres          # queries
+docker exec -it dftdb-db psql -U supabase_admin    # DDL, seeds, dumps (owns the custom schemas)
 ```
 
 ```sql
@@ -156,17 +168,22 @@ docker exec -it dftdb-db psql -U postgres
 SELECT * FROM shared.species LIMIT 5;
 ```
 
-For a file: `MSYS_NO_PATHCONV=1 docker exec -i dftdb-db psql -U postgres < file.sql`.
+For a file: `MSYS_NO_PATHCONV=1 docker exec -i dftdb-db psql -U supabase_admin -d postgres < file.sql`.
 
 Host-side Python scripts connect through `scripts/utils/db.py` in the `digital-twin` conda
 environment.
 
 ### Unreal
 
-Base URL `http://<HOST>:8000/rest/v1`, ANON_KEY from `docker/.env`. The tree-placement
-endpoint is `/rest/v1/ue_trees` — a flat, pre-joined view carrying lat/lon, species name,
-height, DBH and scenario in one query. Blueprint setup and PCG integration are in the
-knowledge hub, `05-PRESENTATION-TIER/data-fetcher-guide`.
+| Setting | Local | Server |
+|---|---|---|
+| API base URL | `http://localhost:8000/rest/v1` | `https://dt.unr.uni-freiburg.de/db/rest/v1` |
+| `apikey` | `ANON_KEY` from `docker/.env` | the server's `ANON_KEY` |
+
+The tree-placement endpoint is `/rest/v1/ue_trees` — a flat, pre-joined view carrying lat/lon,
+species name, height, DBH and scenario in one query; filter it on `variant_id`. If you moved
+Kong off 8000 (`KONG_HTTP_PORT`), change the base URL to match. Blueprint setup and PCG
+integration are in the knowledge hub, `05-PRESENTATION-TIER/data-fetcher-guide`.
 
 ---
 
@@ -183,19 +200,39 @@ routes `/functions/v1/` with only the `cors` plugin while `/rest/v1/` gets `key-
 
 ---
 
-## 6. Reset and rebuild
+## 6. Schema changes, reset and rebuild
+
+### Applying a schema change
+
+1. Add the migration under `supabase/migrations/` and mirror it into the next numbered file
+   under `docker/volumes/db/init/` (workflow: [AGENTS.md](AGENTS.md#schema-migrations)).
+2. Apply it to the running dev database as `supabase_admin`:
+
+   ```bash
+   docker exec -i dftdb-db psql -U supabase_admin -d postgres < supabase/migrations/<file>.sql
+   docker exec dftdb-db psql -U supabase_admin -d postgres -c "NOTIFY pgrst, 'reload schema'"
+   ```
+
+3. Regenerate the schema docs and commit both files with the migration:
+
+   ```bash
+   python scripts/utils/generate_schema_docs.py           # writes docs/database-dictionary.md + docs/database-erd.dbml
+   python scripts/utils/generate_schema_docs.py --check   # exit 1 if either is stale
+   ```
 
 **The `db` image bakes `docker/volumes/db/init/`.** A bare `up -d` reuses the old baked SQL;
-after any schema change, rebuild the image.
+after any schema change, rebuild the image before the next fresh init:
 
 ```bash
-cd docker && docker compose build db && docker compose up -d db     # schema change
+cd docker && docker compose build db && docker compose up -d db
 ```
 
-Full rebuild from committed sources, reproducible:
+### Full rebuild
+
+`docker compose down -v` **deletes all data** (both named volumes). Back up first (§7).
+`scripts/admin/reset_database.py` is not this procedure: it skips the image rebuild.
 
 ```bash
-# 0. back up first (see §7)
 # 1. wipe volumes, rebuild the baked image, boot (init scripts run on first boot)
 cd docker
 docker compose down -v --remove-orphans
@@ -207,15 +244,23 @@ cd ..
 python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
 python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
 
-# 3. baseline variants (schema-owning DDL runs as supabase_admin, not postgres)
+# 3. seeds, all as supabase_admin (it owns the custom schemas)
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_baseline_variant.sql
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/mathisle_baseline_variant.sql
-# 396 ecosense TLS canopy heights -> yield-table heights (before any derived-value fill)
+# required after every ecosense import: import_trees.py writes stem_number = 1 only
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_zwisel_stem.sql
+# 396 ecosense TLS canopy heights -> yield-table heights; before the derived-value fills
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_canopy_height_fix.sql
+# optional: species-default roots and crown foliage profiles
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/root_and_foliage_defaults.sql
 
-# 4. sensors + readings, then link
-python scripts/import/ingest_sensor_data.py sensors  data/imports/my_sensors.csv
-python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
+# 4. derived values, in this order (each takes --dry-run)
+python scripts/import/fill_missing_heights.py
+python scripts/import/fill_missing_ages.py
+python scripts/import/fill_missing_biomass.py
+
+# 5. sensors and readings: run aquarius-connector and open-data-connector (see their READMEs),
+#    then link sensors to trees
 python scripts/import/link_sensors_to_trees.py
 ```
 
@@ -230,8 +275,7 @@ findstr :5432` / `ss -tlnp | grep 5432`) or change the mapping in `docker/.env`.
 persistent state is on named volumes for exactly this reason, restart Docker Desktop and
 `up -d`.
 
-Symptom-by-symptom: [docs/troubleshooting.md](docs/troubleshooting.md); container-level:
-[docs/docker/TROUBLESHOOTING.md](docs/docker/TROUBLESHOOTING.md).
+More: [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ---
 
@@ -244,6 +288,7 @@ docker compose ps                                              # every service "
 docker compose exec db pg_isready -U postgres
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/rest/v1/ -H "apikey: $ANON_KEY"   # 200
 python scripts/utils/check_db_schema.py
+python scripts/utils/generate_schema_docs.py --check          # schema docs match the database
 ```
 
 ### Logs
@@ -255,20 +300,46 @@ docker compose logs --no-color > logs-$(date +%Y%m%d).log
 docker stats
 ```
 
-### Backup and restore
+### Backup
+
+Dump as `supabase_admin` — `postgres` is not a superuser and owns none of the custom objects.
+This is the same dump the server's `dt-db-backup` timer writes nightly
+(`scripts/server/backup-db.sh`, to `/media/data/dftdb/backups/dftdb_*.sql.gz`, 30 days kept):
 
 ```bash
-docker exec dftdb-db pg_dump -U postgres -d postgres -Fc -f /tmp/backup.dump
-docker cp dftdb-db:/tmp/backup.dump ./backup-$(date +%Y%m%d-%H%M%S).dump
-
-# restore into a running stack: stop the app services, keep db
-docker compose stop studio kong auth rest realtime storage
-docker exec -i dftdb-db pg_restore -U postgres -d postgres --clean --if-exists /tmp/backup.dump
-docker compose up -d
+docker exec dftdb-db pg_dump -U supabase_admin -d postgres \
+    --exclude-table-data='sensor.sensor_readings' \
+  | gzip > dftdb_$(date +%Y%m%d_%H%M%S).sql.gz
 ```
 
-On the server a `dt-db-backup` systemd timer does this nightly (installed 2026-09-10 — until
-then there was no backup at all).
+`sensor.sensor_readings` is dumped as structure only; its rows are re-fetched with
+aquarius-connector after a restore.
+
+### Restore
+
+Restore into a scratch database, verify it, then take what you need from it. Do not restore
+over the live database with `pg_restore --clean`; that path is not supported here.
+
+```bash
+# 1. empty scratch database, then load the dump (~50 s)
+docker exec dftdb-db psql -U supabase_admin -d postgres -c "CREATE DATABASE restore_check"
+gunzip -c dftdb_<stamp>.sql.gz | docker exec -i dftdb-db psql -U supabase_admin -d restore_check
+```
+
+Expect four errors `function graphql_public.graphql(...) does not exist`; they are harmless.
+
+2. Verify: compare row counts of `trees.trees`, `trees.growth_simulations`, `shared.variants`,
+   `sensor.sensors`, `auth.users` and `SELECT count(*) FROM pg_policies` between
+   `restore_check` and `postgres`. `sensor.sensor_readings` is empty by design.
+3. Copy the needed tables from `restore_check` into `postgres` (for example
+   `pg_dump --data-only -t <schema.table>` piped into `psql`, after emptying the target), or
+   point the stack at the restored database (`POSTGRES_DB` in `docker/.env`, then
+   `up -d --force-recreate`; this variant was not part of the 2026-10-30 check).
+4. Re-sync sensor readings with aquarius-connector, then
+   `DROP DATABASE restore_check`.
+
+Last verified on dev 2026-10-30: trees (180,225 rows), growth simulations, variants, sensors,
+`auth.users` and the policy count matched the live database.
 
 ### Rotating credentials
 
@@ -282,6 +353,9 @@ and no secret store, so nothing else will tell you a consumer broke.
 | 2 | `aquarius-connector/.env` | `SERVICE_ROLE_KEY`, `SUPABASE_URL` | REST client; a stale key fails every sync |
 | 3 | silva-connector | `PGPASSWORD` in the shell (or `docker/.env`) | libpq as `postgres`; see `silva-connector/docker/.env.example` |
 | 4 | `digital-twin-dashboard/docker/.env` | `DB_PASSWORD`, `POOLER_TENANT_ID` | Through `dftdb-pooler`; the tenant id must match this stack's |
+
+The portal and job page (`web/portal/config.js`, `web/jobs/config.js`) carry `ANON_KEY` too;
+rewrite them after a `JWT_SECRET` change.
 
 After step 1 recreate the stack — a `restart` is not enough, env is baked at container
 creation:
@@ -297,7 +371,7 @@ aquarius_connector.find_active_sensors` in aquarius-connector (read-only), a sil
 ### Emergency
 
 ```bash
-cd docker && docker compose down && docker compose up -d      # full stack restart
+cd docker && docker compose down && docker compose up -d      # full stack restart, keeps data
 ```
 
 Rollback to the last backup: the restore recipe above.
@@ -341,36 +415,55 @@ Secrets — change before any use:
 | `POSTGRES_PASSWORD` | `openssl rand -base64 32` | PostgreSQL superuser |
 | `JWT_SECRET` | `openssl rand -base64 32` | JWT signing secret |
 | `ANON_KEY`, `SERVICE_ROLE_KEY` | `python scripts/utils/generate_jwt.py` | Supabase role JWTs |
-| `DASHBOARD_PASSWORD` | `openssl rand -base64 32` | Studio login |
+| `DASHBOARD_PASSWORD` | `openssl rand -base64 32` | Studio login (via Kong) |
 | `SECRET_KEY_BASE` | `openssl rand -base64 48` | Realtime / Supavisor session key (≥ 64 chars) |
 | `VAULT_ENC_KEY` | `openssl rand -hex 16` | Supavisor vault key (32 hex) |
 | `PG_META_CRYPTO_KEY` | `openssl rand -base64 32` | pg-meta |
 | `LOGFLARE_PUBLIC_ACCESS_TOKEN`, `LOGFLARE_PRIVATE_ACCESS_TOKEN` | two different random strings ≥ 20 chars | Logflare |
 
-Configuration: `POSTGRES_HOST=db`, `POSTGRES_PORT=5432`, `POSTGRES_DB=postgres`,
-`DASHBOARD_USERNAME=supabase`; `KONG_HTTP_PORT=8000`, `KONG_HTTPS_PORT=8443`,
-`POOLER_PROXY_PORT_TRANSACTION=6543`, `POOLER_TENANT_ID=digital-forest-twin-local`,
-`POOLER_DEFAULT_POOL_SIZE=20`, `POOLER_MAX_CLIENT_CONN=100`. Provider credentials
-(Aquarius, …) live in the connector repos, never here.
+Configuration (defaults from `.env.example`):
+
+| Variable | Default | Notes |
+|---|---|---|
+| `POSTGRES_HOST`, `POSTGRES_DB`, `POSTGRES_PORT` | `db`, `postgres`, `5432` | `POSTGRES_PORT` is both the database's internal port and the pooler's host port (server: 5433) |
+| `DASHBOARD_USERNAME` | `supabase` | |
+| `KONG_HTTP_PORT`, `KONG_HTTPS_PORT` | `8000`, `8443` | server: 8001 |
+| `POOLER_PROXY_PORT_TRANSACTION` | `6543` | |
+| `POOLER_TENANT_ID` | `digital-forest-twin-local` | pooler username is `postgres.<POOLER_TENANT_ID>` |
+| `POOLER_DEFAULT_POOL_SIZE`, `POOLER_MAX_CLIENT_CONN`, `POOLER_DB_POOL_SIZE` | `20`, `100`, `5` | |
+| `PGRST_DB_SCHEMAS` | `public,storage,graphql_public,shared,pointclouds,trees,sensor,environments,imagery` | schemas PostgREST exposes |
+| `SITE_URL`, `API_EXTERNAL_URL`, `SUPABASE_PUBLIC_URL` | `localhost` URLs | server: `https://dt.unr.uni-freiburg.de/db` |
+| `DISABLE_SIGNUP` | `true` | accounts are created by curators (XRFF-435) |
+| `PGDATA_PATH`, `STORAGE_PATH` | unset (named volume `db-data`, `./volumes/storage`) | server: `/media/data/dftdb/{pgdata,storage}` |
+| `POSTGRES_SHARED_BUFFERS`, `POSTGRES_EFFECTIVE_CACHE_SIZE`, `POSTGRES_WORK_MEM` | unset (compose defaults `1GB`, `4GB`, `16MB`) | server: `2GB`, `8GB`, `16MB` |
+
+Provider credentials (Aquarius, …) live in the connector repos, never here.
 
 ### Service start order (from `docker-compose.yml`)
 
 ```
-vector → db → analytics → { studio, kong, auth, rest, realtime, meta, edge-functions, supavisor }
-                       └→ storage (needs rest + imgproxy)
+vector → db → analytics → { studio, kong, auth, rest, realtime, meta, functions, supavisor }
+imgproxy ─┐
+rest ─────┴→ storage (also needs db)
+mail (no dependencies)
 ```
 
-If studio or kong will not start, check `analytics` first.
+If studio or kong will not start, check `analytics` first. Compose service names differ from
+container names in two places: `functions` is `dftdb-edge-functions`, `supavisor` is
+`dftdb-pooler`.
 
 ### Ports (dev)
 
 | Service | Host | Container |
 |---|---|---|
 | Studio | 54323 | 3000 |
-| Kong (REST, Auth, Storage, Realtime) | 8000 / 8443 | 8000 / 8443 |
-| Postgres via Supavisor | 5432 | 5432 |
+| Kong (REST, Auth, Storage) | 8000 / 8443 | 8000 / 8443 |
+| Postgres via Supavisor (session) | 5432 | 5432 |
 | Supavisor transaction pooler | 6543 | 6543 |
-| Mail (inbucket, dev only — forwards nothing) | 2500 / 9000 | 2500 / 9000 |
+| Mail (inbucket, dev only — forwards nothing) | 2500 / 9000 / 1100 | 2500 / 9000 / 1100 |
 | Analytics (Logflare) | 4000 | 4000 |
+
+Realtime is not used. Its Kong route (`/realtime/v1/`) points at
+`realtime-dev.supabase-realtime`, which does not resolve on dev.
 
 On the server Kong is on **8001** and Postgres on **5433**; the public surface is 443 only.

@@ -25,7 +25,7 @@ approach was chosen, write it in the knowledge hub and link to it.
 | Exit codes | An ingestion or connector script must exit non-zero if any record failed to write — an unattended run's exit code is the only signal the job runner has | Always |
 | Secrets | Never commit `.env` or credentials; use `docker/.env` (gitignored) | Before any git operation |
 | Schema changes | Add a new file under `supabase/migrations/`; never edit the baseline or old numbered init files | Before schema edits |
-| Docker | Run `docker compose up -d` from `docker/` or the repo root | Before all local dev |
+| Docker | Run `docker compose up -d` from `docker/` (there is no compose file at the repo root) | Before all local dev |
 | Task tracking | Check Linear for existing issues before creating new ones | Always |
 | Language | Keep code and documentation in English | For all written artifacts |
 
@@ -49,15 +49,16 @@ approach was chosen, write it in the knowledge hub and link to it.
 
 ## Schema Migrations
 
-Schema history lives in `supabase/migrations/` (Supabase CLI), not as numbered files under `docker/volumes/db/init/`. That directory's `10-baseline-schema.sql` is a point-in-time snapshot (2026-07-17) consolidating the former 10-29 and 32-37 init files, which had accreted into a replay-history problem — later files restructured objects earlier files created, so a fresh init replayed the project's history instead of producing today's schema directly. `30-load-lookup-tables.sql` and `31-refresh-lookup-functions.sql` are unchanged (CSV data loading, not schema).
+Schema history lives in `supabase/migrations/` (Supabase CLI). Every migration is also mirrored, additively, into the next numbered file under `docker/volumes/db/init/` (currently `11-` to `70-`), because the `db` image bakes that directory and a fresh init must produce today's schema. That directory's `10-baseline-schema.sql` is a point-in-time snapshot (2026-07-17) consolidating the former 10-29 and 32-37 init files, which had accreted into a replay-history problem — later files restructured objects earlier files created, so a fresh init replayed the project's history instead of producing today's schema directly. `30-load-lookup-tables.sql` and `31-refresh-lookup-functions.sql` are unchanged (CSV data loading, not schema).
 
 **Adding a schema change:**
 1. `npx supabase migration new <description>` — creates a new timestamped file under `supabase/migrations/`
 2. Write the DDL (use `IF NOT EXISTS` / `IF EXISTS` guards for idempotency)
-3. Apply and test against a local reset (see Critical Rules) before committing
-4. If the change should also ship in the baked Docker image, mirror it into a new file under `docker/volumes/db/init/` (e.g. `11-<description>.sql`) — additive only, never restructuring `10-baseline-schema.sql`'s objects
+3. Mirror it into the next numbered file under `docker/volumes/db/init/` (e.g. `71-<description>.sql`) — additive only, never restructuring `10-baseline-schema.sql`'s objects
+4. Apply it to the dev database as `supabase_admin`, then `NOTIFY pgrst, 'reload schema'` ([RUNBOOK.md §6](RUNBOOK.md#6-schema-changes-reset-and-rebuild)); before committing, check that a fresh init from the rebuilt image (`docker compose build db`) produces the same schema
+5. Regenerate the generated schema docs and commit them with the migration: `python scripts/utils/generate_schema_docs.py` rewrites `docs/database-dictionary.md` and `docs/database-erd.dbml`; `--check` exits 1 when either is stale
 
-When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `point_clouds`, `environments`, `imagery`, `forest_floor`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot. Keep this schema list in sync with the `CREATE SCHEMA` statements in the init files — omitting one silently drops it from the new baseline.
+When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `pointclouds`, `environments`, `imagery`, `forest_floor`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot. Keep this schema list in sync with the `CREATE SCHEMA` statements in the init files — omitting one silently drops it from the new baseline.
 
 ## Consumers that read base tables directly
 
@@ -79,7 +80,7 @@ connector.
 requires a grep of both consumer repos before it lands.
 
 ```bash
-grep -rn "<table_or_column>" https://gitlab.uni-freiburg.de/xr-future-forests-lab/silva-connector/R https://gitlab.uni-freiburg.de/xr-future-forests-lab/silva-connector/scripts
+grep -rn "<table_or_column>" ../silva-connector/R ../silva-connector/scripts
 grep -rn "<table_or_column>" ../digital-twin-dashboard/shared ../digital-twin-dashboard/apps
 ```
 
@@ -100,7 +101,7 @@ documented dependency for an undocumented one.
 | REST API | PostgREST v13.0.7 (auto-generated from schema) |
 | Auth | GoTrue v2.182.1 (Supabase Auth) |
 | Studio UI | Supabase Studio 2025.11.10 |
-| Connection pooler | Supavisor (port 6543) |
+| Connection pooler | Supavisor 2.7.4 (5432 session, 6543 transaction; user `postgres.<POOLER_TENANT_ID>`) |
 | Python | 3.12 — supabase-py>=2.26, psycopg2>=2.9.9, SQLAlchemy>=2.0 |
 | R | 4.3 — DBI, RPostgres |
 | Infrastructure | Docker Compose (conda env: `digital-twin`) |
@@ -109,27 +110,18 @@ documented dependency for an undocumented one.
 
 | Task | Command |
 |------|---------|
-| Start all services | `docker compose up -d` |
-| Stop all services | `docker compose down` |
+| Start all services (from `docker/`) | `docker compose up -d` |
+| Stop all services (from `docker/`) | `docker compose down` |
 | Open Studio UI | http://localhost:54323 |
 | Query REST API | http://localhost:8000/rest/v1 |
-| Reset database | `python scripts/admin/reset_database.py` |
+| Reset and rebuild the database | the procedure in [RUNBOOK.md §6](RUNBOOK.md#6-schema-changes-reset-and-rebuild) (`scripts/admin/reset_database.py` skips the image rebuild — do not use it) |
+| Regenerate schema docs | `python scripts/utils/generate_schema_docs.py` (`--check` exits 1 when stale) |
 
 ## Environment Variables
 
-Required in `docker/.env` (never commit):
-
-| Variable | Purpose |
-|----------|---------|
-| `POSTGRES_PASSWORD` | PostgreSQL superuser password |
-| `JWT_SECRET` | JWT signing secret (GoTrue + PostgREST) |
-| `ANON_KEY` | Supabase anonymous access key |
-| `SERVICE_ROLE_KEY` | Supabase service role key |
-| `DASHBOARD_USERNAME` | Studio login username |
-| `DASHBOARD_PASSWORD` | Studio login password |
-| `POSTGRES_HOST` | PostgreSQL host (default: `localhost`) |
-| `POSTGRES_PORT` | PostgreSQL port (default: `5432`) |
-| `KONG_HTTP_PORT` | Kong API gateway port (default: `8000`) |
+`docker/.env` (never commit) is created from `docker/.env.example`. The full list — secrets,
+how to generate them, defaults (`POSTGRES_HOST=db`, `POSTGRES_PORT=5432`, `KONG_HTTP_PORT=8000`)
+and server overrides — is [RUNBOOK.md §9](RUNBOOK.md#9-reference).
 
 ## Maintenance
 
@@ -142,6 +134,6 @@ Required in `docker/.env` (never commit):
 **Verification:**
 - [ ] Links resolve to existing files
 - [ ] Commands match current Docker Compose setup
-- [ ] Environment variable list matches `docker/.env.example` or deployment guide
+- [ ] RUNBOOK §9 environment variable list matches `docker/.env.example`
 
-**Last Updated:** 2026-09-15
+**Last Updated:** 2026-10-30

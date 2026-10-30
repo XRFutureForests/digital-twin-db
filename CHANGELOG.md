@@ -6,6 +6,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-10-30 (after 2.0.0)
+
+**Security: three writes the role model never allowed are closed**
+
+- The connector RPCs `bulk_insert_readings`, `bulk_upsert_sensors`, `set_location_attributes`,
+  `upsert_environment` and `refresh_soil_aggregates` run as their owner and check no role,
+  yet anyone with the public anon key could call them — insert readings, upsert sensors,
+  overwrite site attributes and environments. EXECUTE is now `service_role` only; every
+  connector already sends that key.
+- `trees.growth_simulations` was writable (INSERT/UPDATE) by any signed-in account, including
+  ones with no role. Revoked; silva-connector writes over libpq and is unaffected.
+- Fix: updates to `pointclouds.point_clouds` and `trees.phenology_observations` were never
+  audited since the 2026-09-23 rename — the audit trigger still dispatched on the old table
+  names. They are logged again.
+- Migration `20261030120000` + init `70`; regression tests in `tests/automated/e2e/access/`.
+
+**Documentation brought up to date with the database**
+
+- `docs/database-dictionary.md` (new) and `docs/database-erd.dbml` are generated from the live
+  database by `scripts/utils/generate_schema_docs.py` (`--check` exits 1 when stale): all 72
+  tables, columns, types, references, constraints and the comments stored in the database.
+  The hand-written ERD was missing 27 tables and used pre-rename names.
+- The reference docs were audited against the live schema and corrected; stale duplicates
+  were merged into RUNBOOK and `docs/troubleshooting.md`.
+- Portal: `/portal/docs/` (data model, a clickable schema map, per-schema tables with live row
+  counts, links to the reference docs and all repositories) and `/portal/api/` rewritten as a
+  developer guide (sign-in, read/write recipes, running a model with the live SILVA parameter
+  table, ground rules); the start page links the tree look survey. `docs/requesting-a-job.md`
+  gains the SILVA run modes.
+- `ue_sensor_readings_latest` (2026-10-28) is now applied on dt.unr too.
+
 ## [2.0.0] - 2026-10-30
 
 ### 2026-10-30
@@ -31,12 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix: `public.trees`, `public.sensors` and `public.campaigns` reported an UPDATE/DELETE that
   RLS had skipped as successful (their INSTEAD OF triggers returned the row regardless). They
   now return no row, like the auto-updatable views.
-- Portal docs and developer guide: `/portal/docs/` (data model in five sentences, a
-  clickable schema map, per-schema tables with live row counts, links to the reference
-  docs and all repositories) and `/portal/api/` rewritten as a developer guide (sign-in,
-  read/write recipes verified against dt.unr, running a model, ground rules; the SILVA
-  parameter table is read live from `param_schema`). `docs/requesting-a-job.md` gains
-  the SILVA run modes (`dry_run`, `no_promote`, promote, `replace`).
 - Migrations `20261030100000`, `20261030110000` + init `68`, `69`; tests in
   `tests/automated/e2e/access/`. On dt.unr since 2026-10-30 (the 10 tests pass there through nginx).
 

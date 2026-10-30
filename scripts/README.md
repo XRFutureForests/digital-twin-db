@@ -117,19 +117,21 @@ python scripts/utils/check_db_schema.py
 
 # Validate and test import files (dry-run)
 python scripts/utils/test_import_upload.py
+
+# Regenerate docs/database-dictionary.md and docs/database-erd.dbml from the database
+# (run after every migration; --check exits 1 when either is stale)
+python scripts/utils/generate_schema_docs.py
 ```
 
 ## Admin Scripts
 
 Administrative scripts for database management (in `scripts/admin/`):
 
+Do not use `reset_database.py` to reset the database: it skips the image rebuild, so new
+init files never run, and it deletes a data path that no longer exists. Follow the reset
+procedure in [RUNBOOK.md §6](../RUNBOOK.md#6-schema-changes-reset-and-rebuild) instead.
+
 ```bash
-# Full database reset (destroys all data)
-python scripts/admin/reset_database.py
-
-# Skip confirmation prompt
-python scripts/admin/reset_database.py --force
-
 # Refresh all lookup tables from CSV
 python scripts/admin/refresh_lookups.py
 

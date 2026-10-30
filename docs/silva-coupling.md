@@ -1,7 +1,9 @@
 # SILVA Coupling
 
 **Issues:** XRFF-245 (write-back), XRFF-374 (run parameters), XRFF-351 (this rewrite)
-**Status:** Live. Two runs written 2026-09-01 (ecosense 1,495 trees, mathisle 730).
+**Status:** Live. First runs written 2026-09-01 (ecosense 1,495 trees, mathisle 730); dev held
+34 recorded runs on 2026-10-30 (25 ecosense, 9 mathisle), covering natural-growth, managed and
+SSP climate chains.
 
 The SILVA single-tree growth model is coupled to this database by
 [**silva-connector**](../../silva-connector), a separate repo. That repo's
@@ -48,13 +50,22 @@ docker compose -f docker/docker-compose.yml run --rm silvar \
     --base-variant baseline_2025 --years 20 --replace
 ```
 
-Runtime is 32 s for ecosense (1,495 trees) and 9 s for mathisle (730), both over
-a 20-year horizon.
+Runtime (measured 2026-09-01) is 32 s for ecosense (1,495 trees) and 9 s for
+mathisle (730), both over a 20-year horizon.
 
-Options: `--location` (required), `--scenario`, `--base-variant`, `--years`
-(multiple of 5), `--competition` (`sf_polygon` | `rect_sum` | `legacy`),
-`--mortality`, `--seed`, `--variant-prefix`, `--replace`, `--no-promote`,
-`--dry-run`.
+Options: `--location` (required), `--regime` (`natural_growth` |
+`crop_tree_thinning` | `target_diameter_harvest`), `--climate` (`historical` |
+`ssp126` | `ssp370` | `ssp585`), `--scenario` (optional override of the name
+derived from regime and climate), `--base-scenario`, `--base-variant`,
+`--re-anchor`, `--years` (multiple of 5), `--competition` (`sf_polygon` |
+`rect_sum` | `legacy`), `--mortality`, `--seed`, `--variant-prefix`,
+`--replace`, `--no-promote`, `--dry-run`.
+
+The normal route is not this command but a job: `request_job('silva', …)` from
+the job page, which a runner carrying the `silva` key (dt.unr has one) turns into
+this compose invocation ([scripts/runner/README.md](../scripts/runner/README.md)). The
+`silva` workflow's `param_schema` mirrors these options — see
+[requesting-a-job.md](requesting-a-job.md).
 
 ---
 
@@ -68,6 +79,12 @@ forest state to every downstream consumer, so it is all or nothing.
 | `trees.simulation_runs` | one row: the run's parameters and identity | accumulates |
 | `trees.growth_simulations` | every per-tree projection of the run, keyed by `simulation_run_id`, plus stand aggregates | accumulates |
 | `shared.variants` + `trees.trees` (+ `trees.stems`) | one complete forest **state** per 5-year period, chained by `parent_variant_id` | replaced — variant names are unique per (location, scenario), so `--replace` is required |
+
+Two supporting writes happen when needed: the output scenario is inserted into
+`shared.scenarios` if it does not exist yet at that location (with its regime and
+climate-pathway axes; an existing scenario with different axes is refused), and
+a new `shared.processes` row is registered when the connector's version is not
+recorded yet.
 
 The split is what makes scenario comparison possible: only one run can hold the
 variant chain UE reads, but any number of trajectories can sit side by side

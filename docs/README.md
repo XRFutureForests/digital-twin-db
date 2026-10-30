@@ -7,12 +7,18 @@ what the database is, and [RUNBOOK.md](../RUNBOOK.md) for how to run and load it
 
 | Document | Contents |
 |----------|----------|
-| [database-overview.md](database-overview.md) | The seven schemas, how they connect, the key design patterns |
-| [database-schema.md](database-schema.md) | Full data dictionary — every table, column, type and constraint |
-| [variant-scenario-model.md](variant-scenario-model.md) | Location → Scenario → Variant, and the query patterns that depend on it |
-| [growth-simulation-schema.md](growth-simulation-schema.md) | `trees.growth_simulations` and `trees.simulation_runs` |
+| [database-overview.md](database-overview.md) | The seven schemas, how they connect, key patterns, working query examples |
+| [database-dictionary.md](database-dictionary.md) | Generated: every table, column, type, constraint and DB comment, plus the `public` views |
+| [database-erd.dbml](database-erd.dbml) | Generated ERD (DBML) |
+| [database-schema.md](database-schema.md) | Conventions, column semantics, constraints, indexes and data types |
+| [variant-scenario-model.md](variant-scenario-model.md) | Location → scenario → variant, scenarios as regime × climate pathway, and the UE query sequence |
+| [growth-simulation-schema.md](growth-simulation-schema.md) | `trees.simulation_runs` and `trees.growth_simulations`: tables, views, permissions |
 | [citygml-qsm-mapping.md](citygml-qsm-mapping.md) | Column-by-column mapping to the CityGML conceptual tree model |
-| [level-of-detail-vocabulary.md](level-of-detail-vocabulary.md) | The LOD terms used across schemas |
+| [level-of-detail-vocabulary.md](level-of-detail-vocabulary.md) | What `lod` means in the database, and the detail terms used with growpy |
+
+`database-dictionary.md` and `database-erd.dbml` are written by
+`scripts/utils/generate_schema_docs.py` from the live database — regenerate them after a
+migration, never edit them by hand.
 
 ## Provenance
 
@@ -26,7 +32,7 @@ what the database is, and [RUNBOOK.md](../RUNBOOK.md) for how to run and load it
 | Document | Contents |
 |----------|----------|
 | [api-spec.md](api-spec.md) | REST endpoints, views, RPC signatures |
-| [data-access-guide.md](data-access-guide.md) | Query patterns per client — SQL, REST, R, Python, Unreal |
+| [data-access-guide.md](data-access-guide.md) | Query patterns per client — SQL, REST, R, Python, Unreal; accounts and role tiers |
 | [requesting-a-job.md](requesting-a-job.md) | Queueing a connector run — the `/jobs/` page, the RPC underneath it, and what claims the job |
 | [silva-coupling.md](silva-coupling.md) | The contract with silva-connector |
 
@@ -34,10 +40,11 @@ what the database is, and [RUNBOOK.md](../RUNBOOK.md) for how to run and load it
 
 | Document | Contents |
 |----------|----------|
-| [local-deployment-guide.md](local-deployment-guide.md) | Local stack, step by step |
 | [deployment-guide.md](deployment-guide.md) | Production deployment on dt.unr, TLS, Kong, NFS-backed PGDATA |
-| [troubleshooting.md](troubleshooting.md) | Symptom-by-symptom |
-| [docker/](docker/README.md) | Container stack, versions, container-level troubleshooting |
+| [troubleshooting.md](troubleshooting.md) | Symptom-by-symptom, including container-level problems |
+| [docker/](docker/README.md) | Container stack and how it differs from upstream Supabase; image versions in [docker/versions.md](docker/versions.md) |
+
+Starting the stack locally, loading data, reset and rebuild are in [RUNBOOK.md](../RUNBOOK.md).
 
 ---
 
