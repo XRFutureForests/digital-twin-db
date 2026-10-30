@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   RLS had skipped as successful (their INSTEAD OF triggers returned the row regardless). They
   now return no row, like the auto-updatable views.
 - Migrations `20261030100000`, `20261030110000` + init `68`, `69`; tests in
-  `tests/automated/e2e/access/`. Dev only; not on dt.unr yet.
+  `tests/automated/e2e/access/`. On dt.unr since 2026-10-30 (the 10 tests pass there through nginx).
 
 ### 2026-10-28
 
