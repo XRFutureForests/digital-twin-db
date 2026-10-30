@@ -8,7 +8,8 @@ Static pages served at **<https://dt.unr.uni-freiburg.de/portal/>** — the site
 | `/portal/` | everyone | landing page: which door fits what you want to do, and how to get access |
 | `/portal/data/` | read: anyone; write: `contributor`+ | browse any public table or view, filter, download CSV; add rows by form or pasted CSV; correct a row |
 | `/portal/account/` | everyone with an account; team tools for `curator`+ | sign in, change your own password; curators create accounts, grant/revoke `contributor`, reset passwords |
-| `/portal/api/` | developers | base URL, anon key, auth flow, curl/Python/R examples, live endpoint list |
+| `/portal/docs/` | everyone | data model in five sentences, schema map, per-schema tables with live row counts, links to the reference docs and the repositories |
+| `/portal/api/` | developers | developer guide: connection, sign-in, read and write recipes (curl/Python/R), running a model (SILVA modes, live parameter table), ground rules, live endpoint list |
 
 The job page (`web/jobs/`, `/jobs/`) is part of the same site and shares the sign-in: both
 keep the session under the same `sessionStorage` key.
@@ -32,7 +33,8 @@ reaches a browser.
 | `index.html` | landing page |
 | `data/index.html` | browse / add / correct / CSV |
 | `account/index.html` | sign-in, own password, team accounts |
-| `api/index.html` | developer quick start |
+| `docs/index.html` | data model, schema map, docs and repository links |
+| `api/index.html` | developer guide |
 | `lib.js` | config, session (with token refresh), API calls, top bar |
 | `portal.css` | shared look, same palette as `web/jobs/` |
 | `config.example.js` | copy to `config.js` and fill in; `config.js` is gitignored |

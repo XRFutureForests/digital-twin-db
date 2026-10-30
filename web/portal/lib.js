@@ -165,8 +165,9 @@
     ["/ecosense/", "Dashboards"],
     ["/portal/data/", "Data"],
     ["/jobs/", "Run models"],
-    ["/portal/account/", "Account"],
-    ["/portal/api/", "API"]
+    ["/portal/docs/", "Docs"],
+    ["/portal/api/", "API"],
+    ["/portal/account/", "Account"]
   ];
 
   function topbar(here) {

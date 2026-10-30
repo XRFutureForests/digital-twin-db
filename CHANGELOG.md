@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix: `public.trees`, `public.sensors` and `public.campaigns` reported an UPDATE/DELETE that
   RLS had skipped as successful (their INSTEAD OF triggers returned the row regardless). They
   now return no row, like the auto-updatable views.
+- Portal docs and developer guide: `/portal/docs/` (data model in five sentences, a
+  clickable schema map, per-schema tables with live row counts, links to the reference
+  docs and all repositories) and `/portal/api/` rewritten as a developer guide (sign-in,
+  read/write recipes verified against dt.unr, running a model, ground rules; the SILVA
+  parameter table is read live from `param_schema`). `docs/requesting-a-job.md` gains
+  the SILVA run modes (`dry_run`, `no_promote`, promote, `replace`).
 - Migrations `20261030100000`, `20261030110000` + init `68`, `69`; tests in
   `tests/automated/e2e/access/`. On dt.unr since 2026-10-30 (the 10 tests pass there through nginx).
 
