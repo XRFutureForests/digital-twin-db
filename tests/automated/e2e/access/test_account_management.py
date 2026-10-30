@@ -223,3 +223,18 @@ def test_blocked_update_through_a_trigger_view_reports_zero_rows():
         json={"height_m": tree["height_m"]}, timeout=15,
     )
     assert r.status_code == 200 and r.json() == [], r.text
+
+
+@pytest.mark.parametrize("fn,body", [
+    ("bulk_insert_readings", {"readings": []}),
+    ("bulk_upsert_sensors", {"p_sensors": []}),
+])
+def test_connector_rpcs_refuse_anon_and_signed_in_accept_service_role(fn, body):
+    # Migration 20261030120000: these SECURITY DEFINER RPCs write as their
+    # owner and check no role, so only the service_role key may call them.
+    # Empty payloads, so nothing is written even where the call is allowed.
+    assert rpc(fn, body).status_code in (401, 403)
+    assert rpc(fn, body, mint("curator")).status_code in (401, 403)
+    ok = requests.post(f"{BASE}/rest/v1/rpc/{fn}", headers={**SERVICE, "Content-Type": "application/json"},
+                       json=body, timeout=15)
+    assert ok.status_code == 200, ok.text
