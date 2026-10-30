@@ -6,8 +6,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-10-30
-
 ### 2026-10-30
 
 **Access for other teams: the portal, curator-managed accounts, read-only by default**
@@ -32,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   RLS had skipped as successful (their INSTEAD OF triggers returned the row regardless). They
   now return no row, like the auto-updatable views.
 - Migrations `20261030100000`, `20261030110000` + init `68`, `69`; tests in
-  `tests/automated/e2e/access/`. Dev only; not on dt.unr yet.
+  `tests/automated/e2e/access/`. On dt.unr since 2026-10-30 (the 10 tests pass there through nginx).
 
 ### 2026-10-28
 
@@ -318,28 +316,6 @@ trees (Silver fir, Douglas fir, larch and scattered broadleaves) and
 species. See `scripts/import/fill_missing_ages.py` for why substituting a
 congener's equation is refused.
 
-## [1.0.2] - 2026-07-29
-
-### Security
-
-- Purged real field-site data — `data/ecosense_250911.csv`,
-  `data/mathisle_250904.csv`, `data/imports/{ecosense,mathisle}_trees_import.csv`,
-  and `data/reference/ecosense_sensor_tree_map.csv` — from the entire git
-  history, not just the current tree. These contained precise UTM/GPS
-  coordinates of actual research plots and URLs to an internal ODK instance.
-  They remain available locally as gitignored files; `link_sensors_to_trees.py`
-  and the documented import commands are unaffected.
-- Purged an accidentally-committed 89 MB `Miniforge3-Linux-x86_64.sh`
-  installer sitting in the repo's first commit, and an unrelated
-  garbage-named debris file from a historical shell-quoting accident.
-- **History was rewritten on `main`, `dev`, and `feature/simple-postgres`
-  (all tags re-pointed).** Existing local clones or forks should re-clone
-  rather than pull/rebase.
-
-### Removed
-
-- `AGENTS.md` and `CLAUDE.md` from `main` — dev-workflow tooling, not
-  project documentation; they now live on a `dev` branch instead.
 
 ## [1.0.1] - 2026-07-27
 
