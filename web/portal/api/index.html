@@ -1,9 +1,12 @@
 <!doctype html>
 <!--
-  API quick start for developers. The endpoint reference at the bottom is read
-  live from PostgREST's OpenAPI description, so it cannot drift from the
-  schema; the prose above it covers what the description cannot say -- how to
-  authenticate, and the traps people actually hit.
+  Developer guide: connect, sign in, read, write, run a model, and the ground
+  rules. Two parts are read live so they cannot drift: the SILVA parameter
+  table (from workflows.param_schema, the same schema the job page and
+  request_job()'s validator use) and the endpoint list at the bottom (from
+  PostgREST's OpenAPI description). The prose covers what neither can say --
+  authentication, the data's shape, and the traps people actually hit.
+  How the data is organised is on /portal/docs/.
 -->
 <html lang="en">
 <head>
@@ -14,13 +17,13 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>REST API</h1>
+  <h1>Developer guide</h1>
   <p class="sub">
-    Every table and view of the twin is an HTTP endpoint (PostgREST behind Kong,
+    Every table of the twin is an HTTP endpoint (PostgREST behind Kong,
     Supabase-compatible). Reads need only the public key below; writes need a
-    signed-in account with the right role, exactly as on the
-    <a href="/portal/data/">data page</a> — the database enforces the same rules
-    for both.
+    signed-in account with the right role — the database enforces the same rules
+    as on the <a href="/portal/data/">data page</a>. How the data is organised:
+    <a href="/portal/docs/">Docs</a>.
   </p>
 
   <div class="panel">
@@ -31,65 +34,138 @@
       <tr><th>Auth</th><td><code><span class="base"></span>/auth/v1/token</code></td></tr>
       <tr><th>Public (anon) key</th><td><code id="anonKey" style="word-break:break-all"></code>
         <p class="help">Sent as the <code>apikey</code> header on every request. It identifies this
-        deployment, not a person, and only grants what anonymous visitors may do anyway. Unreal ships with it.</p></td></tr>
+        deployment, not a person, and only grants what anonymous visitors may do anyway — safe to ship in a client.</p></td></tr>
+      <tr><th>Account</th><td>from the curator of your team; change the password on the <a href="/portal/account/">account page</a></td></tr>
     </table>
-    <p class="help">Reachable from the university network and the internet on port 443 only.
-      The service-role key is never handed out; for writes, ask your team's curator for an account.</p>
+    <p class="help">Port 443 only — other ports are blocked by the campus network, so ignore <code>:8000</code> URLs in older docs.
+      The service-role key is never handed out.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Sign in</h2>
+    <p>A password sign-in returns an <code>access_token</code> (a JWT, valid one hour) and a
+      <code>refresh_token</code>. Send the token as <code>Authorization: Bearer …</code> next to the
+      <code>apikey</code> header. Without one you are anonymous: you can read, not write.</p>
+    <pre id="exSignIn"></pre>
+    <p>In Python, <code>supabase-py</code> handles tokens and refresh; keep the <code>/db</code> in the URL:</p>
+    <pre id="exSb"></pre>
+    <p class="help">Any language works — it is plain REST and JSON; Supabase also has clients for JavaScript, Dart, Swift, Kotlin and C#.
+      Load the password and key from environment variables, never from your repository.</p>
   </div>
 
   <div class="panel">
     <h2>Read</h2>
-    <h3>curl</h3>
-    <pre id="exCurl"></pre>
-    <h3>Python (requests)</h3>
+    <p>Use the <code>public</code> endpoints listed at the bottom: they need no schema header, and
+      they can be joined in one call (embedding), which the base schemas cannot. Filters, selection,
+      ordering and paging are URL parameters in the
+      <a href="https://docs.postgrest.org/en/v13/references/api/tables_views.html">PostgREST syntax</a>;
+      add <code>Accept: text/csv</code> for CSV.</p>
+    <h3>Find a site's id</h3>
+    <p class="help">Ids can change when the database is rebuilt, so look them up by name.</p>
+    <pre id="exLoc"></pre>
+    <h3>The measured trees of a site, with species and DBH</h3>
+    <pre id="exStand"></pre>
+    <h3>One tree through time — every forest state it appears in</h3>
+    <pre id="exTime"></pre>
+    <h3>A sensor time series</h3>
+    <p class="help">Look up the sensor ids first, then read one series by id and time window.
+      Always filter readings by <code>sensor_id</code> and <code>timestamp</code> — the table holds
+      tens of millions of rows, and an unfiltered query is stopped by the statement timeout.</p>
+    <pre id="exSensor"></pre>
+    <h3>Python and R</h3>
     <pre id="exPy"></pre>
-    <h3>R (httr2)</h3>
     <pre id="exR"></pre>
-    <h3>Python (supabase-py)</h3>
-    <pre id="exSb"></pre>
-    <p class="help">Filters, ordering, paging and embedding follow the
-      <a href="https://postgrest.org/en/stable/references/api/tables_views.html">PostgREST URL grammar</a>:
-      <code>?height_m=gte.20&amp;order=tree_id&amp;limit=100</code>. Add <code>Accept: text/csv</code> to get CSV.</p>
+    <p class="help">The base schemas are reachable too, with an <code>Accept-Profile: trees</code> header
+      (or <code>shared</code>, <code>sensor</code>, …) or <code>sb.schema("trees")</code> — but
+      tables there were renamed once already, so code against the public endpoints where you can.
+      The <code>ue_*</code> endpoints are flattened read models for the Unreal client.</p>
   </div>
 
   <div class="panel">
     <h2>Write</h2>
-    <p>Sign in with your account to get a JWT, then send it as <code>Authorization: Bearer …</code>.
-      It lasts an hour; use the refresh token for a new one.</p>
-    <pre id="exWrite"></pre>
+    <p>Write through the public endpoint of the same name; it forwards the row to its table. Row-level
+      security decides what your role may do, so an app cannot get around it by mistake.</p>
     <table>
-      <thead><tr><th>Role</th><th>May write</th></tr></thead>
+      <thead><tr><th>Tables</th><th>contributor may</th><th>update / delete</th></tr></thead>
       <tbody>
-        <tr><td>read-only</td><td>nothing</td></tr>
-        <tr><td>contributor</td><td>insert field data; insert/update/delete sites and metadata (species, plots, sensors, campaigns, events, …); <code>rpc/request_job</code></td></tr>
-        <tr><td>curator</td><td>also update and delete field data</td></tr>
+        <tr><td>Field data: trees, stems, phenology_observations, environments, point_clouds, qsms, roots, tree_graph_edges, crown_foliage_profiles, images, deadwood, ground_vegetation, simulation_runs, attribute_provenance</td><td>insert</td><td>curators</td></tr>
+        <tr><td>sensor_readings</td><td>insert</td><td>nobody (append-only)</td></tr>
+        <tr><td>Sites and metadata: locations, plots, species, campaigns, scenarios, sensors, management_events, disturbance_events</td><td>insert, update, delete (locations: no delete)</td><td>contributors</td></tr>
+        <tr><td>Lookups and variants</td><td>read</td><td>schema migrations only</td></tr>
       </tbody>
     </table>
-    <p class="help">An update your role may not make returns <code>200</code> with an empty body (zero rows), not an error — check the response, or send <code>Prefer: return=representation</code> and look for your row.</p>
+    <p>Geometry takes EWKT (<code>SRID=4326;POINT(lon lat)</code>) or GeoJSON. A new tree needs
+      <code>location_id</code>, <code>variant_type_id</code> (1 = measured) and <code>position</code>;
+      set <code>species_id</code>, <code>scenario_id</code>, <code>height_m</code> and
+      <code>measurement_date</code> too, because the VR scene uses them.</p>
+    <pre id="exWrite"></pre>
+    <h3>Three traps</h3>
+    <ul>
+      <li><strong>A refused update is not an error.</strong> An update or delete your role may not make
+        returns <code>200</code> with zero rows. Send <code>Prefer: return=representation</code> and check
+        the response is not empty.</li>
+      <li><strong>Corrections to measured data need a curator.</strong> Every change to heights, DBH,
+        health and status is logged with who made it, and can be reverted.</li>
+      <li><strong>This is the production twin.</strong> The VR client and dashboards read the same rows.
+        Mark test rows (e.g. <code>field_notes: "test"</code>), or develop against a local copy of the
+        stack — <a href="https://github.com/XRFutureForests/digital-twin-db">digital-twin-db</a>,
+        start with its <code>RUNBOOK.md</code>.</li>
+    </ul>
   </div>
 
   <div class="panel">
-    <h2>Things worth knowing</h2>
+    <h2>Run a model</h2>
+    <p>Models run on the server: your app requests a job with one call, a runner picks it up within
+      about a minute, and the results land back in the database. Requesting needs
+      <code>contributor</code>. The <a href="/jobs/">job page</a> does the same by hand.</p>
+    <h3>1. Request</h3>
+    <p><code>rpc/request_job</code> returns a job id. The optional <code>external_job_id</code> is any
+      string you choose; sending the same one again returns the first job instead of queueing a second,
+      so a retrying app cannot start duplicates. Invalid parameters are refused at once with a readable
+      message (HTTP 400).</p>
+    <pre id="exJob"></pre>
+    <h3>2. Watch</h3>
+    <p>Poll <code>job_status</code> until <code>status</code> is <code>completed</code> or
+      <code>failed</code>. You see your own jobs; <code>output_data</code> holds the end of the tool's
+      log, which is where a failure is explained.</p>
+    <pre id="exStatus"></pre>
+    <table>
+      <thead><tr><th>status</th><th>meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>pending</code></td><td>queued, no runner has taken it yet</td></tr>
+        <tr><td><code>running</code></td><td>the tool is running</td></tr>
+        <tr><td><code>completed</code></td><td>finished; results written (or reported, for a dry run)</td></tr>
+        <tr><td><code>failed</code></td><td>see <code>error_message</code> and <code>output_data</code></td></tr>
+      </tbody>
+    </table>
+    <h3>3. Read the result (SILVA)</h3>
     <ul>
-      <li>Use the <code>public</code> views (the endpoints listed below). Embedding across the base schemas
-        (<code>shared</code>, <code>trees</code>, …) fails with <code>PGRST200</code>; the public views embed fine.</li>
-      <li><code>sensor_readings</code> has tens of millions of rows — always filter by <code>sensor_id</code>
-        and a <code>timestamp</code> range, or the request hits the statement timeout.
-        For "latest value per sensor at time T" use <code>rpc/ue_sensor_state_at</code>.</li>
-      <li>Trees exist in several <em>variants</em> (field inventory, simulated time steps, scenarios). Filter by
-        <code>variant_id</code> or use <code>ue_trees</code> / <code>ue_variants</code> to pick one forest state.</li>
-      <li>Geometries come back as GeoJSON and can be sent as EWKT, e.g. <code>"SRID=4326;POINT(7.877 48.268)"</code>.</li>
-      <li>Model runs: <code>POST rpc/request_job</code> with <code>{"workflow": "silva", "params": {…}}</code>,
-        then poll <code>job_status</code>. Parameters per workflow are in <code>workflows.param_schema</code>.</li>
+      <li><code>dry_run: true</code> writes nothing; <code>output_data.stdout</code> reports per period how many trees grew and died, mean DBH and height.</li>
+      <li><code>no_promote: true</code> writes the per-tree trajectory to <code>growth_simulations</code> (one row per tree and 5-year step) and a row in <code>simulation_runs</code>, without creating forest states. Find your run in <code>simulation_runs</code>, then filter <code>growth_simulations</code> by its <code>simulation_run_id</code>. <strong>Use this mode for an app.</strong></li>
+      <li>With neither flag the run also becomes forest states (<code>silva_2030</code>, …) that the VR client lets people walk through. Agree that with the lab first, and never send <code>replace: true</code> without asking: it deletes the existing chain of that name.</li>
     </ul>
-    <p class="help">Longer reference: <a href="https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db/-/blob/dev/docs/api-spec.md">API spec</a>,
-      <a href="https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db/-/blob/dev/docs/data-access-guide.md">data access guide</a>,
-      <a href="https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db/-/blob/dev/docs/requesting-a-job.md">requesting a job</a>.</p>
+    <h3>SILVA parameters</h3>
+    <p class="help">Read live from <code>workflows.param_schema</code> — the schema the server validates against.</p>
+    <div id="paramMsg"></div>
+    <div class="tablewrap"><table id="paramTable"></table></div>
+  </div>
+
+  <div class="panel">
+    <h2>Ground rules</h2>
+    <ul>
+      <li><strong>One model run at a time.</strong> The server runs one job at once and has little memory to spare during a large run — do not queue requests in a loop; use <code>external_job_id</code> so retries do not duplicate.</li>
+      <li><strong>Read in pages</strong> with <code>limit</code>/<code>offset</code>, and always filter <code>sensor_readings</code> by sensor and time.</li>
+      <li><strong>Secrets stay out of repositories.</strong> The anon key may ship in a client; your password and tokens may not.</li>
+      <li><strong>Schema changes go through the lab.</strong> Code against the public endpoints; they stay stable when base tables change.</li>
+      <li><strong>Questions, a role change, a correction to measured data:</strong> the curator of your team<span id="contactLine"></span>.</li>
+    </ul>
   </div>
 
   <div class="panel">
     <h2>Endpoints</h2>
-    <p class="help">Read live from the API's own description. Click one for its columns.</p>
+    <p class="help">Read live from the API's own description. Click one for its columns. More detail:
+      <a href="https://github.com/XRFutureForests/digital-twin-db/blob/dev/docs/api-spec.md">API spec</a>,
+      <a href="https://github.com/XRFutureForests/digital-twin-db/blob/dev/docs/database-schema.md">data dictionary</a>.</p>
     <div class="row" style="margin:8px 0"><div><input type="text" id="epFilter" placeholder="Filter"></div></div>
     <div id="epMsg"></div>
     <div id="endpoints"></div>
@@ -111,39 +187,99 @@
   document.getElementById("baseUrl").textContent = base;
   Array.prototype.forEach.call(document.querySelectorAll(".base"), function (s) { s.textContent = base; });
   document.getElementById("anonKey").textContent = key;
+  if (P.cfg.contact) {
+    var line = document.getElementById("contactLine");
+    line.appendChild(document.createTextNode(", or "));
+    line.appendChild(el("a", { href: "mailto:" + P.cfg.contact, text: P.cfg.contact }));
+  }
 
-  document.getElementById("exCurl").textContent =
-    'KEY="' + key + '"\n\n' +
-    'curl "' + base + '/rest/v1/trees?select=tree_id,species_id,height_m&limit=5" \\\n' +
-    '  -H "apikey: $KEY"';
-  document.getElementById("exPy").textContent =
-    'import requests\n\n' +
-    'BASE = "' + base + '"\nKEY = "' + key + '"\n\n' +
-    'r = requests.get(f"{BASE}/rest/v1/species", headers={"apikey": KEY},\n' +
-    '                 params={"select": "*", "limit": 10})\nr.raise_for_status()\nprint(r.json())';
-  document.getElementById("exR").textContent =
-    'library(httr2)\n\n' +
-    'base <- "' + base + '"\nkey  <- "' + key + '"\n\n' +
-    'trees <- request(base) |>\n  req_url_path_append("rest/v1/trees") |>\n' +
-    '  req_url_query(select = "tree_id,height_m", height_m = "gte.20", limit = 100) |>\n' +
-    '  req_headers(apikey = key) |>\n  req_perform() |>\n  resp_body_json(simplifyVector = TRUE)';
-  document.getElementById("exSb").textContent =
-    'from supabase import create_client\n\n' +
-    'sb = create_client("' + base + '", "' + key + '")\n' +
-    'sb.auth.sign_in_with_password({"email": "you@uni-freiburg.de", "password": "..."})  # only for writes\n' +
-    'rows = sb.table("trees").select("tree_id,height_m").gte("height_m", 20).limit(100).execute().data';
-  document.getElementById("exWrite").textContent =
-    'KEY="' + key + '"\n\n' +
-    '# 1. sign in\n' +
-    'curl -X POST "' + base + '/auth/v1/token?grant_type=password" \\\n' +
-    '  -H "apikey: $KEY" -H "Content-Type: application/json" \\\n' +
+  var BS = "\\";   // a line-continuation backslash in the shell examples
+  var H = '  -H "apikey: $KEY" -H "Authorization: Bearer $TOKEN"';
+  function set(id, text) { document.getElementById(id).textContent = text; }
+
+  set("exSignIn",
+    'export DT=' + base + '\nexport KEY="' + key + '"\n\n' +
+    'curl -X POST "$DT/auth/v1/token?grant_type=password" ' + BS + '\n' +
+    '  -H "apikey: $KEY" -H "Content-Type: application/json" ' + BS + '\n' +
     '  -d \'{"email": "you@uni-freiburg.de", "password": "..."}\'\n' +
-    '# -> {"access_token": "...", "refresh_token": "...", ...}\n\n' +
-    '# 2. write with the access token\n' +
-    'curl -X POST "' + base + '/rest/v1/phenology_observations" \\\n' +
-    '  -H "apikey: $KEY" -H "Authorization: Bearer $ACCESS_TOKEN" \\\n' +
-    '  -H "Content-Type: application/json" -H "Prefer: return=representation" \\\n' +
-    '  -d \'{"tree_id": 1234, "observation_date": "2026-05-01", ...}\'';
+    '# -> {"access_token": "...", "refresh_token": "...", ...}   export TOKEN=<access_token>\n\n' +
+    '# renew before the hour is up\n' +
+    'curl -X POST "$DT/auth/v1/token?grant_type=refresh_token" ' + BS + '\n' +
+    '  -H "apikey: $KEY" -H "Content-Type: application/json" -d \'{"refresh_token": "..."}\'');
+  set("exSb",
+    'import os\nfrom supabase import create_client   # pip install "supabase>=2.26"\n\n' +
+    'sb = create_client("' + base + '", os.environ["DT_ANON_KEY"])\n' +
+    'sb.auth.sign_in_with_password({"email": os.environ["DT_EMAIL"], "password": os.environ["DT_PASSWORD"]})  # only for writes');
+  set("exLoc", 'curl "$DT/rest/v1/locations?select=location_id,location_name" -H "apikey: $KEY"\n' +
+    '# -> [{"location_id": 2, "location_name": "mathisle"}, {"location_id": 1, "location_name": "ecosense"}]');
+  set("exStand",
+    'curl "$DT/rest/v1/trees?location_id=eq.2&variant_type_id=eq.1&select=tree_id,tree_entity_id,height_m,' +
+    'measurement_date,species(scientific_name),stems(dbh_cm)&limit=1000" -H "apikey: $KEY"');
+  set("exTime",
+    'curl "$DT/rest/v1/trees?tree_entity_id=eq.<uuid>&select=height_m,tree_status_id,' +
+    'variants(variant_name),scenarios(scenario_name)" -H "apikey: $KEY"');
+  set("exSensor",
+    'curl "$DT/rest/v1/sensors?location_id=eq.2&select=sensor_id,sensor_types(sensor_type_name)" -H "apikey: $KEY"\n\n' +
+    'curl "$DT/rest/v1/sensor_readings?sensor_id=eq.<id>&timestamp=gte.2025-07-01&timestamp=lt.2025-08-01' +
+    '&select=timestamp,value&order=timestamp" -H "apikey: $KEY"');
+  set("exPy",
+    '# Python, requests\nimport os, requests\nKEY = os.environ["DT_ANON_KEY"]\n' +
+    'r = requests.get("' + base + '/rest/v1/species", headers={"apikey": KEY},\n' +
+    '                 params={"select": "species_id,scientific_name", "limit": 100})\nr.raise_for_status(); species = r.json()\n\n' +
+    '# Python, supabase-py (after create_client above)\n' +
+    'rows = sb.table("trees").select("tree_id,height_m,stems(dbh_cm)").eq("location_id", 2).eq("variant_type_id", 1).execute().data');
+  set("exR",
+    '# R, httr2\nlibrary(httr2)\nkey <- Sys.getenv("DT_ANON_KEY")\n' +
+    'trees <- request("' + base + '") |>\n  req_url_path_append("rest/v1/trees") |>\n' +
+    '  req_url_query(select = "tree_id,height_m", location_id = "eq.2", variant_type_id = "eq.1", limit = 1000) |>\n' +
+    '  req_headers(apikey = key) |>\n  req_perform() |>\n  resp_body_json(simplifyVector = TRUE)');
+  set("exWrite",
+    'curl -X POST "$DT/rest/v1/trees" ' + BS + '\n' + H + ' ' + BS + '\n' +
+    '  -H "Content-Type: application/json" -H "Prefer: return=representation" ' + BS + '\n' +
+    '  -d \'{"location_id": 2, "variant_type_id": 1, "species_id": 1, "height_m": 21.4,\n' +
+    '       "measurement_date": "2026-10-29", "position": "SRID=4326;POINT(8.0 47.9)"}\'');
+  set("exJob",
+    'curl -X POST "$DT/rest/v1/rpc/request_job" ' + BS + '\n' + H + ' -H "Content-Type: application/json" ' + BS + '\n' +
+    '  -d \'{"workflow": "silva",\n' +
+    '       "params": {"location": "mathisle", "years": 30, "mortality": true, "no_promote": true},\n' +
+    '       "external_job_id": "myapp-2026-10-30-001"}\'\n# -> 25\n\n' +
+    '# Python\njob_id = sb.rpc("request_job", {"workflow": "silva",\n' +
+    '                    "params": {"location": "mathisle", "years": 20, "dry_run": True}}).execute().data');
+  set("exStatus",
+    'curl "$DT/rest/v1/job_status?processing_job_id=eq.25&select=status,duration_seconds,error_message,output_data" ' + BS + '\n' + H);
+
+  /* ---------- SILVA parameters, live ---------- */
+
+  function valuesOf(s) {
+    if (s.enum) return s.enum.join(", ");
+    var parts = [s.type || ""];
+    if (s.minimum !== undefined || s.maximum !== undefined)
+      parts.push((s.minimum !== undefined ? s.minimum : "") + "–" + (s.maximum !== undefined ? s.maximum : ""));
+    if (s.multipleOf) parts.push("multiple of " + s.multipleOf);
+    return parts.filter(Boolean).join(", ");
+  }
+
+  P.api("/rest/v1/workflows?workflow_key=eq.silva&select=param_schema", { auth: false }).then(function (rows) {
+    var schema = (rows[0] && rows[0].param_schema) || {};
+    var props = schema.properties || {}, req = schema.required || [];
+    var names = Object.keys(props).filter(function (n) { return !props[n].readOnly; }).sort(function (a, b) {
+      var ra = req.indexOf(a) >= 0, rb = req.indexOf(b) >= 0;
+      return ra !== rb ? (ra ? -1 : 1) : a.localeCompare(b);
+    });
+    var t = document.getElementById("paramTable");
+    t.appendChild(el("thead", {}, [el("tr", {}, ["parameter", "values", "default", "what it does"].map(function (h) {
+      return el("th", { text: h }); }))]));
+    t.appendChild(el("tbody", {}, names.map(function (n) {
+      var s = props[n];
+      return el("tr", {}, [
+        el("td", {}, [el("code", { text: n }), req.indexOf(n) >= 0 ? " (required)" : null]),
+        el("td", { text: valuesOf(s) }),
+        el("td", { text: s.default === undefined ? "" : String(s.default) }),
+        el("td", { text: s.description || "" })]);
+    })));
+  }).catch(function (err) { P.message("paramMsg", "err", "Could not read the parameter schema: " + err.message); });
+
+  /* ---------- endpoints, live ---------- */
 
   function colLine(name, p) {
     var d = (p.description || "");
@@ -172,11 +308,10 @@
         return;
       }
       var def = spec.definitions[name] || {};
-      var methods = item.post ? "read · write" : "read";
       var cols = Object.keys(def.properties || {});
       host.appendChild(el("details", {}, [
         el("summary", {}, [el("code", { text: "/rest/v1/" + name }), " ",
-          el("span", { class: "badge" + (item.post ? " good" : ""), text: methods }), " ",
+          el("span", { class: "badge" + (item.post ? " good" : ""), text: item.post ? "read · write" : "read" }), " ",
           el("span", { class: "muted", text: (def.description || "").split("\n")[0].slice(0, 110) })]),
         el("p", { class: "help", text: def.description || "" }),
         el("div", { class: "tablewrap" }, [el("table", {}, [el("tbody", {}, cols.map(function (c) {

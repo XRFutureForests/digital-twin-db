@@ -1,0 +1,230 @@
+<!doctype html>
+<!--
+  Docs page: how the database is organised, where the reference documentation
+  lives, and which repository does what.
+
+  The schema map is hand-drawn, because what matters is how the core tables
+  relate, not the full catalogue. The per-schema cards list base tables as of
+  2026-10-30; their row counts are read live through the public views, so they
+  never go stale. Column-level detail stays in the
+  repo's docs/database-schema.md and on the API page, which reads it from the
+  API's own description.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docs — Forest Digital Twin</title>
+<link rel="stylesheet" href="/portal/portal.css">
+<style>
+  .schemamap { width: 100%; height: auto; display: block; margin: 6px 0 4px; }
+  .schemamap .box rect { fill: var(--bg); stroke: var(--line); stroke-width: 1.2; }
+  .schemamap .box.core rect { stroke: var(--accent); stroke-width: 1.6; }
+  .schemamap .box text { fill: var(--ink); font: 600 13px system-ui, sans-serif; }
+  .schemamap .box:hover rect { fill: color-mix(in srgb, var(--accent) 10%, var(--bg)); }
+  .schemamap .edge { stroke: var(--muted); stroke-width: 1.3; fill: none; marker-end: url(#arrow); }
+  .schemamap .edge.dashed { stroke-dasharray: 4 3; }
+  .schemamap .lbl { fill: var(--muted); font: 11px system-ui, sans-serif; }
+  .schemamap .schema { fill: var(--muted); font: 600 10.5px ui-monospace, Consolas, monospace; letter-spacing: .03em; }
+  .schemas { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
+  .schemas .card h3 { margin: 0 0 2px; font-family: ui-monospace, Consolas, monospace; font-size: 14px; }
+  .schemas .card p { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+  .schemas table td { padding: 3px 6px; border: 0; }
+  .schemas .lookups { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Docs</h1>
+  <p class="sub">
+    How the twin's data is organised, where the full reference lives, and which
+    repository does what. For calling the API, see the <a href="/portal/api/">API guide</a>;
+    to look at the data itself, the <a href="/portal/data/">data page</a>.
+  </p>
+
+  <div class="panel">
+    <h2>The data model in five sentences</h2>
+    <ul>
+      <li>A <strong>location</strong> is a research site (ECOSENSE, Mathisle); it holds plots, sensors and its climate and soil data.</li>
+      <li>A <strong>scenario</strong> is a management regime × climate pathway at one location, e.g. <code>natural_growth</code> or <code>target_diameter_harvest_ssp585</code>.</li>
+      <li>A <strong>variant</strong> is one forest state in a scenario: <code>baseline_2025</code> is the field survey, <code>silva_2030</code>, <code>silva_2035</code>, … are SILVA projections in 5-year steps.</li>
+      <li><code>trees</code> holds <strong>one row per tree per variant</strong>; <code>tree_entity_id</code> stays the same for one physical tree across all of them, and <code>variant_type_id</code> says whether a row was measured (1) or simulated (4). DBH is not on the tree row but in <code>stems</code>.</li>
+      <li>A <strong>sensor</strong> belongs to a location (and optionally to trees); a reading is <code>sensor_id</code>, <code>timestamp</code>, <code>value</code> — tens of millions of rows, so always filter by sensor and time.</li>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h2>How the core tables connect</h2>
+    <svg class="schemamap" viewBox="0 0 940 300" role="img" aria-label="Core tables of the twin and how they reference each other">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor" style="color: var(--muted)"/>
+        </marker>
+      </defs>
+      <!-- edges first, so boxes sit on top -->
+      <path class="edge" d="M160,148 L208,148"/><text class="lbl" x="166" y="140">has</text>
+      <path class="edge" d="M350,148 L398,148"/><text class="lbl" x="356" y="140">states</text>
+      <path class="edge" d="M540,148 L588,148"/><text class="lbl" x="546" y="140">trees</text>
+      <path class="edge" d="M730,148 L778,148"/><text class="lbl" x="738" y="140">DBH</text>
+      <path class="edge" d="M90,166 L90,228"/><text class="lbl" x="96" y="202">sub-plots</text>
+      <path class="edge" d="M280,166 L280,228"/><text class="lbl" x="286" y="202">climate, soil per period</text>
+      <path class="edge" d="M660,228 L660,168"/><text class="lbl" x="666" y="202">species_id</text>
+      <path class="edge" d="M720,166 L800,228"/><text class="lbl" x="770" y="192">QSM</text>
+      <path class="edge" d="M470,66 L470,128"/><text class="lbl" x="476" y="102">SILVA run → new states</text>
+      <path class="edge" d="M730,48 L778,48"/><text class="lbl" x="736" y="40">readings</text>
+      <path class="edge dashed" d="M660,66 L660,128"/><text class="lbl" x="666" y="102">sensor_tree_links</text>
+
+      <a href="/portal/data/#locations" class="box core"><rect x="20" y="130" width="140" height="36" rx="6"/><text x="90" y="153" text-anchor="middle">locations</text></a>
+      <a href="/portal/data/#scenarios" class="box core"><rect x="210" y="130" width="140" height="36" rx="6"/><text x="280" y="153" text-anchor="middle">scenarios</text></a>
+      <a href="/portal/data/#variants" class="box core"><rect x="400" y="130" width="140" height="36" rx="6"/><text x="470" y="153" text-anchor="middle">variants</text></a>
+      <a href="/portal/data/#trees" class="box core"><rect x="590" y="130" width="140" height="36" rx="6"/><text x="660" y="153" text-anchor="middle">trees</text></a>
+      <a href="/portal/data/#stems" class="box core"><rect x="780" y="130" width="140" height="36" rx="6"/><text x="850" y="153" text-anchor="middle">stems</text></a>
+      <a href="/portal/data/#plots" class="box"><rect x="20" y="230" width="140" height="36" rx="6"/><text x="90" y="253" text-anchor="middle">plots</text></a>
+      <a href="/portal/data/#environments" class="box"><rect x="210" y="230" width="140" height="36" rx="6"/><text x="280" y="253" text-anchor="middle">environments</text></a>
+      <a href="/portal/data/#species" class="box"><rect x="590" y="230" width="140" height="36" rx="6"/><text x="660" y="253" text-anchor="middle">species</text></a>
+      <a href="/portal/data/#qsms" class="box"><rect x="780" y="230" width="140" height="36" rx="6"/><text x="850" y="253" text-anchor="middle">qsms</text></a>
+      <a href="/portal/data/#simulation_runs" class="box"><rect x="400" y="30" width="140" height="36" rx="6"/><text x="470" y="53" text-anchor="middle">simulation_runs</text></a>
+      <a href="/portal/data/#sensors" class="box"><rect x="590" y="30" width="140" height="36" rx="6"/><text x="660" y="53" text-anchor="middle">sensors</text></a>
+      <a href="/portal/data/#sensor_readings" class="box"><rect x="780" y="30" width="140" height="36" rx="6"/><text x="850" y="53" text-anchor="middle">sensor_readings</text></a>
+      <text class="schema" x="20" y="22">click a box to open the table</text>
+    </svg>
+    <p class="help">Arrows point from the table that is referenced to the one that refers to it. Each name is also an API endpoint, <code>/db/rest/v1/&lt;name&gt;</code>.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Schemas</h2>
+    <p class="help" style="margin-bottom:12px">Seven base schemas hold the tables; the <code>public</code> schema exposes one view per table under the same name, which is what the API, the data page and Unreal use. Row counts are live.</p>
+    <div class="schemas" id="schemas"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Reference documentation</h2>
+    <p class="help" style="margin-bottom:10px">In the <code>digital-twin-db</code> repository, branch <code>dev</code> — the one this server runs.</p>
+    <div class="tablewrap"><table id="docsTable"></table></div>
+  </div>
+
+  <div class="panel">
+    <h2>Repositories</h2>
+    <p class="help" style="margin-bottom:10px">Public repositories are on GitHub; the others are on the university GitLab and need a university login.</p>
+    <div class="tablewrap"><table id="reposTable"></table></div>
+  </div>
+</div>
+<script src="/portal/config.js"></script>
+<script src="/portal/lib.js"></script>
+<script>
+(function () {
+  "use strict";
+  var P = Portal, el = P.el;
+  P.topbar("/portal/docs/");
+
+  // Base tables per schema, as of 2026-10-30. `main` get a live row count and
+  // a link to the data page; `other` are lookups and internal tables.
+  var SCHEMAS = [
+    { name: "shared", what: "Sites, scenarios and forest states, species, campaigns, events, processes — what everything else refers to.",
+      main: ["locations", "plots", "scenarios", "variants", "species", "campaigns", "management_events", "disturbance_events", "attribute_provenance"],
+      other: "lookups: variant_types, climate_pathways, management_regimes, climate_zones, soil_types · internal: processes, processing_jobs (→ job_status), audit_log, account_events" },
+    { name: "trees", what: "Trees per forest state, stems, observations, SILVA output, tree structure (QSMs).",
+      main: ["trees", "stems", "phenology_observations", "simulation_runs", "growth_simulations", "qsms", "tree_graph_edges", "roots", "crown_foliage_profiles"],
+      other: "lookups: crown classes, crown shapes, damage agents, tree status, growth forms, height classes and ~15 more morphology vocabularies · qsm_cylinders (base table only)" },
+    { name: "sensor", what: "Sensors at a site, their time series, and which trees they are attached to.",
+      main: ["sensors", "sensor_readings", "sensor_tree_links", "sensor_types"], other: "lookups: units" },
+    { name: "environments", what: "Climate and soil per location, scenario and period, from the open-data connector.",
+      main: ["environments"], other: "" },
+    { name: "pointclouds", what: "LiDAR and photogrammetry point clouds and the scanners that made them.",
+      main: ["point_clouds"], other: "lookups: scanners, scanner_types" },
+    { name: "imagery", what: "Photos and other images, linked to trees or plots.", main: ["images"], other: "" },
+    { name: "forest_floor", what: "Plot-level surveys of dead wood and ground vegetation.", main: ["deadwood", "ground_vegetation"], other: "" }
+  ];
+
+  var GH = "https://github.com/XRFutureForests/digital-twin-db/blob/dev/";
+  var DOCS = [
+    ["Schema", "docs/database-overview.md", "the schemas, how they connect, key design patterns"],
+    ["Schema", "docs/database-schema.md", "data dictionary: every table, column, type and constraint"],
+    ["Schema", "docs/variant-scenario-model.md", "location → scenario → variant, and the queries that depend on it"],
+    ["Schema", "docs/growth-simulation-schema.md", "SILVA output: growth_simulations and simulation_runs"],
+    ["Schema", "docs/citygml-qsm-mapping.md", "tree structure mapped to the CityGML tree model"],
+    ["Provenance", "docs/derived-value-provenance.md", "how a derived value is told apart from a measured one"],
+    ["Provenance", "docs/run-provenance.md", "what a processing run records about itself"],
+    ["Access", "docs/data-access-guide.md", "accounts, roles, query patterns per client"],
+    ["Access", "docs/api-spec.md", "REST endpoints, views, RPC signatures"],
+    ["Access", "docs/requesting-a-job.md", "queueing a model run: the job page, the RPC, the runner"],
+    ["Operations", "RUNBOOK.md", "run the stack locally, import, back up, reset"],
+    ["Operations", "docs/deployment-guide.md", "the production deployment on dt.unr"]
+  ];
+
+  var GL = "https://gitlab.uni-freiburg.de/xr-future-forests-lab/";
+  var REPOS = [
+    ["digital-twin-db", "this database: schemas, migrations, RPCs, job runner, this portal", true],
+    ["growpy", "procedural 3D trees from field measurements for Unreal", true],
+    ["pylometree", "tree allometry: height–diameter models, biomass, volume", true],
+    ["digital-twin-dashboard", "the ECOSENSE and Mathisle dashboards", false],
+    ["silva-connector", "runs SILVA growth projections and writes them back", false],
+    ["aquarius-connector", "ECOSENSE sensor readings from Aquarius", false],
+    ["open-data-connector", "weather, climate scenarios, soil and land cover", false],
+    ["tree-structure", "tree structure evaluation: QSMs, descriptors, point-cloud metrics", false],
+    ["tree-survey", "the expert tree look survey", false],
+    ["dtm-to-unreal", "elevation models to Unreal terrain", false],
+    ["lidar-to-unreal", "LiDAR point clouds to Unreal assets", false],
+    ["geo-data-acquisition", "elevation and land-cover download for any site", false]
+  ];
+
+  /* ---------- schema cards with live counts ---------- */
+
+  var host = document.getElementById("schemas");
+  SCHEMAS.forEach(function (s) {
+    var rows = s.main.map(function (t) {
+      return el("tr", {}, [
+        el("td", {}, [el("a", { href: "/portal/data/#" + t, text: t })]),
+        el("td", { class: "num muted", id: "n_" + t, text: "…" })
+      ]);
+    });
+    host.appendChild(el("div", { class: "card" }, [
+      el("h3", { text: s.name }), el("p", { text: s.what }),
+      el("table", {}, [el("tbody", {}, rows)]),
+      s.other ? el("div", { class: "lookups", text: s.other }) : null
+    ]));
+  });
+
+  function fmt(n) { return n >= 1e6 ? (n / 1e6).toFixed(1) + " M" : n >= 1e4 ? Math.round(n / 1e3) + " k" : n.toLocaleString(); }
+
+  // Exact counts, except where counting would hit the statement timeout: there
+  // the planner's estimate is shown with "≈". (An estimate everywhere looked
+  // cheap but is wrong for small tables the planner has never analysed -- it
+  // reported 50 rows for tables of two.)
+  var ESTIMATE = { sensor_readings: true };
+
+  SCHEMAS.forEach(function (s) {
+    s.main.forEach(function (t) {
+      var est = !!ESTIMATE[t];
+      P.api("/rest/v1/" + t + "?select=*&limit=1", { raw: true, auth: false,
+                                                     headers: { "Prefer": est ? "count=estimated" : "count=exact" } })
+        .then(function (res) {
+          var cr = res.headers.get("Content-Range") || "";
+          var n = /\/(\d+)$/.test(cr) ? parseInt(cr.split("/")[1], 10) : null;
+          document.getElementById("n_" + t).textContent = n === null ? "" : (est ? "≈ " : "") + fmt(n) + " rows";
+        })
+        .catch(function () { document.getElementById("n_" + t).textContent = ""; });
+    });
+  });
+
+  /* ---------- docs and repos ---------- */
+
+  var dt = document.getElementById("docsTable");
+  dt.appendChild(el("thead", {}, [el("tr", {}, [el("th", { text: "Topic" }), el("th", { text: "Document" }), el("th", { text: "What it covers" })])]));
+  dt.appendChild(el("tbody", {}, DOCS.map(function (d) {
+    return el("tr", {}, [el("td", { class: "muted", text: d[0] }),
+      el("td", {}, [el("a", { href: GH + d[1], text: d[1].replace(/^docs\//, "") })]),
+      el("td", { text: d[2] })]);
+  })));
+
+  var rt = document.getElementById("reposTable");
+  rt.appendChild(el("thead", {}, [el("tr", {}, [el("th", { text: "Repository" }), el("th", { text: "What it does" }), el("th", { text: "Where" })])]));
+  rt.appendChild(el("tbody", {}, REPOS.map(function (r) {
+    var url = r[2] ? "https://github.com/XRFutureForests/" + r[0] : GL + r[0];
+    return el("tr", {}, [el("td", {}, [el("a", { href: url, text: r[0] })]), el("td", { text: r[1] }),
+      el("td", {}, [el("span", { class: "badge" + (r[2] ? " good" : ""), text: r[2] ? "GitHub, public" : "GitLab, university" })])]);
+  })));
+})();
+</script>
+</body>
+</html>

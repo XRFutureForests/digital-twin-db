@@ -129,6 +129,20 @@ select output_data->>'stderr' from job_status where processing_job_id = 42;
 
 You see your own jobs. Curators see everyone's.
 
+## 4. What a SILVA run writes
+
+Three flags in `params` decide what lands in the database:
+
+| Mode | Writes | Use for |
+|---|---|---|
+| `dry_run: true` | nothing; the per-period summary (trees grown and dead, mean DBH and height) is in `output_data->>'stdout'` | checking parameters |
+| `no_promote: true` | the per-tree trajectory in `trees.growth_simulations` (one row per tree and 5-year step) and one row in `trees.simulation_runs` | apps and analyses: find the run in `simulation_runs`, then filter `growth_simulations` by its `simulation_run_id` |
+| neither | the above, and the run promoted to forest states (`silva_2030`, `silva_2035`, …) in `shared.variants` + `trees.trees` under its scenario | states people walk through in VR — agree with the lab first |
+
+`replace: true` deletes the existing simulated variants of the same name before
+writing. Never send it without asking: it removes a chain other consumers may
+read.
+
 ---
 
 ## Why there is a page at all, and not just Studio
