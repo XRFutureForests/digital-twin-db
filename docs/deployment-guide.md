@@ -1,281 +1,144 @@
-# Supabase Setup Guide - XR Future Forests Lab
+# Deployment — dt.unr.uni-freiburg.de
 
-This guide provides step-by-step instructions for deploying the Supabase-based digital twin database backend for local development and production environments.
+How the stack runs on the lab server. Local setup and day-to-day operation are in
+[RUNBOOK.md](../RUNBOOK.md); this page covers only what differs on the server. First deployed
+this way 2026-09-02 (XRFF-238).
 
-## Table of Contents
+## Public surface
 
-1. [Architecture Overview](#architecture-overview)
-2. [Prerequisites](#prerequisites)
-3. [Local Development Setup](#local-development-setup)
-4. [Production Deployment](#production-deployment)
-5. [Environment Configuration](#environment-configuration)
-6. [Database Migrations](#database-migrations)
-7. [Troubleshooting](#troubleshooting)
+The campus ACL blocks every inbound port except 22 and 443 from the client subnets (where the
+headsets sit), so everything public goes through the dashboard's nginx on 443.
 
-## Architecture Overview
+| Path | Serves |
+|---|---|
+| `https://dt.unr.uni-freiburg.de/db/rest/v1/...` | PostgREST |
+| `https://dt.unr.uni-freiburg.de/db/auth/v1/...` | GoTrue |
+| `https://dt.unr.uni-freiburg.de/db/storage/v1/...` | Storage |
+| anything else under `/db/` | 404 — no Studio, Realtime, Edge Functions, pg-meta or analytics |
+| `/portal/` | the portal (`web/portal/`); `/` redirects here |
+| `/jobs/` | the job trigger page (`web/jobs/`) |
 
-The Supabase stack replaces the previous FastAPI + nginx + Redis architecture with:
+Host ports, reachable only on the host itself:
 
-- **PostgreSQL + PostGIS**: Spatial database with 6 forest-specific schemas
-- **PostgREST**: Auto-generated REST API from database schema
-- **Kong**: API gateway for routing and authentication
-- **GoTrue**: Built-in authentication service
-- **Realtime**: WebSocket server for live subscriptions
-- **Storage API**: Supabase Storage backed by a local docker volume (no external S3)
-- **Edge Functions**: the platform's Deno runtime ships in the stack but this project runs **no** custom functions and never will (no VPN, no conda/R/Blender, no Kong auth on `/functions/v1/`) — work is queued through `request_job()` instead, see [requesting-a-job.md](requesting-a-job.md)
-- **Supabase Studio**: Web-based database management UI
+| Service | Server | Dev |
+|---|---|---|
+| Kong (`KONG_HTTP_PORT`) | 8001 | 8000 |
+| Postgres via Supavisor (`POSTGRES_PORT`) | 5433 | 5432 |
+| Studio | 54323 | 54323 |
 
-## Prerequisites
-
-### For Local Development
-
-- **Docker**: Version 20.10+ ([Install Docker](https://docs.docker.com/get-docker/))
-- **Docker Compose**: Version 2.0+ (included with Docker Desktop)
-- **System Requirements**:
-  - 8GB+ RAM (16GB recommended)
-  - 20GB+ free disk space
-  - Multi-core CPU (4+ cores recommended)
-
-### For Production Deployment
-
-- **Linux Server** (Ubuntu 22.04 LTS recommended)
-- **8GB+ RAM** (16GB+ for production workloads)
-- **100GB+ Storage** (SSD recommended)
-- **Docker** and **Docker Compose** installed
-- **Domain name** with DNS configured
-- **SSL/TLS Certificate** (Let's Encrypt recommended)
-
-## Local Development Setup
-
-### 1. Clone Repository
+Studio is reached only through an SSH tunnel:
 
 ```bash
-git clone https://github.com/your-org/digital-twin.git
-cd digital-twin
+ssh -L 54323:localhost:54323 <user>@dt.unr.uni-freiburg.de    # then http://localhost:54323
 ```
 
-### 2. Configure Environment Variables
+The `/db/` proxy lives in `digital-twin-dashboard/docker/nginx/nginx.conf`; its nginx service
+joins the `digital_forest_twin_db_default` network to resolve `dftdb-kong`. **Start this stack
+before the dashboard's nginx** — the network is created here. `nginx.conf` is a single-file
+bind mount: a reload does not pick up edits, force-recreate the container.
 
-The `.env` file in `docker/` comes pre-configured for local development. To customize:
+Kong still returns 401 without an `apikey` header, and row-level security still applies.
+
+## Server-specific `docker/.env`
+
+| Variable | Server value |
+|---|---|
+| `SITE_URL`, `API_EXTERNAL_URL`, `SUPABASE_PUBLIC_URL` | `https://dt.unr.uni-freiburg.de/db` |
+| `KONG_HTTP_PORT` | `8001` |
+| `POSTGRES_PORT` | `5433` |
+| `PGDATA_PATH` | `/media/data/dftdb/pgdata` |
+| `STORAGE_PATH` | `/media/data/dftdb/storage` |
+| `POSTGRES_SHARED_BUFFERS` | `2GB` |
+| `POSTGRES_EFFECTIVE_CACHE_SIZE` | `8GB` |
+| `POSTGRES_WORK_MEM` | `16MB` |
+| `DISABLE_SIGNUP` | `true` (since 2026-10-30, XRFF-435) |
+
+The full variable list is [RUNBOOK.md §9](../RUNBOOK.md#9-reference).
+
+## Data on the NFS export
+
+The root logical volume is 28 GB; `/media/data` is a 100 GB NFS export from `ufr-dyn.isi1`.
+PGDATA, the object store and the backups live there:
 
 ```bash
-cd docker
-
-# Copy environment template
-cp .env.example .env
-
-# Edit .env with your configuration
-nano .env  # or vim, code, etc.
+# Create the directories owned by the container UIDs (postgres 105:106, storage root).
+# Needs root; the Docker daemon's root will do where host sudo is unavailable:
+cd ~/dev/digital-twin-db
+docker run --rm -v /media/data:/media/data \
+    -v "$PWD/scripts/server:/s:ro" python:3.12-alpine \
+    python3 /s/setup_data_dirs.py
 ```
 
-**Key Variables** (in `docker/.env`):
+Then set `PGDATA_PATH` and `STORAGE_PATH` in `docker/.env` (table above).
 
-```bash
-# Database
-POSTGRES_PASSWORD=your_secure_password_here
+- **Hard mount only.** `setup_data_dirs.py` refuses a soft NFS mount: a soft mount can return an
+  I/O error mid-fsync and corrupt the cluster. `/media/data` is mounted
+  `hard,vers=4.2,proto=tcp,local_lock=none`; re-check with `findmnt -no OPTIONS /media/data`
+  after any remount.
+- **The pgsodium key volume (`db-config`) stays a named volume** on the root disk. Bind-mounting
+  an empty directory over it hides the `.conf` files `postgresql.conf` includes, and the
+  postmaster dies with only "configuration file contains errors".
+- **Docker must wait for the mount.** Without it, dockerd can start before NFS, Postgres runs
+  `initdb` on the empty local mountpoint, and NFS then mounts over a second, divergent cluster.
+  Drop-in, installed 2026-09-02:
 
-# JWT Secret (generate with: openssl rand -base64 32)
-JWT_SECRET=your_jwt_secret_here
+  ```ini
+  # /etc/systemd/system/docker.service.d/nfs-data-mount.conf
+  [Unit]
+  RequiresMountsFor=/media/data
+  ```
 
-# API Keys (JWT tokens - see Supabase docs for generation)
-ANON_KEY=your_anon_key_here
-SERVICE_ROLE_KEY=your_service_role_key_here
-```
+  An NFS outage therefore stops Docker entirely.
+- **Watch the root disk.** Images still land in `/var/lib/docker` (~5 GB); check `df -h /` after
+  image updates. Container logs are capped at 50 MB × 3 in `/etc/docker/daemon.json`.
 
-### 3. Start Supabase Stack
+## Accounts
 
-```bash
-cd docker
+Signup is closed. Curators create accounts in the portal at `/portal/account/`
+([data-access-guide.md](data-access-guide.md#user-management)); from a shell,
+`scripts/server/create-user.sh`. Mail does not leave the host (the `mail` service is an inbucket
+catch-all), so passwords are handed over, not mailed.
 
-# Start all services in detached mode
-docker compose up -d
+## Deploying
 
-# View logs
-docker compose logs -f
+Nothing is edited on the server; the checkouts are disposable. Deploy by pushing and pulling.
 
-# Check service status
-docker compose ps
-```
+- `digital-twin-db` on the server tracks `dev` (it is a test host; `main` moves only at a
+  Zenodo release). `digital-twin-dashboard` tracks `main`.
+- **Schema changes are applied by hand.** The running cluster is never re-initialised, so the
+  baked init files do not reach it:
 
-### 4. Verify Services
+  ```bash
+  cd ~/dev/digital-twin-db && git pull
+  docker exec -i dftdb-db psql -U supabase_admin -d postgres < supabase/migrations/<file>.sql
+  docker exec dftdb-db psql -U supabase_admin -d postgres -c "NOTIFY pgrst, 'reload schema'"
+  ```
 
-Services should be running at:
+- **Env changes need a recreate**, not a restart: `cd docker && docker compose up -d --force-recreate`.
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| Supabase Studio | <http://localhost:54323> | Database management UI |
-| REST API | <http://localhost:8000/rest/v1> | PostgREST endpoints |
-| Auth API | <http://localhost:8000/auth/v1> | Authentication |
-| Realtime | <http://localhost:8000/realtime/v1> | WebSocket subscriptions |
-| Edge Functions | <http://localhost:8000/functions/v1> | platform router + `hello` example only — unused |
-| PostgreSQL | localhost:5432 | Direct database access (via pooler) |
+Files on the host that are not in any repository; a re-clone must restore them:
 
-### 5. Access Supabase Studio
+| File | Holds |
+|---|---|
+| `digital-twin-db/docker/.env` | stack secrets and the server values above |
+| `digital-twin-db/web/jobs/config.js` | anon key for the job page |
+| `digital-twin-db/web/portal/config.js` | anon key and contact for the portal |
+| `digital-twin-dashboard/docker/.env` | dashboard secrets |
+| `digital-twin-dashboard/apps/*/.Renviron` (two files) | Shiny app settings |
+| `digital-twin-dashboard/docker/nginx/ssl/*.pem` | TLS certificate and key |
 
-1. Open <http://localhost:54323> in your browser
-2. Connect to database:
-   - **Host**: `db`
-   - **Port**: `5432`
-   - **Database**: `postgres`
-   - **User**: `postgres`
-   - **Password**: (from your `.env` file)
+## Scheduled work: systemd timers, no cron
 
-### 6. Import Data (Optional)
+The crontab is empty. Everything scheduled is a systemd timer whose unit files live in a
+repository.
 
-The database initializes with reference data (species, locations, etc.) but no user data. To import tree inventory and sensor data:
+| Timer | Does | Units |
+|---|---|---|
+| `dt-renew-ssl.timer` | certbot renewal + nginx recreate; verify it actually renewed before **2026-12-01** (XRFF-421) | `digital-twin-dashboard/scripts/` |
+| `dt-job-runner.timer`, `dt-job-runner-reap.timer` | claim `shared.processing_jobs` rows (SILVA, open data) and reap stale ones; growpy and Aquarius jobs run from a workstation | `scripts/runner/` — install steps in [scripts/runner/README.md](../scripts/runner/README.md) |
+| `dt-db-backup.timer` | nightly dump to the NFS export | `scripts/server/` |
 
-```bash
-# Setup environment (one-time)
-cd scripts
-conda env create -f environment.yml
-conda activate digital-twin
-
-# Import tree data from prepared CSV
-python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
-
-# Import sensor data (any provider; see the aquarius-connector repo for Aquarius)
-python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv
-python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json
-
-# Link sensors to nearby trees
-python scripts/import/link_sensors_to_trees.py
-```
-
-See `scripts/README.md` for full import documentation.
-
-### 7. Test API Access
-
-```bash
-# Set your API key
-export SUPABASE_KEY="your_anon_key_from_env_file"
-
-# Test REST API
-curl "http://localhost:8000/rest/v1/trees?select=*" \
-  -H "apikey: $SUPABASE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_KEY"
-
-# Should return sample trees as JSON
-```
-
-## Production Deployment
-
-> **The lab's own server is a worked example of the sections below.** See
-> [Deploying on dt.unr.uni-freiburg.de](#deploying-on-dtunruni-freiburgde) at the
-> end of this chapter for what its 28 GB root disk, its NFS export and the
-> university firewall actually require.
-
-### 1. Server Preparation
-
-```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install Docker
-curl -fsSL https://get.docker.com | sudo sh
-
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker compose-$(uname -s)-$(uname -m)" \
-  -o /usr/local/bin/docker compose
-sudo chmod +x /usr/local/bin/docker compose
-
-# Add user to docker group
-sudo usermod -aG docker $USER
-newgrp docker
-```
-
-### 2. Clone and Configure
-
-```bash
-# Clone on server
-cd /opt
-sudo git clone https://github.com/your-org/digital-twin.git
-cd digital-twin/docker
-
-# Create production .env
-sudo cp .env.example .env
-sudo nano .env
-```
-
-**Production Environment Variables**:
-
-```bash
-# Production API URL (your domain)
-API_EXTERNAL_URL=https://api.your-domain.com
-
-# Strong passwords and keys (generate with: openssl rand -base64 32)
-POSTGRES_PASSWORD=<strong_random_password>
-JWT_SECRET=<strong_random_secret>
-
-# API Keys must be valid JWT tokens signed with JWT_SECRET
-# See Supabase docs for generating ANON_KEY and SERVICE_ROLE_KEY
-ANON_KEY=<generated_jwt_token>
-SERVICE_ROLE_KEY=<generated_jwt_token>
-```
-
-### 3. Configure SSL/TLS
-
-#### Option A: Use nginx Reverse Proxy with Let's Encrypt
-
-```bash
-# Install nginx
-sudo apt install nginx certbot python3-certbot-nginx -y
-
-# Create nginx configuration
-sudo nano /etc/nginx/sites-available/supabase
-```
-
-**nginx Configuration**:
-
-```nginx
-server {
-    listen 80;
-    server_name api.your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-```bash
-# Enable site
-sudo ln -s /etc/nginx/sites-available/supabase /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-
-# Get SSL certificate
-sudo certbot --nginx -d api.your-domain.com
-```
-
-#### Option B: Use Kong with SSL (update docker compose.yml)
-
-Add SSL configuration to Kong service in `docker compose.yml`.
-
-### 4. Start Production Stack
-
-```bash
-# Start services
-docker compose up -d
-
-# Check status
-docker compose ps
-
-# View logs
-docker compose logs -f
-```
-
-### 5. Set Up Backups
-
-Install the systemd timer shipped in the repo rather than a crontab entry (see
-[No cron jobs](#no-cron-jobs--four-systemd-timers-instead) below for why):
+Install the backup timer:
 
 ```bash
 sudo cp scripts/server/dt-db-backup.{service,timer} /etc/systemd/system/
@@ -284,369 +147,26 @@ sudo systemctl enable --now dt-db-backup.timer
 systemctl list-timers dt-db-backup.timer
 ```
 
-`scripts/server/backup-db.sh` dumps as `supabase_admin` (the `postgres` role is not a
-superuser in this image and silently misses tables), excludes the *data* of
-`sensor.sensor_readings` (8.4 GB of 8.5 GB, all re-fetchable through aquarius-connector),
-verifies the gzip trailer before renaming, and keeps 30 days. Restore is in `RUNBOOK.md` §7.
+`scripts/server/backup-db.sh` dumps as `supabase_admin`, excludes the *data* of
+`sensor.sensor_readings` (re-fetchable through aquarius-connector), writes
+`/media/data/dftdb/backups/dftdb_<stamp>.sql.gz`, verifies the gzip and the dump's completion
+trailer before renaming, and keeps 30 days. Restore: [RUNBOOK.md §7](../RUNBOOK.md#restore).
 
-### 6. Configure Firewall
+Scheduled data ingestion does not run here. Aquarius is request-only: the connector runs from a
+workstation against `https://dt.unr.uni-freiburg.de/db`, or as a requested job.
 
-```bash
-# Allow HTTP/HTTPS
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-
-# Allow SSH (if not already)
-sudo ufw allow 22/tcp
-
-# Enable firewall
-sudo ufw enable
-```
-
-### 7. Set Up Monitoring
-
-#### Basic Health Checks
+## Checks
 
 ```bash
-# Create health check script
-sudo nano /opt/health-check.sh
-```
-
-```bash
-#!/bin/bash
-SERVICES="studio kong auth rest realtime storage db"
-
-for SERVICE in $SERVICES; do
-    if docker compose ps | grep $SERVICE | grep -q Up; then
-        echo "✓ $SERVICE is running"
-    else
-        echo "✗ $SERVICE is DOWN"
-        # Send alert (email, Slack, etc.)
-    fi
-done
-```
-
-### Deploying on dt.unr.uni-freiburg.de
-
-The lab server departs from the generic recipe above in four ways, each forced
-by the host rather than chosen. First deployed this way 2026-09-02 (XRFF-238).
-
-#### Data goes on the NFS export, not the root disk
-
-The root logical volume is 28 GB and has repeatedly filled to the point where the
-server stopped answering; `/media/data` is a 100 GB NFS export from
-`ufr-dyn.isi1` that sits nearly empty. So PGDATA and the object store both live
-there:
-
-```bash
-# Create the directories and hand them to the container UIDs. Needs root, but
-# the Docker daemon's root will do where host sudo is unavailable:
-cd ~/dev/digital-twin-db
-docker run --rm -v /media/data:/media/data \
-    -v "$PWD/scripts/server:/s:ro" python:3.12-alpine \
-    python3 /s/setup_data_dirs.py
-
-# Then in docker/.env:
-#   PGDATA_PATH=/media/data/dftdb/pgdata
-#   STORAGE_PATH=/media/data/dftdb/storage
-```
-
-The script refuses to run against a soft NFS mount, because a soft mount can
-return an I/O error part-way through an fsync and corrupt the cluster.
-`/media/data` is mounted `hard,vers=4.2,proto=tcp,local_lock=none`, which is what
-Postgres supports. Re-check with `findmnt -no OPTIONS /media/data` after any
-remount. The trade is throughput: every page read that misses shared buffers now
-crosses the network. That was accepted deliberately — a slower database beats an
-unreachable server.
-
-The pgsodium key directory (`db-config`) stays a named volume on the root disk.
-It is 140 kB that never grows, and bind-mounting an empty directory over it hides
-the `.conf` files `postgresql.conf` includes, which kills the postmaster with
-nothing but "configuration file contains errors" to go on.
-
-Images still land in `/var/lib/docker` on the root disk and cost roughly 5 GB, so
-keep an eye on `df -h /` after image updates. Container logs are already capped
-at 50 MB x 3 by `/etc/docker/daemon.json`.
-
-**Docker must wait for the mount.** `docker.service` ships ordered after
-`network-online.target` only, which is not enough for a network filesystem: if
-dockerd wins the race at boot, the PGDATA bind resolves to the empty local
-mountpoint, Postgres runs `initdb` there, and NFS then mounts over the result,
-leaving a second silently divergent cluster. A drop-in fixes the ordering:
-
-```bash
-# /etc/systemd/system/docker.service.d/nfs-data-mount.conf
-[Unit]
-RequiresMountsFor=/media/data
-```
-
-Installed 2026-09-02. Systemd reads drop-ins fresh at boot, so it is effective
-from the next restart without a `daemon-reload`. The accepted consequence is that
-an NFS outage now stops Docker entirely rather than corrupting the cluster.
-
-
-#### The API is published on 443, not 8000
-
-The university blocks inbound ports other than 22 and 443 from the campus client
-subnets, which is where the Pico headsets sit — a listener on 8001 answers on the
-host's loopback and nowhere else. Kong is therefore fronted by the dashboard's
-nginx, which proxies `/db/` to `dftdb-kong:8000`:
-
-| | URL |
-| --- | --- |
-| REST | `https://dt.unr.uni-freiburg.de/db/rest/v1/...` |
-| Auth | `https://dt.unr.uni-freiburg.de/db/auth/v1/...` |
-
-That proxy lives in `digital-twin-dashboard/docker/nginx/nginx.conf`, and its
-nginx service joins the `digital_forest_twin_db_default` network to resolve
-`dftdb-kong`. Consequence worth remembering: **start this stack before the
-dashboard's nginx**, since the network is created here. `.env` sets
-`SITE_URL`, `API_EXTERNAL_URL` and `SUPABASE_PUBLIC_URL` to
-`https://dt.unr.uni-freiburg.de/db` so GoTrue builds correct redirect links.
-
-Authentication is unchanged by the proxy: Kong still returns 401 without an
-`apikey` header, and row-level security still applies.
-
-#### The checkouts are disposable; the repository is the truth
-
-Nothing is edited on the server. Its checkouts drifted once already — uncommitted
-edits to both `app.R` files, a stale `.venv`, a 320 MB abandoned PGDATA inside
-`docker/volumes/` — and the drift is invisible until something behaves
-differently there than it does locally. Both repositories were deleted and
-re-cloned 2026-09-02 to end that. Deploy by pushing and pulling, never by editing
-in place.
-
-The server tracks `dev`: it is a test host, and `dev` is the working branch —
-`main` only moves at a milestone release, because it is what publishes to Zenodo.
-The dashboard repository has no such split and tracks `main`.
-
-Only four things on the host are not in a repository, and a re-clone must restore
-them: `digital-twin-db/docker/.env`, `digital-twin-dashboard/docker/.env`, the
-two `apps/*/.Renviron` files, and `docker/nginx/ssl/*.pem`.
-
-#### No cron jobs — four systemd timers instead
-
-The crontab is empty and stays that way: on a host whose root disk has repeatedly filled to
-the point of unreachability, anything that writes on a schedule is a liability, and an
-unattended job nobody watches fails silently — which is exactly how the TLS certificate came
-to expire in April 2026.
-
-What *is* scheduled runs as a systemd timer with a unit file in the repo, so it is visible,
-logged and disable-able (decision 2026-09-10, when the certificate went back onto a timer):
-
-| Timer | Does | Note |
-|---|---|---|
-| `dt-renew-ssl.timer` | certbot renewal + nginx recreate | verify it actually renewed before **2026-12-01** rather than trusting a green timer (XRFF-421) |
-| `dt-job-runner.timer` / `dt-job-runner-reap.timer` | claims `shared.processing_jobs` rows (SILVA, open data) and reaps stale ones | memory-capped at 9g/7Gb for SILVA; growpy and Aquarius jobs run from the workstation |
-| `dt-db-backup.timer` | nightly `pg_dump` (minus sensor readings) to the NFS export | there was no backup at all until 2026-09-10 |
-
-Check the certificate from anywhere:
-
-```bash
+# certificate expiry, from anywhere
 openssl s_client -connect dt.unr.uni-freiburg.de:443 \
     -servername dt.unr.uni-freiburg.de </dev/null 2>/dev/null \
     | openssl x509 -noout -enddate
+
+findmnt -no OPTIONS /media/data        # must include "hard"
+df -h /                                # root LV headroom
+systemctl list-timers 'dt-*'
 ```
 
-Manual renewal remains `digital-twin-dashboard/scripts/renew-ssl.sh` (seconds, no downtime).
-
-Scheduled data ingestion still does not belong here. Aquarius is request-only by decision;
-the connector runs from a workstation with VPN reach against
-`https://dt.unr.uni-freiburg.de/db`, or as a requested job, never on a schedule.
-
-
-## Environment Configuration
-
-### Required Environment Variables
-
-| Variable | Description | Example |
-| -------- | ----------- | ------- |
-| `POSTGRES_PASSWORD` | PostgreSQL root password | `your_secure_password` |
-| `JWT_SECRET` | JWT signing secret | `32+ character random string` |
-| `ANON_KEY` | Public API key (JWT token) | JWT signed with `JWT_SECRET` |
-| `SERVICE_ROLE_KEY` | Admin API key (JWT token) | JWT signed with `JWT_SECRET` |
-| `API_EXTERNAL_URL` | Public API URL | `https://api.your-domain.com` |
-
-### Optional Environment Variables
-
-| Variable | Description | Default |
-| -------- | ----------- | ------- |
-| `POSTGRES_PORT` | PostgreSQL port | `5432` |
-| `KONG_HTTP_PORT` | API gateway HTTP port | `8000` |
-| `STUDIO_PORT` | Studio UI port | `54323` |
-
-## Database Migrations
-
-### Running Migrations
-
-Migrations run automatically on first database startup from `docker/volumes/db/init/`:
-
-| File | Purpose |
-| ---- | ------- |
-| `10-baseline-schema.sql` | Consolidated schema baseline — all custom schemas, tables, views, functions, RLS policies, and role-tier grants |
-| `30-load-lookup-tables.sql` | Reference data from CSVs |
-| `31-refresh-lookup-functions.sql` | Lookup table refresh functions |
-
-### Creating New Migrations
-
-Schema history lives in `supabase/migrations/` (Supabase CLI), not as new numbered files under `docker/volumes/db/init/`. See `AGENTS.md` §"Schema Migrations" for the full workflow.
-
-```bash
-# Create a new migration
-npx supabase migration new your_migration_name
-
-# Apply manually to the running database
-docker exec -i dftdb-db psql -U postgres < supabase/migrations/<timestamp>_your_migration_name.sql
-```
-
-### Manual Migration Execution
-
-```bash
-# Connect to database
-docker exec -it dftdb-db psql -U postgres
-
-# Verify changes
-\dt shared.*
-\dt trees.*
-```
-
-## Troubleshooting
-
-### Services Won't Start
-
-```bash
-# Check Docker status
-docker ps -a
-
-# View service logs
-docker compose logs db
-docker compose logs kong
-docker compose logs rest
-
-# Check disk space
-df -h
-
-# Check memory
-free -h
-```
-
-### Database Connection Errors
-
-```bash
-# Check database health
-docker exec dftdb-db pg_isready -U postgres
-
-# View database logs
-docker compose logs db
-
-# Test connection
-docker exec -it dftdb-db psql -U postgres -c "SELECT version();"
-```
-
-### API Returns 500 Errors
-
-```bash
-# Check PostgREST logs
-docker compose logs rest
-
-# Verify database schemas
-docker exec -it dftdb-db psql -U postgres -c "\dn"
-
-# Check RLS policies
-docker exec -it dftdb-db psql -U postgres -c "
-  SELECT schemaname, tablename, policyname
-  FROM pg_policies
-  WHERE schemaname IN ('shared', 'pointclouds', 'trees', 'sensor', 'environments');
-"
-```
-
-### Storage
-
-Storage is Supabase Storage on a docker volume (NFS-backed on the server); there is no
-external S3 and no Edge Function to test. `docker compose logs storage` is the place to look.
-
-
-### Studio Won't Load
-
-```bash
-# Check Studio logs
-docker compose logs studio
-
-# Verify Studio can reach database
-docker exec dftdb-studio curl http://meta:8080
-
-# Check network connectivity
-docker network inspect docker_default
-```
-
-### Performance Issues
-
-```bash
-# Check resource usage
-docker stats
-
-# Increase container resources (edit docker compose.yml)
-services:
-  db:
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-          cpus: '2'
-
-# Restart services
-docker compose restart
-```
-
-## Maintenance
-
-### Updating Services
-
-```bash
-# Pull latest images
-docker compose pull
-
-# Restart with new images
-docker compose up -d
-
-# Verify updates
-docker compose ps
-```
-
-### Backup and Restore
-
-#### Backup
-
-```bash
-# Backup database
-docker exec dftdb-db pg_dump -U postgres postgres > backup.sql
-
-# Backup volumes
-docker run --rm -v docker_db-config:/data -v $(pwd):/backup \
-  ubuntu tar czf /backup/db_data_backup.tar.gz /data
-```
-
-#### Restore
-
-```bash
-# Restore database
-docker exec -i dftdb-db psql -U postgres < backup.sql
-
-# Restore volumes
-docker run --rm -v docker_db-config:/data -v $(pwd):/backup \
-  ubuntu tar xzf /backup/db_data_backup.tar.gz -C /
-```
-
-## Next Steps
-
-- [Architecture Overview](database-overview.md) - Full system architecture and data patterns
-- [Database Schema](database-schema.md) - Detailed schema documentation
-- [Troubleshooting](troubleshooting.md) - Common issues and solutions
-
-## Support
-
-For issues or questions:
-
-1. Check [Supabase Documentation](https://supabase.com/docs)
-2. Review GitHub Issues
-3. Contact: University of Freiburg, Department of Forest Sciences
+Manual certificate renewal: `digital-twin-dashboard/scripts/renew-ssl.sh` (seconds, no
+downtime).

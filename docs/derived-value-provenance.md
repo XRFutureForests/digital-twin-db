@@ -15,7 +15,7 @@ This page decides how that changes.
 
 XRFF-401 was filed on the premise that ~26,800 NULLs were *about to* be filled, and
 that the convention had to be settled first. That window has closed. The reference
-database now holds:
+database held, on 2026-09-03 (snapshot; not updated since):
 
 | Column | NULL | Total |
 |---|---|---|
@@ -28,7 +28,8 @@ database now holds:
 | `trees.age_years` | 1,640 | 11,125 |
 
 The volume and crown fills are done. What remains is 1,640 ages and 40
-biomass/carbon rows, not 26,800 of anything. So this is no longer a decision taken
+biomass/carbon rows, not 26,800 of anything. (The dev database on 2026-10-30 holds 2,225
+measured trees — 328 without an age, 8 without biomass — and 178,000 simulated tree rows.) So this is no longer a decision taken
 *ahead* of a bulk write — it is a decision about a backfill, and it should be judged
 on whether the resulting capability is worth the backfill cost rather than on urgency.
 
@@ -82,10 +83,12 @@ the identity question first.
 `shared.attribute_provenance` (`location_id`, `column_name`, `process_id`,
 `fetched_at`, `source_uri`, `license`) solved exactly this problem for
 `shared.locations` on 2026-09-02, and it solved it by **not** adding N `*_source`
-columns. Trees get the same shape:
+columns. Trees get the same shape, in a tree-keyed table of their own (name not yet
+decided; the existing `shared.attribute_provenance` is keyed on `location_id` and stays
+as it is):
 
 ```
-shared.attribute_provenance
+<tree provenance table>
     tree_id      integer  NOT NULL  REFERENCES trees.trees ON DELETE CASCADE
     column_name  varchar(64) NOT NULL
     process_id   integer  NOT NULL  REFERENCES shared.processes ON DELETE RESTRICT
@@ -148,7 +151,8 @@ to produce them, without a further schema change.
 
 **In `digital-twin-db`:**
 
-* New `shared.attribute_provenance` table, plus a write helper mirroring
+* New tree-keyed provenance table (alongside the location-keyed
+  `shared.attribute_provenance`), plus a write helper mirroring
   `public.set_location_attributes`.
 * Backfill for the values already written: every one is attributable at the
   *column × fill-run* level from the existing scripts, so the backfill is a set of
@@ -163,8 +167,8 @@ to produce them, without a further schema change.
 * Give `predict()` an optional interval return, model by model, as the underlying
   fits allow. Not required for steps 1–3.
 
-**Deliberately not decided here:** whether `height_source` folds into
-`shared.attribute_provenance`. It is the one derived value that already has a working
+**Deliberately not decided here:** whether `height_source` folds into the
+tree provenance table. It is the one derived value that already has a working
 per-column marker (XRFF-400), it is read by `public.trees` and
 `trees.trees_with_metrics`, and collapsing it is a migration with consumers attached.
 Revisit once the table exists and has earned its keep.

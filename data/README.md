@@ -192,5 +192,6 @@ Before committing data:
 ## See Also
 
 - [scripts/README.md](../scripts/README.md) - Import script usage
-- [docs/docker/README.md](../docs/docker/README.md) - Database setup guide
+- [RUNBOOK.md](../RUNBOOK.md) - Start the stack, import, back up, rebuild
+- [docs/database-dictionary.md](../docs/database-dictionary.md) - Every table and column (generated)
 - [docs/database-schema.md](../docs/database-schema.md) - Full database schema documentation

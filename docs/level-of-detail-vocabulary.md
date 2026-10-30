@@ -5,10 +5,10 @@ XRFF-249 (position paper this feeds)
 **Status:** Defined 2026-09-03. Normative for `digital-twin-db` and `growpy`.
 
 "Level of detail" currently names at least three unrelated things across this stack,
-and the ambiguity is already load-bearing: `trees.qsms.lod` and `trees.roots.lod`
-exist, hold no rows, and carry no column comment, so either meaning could be written
-into them without anyone noticing. This page fixes one meaning per axis and gives
-each a distinct name.
+and the ambiguity is load-bearing: `trees.qsms.lod` and `trees.roots.lod` exist and
+hold no rows yet, so either meaning could be written into them. This page fixes one
+meaning per axis and gives each a distinct name; the column comments on both `lod`
+columns (and on `trees.roots.geometry_class`) state the axis-1 meaning and point here.
 
 Murtiyoso et al. 2023 identify exactly this as an unsolved cross-disciplinary
 problem — forestry, geomatics and computer science each use "level of detail"
@@ -31,7 +31,7 @@ statement about "detail" that does not name an axis is ambiguous.
 ### 1. Representation LoD — the only axis that may be called "LoD"
 
 The CityGML ladder, adopted in [citygml-qsm-mapping.md](citygml-qsm-mapping.md) §5
-after Guerrero Iñiguez 2024 and Tarsha Kurdi et al. 2024:
+after Guerrero Iñiguez 2017 and Tarsha Kurdi et al. 2024:
 
 * **LoD0** — 2D footprint
 * **LoD1** — 2.5D height / root depth
@@ -127,9 +127,10 @@ more detailed version of a 15 m tree, which it is not: it is a different tree.
 
 ## Consequences
 
-* **XRFF-267** — `trees.treeassets.lod` is `SMALLINT` 0..4 with the axis-1 meaning,
-  plus `geometry_class`. Add `COMMENT ON COLUMN` to `trees.qsms.lod` and
-  `trees.roots.lod` stating the same, so the currently empty columns cannot drift.
+* **XRFF-267** — `trees.treeassets.lod` (table not built yet) is to be `SMALLINT` 0..4
+  with the axis-1 meaning, plus `geometry_class`. `trees.qsms.lod` and
+  `trees.roots.lod` already carry a `CHECK (lod BETWEEN 0 AND 4)` and a
+  `COMMENT ON COLUMN` stating this meaning (init `36-document-lod-columns.sql`).
 * **growpy** — `docs/reference/module-reference.md` in the growpy repo adopts the
   axis-2/axis-3 terms and points back at this page.
 * **XRFF-249** — the position paper can cite a worked three-axis scheme as a
@@ -142,5 +143,5 @@ more detailed version of a 15 m tree, which it is not: it is a different tree.
 
 * Murtiyoso et al. 2023 — the call for a formal forest-3D LoD definition. See
   `08-LITERATURE/virtual-forests-3d-data-review.md` in the vault.
-* Guerrero Iñiguez 2024; Tarsha Kurdi et al. 2024 — the CityGML tree LoD ladder, via
+* Guerrero Iñiguez 2017; Tarsha Kurdi et al. 2024 — the CityGML tree LoD ladder, via
   [citygml-qsm-mapping.md](citygml-qsm-mapping.md) §5.

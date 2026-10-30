@@ -59,7 +59,9 @@ That is a [JSON Schema](https://json-schema.org/) fragment. The parts worth
 reading are `required`, and for each property its `type`, `default`, `enum` and
 range. For `silva` it says, without opening a repository, that `location` is
 required, `years` defaults to 20 and must be a multiple of 5, and `competition`
-is one of `sf_polygon`, `rect_sum`, `legacy`.
+is one of `sf_polygon`, `rect_sum`, `legacy`. The portal's developer guide
+(<https://dt.unr.uni-freiburg.de/portal/api/>) renders the same live schema as a
+parameter table.
 
 Read the `description` too, not just the type. `silva`'s `regime` and `climate`
 are the case that earns this: they are the two axes of the scenario the run
@@ -183,17 +185,17 @@ first id rather than queueing a second job, a bad parameter came back `400` with
 the message, and `anon` was refused. `job_status` showed the contributor only
 its own row while the curator saw both, and `anon` read `[]` with a `200`.
 
-**Accounts exist on both stacks now.** They are created through the GoTrue admin
-endpoint, which sets the role in the same call rather than the
-create-then-`UPDATE` pair [data-access-guide.md](data-access-guide.md)
-describes. Studio's *Invite user* is not the route: `SMTP_HOST` is the
-`dftdb-mail` container, an inbucket catch-all that forwards nothing, so the
-invitation is generated and never delivered.
+`$SUPABASE_URL` is `https://dt.unr.uni-freiburg.de/db` in production and
+`http://localhost:8000` on the dev stack.
 
-```bash
-curl -X POST "$SUPABASE_URL/auth/v1/admin/users"   -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY"   -H "Content-Type: application/json"   -d '{"email":"someone@example.com","password":"…","email_confirm":true,
-       "app_metadata":{"role":"contributor"}}'
-```
+**Getting an account.** The curator of your team creates it, with the
+`contributor` tier, on the portal's account page
+(<https://dt.unr.uni-freiburg.de/portal/account/>, `public.create_account()`);
+admins can also use `scripts/server/create-user.sh`. See
+[data-access-guide.md](data-access-guide.md#user-management). Studio's
+*Invite user* is not the route: `SMTP_HOST` is the `dftdb-mail` container, an
+inbucket catch-all that forwards nothing, so the invitation is generated and
+never delivered.
 
 `shared.is_contributor()` accepts `admin`, `curator` and `contributor`; anything
 else — or no role at all — reads the menu and its own job history but cannot

@@ -1,7 +1,8 @@
 # Run Provenance — RO-Crate
 
 **Issues:** XRFF-407
-**Status:** Live for `trees.simulation_runs`. Emits for both recorded SILVA runs.
+**Status:** Live for `trees.simulation_runs` (34 recorded SILVA runs on dev, 2026-10-30). The
+`--job-id` path for `shared.processing_jobs` is not implemented yet.
 
 `shared.processes` says a process exists. `trees.simulation_runs` says a run
 happened. Neither states the binding that makes a result reproducible by someone
@@ -32,10 +33,12 @@ the XRFF-346 job runner lands and every run starts flowing through
 
 Every fact a crate needs is already in the database, so the crate is generated
 *from* the database. Today that means `trees.simulation_runs`, which is the only
-table holding complete run records: `shared.processing_jobs` exists, has the right
-shape, and has never held a row. When the runner lands, a `--job-id` path reads
-the same structure out of `processing_jobs` and every connector is covered without
-any connector changing.
+table the emitter reads. The job runner has been live on dt.unr since 2026-09-10,
+so `shared.processing_jobs` now receives job records, but the emitter has no
+`--job-id` option yet (its options are `--run-id`, `--all`, `--list`,
+`-o/--out-dir`, `--api-base`). Adding that path would read the same structure
+out of `processing_jobs` and cover every connector without any connector
+changing.
 
 ## Which profile
 
@@ -83,7 +86,7 @@ smoothed over:
   result row. It is emitted as `startTime`, which is the strongest true claim
   available; `endTime` is omitted rather than guessed. Recording real
   `started_at` / `completed_at` in silva-connector would close this, and
-  `processing_jobs` already has both columns for when the runner lands.
+  `processing_jobs` already records both for runs that go through the job runner.
 
 ## Tests
 
