@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-10-30
+
+**Access for other teams: the portal, curator-managed accounts, read-only by default**
+
+- `web/portal/`: a static site at `/portal/` (and `/`) with one door per level of experience —
+  browse/download any table, add rows by form or CSV and correct them (`/portal/data/`, forms
+  generated from the OpenAPI description), sign-in and team account management
+  (`/portal/account/`), and a developer quick start (`/portal/api/`). Shares the sign-in with
+  `/jobs/`. Served by the dashboard's nginx.
+- Curators create accounts, grant or revoke `contributor` and reset passwords; admins also
+  grant `curator`/`admin`. New RPCs `create_account`, `set_account_role`,
+  `reset_account_password`, `list_accounts` (SECURITY DEFINER, role-checked); every change is
+  logged to the new `shared.account_events`. One-time passwords are shown to the curator,
+  since mail does not leave dt.unr; accounts carry `must_change_password` until the holder
+  changes it.
+- **Breaking for no-role accounts:** the 18 metadata write policies (species, sensors,
+  scanners, plots, scenarios, campaigns, processes, process parameters, events, locations)
+  were open to any signed-in account and now require `contributor`. Connectors use
+  `service_role` and are unaffected.
+- Signup closed: `DISABLE_SIGNUP=true` in `.env.example` (XRFF-435).
+- Fix: `public.trees`, `public.sensors` and `public.campaigns` reported an UPDATE/DELETE that
+  RLS had skipped as successful (their INSTEAD OF triggers returned the row regardless). They
+  now return no row, like the auto-updatable views.
+- Migrations `20261030100000`, `20261030110000` + init `68`, `69`; tests in
+  `tests/automated/e2e/access/`. Dev only; not on dt.unr yet.
+
 ### 2026-10-28
 
 **`ue_sensor_readings_latest(p_limit, p_location_id)`: the newest readings, sorted by sensor**

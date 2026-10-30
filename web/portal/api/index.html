@@ -1,0 +1,196 @@
+<!doctype html>
+<!--
+  API quick start for developers. The endpoint reference at the bottom is read
+  live from PostgREST's OpenAPI description, so it cannot drift from the
+  schema; the prose above it covers what the description cannot say -- how to
+  authenticate, and the traps people actually hit.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API — Forest Digital Twin</title>
+<link rel="stylesheet" href="/portal/portal.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>REST API</h1>
+  <p class="sub">
+    Every table and view of the twin is an HTTP endpoint (PostgREST behind Kong,
+    Supabase-compatible). Reads need only the public key below; writes need a
+    signed-in account with the right role, exactly as on the
+    <a href="/portal/data/">data page</a> — the database enforces the same rules
+    for both.
+  </p>
+
+  <div class="panel">
+    <h2>Connection</h2>
+    <table>
+      <tr><th>Base URL</th><td><code id="baseUrl"></code></td></tr>
+      <tr><th>REST</th><td><code><span class="base"></span>/rest/v1/&lt;table&gt;</code></td></tr>
+      <tr><th>Auth</th><td><code><span class="base"></span>/auth/v1/token</code></td></tr>
+      <tr><th>Public (anon) key</th><td><code id="anonKey" style="word-break:break-all"></code>
+        <p class="help">Sent as the <code>apikey</code> header on every request. It identifies this
+        deployment, not a person, and only grants what anonymous visitors may do anyway. Unreal ships with it.</p></td></tr>
+    </table>
+    <p class="help">Reachable from the university network and the internet on port 443 only.
+      The service-role key is never handed out; for writes, ask your team's curator for an account.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Read</h2>
+    <h3>curl</h3>
+    <pre id="exCurl"></pre>
+    <h3>Python (requests)</h3>
+    <pre id="exPy"></pre>
+    <h3>R (httr2)</h3>
+    <pre id="exR"></pre>
+    <h3>Python (supabase-py)</h3>
+    <pre id="exSb"></pre>
+    <p class="help">Filters, ordering, paging and embedding follow the
+      <a href="https://postgrest.org/en/stable/references/api/tables_views.html">PostgREST URL grammar</a>:
+      <code>?height_m=gte.20&amp;order=tree_id&amp;limit=100</code>. Add <code>Accept: text/csv</code> to get CSV.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Write</h2>
+    <p>Sign in with your account to get a JWT, then send it as <code>Authorization: Bearer …</code>.
+      It lasts an hour; use the refresh token for a new one.</p>
+    <pre id="exWrite"></pre>
+    <table>
+      <thead><tr><th>Role</th><th>May write</th></tr></thead>
+      <tbody>
+        <tr><td>read-only</td><td>nothing</td></tr>
+        <tr><td>contributor</td><td>insert field data; insert/update/delete sites and metadata (species, plots, sensors, campaigns, events, …); <code>rpc/request_job</code></td></tr>
+        <tr><td>curator</td><td>also update and delete field data</td></tr>
+      </tbody>
+    </table>
+    <p class="help">An update your role may not make returns <code>200</code> with an empty body (zero rows), not an error — check the response, or send <code>Prefer: return=representation</code> and look for your row.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Things worth knowing</h2>
+    <ul>
+      <li>Use the <code>public</code> views (the endpoints listed below). Embedding across the base schemas
+        (<code>shared</code>, <code>trees</code>, …) fails with <code>PGRST200</code>; the public views embed fine.</li>
+      <li><code>sensor_readings</code> has tens of millions of rows — always filter by <code>sensor_id</code>
+        and a <code>timestamp</code> range, or the request hits the statement timeout.
+        For "latest value per sensor at time T" use <code>rpc/ue_sensor_state_at</code>.</li>
+      <li>Trees exist in several <em>variants</em> (field inventory, simulated time steps, scenarios). Filter by
+        <code>variant_id</code> or use <code>ue_trees</code> / <code>ue_variants</code> to pick one forest state.</li>
+      <li>Geometries come back as GeoJSON and can be sent as EWKT, e.g. <code>"SRID=4326;POINT(7.877 48.268)"</code>.</li>
+      <li>Model runs: <code>POST rpc/request_job</code> with <code>{"workflow": "silva", "params": {…}}</code>,
+        then poll <code>job_status</code>. Parameters per workflow are in <code>workflows.param_schema</code>.</li>
+    </ul>
+    <p class="help">Longer reference: <a href="https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db/-/blob/dev/docs/api-spec.md">API spec</a>,
+      <a href="https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db/-/blob/dev/docs/data-access-guide.md">data access guide</a>,
+      <a href="https://gitlab.uni-freiburg.de/xr-future-forests-lab/digital-twin-db/-/blob/dev/docs/requesting-a-job.md">requesting a job</a>.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Endpoints</h2>
+    <p class="help">Read live from the API's own description. Click one for its columns.</p>
+    <div class="row" style="margin:8px 0"><div><input type="text" id="epFilter" placeholder="Filter"></div></div>
+    <div id="epMsg"></div>
+    <div id="endpoints"></div>
+    <h3>Functions (<code>POST /rest/v1/rpc/&lt;name&gt;</code>)</h3>
+    <div id="rpcs"></div>
+  </div>
+</div>
+<script src="/portal/config.js"></script>
+<script src="/portal/lib.js"></script>
+<script>
+(function () {
+  "use strict";
+  var P = Portal, el = P.el;
+  P.topbar("/portal/api/");
+
+  var api = (P.cfg.apiBase || "/db").replace(/\/$/, "");
+  var base = /^https?:/.test(api) ? api : location.origin + api;
+  var key = P.cfg.anonKey || "<ANON_KEY>";
+  document.getElementById("baseUrl").textContent = base;
+  Array.prototype.forEach.call(document.querySelectorAll(".base"), function (s) { s.textContent = base; });
+  document.getElementById("anonKey").textContent = key;
+
+  document.getElementById("exCurl").textContent =
+    'KEY="' + key + '"\n\n' +
+    'curl "' + base + '/rest/v1/trees?select=tree_id,species_id,height_m&limit=5" \\\n' +
+    '  -H "apikey: $KEY"';
+  document.getElementById("exPy").textContent =
+    'import requests\n\n' +
+    'BASE = "' + base + '"\nKEY = "' + key + '"\n\n' +
+    'r = requests.get(f"{BASE}/rest/v1/species", headers={"apikey": KEY},\n' +
+    '                 params={"select": "*", "limit": 10})\nr.raise_for_status()\nprint(r.json())';
+  document.getElementById("exR").textContent =
+    'library(httr2)\n\n' +
+    'base <- "' + base + '"\nkey  <- "' + key + '"\n\n' +
+    'trees <- request(base) |>\n  req_url_path_append("rest/v1/trees") |>\n' +
+    '  req_url_query(select = "tree_id,height_m", height_m = "gte.20", limit = 100) |>\n' +
+    '  req_headers(apikey = key) |>\n  req_perform() |>\n  resp_body_json(simplifyVector = TRUE)';
+  document.getElementById("exSb").textContent =
+    'from supabase import create_client\n\n' +
+    'sb = create_client("' + base + '", "' + key + '")\n' +
+    'sb.auth.sign_in_with_password({"email": "you@uni-freiburg.de", "password": "..."})  # only for writes\n' +
+    'rows = sb.table("trees").select("tree_id,height_m").gte("height_m", 20).limit(100).execute().data';
+  document.getElementById("exWrite").textContent =
+    'KEY="' + key + '"\n\n' +
+    '# 1. sign in\n' +
+    'curl -X POST "' + base + '/auth/v1/token?grant_type=password" \\\n' +
+    '  -H "apikey: $KEY" -H "Content-Type: application/json" \\\n' +
+    '  -d \'{"email": "you@uni-freiburg.de", "password": "..."}\'\n' +
+    '# -> {"access_token": "...", "refresh_token": "...", ...}\n\n' +
+    '# 2. write with the access token\n' +
+    'curl -X POST "' + base + '/rest/v1/phenology_observations" \\\n' +
+    '  -H "apikey: $KEY" -H "Authorization: Bearer $ACCESS_TOKEN" \\\n' +
+    '  -H "Content-Type: application/json" -H "Prefer: return=representation" \\\n' +
+    '  -d \'{"tree_id": 1234, "observation_date": "2026-05-01", ...}\'';
+
+  function colLine(name, p) {
+    var d = (p.description || "");
+    var fk = /<fk table='([^']+)'/.exec(d);
+    var note = d.indexOf("<pk/>") >= 0 ? "primary key" : fk ? "→ " + fk[1] : "";
+    var text = d.replace(/Note:\nThis is a (Primary|Foreign) Key[^<]*<(pk|fk)[^>]*\/>/g, "").trim();
+    return el("tr", {}, [el("td", {}, [el("code", { text: name })]),
+      el("td", { class: "muted", text: (p.format || p.type || "") }),
+      el("td", { text: [note, text].filter(Boolean).join(" · ") })]);
+  }
+
+  function draw(spec) {
+    var q = document.getElementById("epFilter").value.trim().toLowerCase();
+    var host = document.getElementById("endpoints"), rh = document.getElementById("rpcs");
+    host.innerHTML = ""; rh.innerHTML = "";
+    Object.keys(spec.paths).sort().forEach(function (path) {
+      if (path === "/") return;
+      var name = path.slice(1);
+      if (q && name.indexOf(q) < 0) return;
+      var item = spec.paths[path];
+      if (name.indexOf("rpc/") === 0) {
+        var op = item.post || item.get || {};
+        rh.appendChild(el("details", {}, [el("summary", {}, [el("code", { text: name.slice(4) }), " ",
+          el("span", { class: "muted", text: (op.summary || "").split("\n")[0] })]),
+          el("p", { class: "help", text: op.description || op.summary || "" })]));
+        return;
+      }
+      var def = spec.definitions[name] || {};
+      var methods = item.post ? "read · write" : "read";
+      var cols = Object.keys(def.properties || {});
+      host.appendChild(el("details", {}, [
+        el("summary", {}, [el("code", { text: "/rest/v1/" + name }), " ",
+          el("span", { class: "badge" + (item.post ? " good" : ""), text: methods }), " ",
+          el("span", { class: "muted", text: (def.description || "").split("\n")[0].slice(0, 110) })]),
+        el("p", { class: "help", text: def.description || "" }),
+        el("div", { class: "tablewrap" }, [el("table", {}, [el("tbody", {}, cols.map(function (c) {
+          return colLine(c, def.properties[c]);
+        }))])])
+      ]));
+    });
+  }
+
+  P.api("/rest/v1/", { auth: false }).then(function (spec) {
+    draw(spec);
+    document.getElementById("epFilter").addEventListener("input", function () { draw(spec); });
+  }).catch(function (err) { P.message("epMsg", "err", "Could not read the API description: " + err.message); });
+})();
+</script>
+</body>
+</html>

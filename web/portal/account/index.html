@@ -1,0 +1,313 @@
+<!doctype html>
+<!--
+  Account page: sign in, change your own password, and -- for curators and
+  admins -- manage the accounts of your team.
+
+  Account management goes through public.create_account / set_account_role /
+  reset_account_password / list_accounts (migration 20261030100000). They are
+  SECURITY DEFINER functions that check the caller's role claim themselves, so
+  this page holds nothing more powerful than the signed-in user's own token;
+  the service_role key never reaches a browser.
+
+  Passwords are generated server-side and shown here once, because mail from
+  dt.unr does not leave the host (no SMTP relay yet), so there is no invite
+  link to send.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account — Forest Digital Twin</title>
+<link rel="stylesheet" href="/portal/portal.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Account</h1>
+  <p class="sub">Sign in once here and you are signed in on the data and job pages too, until you close the tab.</p>
+
+  <!-- Sign in -->
+  <div class="panel" id="authPanel">
+    <h2>Sign in</h2>
+    <div id="authMsg"></div>
+    <form id="loginForm">
+      <div class="row">
+        <div><label for="email">Email</label><input type="email" id="email" autocomplete="username" required></div>
+        <div><label for="password">Password</label><input type="password" id="password" autocomplete="current-password" required></div>
+        <button type="submit" id="loginBtn">Sign in</button>
+      </div>
+      <p class="help">No account? Ask the curator of your team. Forgot your password? They can reset it.</p>
+    </form>
+  </div>
+
+  <!-- Me -->
+  <div class="panel" id="mePanel" hidden>
+    <div class="row" style="align-items:center">
+      <div>
+        <h2 style="margin:0">Signed in as <span id="meEmail"></span> <span id="meRole" class="badge"></span></h2>
+        <p class="help" id="meCan"></p>
+      </div>
+      <button class="secondary tight" id="logoutBtn">Sign out</button>
+    </div>
+    <div id="mustChange"></div>
+    <h3>Change your password</h3>
+    <div id="pwMsg"></div>
+    <form id="pwForm">
+      <div class="row">
+        <div><label for="pw1">New password</label><input type="password" id="pw1" autocomplete="new-password" minlength="8" required></div>
+        <div><label for="pw2">Repeat it</label><input type="password" id="pw2" autocomplete="new-password" minlength="8" required></div>
+        <button type="submit" id="pwBtn">Change password</button>
+      </div>
+      <p class="help">At least 8 characters. Signing in elsewhere keeps working; the old password stops.</p>
+    </form>
+  </div>
+
+  <!-- Team accounts -->
+  <div class="panel" id="teamPanel" hidden>
+    <h2>Accounts</h2>
+    <p class="help" id="teamScope"></p>
+    <div id="teamMsg"></div>
+
+    <h3>New account</h3>
+    <form id="createForm">
+      <div class="row">
+        <div><label for="newEmail">Email</label><input type="email" id="newEmail" required placeholder="name@uni-freiburg.de"></div>
+        <div><label for="newRole">Role</label><select id="newRole"></select></div>
+        <button type="submit" id="createBtn">Create account</button>
+      </div>
+    </form>
+    <div id="handover" hidden>
+      <div class="msg ok">
+        Created. Give this password to <strong id="hoEmail"></strong> personally — chat, phone, in person — not in a shared channel.
+        It is shown only now; if it gets lost, reset it.
+      </div>
+      <p><span class="secret" id="hoPassword"></span> <button class="secondary small" id="hoCopy">Copy message</button></p>
+      <pre id="hoText"></pre>
+    </div>
+
+    <h3>Existing accounts</h3>
+    <div class="row" style="margin-bottom:8px">
+      <div><input type="text" id="filter" placeholder="Filter by email"></div>
+      <button class="secondary tight" id="reloadBtn">Reload</button>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Email</th><th>Role</th><th>Last sign-in</th><th>Created</th><th></th></tr></thead>
+        <tbody id="accountsBody"></tbody>
+      </table>
+    </div>
+
+    <h3>Recent account changes</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>When</th><th>Who</th><th>What</th><th>Account</th></tr></thead>
+        <tbody id="eventsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/portal/config.js"></script>
+<script src="/portal/lib.js"></script>
+<script>
+(function () {
+  "use strict";
+  var P = Portal, el = P.el;
+  P.topbar("/portal/account/");
+
+  var accounts = [];
+
+  var CAN = {
+    "read-only": "You can read everything public and see your own job history.",
+    contributor: "You can add field data, edit sites and metadata, and request model runs.",
+    curator: "You can also correct and delete field data, see every job, and manage contributor accounts.",
+    admin: "You can do everything, including granting curator and admin."
+  };
+
+  function fmt(iso) {
+    return iso ? new Date(iso).toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "never";
+  }
+
+  // The tiers the caller may hand out -- the same rule as shared.may_manage_role().
+  function grantable() {
+    return P.atLeast("admin") ? ["", "contributor", "curator", "admin"] : ["", "contributor"];
+  }
+
+  function roleSelect(value) {
+    var s = el("select", {});
+    grantable().forEach(function (r) {
+      s.appendChild(el("option", { value: r, text: P.roleLabel(r || null) }));
+    });
+    s.value = value || "";
+    return s;
+  }
+
+  function render() {
+    var on = !!P.session;
+    document.getElementById("authPanel").hidden = on;
+    document.getElementById("mePanel").hidden = !on;
+    document.getElementById("teamPanel").hidden = !(on && P.atLeast("curator"));
+    P.refreshWho();
+    if (!on) return;
+
+    var r = P.role();
+    document.getElementById("meEmail").textContent = P.session.user.email;
+    var badge = document.getElementById("meRole");
+    badge.textContent = P.roleLabel(r);
+    badge.className = "badge" + (P.atLeast("contributor") ? " good" : "");
+    document.getElementById("meCan").textContent = CAN[P.roleLabel(r)] || "";
+
+    var um = P.claims().user_metadata || {};
+    P.message("mustChange", um.must_change_password ? "warn" : "",
+      um.must_change_password ? "You are still using the password someone gave you. Please choose your own below." : "");
+
+    if (P.atLeast("curator")) {
+      document.getElementById("teamScope").textContent = P.atLeast("admin")
+        ? "As an admin you can create, change and reset any account except your own."
+        : "As a curator you can create read-only and contributor accounts, switch accounts between the two, and reset their passwords. Curator and admin accounts are managed by admins.";
+      var sel = document.getElementById("newRole");
+      sel.innerHTML = "";
+      grantable().forEach(function (x) { sel.appendChild(el("option", { value: x, text: P.roleLabel(x || null) })); });
+      sel.value = "contributor";
+      loadAccounts();
+      loadEvents();
+    }
+  }
+
+  async function loadAccounts() {
+    try {
+      accounts = await P.api("/rest/v1/rpc/list_accounts", { method: "POST", body: {} });
+      drawAccounts();
+    } catch (err) { P.message("teamMsg", "err", err.message); }
+  }
+
+  function drawAccounts() {
+    var q = document.getElementById("filter").value.trim().toLowerCase();
+    var body = document.getElementById("accountsBody");
+    body.innerHTML = "";
+    accounts.filter(function (a) { return !q || a.email.indexOf(q) >= 0; }).forEach(function (a) {
+      var roleCell, actions;
+      if (a.manageable) {
+        var sel = roleSelect(a.role);
+        var save = el("button", { class: "small", text: "Save", onclick: function () { setRole(a.email, sel.value); } });
+        roleCell = el("td", {}, [el("div", { class: "row" }, [sel, save])]);
+        actions = el("td", {}, [el("button", { class: "secondary small", text: "Reset password",
+          onclick: function () { resetPassword(a.email); } })]);
+      } else {
+        roleCell = el("td", {}, [el("span", { class: "badge" + (a.role ? " good" : ""), text: P.roleLabel(a.role) })]);
+        actions = el("td", { class: "muted", text: a.email === P.session.user.email ? "you" : "" });
+      }
+      var emailCell = el("td", {}, [a.email]);
+      if (a.must_change_password) emailCell.appendChild(el("div", { class: "help", text: "has not chosen own password yet" }));
+      body.appendChild(el("tr", {}, [emailCell, roleCell, el("td", { text: fmt(a.last_sign_in_at) }),
+        el("td", { text: fmt(a.created_at) }), actions]));
+    });
+  }
+
+  async function loadEvents() {
+    try {
+      var rows = await P.api("/rest/v1/account_events?select=*&order=occurred_at.desc&limit=20",
+                             { headers: { "Accept-Profile": "shared" } });
+      var body = document.getElementById("eventsBody");
+      body.innerHTML = "";
+      rows.forEach(function (e) {
+        var what = e.action === "create" ? "created as " + P.roleLabel(e.new_role)
+                 : e.action === "set_role" ? P.roleLabel(e.old_role) + " → " + P.roleLabel(e.new_role)
+                 : "password reset";
+        body.appendChild(el("tr", {}, [el("td", { text: fmt(e.occurred_at) }), el("td", { text: e.actor_email || "" }),
+          el("td", { text: what }), el("td", { text: e.target_email })]));
+      });
+    } catch (err) { /* the list of accounts matters more; leave this empty */ }
+  }
+
+  function showHandover(email, password, what) {
+    document.getElementById("handover").hidden = false;
+    document.getElementById("hoEmail").textContent = email;
+    document.getElementById("hoPassword").textContent = password;
+    document.getElementById("hoText").textContent =
+      "Your " + what + " for the Forest Digital Twin (" + location.origin + "/portal/):\n\n" +
+      "  Email:    " + email + "\n  Password: " + password + "\n\n" +
+      "Sign in at " + location.origin + "/portal/account/ and choose your own password there.";
+    document.getElementById("handover").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  async function setRole(email, r) {
+    P.message("teamMsg", "", "");
+    try {
+      await P.api("/rest/v1/rpc/set_account_role", { method: "POST", body: { p_email: email, p_role: r || null } });
+      P.message("teamMsg", "ok", email + " is now " + P.roleLabel(r || null) + ". It applies from their next sign-in, or within the hour.");
+      loadAccounts(); loadEvents();
+    } catch (err) { P.message("teamMsg", "err", err.message); }
+  }
+
+  async function resetPassword(email) {
+    P.message("teamMsg", "", "");
+    try {
+      var rows = await P.api("/rest/v1/rpc/reset_account_password", { method: "POST", body: { p_email: email } });
+      showHandover(email, rows[0].password, "new password");
+      loadAccounts(); loadEvents();
+    } catch (err) { P.message("teamMsg", "err", err.message); }
+  }
+
+  document.getElementById("createForm").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var btn = document.getElementById("createBtn");
+    btn.disabled = true;
+    P.message("teamMsg", "", "");
+    try {
+      var rows = await P.api("/rest/v1/rpc/create_account", { method: "POST", body: {
+        p_email: document.getElementById("newEmail").value,
+        p_role: document.getElementById("newRole").value || null
+      } });
+      showHandover(rows[0].email, rows[0].password, "account");
+      document.getElementById("newEmail").value = "";
+      loadAccounts(); loadEvents();
+    } catch (err) { P.message("teamMsg", "err", err.message); }
+    finally { btn.disabled = false; }
+  });
+
+  document.getElementById("hoCopy").addEventListener("click", function () {
+    navigator.clipboard.writeText(document.getElementById("hoText").textContent);
+    this.textContent = "Copied";
+  });
+
+  document.getElementById("loginForm").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var btn = document.getElementById("loginBtn");
+    btn.disabled = true;
+    P.message("authMsg", "", "");
+    try {
+      await P.signIn(document.getElementById("email").value.trim(), document.getElementById("password").value);
+      document.getElementById("password").value = "";
+      render();
+    } catch (err) { P.message("authMsg", "err", err.message); }
+    finally { btn.disabled = false; }
+  });
+
+  document.getElementById("pwForm").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var a = document.getElementById("pw1").value, b = document.getElementById("pw2").value;
+    if (a !== b) { P.message("pwMsg", "err", "The two passwords differ."); return; }
+    var btn = document.getElementById("pwBtn");
+    btn.disabled = true;
+    try {
+      await P.updateUser({ password: a, data: { must_change_password: false } });
+      document.getElementById("pw1").value = document.getElementById("pw2").value = "";
+      P.message("pwMsg", "ok", "Password changed.");
+      render();
+    } catch (err) { P.message("pwMsg", "err", err.message); }
+    finally { btn.disabled = false; }
+  });
+
+  document.getElementById("logoutBtn").addEventListener("click", function () {
+    P.signOut();
+    document.getElementById("handover").hidden = true;
+    render();
+  });
+  document.getElementById("filter").addEventListener("input", drawAccounts);
+  document.getElementById("reloadBtn").addEventListener("click", function () { loadAccounts(); loadEvents(); });
+
+  render();
+})();
+</script>
+</body>
+</html>

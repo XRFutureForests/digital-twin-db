@@ -321,7 +321,12 @@ Traps recorded there, because each cost days:
   on the stale file — force-recreate the container.
 - **The TLS certificate renews on `dt-renew-ssl.timer`**; verify it actually renewed before
   2026-12-01 rather than trusting a green timer (XRFF-421).
-- **`GOTRUE_DISABLE_SIGNUP` is still `false`** — the signup endpoint is open (XRFF-435).
+- **Signup is closed** (`DISABLE_SIGNUP=true`, XRFF-435); curators create accounts in the
+  portal at `/portal/account/` ([docs/data-access-guide.md](docs/data-access-guide.md#user-management)).
+  Mail does not leave the host, so passwords are handed over, not mailed.
+- **The portal (`web/portal/`) is served by the dashboard's nginx** at `/portal/`, beside
+  `/jobs/`, and `/` redirects there. Its `config.js` is written at deploy time, like the job
+  page's — see [web/portal/README.md](web/portal/README.md).
 
 ---
 

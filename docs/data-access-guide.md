@@ -21,14 +21,22 @@ Read access covers every public view: `species`, `locations`, `trees`, `ue_trees
 
 ## Write access — requires an account
 
-Writing data (INSERT / UPDATE / DELETE) requires an authenticated JWT. Two paths:
+Writing data (INSERT / UPDATE / DELETE) requires an authenticated JWT. Three paths:
 
-### Option A — Supabase Studio (easiest for one-off changes)
+### Option A — the portal (easiest; no tools needed)
 
-1. Ask Max to create an account for you (see [User management](#user-management) below).
-2. Go to **http://localhost:54323** (local) or the server Studio URL.
-3. Log in with your email and password.
-4. Use **Table Editor** → navigate to the relevant table → paste or import rows.
+1. Ask the curator of your team for an account (see [User management](#user-management) below).
+2. Sign in at **<https://dt.unr.uni-freiburg.de/portal/account/>** and choose your own password.
+3. Use **<https://dt.unr.uni-freiburg.de/portal/data/>**: pick a table, add a row through the
+   form or paste a CSV (all rows in one transaction), or click a row to correct it.
+
+The forms are generated from the API's own OpenAPI description, so every public view is
+there. The database decides what your role may do; an update it refuses comes back as
+"nothing was saved", not as a fake success.
+
+Supabase Studio is **not** a write path for colleagues: it logs in with the shared
+`DASHBOARD_PASSWORD`, acts as `supabase_admin`, and is reachable only through an SSH
+tunnel on the server.
 
 ### Option B — Python import scripts (batch uploads)
 
@@ -82,7 +90,29 @@ curl -X POST "http://<SERVER>:8000/auth/v1/token?grant_type=refresh_token" \
 
 ## User management
 
-### Creating a user account (admin)
+### Creating accounts — curators, in the portal
+
+Since 2026-10-30 (migration `20261030100000`) team leads manage their own people. On
+**<https://dt.unr.uni-freiburg.de/portal/account/>** a `curator` can create an account,
+switch accounts between read-only and `contributor`, and reset passwords; an `admin` can
+also grant `curator` and `admin`. Nobody changes their own role.
+
+The page calls four `SECURITY DEFINER` functions that check the caller's role claim
+themselves — `public.list_accounts()`, `create_account(p_email, p_role)`,
+`set_account_role(p_email, p_role)`, `reset_account_password(p_email)` — so the browser
+holds only the signed-in user's token. Each create, role change and reset is written to
+`shared.account_events`, which curators and admins can read (the page shows the last 20).
+
+Passwords are generated and shown **once** to the curator, who hands them over personally,
+because mail from dt.unr does not leave the host (outbound SMTP to the university relays is
+closed). The account is flagged `must_change_password`; the portal asks the holder to change
+it, which they can do themselves (`PUT /auth/v1/user` with their own token). A reset ends
+every session of that account. A role change applies at the next sign-in or token refresh
+(at most `JWT_EXPIRY`, an hour).
+
+Self-signup is closed: `DISABLE_SIGNUP=true` in `docker/.env`.
+
+### Creating a user account (admin, from a shell)
 
 **Use the script.** It is the whole job in one line, on either stack:
 
@@ -202,21 +232,23 @@ Four tiers, named after standard research-data-management vocabulary (RDA/DataCi
 | Role | Who | What they can do |
 |------|-----|-----------------|
 | `anon` (**Consumer**) | Anyone with ANON_KEY | SELECT on all public views |
-| `authenticated`, no role claim | Any Studio account by default | SELECT everywhere; full CRUD on metadata/lookup tables (species, scenarios, locations, sensors, management/disturbance events, campaigns, processes, …); no write access to field-data tables |
-| `authenticated` + `role: contributor` (**Contributor**) | Field data collectors | Everything above, plus INSERT on field-data tables |
-| `authenticated` + `role: curator` (**Curator**) | Trusted data managers | Everything above, plus UPDATE/DELETE on field-data tables |
-| `authenticated` + `role: admin` (**Administrator**) | Lab administrators | Everything above, plus can set other users' `role` claim |
+| `authenticated`, no role claim (**read-only**) | A new account until a curator grants a role | SELECT; its own job history; no writes (since 2026-10-30 — before, it could write the metadata tables) |
+| `authenticated` + `role: contributor` (**Contributor**) | Field data collectors | Everything above, plus full CRUD on metadata tables (species, scenarios, locations, plots, sensors, scanners, management/disturbance events, campaigns, processes, …), INSERT on field-data tables, `request_job()` |
+| `authenticated` + `role: curator` (**Curator**) | Team leads, trusted data managers | Everything above, plus UPDATE/DELETE on field-data tables, every job, and managing read-only/contributor accounts |
+| `authenticated` + `role: admin` (**Administrator**) | Lab administrators | Everything above, plus granting `curator` and `admin` |
 | `service_role` | Max / import scripts | Full access, bypasses RLS; never share externally |
 
 Field-data tables are the ones where a bad edit or delete actually costs something (cited measurements, growth-sim inputs): `Trees`, `Stems`, `PointClouds`, `Environments`, `Images`, `sensor_readings`, `phenology_observations`, `Deadwood`, `ground_vegetation`. Everything else stays full-CRUD for any `authenticated` user regardless of role claim — see the `is_admin()` / `is_contributor()` / `is_curator()` helpers and their policies in `docker/volumes/db/init/10-baseline-schema.sql`.
 
-**Never share `SERVICE_ROLE_KEY` with external collaborators.** Create a Studio account for write access instead.
+**Never share `SERVICE_ROLE_KEY` with external collaborators.** Give them an account (a curator creates it in the portal) for write access instead.
 
 Read-only views (`ue_trees`, `growth_simulations`, `simulation_runs`, morphology lookups) are SELECT-only even for authenticated users. Writes to those domains go through the underlying tables via the import scripts and silva-connector.
 
 ### Assigning a role tier
 
-New accounts have no `role` claim and can't write to field-data tables. An admin sets it directly (run as `service_role`, e.g. in Studio → SQL Editor):
+An account without a `role` claim is read-only. The normal route is the portal's account page
+(curators: read-only ↔ contributor; admins: any tier) or `public.set_account_role()`. From a
+shell, `create-user.sh --set-role`, or directly (run as `service_role`, e.g. in Studio → SQL Editor):
 
 ```sql
 UPDATE auth.users
@@ -224,7 +256,7 @@ SET raw_app_meta_data = raw_app_meta_data || '{"role": "curator"}'::jsonb
 WHERE email = 'someone@example.com';
 ```
 
-Valid values: `admin`, `curator`, `contributor`. No claim = base `authenticated` (metadata tables only, no field-data writes).
+Valid values: `admin`, `curator`, `contributor`. No claim = read-only.
 
 ---
 

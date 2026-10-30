@@ -1,0 +1,94 @@
+<!doctype html>
+<!--
+  The front door of dt.unr: one page that sends each visitor to the surface
+  that fits what they want to do, from "look at the forest" to "call the API".
+  Static, like everything under web/; see README.md in this directory.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forest Digital Twin — dt.unr</title>
+<link rel="stylesheet" href="/portal/portal.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Forest Digital Twin</h1>
+  <p class="sub">
+    Field measurements, sensors, LiDAR products and growth simulations for the
+    lab's forest sites, in one PostgreSQL/PostGIS database. Everything below
+    reads and writes that same database; pick the door that fits what you
+    want to do.
+  </p>
+
+  <div class="cards">
+    <div class="card">
+      <h2>Explore</h2>
+      <p class="who">No account needed</p>
+      <ul>
+        <li><a href="/ecosense/">ECOSENSE dashboard</a> — trees, sensors, time series</li>
+        <li><a href="/mathisle/">Mathisle dashboard</a></li>
+        <li><a href="/portal/data/">Browse any table</a> and download it as CSV</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Contribute</h2>
+      <p class="who">Account with the <code>contributor</code> role</p>
+      <ul>
+        <li><a href="/portal/data/">Add or correct data</a> — forms, or paste a CSV</li>
+        <li><a href="/jobs/">Run a model</a> — SILVA projections, syncs, batches</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Manage</h2>
+      <p class="who">Team leads (<code>curator</code>) and admins</p>
+      <ul>
+        <li><a href="/portal/account/">Create accounts for your team</a>, grant or revoke <code>contributor</code>, reset passwords</li>
+        <li>Correct and delete field data</li>
+        <li>Full SQL console (Supabase Studio): lab administrators only, through an SSH tunnel</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Build</h2>
+      <p class="who">Developers</p>
+      <ul>
+        <li><a href="/portal/api/">REST API quick start</a> — endpoints, auth, examples in curl, Python and R</li>
+        <li>Every table and view on this site is an endpoint under <code>/db/rest/v1/</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Getting access</h2>
+    <p>
+      Reading needs no account. To add data or run models, ask the
+      <strong>curator of your team</strong> for an account; they can create one
+      on the spot and give you a one-time password, which you change on the
+      <a href="/portal/account/">account page</a> after your first sign-in.
+      <span id="contactLine"></span>
+    </p>
+    <table>
+      <thead><tr><th>Role</th><th>Can</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge">read-only</span></td><td>read everything public, see your own job history</td></tr>
+        <tr><td><span class="badge good">contributor</span></td><td>add field data, edit sites and metadata (species, plots, sensors, campaigns, …), request model runs</td></tr>
+        <tr><td><span class="badge good">curator</span></td><td>also correct and delete field data, see every job, create accounts and grant <code>contributor</code></td></tr>
+        <tr><td><span class="badge strong">admin</span></td><td>also grant <code>curator</code> and <code>admin</code></td></tr>
+      </tbody>
+    </table>
+    <p class="help">Every correction to trees, stems, environments, point clouds and phenology is logged with who made it and can be reverted.</p>
+  </div>
+</div>
+<script src="/portal/config.js"></script>
+<script src="/portal/lib.js"></script>
+<script>
+  Portal.topbar("/portal/");
+  if (Portal.cfg.contact) {
+    var line = document.getElementById("contactLine");
+    line.appendChild(document.createTextNode("Team without a curator yet? Write to "));
+    line.appendChild(Portal.el("a", { href: "mailto:" + Portal.cfg.contact, text: Portal.cfg.contact }));
+    line.appendChild(document.createTextNode("."));
+  }
+</script>
+</body>
+</html>

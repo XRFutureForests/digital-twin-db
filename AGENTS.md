@@ -45,6 +45,7 @@ approach was chosen, write it in the knowledge hub and link to it.
 | `docs/` | Reference: schema dictionary, API spec, deployment, troubleshooting (index in `docs/README.md`) |
 | `CHANGELOG.md`, `CONTRIBUTING.md` | Kept because this repo releases to Zenodo (workspace decision 2026-09-15: only growpy, pylometree, digital-twin-db and dtm-to-unreal carry them) |
 | `web/jobs/` | The job trigger page — one static file, served by the dashboard's nginx at `/jobs/` (`config.js` managed locally) |
+| `web/portal/` | The portal — landing page, data entry, account management, API quick start; static, served by the dashboard's nginx at `/portal/` (`config.js` managed locally) |
 
 ## Schema Migrations
 
