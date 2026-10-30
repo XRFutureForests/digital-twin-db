@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Forest management planning schema**
+
+- New schema `management` (ported from the Shiny app's simple-postgres prototype): management
+  areas per site, planning variants (`forks`) with the variant they were planned on, drawn
+  features (skid roads, damage polygons, crop-tree buffers), crop-tree and removal marks
+  (`thinning_trees`, by `tree_entity_id`), thinning run parameters and check-out locks
+  (`fork_lock_acquire` / `_heartbeat` / `_release`).
+- Planning never changes a tree. `shared.management_events_trees` records which trees an
+  executed management event removed and why (`harvest_cause`: planned, windthrow, biotic,
+  skid_road).
+- Everyone reads; contributors create; the creator or a curator changes and deletes. Published
+  through `public.management_*`, `public.thinning_*` and `public.fork_locks`.
+
 **ECOSENSE and Mathislewald campaigns, first re-identification data** (XRFF-478, XRFF-465)
 
 - `scripts/seed/ecosense_mathisle_campaigns.sql`: campaigns `ecosense_inventory_2024`,
