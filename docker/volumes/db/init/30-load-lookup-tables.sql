@@ -66,7 +66,7 @@ DROP TABLE temp_variant_types;
 -- SCENARIOS — intentionally NOT seeded here.
 -- Scenarios are location-scoped (Location -> Scenario -> Variant, see
 -- 37-scenario-variant-hierarchy.sql) and are created per site by the growth-
--- variant seed scripts (scripts/seed/{ecosense,mathisle}_growth_variants.sql),
+-- variant seed scripts (scripts/seed/{ecosense,mathisle}_baseline_variant.sql),
 -- each owning its baseline. A global scenarios.csv no longer fits the model.
 -- =============================================================================
 
@@ -233,12 +233,20 @@ CREATE TEMP TABLE temp_locations (
     Slope_deg NUMERIC(5, 2),
     Aspect VARCHAR(3),
     soil_type_name VARCHAR(100),
-    climate_zone_name VARCHAR(10)
+    climate_zone_name VARCHAR(10),
+    -- SILVA site conditions, added by 14-add-silva-site-conditions.sql.
+    -- These must stay in step with data/lookups/locations.csv: a column count
+    -- mismatch aborts this \copy and every load after it in this file.
+    forest_growth_region VARCHAR(16),
+    soil_moistness SMALLINT,
+    soil_nutrient_supply SMALLINT,
+    -- Declared site CRS, added by 29a-declare-site-crs.sql.
+    crs_epsg INTEGER
 );
 
 \copy temp_locations FROM '/var/lib/postgresql/lookups/locations.csv' WITH (FORMAT csv, HEADER true);
 
-INSERT INTO shared.Locations (location_name, Description, center_point, Elevation_m, Slope_deg, Aspect, soil_type_id, climate_zone_id)
+INSERT INTO shared.Locations (location_name, Description, center_point, Elevation_m, Slope_deg, Aspect, soil_type_id, climate_zone_id, forest_growth_region, soil_moistness, soil_nutrient_supply, crs_epsg)
 SELECT 
     t.location_name,
     t.Description,
@@ -250,16 +258,38 @@ SELECT
     t.Slope_deg,
     t.Aspect,
     (SELECT soil_type_id FROM shared.SoilTypes WHERE soil_type_name = t.soil_type_name),
-    (SELECT climate_zone_id FROM shared.ClimateZones WHERE climate_zone_name = t.climate_zone_name)
+    (SELECT climate_zone_id FROM shared.ClimateZones WHERE climate_zone_name = t.climate_zone_name),
+    t.forest_growth_region,
+    t.soil_moistness,
+    t.soil_nutrient_supply,
+    t.crs_epsg
 FROM temp_locations t
+-- The eight site-attribute columns keep their value once an acquisition process
+-- has written one, so a reseed cannot revert it and leave its provenance row
+-- claiming a source the column no longer holds (XRFF-391). On a fresh build
+-- shared.AttributeProvenance is empty, so every column reseeds as before.
+-- Description, center_point and crs_epsg are always reseeded: the CSV owns
+-- all three (the CRS is a declared site identity, not an acquired attribute).
 ON CONFLICT (location_name) DO UPDATE SET
     Description = EXCLUDED.Description,
     center_point = EXCLUDED.center_point,
-    Elevation_m = EXCLUDED.Elevation_m,
-    Slope_deg = EXCLUDED.Slope_deg,
-    Aspect = EXCLUDED.Aspect,
-    soil_type_id = EXCLUDED.soil_type_id,
-    climate_zone_id = EXCLUDED.climate_zone_id;
+    crs_epsg = EXCLUDED.crs_epsg,
+    Elevation_m = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'elevation_m')
+                       THEN Locations.Elevation_m ELSE EXCLUDED.Elevation_m END,
+    Slope_deg = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'slope_deg')
+                     THEN Locations.Slope_deg ELSE EXCLUDED.Slope_deg END,
+    Aspect = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'aspect')
+                  THEN Locations.Aspect ELSE EXCLUDED.Aspect END,
+    soil_type_id = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'soil_type_id')
+                        THEN Locations.soil_type_id ELSE EXCLUDED.soil_type_id END,
+    climate_zone_id = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'climate_zone_id')
+                           THEN Locations.climate_zone_id ELSE EXCLUDED.climate_zone_id END,
+    forest_growth_region = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'forest_growth_region')
+                                THEN Locations.forest_growth_region ELSE EXCLUDED.forest_growth_region END,
+    soil_moistness = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'soil_moistness')
+                          THEN Locations.soil_moistness ELSE EXCLUDED.soil_moistness END,
+    soil_nutrient_supply = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'soil_nutrient_supply')
+                                THEN Locations.soil_nutrient_supply ELSE EXCLUDED.soil_nutrient_supply END;
 
 DROP TABLE temp_locations;
 
@@ -501,6 +531,38 @@ ON CONFLICT (damage_agent_name) DO UPDATE SET Description = EXCLUDED.Description
 DROP TABLE temp_damage_agents;
 
 -- =============================================================================
+-- LOAD TREE PART TYPES
+-- =============================================================================
+CREATE TEMP TABLE temp_tree_part_types (
+    part_type_name VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_tree_part_types FROM '/var/lib/postgresql/lookups/tree_part_types.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.TreePartTypes (part_type_name, Description)
+SELECT part_type_name, Description FROM temp_tree_part_types
+ON CONFLICT (part_type_name) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_tree_part_types;
+
+-- =============================================================================
+-- LOAD ROOT SYSTEM TYPES
+-- =============================================================================
+CREATE TEMP TABLE temp_root_system_types (
+    root_system_type_name VARCHAR(50),
+    Description TEXT
+);
+
+\copy temp_root_system_types FROM '/var/lib/postgresql/lookups/root_system_types.csv' WITH (FORMAT csv, HEADER true);
+
+INSERT INTO trees.RootSystemTypes (root_system_type_name, Description)
+SELECT root_system_type_name, Description FROM temp_root_system_types
+ON CONFLICT (root_system_type_name) DO UPDATE SET Description = EXCLUDED.Description;
+
+DROP TABLE temp_root_system_types;
+
+-- =============================================================================
 -- SUMMARY
 -- =============================================================================
 DO $$
@@ -529,6 +591,8 @@ DECLARE
     growth_form_count INTEGER;
     crown_class_count INTEGER;
     damage_agent_count INTEGER;
+    tree_part_type_count INTEGER;
+    root_system_type_count INTEGER;
 BEGIN
     SELECT COUNT(*) INTO soil_count FROM shared.SoilTypes;
     SELECT COUNT(*) INTO climate_count FROM shared.ClimateZones;
@@ -554,6 +618,8 @@ BEGIN
     SELECT COUNT(*) INTO growth_form_count FROM trees.GrowthForms;
     SELECT COUNT(*) INTO crown_class_count FROM trees.CrownClasses;
     SELECT COUNT(*) INTO damage_agent_count FROM trees.DamageAgents;
+    SELECT COUNT(*) INTO tree_part_type_count FROM trees.TreePartTypes;
+    SELECT COUNT(*) INTO root_system_type_count FROM trees.RootSystemTypes;
 
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Lookup Tables Loaded from CSV';
@@ -587,6 +653,9 @@ BEGIN
     RAISE NOTICE 'Tree Condition (FIA/NEON/ICP Forests-aligned):';
     RAISE NOTICE '  Crown Classes:    % rows', crown_class_count;
     RAISE NOTICE '  Damage Agents:    % rows', damage_agent_count;
+    RAISE NOTICE 'CityGML/QSM Alignment (XRFF-266):';
+    RAISE NOTICE '  Tree Part Types:  % rows', tree_part_type_count;
+    RAISE NOTICE '  Root System Types:% rows', root_system_type_count;
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Edit CSV files in data/lookups/ and rebuild to update';
     RAISE NOTICE '=======================================================';

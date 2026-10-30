@@ -33,10 +33,22 @@ basicauth_credentials:
 ###
 ### API Routes
 ###
+### NOTE ON THE AUTH UPSTREAM (XRFF-428). GoTrue is reached as `dftdb-auth`,
+### its container_name, and not as `auth`, its compose service name. On
+### dt.unr.uni-freiburg.de the containers inherit `search uni-freiburg.de` from
+### the host, `auth.uni-freiburg.de` is a real campus web server, and Kong's own
+### resolver prefers the search-domain answer over Docker's -- so every
+### /auth/v1/* request spent 60 s connecting to 132.230.100.2:9999 and timed
+### out. Docker's embedded DNS resolved `auth` correctly the whole time, which
+### is why every healthcheck stayed green and only the auth routes were dead.
+### `auth` is the only one of the fourteen service names that collides; the
+### rest are NXDOMAIN in campus DNS, which is why /rest/v1/* was unaffected.
+### `dftdb-auth` is NXDOMAIN there too, so the ambiguity is gone.
+###
 services:
   ## Open Auth routes
   - name: auth-v1-open
-    url: http://auth:9999/verify
+    url: http://dftdb-auth:9999/verify
     routes:
       - name: auth-v1-open
         strip_path: true
@@ -45,7 +57,7 @@ services:
     plugins:
       - name: cors
   - name: auth-v1-open-callback
-    url: http://auth:9999/callback
+    url: http://dftdb-auth:9999/callback
     routes:
       - name: auth-v1-open-callback
         strip_path: true
@@ -54,7 +66,7 @@ services:
     plugins:
       - name: cors
   - name: auth-v1-open-authorize
-    url: http://auth:9999/authorize
+    url: http://dftdb-auth:9999/authorize
     routes:
       - name: auth-v1-open-authorize
         strip_path: true
@@ -65,8 +77,8 @@ services:
 
   ## Secure Auth routes
   - name: auth-v1
-    _comment: 'GoTrue: /auth/v1/* -> http://auth:9999/*'
-    url: http://auth:9999/
+    _comment: 'GoTrue: /auth/v1/* -> http://dftdb-auth:9999/*'
+    url: http://dftdb-auth:9999/
     routes:
       - name: auth-v1-all
         strip_path: true

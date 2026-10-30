@@ -1,0 +1,25 @@
+[Unit]
+# Nightly logical backup of the digital twin database.
+#
+# There was none at all before 2026-09-10: /media/data/dftdb/backups was created
+# 2026-09-02 and never written to, while docker/.env.example already assumed a
+# nightly dump was running. PGDATA lives on an NFS export, so "the cluster is
+# fine because the disk is fine" was never a safe assumption.
+#
+# Why this does not violate the host's no-scheduled-writes rule: the dump lands
+# on /media/data (NFS, 80 GB free), never on the 28 GB root LV. It is 2.4 MB and
+# takes 3 seconds, because the 8.4 GB of sensor readings are deliberately
+# excluded -- see the script's header for that reasoning.
+Description=Nightly backup of the digital twin database
+Documentation=file:/home/max/dev/digital-twin-db/scripts/server/backup-db.sh
+After=network-online.target docker.service media-data.mount
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=max
+Group=max
+ExecStart=/home/max/dev/digital-twin-db/scripts/server/backup-db.sh
+# The measured run is 3 s. This is slack for a slow NFS, not an expectation.
+TimeoutStartSec=1800

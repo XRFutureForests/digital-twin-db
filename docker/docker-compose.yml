@@ -229,7 +229,12 @@ services:
     image: supabase/storage-api:v1.29.0
     restart: unless-stopped
     volumes:
-      - ./volumes/storage:/var/lib/storage:z
+      # Object storage for uploaded files (imagery, point clouds). This is the
+      # only bind mount that grows without bound, so deployments with a large
+      # secondary filesystem can point STORAGE_PATH at it and leave the small
+      # config mounts on the local disk. Plain file I/O, so unlike PGDATA it is
+      # safe on NFS. Defaults to the in-repo path for local development.
+      - ${STORAGE_PATH:-./volumes/storage}:/var/lib/storage:z
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://storage:5000/status" ]
       timeout: 5s
@@ -264,7 +269,8 @@ services:
     image: darthsim/imgproxy:v3.8.0
     restart: unless-stopped
     volumes:
-      - ./volumes/storage:/var/lib/storage:z
+      # Must resolve to the same directory as the storage service above.
+      - ${STORAGE_PATH:-./volumes/storage}:/var/lib/storage:z
     healthcheck:
       test: [ "CMD", "imgproxy", "health" ]
       timeout: 5s
@@ -371,10 +377,16 @@ services:
       dockerfile: docker/Dockerfile.db
     restart: unless-stopped
     volumes:
-      # PGDATA persisted in a named Docker volume — fully managed by Docker,
-      # no WSL bind-mount path resolution needed, survives reboot cleanly
-      - db-data:/var/lib/postgresql/data
-      # Use named volume to persist pgsodium decryption key between restarts
+      # PGDATA. Defaults to the named volume `db-data` (Docker-managed, no WSL
+      # bind-mount path resolution, survives reboot cleanly). On a host whose
+      # system disk is too small to hold the database, set PGDATA_PATH to an
+      # absolute path on the larger filesystem — see docker/.env.example.
+      - ${PGDATA_PATH:-db-data}:/var/lib/postgresql/data
+      # Holds the pgsodium decryption key; must persist between restarts. Stays
+      # a named volume even when PGDATA moves off the system disk: it is 140 kB
+      # that never grows, and the image seeds it on first start, so a bind mount
+      # over an empty directory hides the .conf files postgresql.conf includes
+      # and the postmaster dies before it can say why.
       - db-config:/etc/postgresql-custom
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "postgres", "-h", "localhost" ]
@@ -400,7 +412,33 @@ services:
         "-c",
         "config_file=/etc/postgresql/postgresql.conf",
         "-c",
-        "log_min_messages=fatal" # prevents Realtime polling queries from appearing in logs
+        "log_min_messages=fatal", # prevents Realtime polling queries from appearing in logs
+        # Memory settings. initdb's defaults assume a small database on local
+        # disk; both halves of that are wrong for the server, where PGDATA is an
+        # NFS export and a cache miss costs a network round trip rather than a
+        # seek. Measured 2026-09-03 on 39M sensor readings: the same query ran
+        # 1,166 ms cold and 10 ms warm, so what shared_buffers holds is the whole
+        # difference between usable and not.
+        #
+        # These are set here rather than by ALTER SYSTEM so they live in the
+        # repository and survive the re-clone the server is now deployed by.
+        # The defaults below are sized for a laptop running the whole stack
+        # under WSL. The server has 15 GB and raises them in its .env.
+        "-c",
+        "shared_buffers=${POSTGRES_SHARED_BUFFERS:-1GB}",
+        "-c",
+        # Not an allocation -- it tells the planner how much of the table it can
+        # expect to find cached between shared_buffers and the OS. Left at the
+        # 128 MB default it costed an index scan as though nothing were cached
+        # and chose a parallel seq scan over 29M rows instead, turning a 10 ms
+        # lookup into 17.8 seconds.
+        "effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4GB}",
+        "-c",
+        # Per sort node, and every concurrent connection can hold several. The
+        # 4 MB default spilled a 315 MB sort onto the NFS. 16 MB will not hold
+        # that one -- nothing sane would -- but it keeps ordinary joins and
+        # ORDER BYs in memory.
+        "work_mem=${POSTGRES_WORK_MEM:-16MB}"
       ]
 
   vector:

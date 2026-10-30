@@ -107,7 +107,7 @@ def validate_csv(df: pd.DataFrame, conn) -> dict:
 
     # Validate TreeStatusIDs if present
     if "TreeStatusID" in df.columns:
-        db_status = pd.read_sql("SELECT treestatusid FROM trees.TreeStatus", conn)
+        db_status = pd.read_sql("SELECT treestatusid FROM trees.tree_status", conn)
         csv_status = df["TreeStatusID"].dropna().unique()
         invalid_status = [
             st for st in csv_status if st not in db_status["treestatusid"].values

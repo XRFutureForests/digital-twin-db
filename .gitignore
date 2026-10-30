@@ -35,9 +35,6 @@ CLAUDE.md
 # Test results (manual test outputs)
 tests/manual/results/
 
-# Scratch / local data exports (raw Aquarius xlsx, ad-hoc CSVs, etc.)
-tmp/
-
 # Real field-site data (precise coordinates of research plots) - local only,
 # not published in the public repo or its history
 /data/ecosense_250911.csv
@@ -45,3 +42,23 @@ tmp/
 /data/imports/ecosense_trees_import.csv
 /data/imports/mathisle_trees_import.csv
 /data/reference/ecosense_sensor_tree_map.csv
+# Runner: what each host may actually execute (host-specific, never published)
+/config/workflows.toml
+
+# Job trigger page and portal: this deployment's API URL and anon key, written at deploy
+# time. The anon key is public by design, but it is still this stack's key.
+/web/jobs/config.js
+/web/portal/config.js
+
+# Emitted RO-Crates (XRFF-407): regenerable from the database at any time by
+# scripts/provenance/emit_ro_crate.py. Archive a crate deliberately (Zenodo,
+# alongside a paper); do not carry them in the repo.
+/crates/
+
+# --- Data layout (workspace standard) ---------------------------------------
+#   data/input/   inputs; small committed files only
+#   data/output/  regenerable products - never committed
+#   data/tmp/     run scratch - never committed
+# No repo-root tmp/, temp/ or outputs/ - scratch lives in data/tmp/.
+/data/output/
+/data/tmp/

@@ -1,0 +1,30 @@
+[Unit]
+# Recover jobs this runner claimed and never finished.
+#
+# The case it covers: a drain killed mid-job -- a reboot, an OOM kill, a
+# `systemctl stop` -- leaves its row stuck in `running` forever, because the
+# process that would have written `completed` or `failed` is gone. Nothing else
+# ever moves that row, so without this a single interrupted run silently
+# occupies a slot for good.
+#
+# It touches ONLY rows matching claimed_by = this runner's name. A host cannot
+# tell whether another host's process is alive, and guessing would kill live
+# work -- see scripts/runner/README.md.
+#
+# Separate from the drain timer because the two want very different intervals:
+# draining is how fast a request feels, reaping is housekeeping. Running the
+# housekeeping every minute would be noise.
+Description=Recover abandoned digital twin jobs
+Documentation=file:/home/max/dev/digital-twin-db/scripts/runner/README.md
+After=network-online.target docker.service media-data.mount
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=max
+Group=max
+WorkingDirectory=/home/max/dev/digital-twin-db
+ExecStart=/home/max/miniconda3/envs/runner/bin/python scripts/runner/runner.py reap
+# reap is a couple of statements; it never runs a workflow.
+TimeoutStartSec=300

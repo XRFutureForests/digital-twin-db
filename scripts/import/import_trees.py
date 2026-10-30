@@ -62,7 +62,7 @@ REQUIRED_COLUMNS = ["LocationID", "Latitude", "Longitude"]
 #   Easting/Northing  -> combined into position_original for provenance
 #   ScenarioName      -> reported and FK-checked only. Scenarios are
 #                        location-scoped (Location -> Scenario -> Variant) and
-#                        are assigned afterwards by scripts/seed/*_growth_variants.sql,
+#                        are assigned afterwards by scripts/seed/*_baseline_variant.sql,
 #                        so import_trees always writes scenario_id = NULL.
 EXTRA_COLUMNS = ["Easting_32632", "Northing_32632", "ScenarioName"]
 
@@ -181,12 +181,12 @@ def validate_foreign_keys(df, conn):
                 plot_names = [f"{int(pid)}={valid_plots[int(pid)]}" for pid in plot_ids]
                 print(f"  Plots: {', '.join(plot_names)}")
 
-    # Check DataSourceType values exist in trees.DataSourceTypes (warn only)
+    # Check DataSourceType values exist in trees.data_source_types (warn only)
     if "DataSourceType" in df.columns:
         ds_values = df["DataSourceType"].dropna().unique()
         if len(ds_values) > 0:
             cur.execute(
-                "SELECT data_source_type_name FROM trees.DataSourceTypes"
+                "SELECT data_source_type_name FROM trees.data_source_types"
             )
             valid_ds_names = {row[0].lower() for row in cur.fetchall()}
             unknown_ds = [
@@ -194,7 +194,7 @@ def validate_foreign_keys(df, conn):
             ]
             if unknown_ds:
                 warnings.append(
-                    f"DataSourceType values not found in trees.DataSourceTypes: {unknown_ds}"
+                    f"DataSourceType values not found in trees.data_source_types: {unknown_ds}"
                 )
 
     # Check ScenarioNames exist (warn only — unknown scenarios will be created on import)
@@ -286,14 +286,14 @@ def import_trees(df, dry_run=False):
     datasource_type_id_map: dict[str, int] | None = None
     try:
         cur.execute(
-            "SELECT data_source_type_name, data_source_type_id FROM trees.DataSourceTypes"
+            "SELECT data_source_type_name, data_source_type_id FROM trees.data_source_types"
         )
         datasource_type_id_map = {
             row[0].lower(): row[1] for row in cur.fetchall()
         }
     except psycopg2.errors.UndefinedTable:
         conn.rollback()
-        print("  Warning: trees.DataSourceTypes not found — using legacy DataSourceType string column")
+        print("  Warning: trees.data_source_types not found — using legacy DataSourceType string column")
 
     # Build insert values
     has_position_original = (
@@ -327,6 +327,16 @@ def import_trees(df, dry_run=False):
             # Legacy fallback: pass the string directly
             datasource_type_id = str(ds_name).lower() if pd.notna(ds_name) and ds_name else None
 
+        # HeightSource states how Height_m was arrived at. It has no default any
+        # more (XRFF-400): a row that does not say is NULL, not 'measured'. An
+        # explicit CSV column wins; otherwise the only claim this importer is
+        # entitled to make is that a height collected in the field was measured.
+        height_m = float(row["Height_m"]) if pd.notna(row.get("Height_m")) else None
+        height_source = clean(row.get("HeightSource"))
+        if height_source is None and height_m is not None:
+            if pd.notna(ds_name) and str(ds_name).lower() == "field":
+                height_source = "measured"
+
         # ScenarioID is NOT set at tree-import time. Scenarios are location-scoped
         # (Location -> Scenario -> Variant) and are created by the growth-variant
         # seed scripts, which then assign each baseline tree to a variant and
@@ -359,7 +369,8 @@ def import_trees(df, dry_run=False):
                     else None
                 ),
                 datasource_type_id,
-                float(row["Height_m"]) if pd.notna(row.get("Height_m")) else None,
+                height_m,
+                height_source,
                 (
                     float(row["CrownWidth_m"])
                     if pd.notna(row.get("CrownWidth_m"))
@@ -399,7 +410,7 @@ def import_trees(df, dry_run=False):
 
     if dry_run:
         print("\n  [DRY RUN] No data inserted.")
-        with_dbh = sum(1 for v in tree_values if v[22] is not None)
+        with_dbh = sum(1 for v in tree_values if v[23] is not None)
         print(
             f"  Would insert {len(tree_values)} trees and {with_dbh} stem measurements"
         )
@@ -412,7 +423,7 @@ def import_trees(df, dry_run=False):
             location_id, plot_id, tree_number, campaign_id, scenario_id, variant_type_id, species_id,
             tree_status_id, branching_pattern_id, bark_characteristic_id,
             measurement_date, data_source_type_id,
-            height_m, crown_width_m, crown_base_height_m,
+            height_m, height_source, crown_width_m, crown_base_height_m,
             position, position_original, source_crs,
             age_years, health_score, field_notes, created_by
         )
@@ -420,22 +431,22 @@ def import_trees(df, dry_run=False):
         RETURNING tree_id
     """
 
-    # Template: 22 tree columns (excluding the 3 stem columns at the end)
+    # Template: 23 tree columns (excluding the 3 stem columns at the end)
     if has_position_original:
         template = (
-            "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+            "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
             "ST_GeomFromText(%s, 4326), ST_GeomFromText(%s, 32632), "
             "%s, %s, %s, %s, %s)"
         )
     else:
         template = (
-            "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+            "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
             "ST_GeomFromText(%s, 4326), %s, "
             "%s, %s, %s, %s, %s)"
         )
 
-    # Extract only the tree columns (first 22) for insertion
-    tree_only = [v[:22] for v in tree_values]
+    # Extract only the tree columns (first 23) for insertion
+    tree_only = [v[:23] for v in tree_values]
 
     tree_ids = execute_values(
         cur,
@@ -450,9 +461,9 @@ def import_trees(df, dry_run=False):
     # Insert stems for trees with DBH
     stems = []
     for i, (tree_id,) in enumerate(tree_ids):
-        dbh_cm = tree_values[i][22]
-        taper_type_id = tree_values[i][23]
-        straightness_type_id = tree_values[i][24]
+        dbh_cm = tree_values[i][23]
+        taper_type_id = tree_values[i][24]
+        straightness_type_id = tree_values[i][25]
         if dbh_cm is not None:
             stems.append((tree_id, 1, dbh_cm, taper_type_id, straightness_type_id))
 

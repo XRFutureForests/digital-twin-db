@@ -69,7 +69,8 @@ def load_reference_map():
 def backfill_aquarius_names(conn, mappings):
     """
     Set trees.Trees.AquariusName for each mapped tree, resolved by
-    (plot_id, tree_number) at an Ecosense location. Returns
+    (plot_id, tree_number) at an Ecosense location, restricted to the baseline
+    ('original') variant. Returns
     {aquarius_name: (tree_id, full_id)} for the trees that were resolved.
     """
     print("\n🌲 Backfilling trees.AquariusName...")
@@ -85,9 +86,17 @@ def backfill_aquarius_names(conn, mappings):
             FROM trees.trees t
             JOIN shared.locations l ON t.location_id = l.location_id
             JOIN shared.plots p ON t.plot_id = p.plot_id
+            JOIN shared.variant_types vt ON t.variant_type_id = vt.variant_type_id
             WHERE l.location_name = 'ecosense'
               AND p.plot_number = %s
               AND t.tree_number = %s
+              -- A sensor is attached to a physical tree, which is the baseline
+              -- ('original') row. Every simulated_growth variant repeats the
+              -- same (plot_number, tree_number), so without this filter each
+              -- mapping matches once per variant, every mapping is discarded as
+              -- ambiguous, and the run aborts with "No trees resolved" as soon
+              -- as silva-connector has been run.
+              AND vt.variant_type_name = 'original'
             """,
             (m["plot_id"], m["tree_number"]),
         )
@@ -199,7 +208,7 @@ def insert_links(conn, links):
         INSERT INTO sensor.sensor_tree_links (sensor_id, tree_id, description)
         VALUES %s
         ON CONFLICT (sensor_id, tree_id) DO NOTHING
-        RETURNING sensortreelinkid
+        RETURNING sensor_tree_link_id
         """,
         values,
         fetch=True,
@@ -219,7 +228,7 @@ def verify_links(conn):
         SELECT st.sensor_type_name, COUNT(*)
         FROM sensor.sensor_tree_links stl
         JOIN sensor.sensors s ON stl.sensor_id = s.sensor_id
-        JOIN sensor.sensortypes st ON s.sensor_type_id = st.sensor_type_id
+        JOIN sensor.sensor_types st ON s.sensor_type_id = st.sensor_type_id
         GROUP BY st.sensor_type_name
         ORDER BY COUNT(*) DESC
         """
@@ -259,7 +268,7 @@ def main():
         print("=" * 80)
         print(f"Created {inserted} new sensor-tree links")
         print("\nQuery linked data:")
-        print("  SELECT * FROM public.ue_sensors WHERE linked_tree_id IS NOT NULL;")
+        print("  SELECT * FROM public.ue_sensors WHERE tree_id IS NOT NULL;")
         return 0
 
     except Exception as e:

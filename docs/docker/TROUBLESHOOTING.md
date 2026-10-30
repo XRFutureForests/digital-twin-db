@@ -28,42 +28,14 @@ docker compose logs -f analytics
 
 ## Complete System Reset
 
-### Method 1: Using reset.sh (Recommended)
-
-The `reset.sh` script provides an interactive way to completely reset your installation:
-
-```bash
-cd docker
-./reset.sh
-```
-
-This will:
-
-1. Stop and remove all containers
-2. Remove all volumes (⚠️ **deletes all data permanently**)
-3. Clean up the `volumes/db/data` directory
-4. Reset the `.env` file from `.env.example`
-
-### Method 2: Manual Cleanup
+PGDATA is the named volume `db-data` (or `PGDATA_PATH` on the server), and the schema is
+baked into the `db` image — there is no `volumes/db/data` directory to delete and no
+`reset.sh`. The full recipe with its failure modes is `RUNBOOK.md` §6; the short form:
 
 ```bash
 cd docker
-
-# Stop and remove containers + volumes
-docker compose down -v --remove-orphans
-
-# Remove persistent database directory
-sudo rm -rf volumes/db/data
-
-# Restart fresh
-docker compose up -d
-```
-
-### Method 3: Cleanup Script (Preserves .env)
-
-```bash
-cd docker
-./cleanup-volumes.sh
+docker compose down -v --remove-orphans   # drops db-data and db-config
+docker compose build db                   # only needed when volumes/db/init/ changed
 docker compose up -d
 ```
 
@@ -86,7 +58,6 @@ Analytics requires the `_supabase` database. If initialization is incomplete, an
 ```bash
 cd docker
 docker compose down -v
-sudo rm -rf volumes/db/data
 docker compose up -d
 ```
 
@@ -137,36 +108,28 @@ sudo lsof -i :5432
 - Custom schemas not created
 
 **Cause:**  
-Old database exists in `volumes/db/data`
+The `db-data` volume (or the `PGDATA_PATH` directory) still holds a cluster from a previous run, so the image's init files are skipped.
 
 **Solution:**
 
 ```bash
 cd docker
 docker compose down -v
-sudo rm -rf volumes/db/data
 docker compose up -d
 ```
 
-### 5. Permission Denied on volumes/db/data
+### 5. Permission Denied on the PGDATA bind mount (server only)
 
 **Symptoms:**
 
-- Cannot delete `volumes/db/data`
+- `initdb: could not change permissions of directory` or `Permission denied` in the db log after setting `PGDATA_PATH`
 
 **Cause:**  
-PostgreSQL creates files owned by UID 105 (postgres user). This is expected.
+PostgreSQL in the image runs as UID 105; a bind-mounted directory created by the host user is not writable by it.
 
 **Solution:**
 
-```bash
-# Use sudo
-sudo rm -rf docker/volumes/db/data
-
-# Or use the cleanup script
-cd docker
-./cleanup-volumes.sh
-```
+Run `scripts/server/setup_data_dirs.py` (see `docs/deployment-guide.md`) — it creates the directories with the container UIDs and refuses a soft NFS mount. On dev, use the default named volume and this cannot happen.
 
 ### 6. Password Authentication Failed
 
@@ -182,7 +145,6 @@ Database was initialized with different credentials than current `.env` file.
 ```bash
 cd docker
 docker compose down -v
-sudo rm -rf volumes/db/data
 docker compose up -d
 ```
 
@@ -300,7 +262,7 @@ docker compose up -d
 docker compose down
 
 # Stop and remove everything
-docker compose down -v && sudo rm -rf volumes/db/data
+docker compose down -v
 
 # Check status
 docker compose ps
@@ -314,8 +276,8 @@ docker compose restart [service]
 # Connect to database
 docker exec -it dftdb-db psql -U postgres
 
-# Full reset
-./reset.sh
+# Full reset (RUNBOOK.md §6)
+docker compose down -v && docker compose build db && docker compose up -d
 ```
 
 ---

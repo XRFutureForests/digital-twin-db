@@ -74,13 +74,17 @@ BEGIN
                 Slope_deg NUMERIC(5, 2),
                 Aspect VARCHAR(3),
                 soil_type_name VARCHAR(100),
-                climate_zone_name VARCHAR(10)
+                climate_zone_name VARCHAR(10),
+                ForestGrowthRegion VARCHAR(16),
+                SoilMoistness SMALLINT,
+                SoilNutrientSupply SMALLINT,
+                CrsEpsg INTEGER
             ) ON COMMIT DROP;
             TRUNCATE _temp_locations;
             
             EXECUTE format('COPY _temp_locations FROM %L WITH (FORMAT csv, HEADER true)', v_csv_path || 'locations.csv');
             
-            INSERT INTO shared.Locations (location_name, Description, center_point, Elevation_m, Slope_deg, Aspect, soil_type_id, climate_zone_id)
+            INSERT INTO shared.Locations (location_name, Description, center_point, Elevation_m, Slope_deg, Aspect, soil_type_id, climate_zone_id, forest_growth_region, soil_moistness, soil_nutrient_supply, crs_epsg)
             SELECT 
                 t.location_name,
                 t.Description,
@@ -92,16 +96,37 @@ BEGIN
                 t.Slope_deg,
                 t.Aspect,
                 (SELECT soil_type_id FROM shared.SoilTypes WHERE soil_type_name = t.soil_type_name),
-                (SELECT climate_zone_id FROM shared.ClimateZones WHERE climate_zone_name = t.climate_zone_name)
+                (SELECT climate_zone_id FROM shared.ClimateZones WHERE climate_zone_name = t.climate_zone_name),
+                t.ForestGrowthRegion,
+                t.SoilMoistness,
+                t.SoilNutrientSupply,
+                t.CrsEpsg
             FROM _temp_locations t
+            -- The eight site-attribute columns keep their value once an
+            -- acquisition process has written one, so a refresh cannot revert it
+            -- and leave its provenance row claiming a source the column no
+            -- longer holds (XRFF-391). Description, center_point and crs_epsg are
+            -- always reseeded: the CSV owns all three.
             ON CONFLICT (location_name) DO UPDATE SET
                 Description = EXCLUDED.Description,
                 center_point = EXCLUDED.center_point,
-                Elevation_m = EXCLUDED.Elevation_m,
-                Slope_deg = EXCLUDED.Slope_deg,
-                Aspect = EXCLUDED.Aspect,
-                soil_type_id = EXCLUDED.soil_type_id,
-                climate_zone_id = EXCLUDED.climate_zone_id;
+                crs_epsg = EXCLUDED.crs_epsg,
+                Elevation_m = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'elevation_m')
+                                   THEN Locations.Elevation_m ELSE EXCLUDED.Elevation_m END,
+                Slope_deg = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'slope_deg')
+                                 THEN Locations.Slope_deg ELSE EXCLUDED.Slope_deg END,
+                Aspect = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'aspect')
+                              THEN Locations.Aspect ELSE EXCLUDED.Aspect END,
+                soil_type_id = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'soil_type_id')
+                                    THEN Locations.soil_type_id ELSE EXCLUDED.soil_type_id END,
+                climate_zone_id = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'climate_zone_id')
+                                       THEN Locations.climate_zone_id ELSE EXCLUDED.climate_zone_id END,
+                forest_growth_region = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'forest_growth_region')
+                                            THEN Locations.forest_growth_region ELSE EXCLUDED.forest_growth_region END,
+                soil_moistness = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'soil_moistness')
+                                      THEN Locations.soil_moistness ELSE EXCLUDED.soil_moistness END,
+                soil_nutrient_supply = CASE WHEN shared.attribute_is_acquired(Locations.location_id, 'soil_nutrient_supply')
+                                            THEN Locations.soil_nutrient_supply ELSE EXCLUDED.soil_nutrient_supply END;
             
             SELECT COUNT(*) INTO v_rows_after FROM shared.locations;
             

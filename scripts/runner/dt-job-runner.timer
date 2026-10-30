@@ -1,0 +1,21 @@
+[Unit]
+# Every minute, which is what makes a queued job feel like a button press.
+# A drain against an empty queue is one SELECT and exits immediately, so the
+# cost of the idle case is a journal line.
+#
+# The README's crontab sketch used * * * * * for the same reason. Raise the
+# interval if the journal noise becomes a nuisance -- but note that the wait a
+# colleague sees is this interval plus the run itself, and SILVA on mathisle
+# takes about 20 s.
+Description=Drain the digital twin job queue every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+# Do not stack: if a drain is still running the next tick is skipped rather
+# than queued behind it.
+AccuracySec=15s
+Unit=dt-job-runner.service
+
+[Install]
+WantedBy=timers.target

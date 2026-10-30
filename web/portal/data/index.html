@@ -1,0 +1,600 @@
+<!doctype html>
+<!--
+  Data page: browse any table or view of the public API, add rows through a
+  form or a pasted CSV, correct a row in place, download what you see as CSV.
+
+  Nothing here knows the schema. Every form is built from PostgREST's own
+  OpenAPI description of /rest/v1/ -- column types, primary keys, foreign keys,
+  enums, comments -- so a new table or column shows up here the moment its
+  migration lands, the same way a new workflow shows up on the job page.
+
+  Permissions are decided by the database, not by this page: RLS refuses what
+  the signed-in role may not do, and the page reports what came back. A
+  PATCH that RLS skipped returns no rows (see migration 20261030110000 for the
+  trigger-backed views), and the page says so instead of claiming success.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data — Forest Digital Twin</title>
+<link rel="stylesheet" href="/portal/portal.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Data</h1>
+  <p class="sub">
+    Every table and view of the twin. Reading needs no account; adding needs the
+    <code>contributor</code> role, correcting field data (trees, stems, observations, …)
+    needs <code>curator</code>. <span id="signHint"></span>
+  </p>
+  <div id="specMsg"></div>
+
+  <div class="panel">
+    <div class="row">
+      <div>
+        <label for="dataset">Table</label>
+        <select id="dataset"></select>
+      </div>
+      <div style="flex:2 1 320px"><p class="help" id="datasetHelp" style="margin-top:22px"></p></div>
+    </div>
+  </div>
+
+  <!-- Browse -->
+  <div class="panel" id="browsePanel" hidden>
+    <h2>Browse</h2>
+    <div class="row" style="margin-bottom:10px">
+      <div><label for="fCol">Filter column</label><select id="fCol"></select></div>
+      <div class="tight" style="flex:0 0 150px"><label for="fOp">Condition</label>
+        <select id="fOp">
+          <option value="eq">equals</option>
+          <option value="ilike">contains</option>
+          <option value="gte">at least</option>
+          <option value="lte">at most</option>
+          <option value="is.null">is empty</option>
+          <option value="not.is.null">is not empty</option>
+        </select></div>
+      <div><label for="fVal">Value</label><input type="text" id="fVal"></div>
+      <button class="secondary" id="applyBtn">Apply</button>
+      <button class="secondary" id="csvBtn" title="Up to 10,000 rows matching the filter">Download CSV</button>
+    </div>
+    <div id="browseMsg"></div>
+    <div class="tablewrap"><table class="grid"><thead id="gridHead"></thead><tbody id="gridBody"></tbody></table></div>
+    <div class="row" style="margin-top:10px;align-items:center">
+      <span class="muted" id="pageInfo"></span>
+      <button class="secondary small tight" id="prevBtn">Previous</button>
+      <button class="secondary small tight" id="nextBtn">Next</button>
+    </div>
+    <p class="help" id="clickHint"></p>
+  </div>
+
+  <!-- Edit one row -->
+  <div class="panel" id="editPanel" hidden>
+    <h2 id="editTitle">Edit</h2>
+    <div id="editMsg"></div>
+    <form id="editForm" class="grid2"></form>
+    <div class="row">
+      <button id="saveBtn" class="tight">Save changes</button>
+      <button id="cancelBtn" class="secondary tight">Close</button>
+    </div>
+  </div>
+
+  <!-- Add -->
+  <div class="panel" id="addPanel" hidden>
+    <h2>Add a row</h2>
+    <div id="addMsg"></div>
+    <form id="addForm" class="grid2"></form>
+    <button id="addBtn">Add</button>
+
+    <h3 style="margin-top:22px">…or many rows from a CSV</h3>
+    <p class="help">
+      First line = column names, as in the form above (<span id="csvCols"></span>).
+      Empty cells are stored as empty. All rows are written in one transaction:
+      either every row goes in or none does.
+    </p>
+    <div class="row" style="margin:8px 0">
+      <div><input type="file" id="csvFile" accept=".csv,text/csv"></div>
+      <button class="secondary tight" id="csvTemplate">Download empty template</button>
+    </div>
+    <textarea id="csvText" rows="6" placeholder="or paste CSV here"></textarea>
+    <div id="csvMsg" style="margin-top:10px"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="secondary tight" id="csvCheck">Check</button>
+      <button class="tight" id="csvImport" disabled>Import</button>
+    </div>
+  </div>
+</div>
+
+<script src="/portal/config.js"></script>
+<script src="/portal/lib.js"></script>
+<script>
+(function () {
+  "use strict";
+  var P = Portal, el = P.el;
+  P.topbar("/portal/data/");
+
+  var PAGE = 25;
+  var AUDIT = { created_at: 1, updated_at: 1, created_by: 1, updated_by: 1 };
+  // Managed by their own pages, not as tables.
+  var SKIP = { job_status: 1, workflows: 1 };
+
+  var spec = null;          // OpenAPI document
+  var tables = {};          // name -> { name, desc, cols: [...], pk, writable }
+  var cur = null;           // current table
+  var offset = 0, total = null, rows = [], editing = null;
+  var fkCache = {};
+  var csvRows = null;
+
+  /* ---------- reading the OpenAPI description ---------- */
+
+  function parseCol(name, p) {
+    var d = p.description || "";
+    var fk = /<fk table='([^']+)' column='([^']+)'\/>/.exec(d);
+    var text = d.replace(/Note:\nThis is a (Primary|Foreign) Key[^<]*<(pk|fk)[^>]*\/>/g, "").trim();
+    var fmt = p.format || "";
+    var kind = p.type === "boolean" ? "bool"
+             : p.type === "integer" ? "int"
+             : p.type === "number" ? "num"
+             : /geometry|geography/.test(fmt) ? "geom"
+             : fmt === "date" ? "date"
+             : /^timestamp/.test(fmt) ? "ts"
+             : /json/.test(fmt) || p.type === "array" || p.type === "object" ? "json"
+             : "text";
+    return { name: name, kind: kind, fmt: fmt, desc: text, pk: d.indexOf("<pk/>") >= 0,
+             fk: fk ? { table: fk[1], column: fk[2] } : null, enumv: p.enum || null };
+  }
+
+  function loadSpec() {
+    return P.api("/rest/v1/").then(function (s) {
+      spec = s;
+      tables = {};
+      Object.keys(s.paths).forEach(function (path) {
+        var name = path.slice(1);
+        if (!name || name.indexOf("rpc/") === 0 || SKIP[name] || !s.definitions[name]) return;
+        var def = s.definitions[name];
+        var cols = Object.keys(def.properties || {}).map(function (c) { return parseCol(c, def.properties[c]); });
+        var pk = cols.filter(function (c) { return c.pk; })[0];
+        tables[name] = { name: name, desc: def.description || "", cols: cols, pk: pk ? pk.name : null,
+                         writable: !!s.paths[path].post };
+      });
+      fillDatasets();
+    });
+  }
+
+  function group(t) {
+    if (!t.writable) return "Read-only views";
+    if (/lookup|classification/i.test(t.desc) || /_types$|_classes$/.test(t.name)) return "Lookup tables";
+    return "Data and sites";
+  }
+
+  function fillDatasets() {
+    var sel = document.getElementById("dataset");
+    var prev = sel.value || (location.hash ? location.hash.slice(1) : "trees");
+    sel.innerHTML = "";
+    ["Data and sites", "Lookup tables", "Read-only views"].forEach(function (g) {
+      var og = el("optgroup", { label: g });
+      Object.keys(tables).sort().forEach(function (n) {
+        if (group(tables[n]) === g) og.appendChild(el("option", { value: n, text: n }));
+      });
+      if (og.children.length) sel.appendChild(og);
+    });
+    if (tables[prev]) sel.value = prev;
+    choose(sel.value);
+  }
+
+  /* ---------- browsing ---------- */
+
+  function choose(name) {
+    cur = tables[name];
+    if (!cur) return;
+    history.replaceState(null, "", "#" + name);
+    document.getElementById("datasetHelp").textContent = cur.desc;
+    offset = 0; editing = null;
+    document.getElementById("editPanel").hidden = true;
+
+    var fCol = document.getElementById("fCol");
+    fCol.innerHTML = "";
+    cur.cols.forEach(function (c) { fCol.appendChild(el("option", { value: c.name, text: c.name })); });
+    document.getElementById("fVal").value = "";
+
+    document.getElementById("browsePanel").hidden = false;
+    var canAdd = cur.writable && P.atLeast("contributor");
+    document.getElementById("addPanel").hidden = !canAdd;
+    document.getElementById("clickHint").textContent = !cur.writable ? "This is a read-only view."
+      : P.session ? "Click a row to correct it." : "Sign in to add or correct rows.";
+    if (canAdd) buildForm(document.getElementById("addForm"), null);
+    document.getElementById("csvCols").textContent = formCols().map(function (c) { return c.name; }).join(", ");
+    resetCsv();
+    load();
+  }
+
+  function filterQuery() {
+    var col = document.getElementById("fCol").value, op = document.getElementById("fOp").value;
+    var v = document.getElementById("fVal").value.trim();
+    if (op === "is.null" || op === "not.is.null") return "&" + encodeURIComponent(col) + "=" + op;
+    if (!v) return "";
+    if (op === "ilike") v = "*" + v + "*";
+    return "&" + encodeURIComponent(col) + "=" + op + "." + encodeURIComponent(v);
+  }
+
+  function orderQuery() { return cur.pk ? "&order=" + cur.pk + ".desc" : ""; }
+
+  async function load() {
+    P.message("browseMsg", "", "");
+    try {
+      // count=estimated, not exact: sensor_readings has tens of millions of
+      // rows and an exact count would hit the statement timeout.
+      var res = await P.api("/rest/v1/" + cur.name + "?select=*&limit=" + PAGE + "&offset=" + offset +
+                            orderQuery() + filterQuery(), { raw: true, headers: { "Prefer": "count=estimated" } });
+      rows = await res.json();
+      var cr = res.headers.get("Content-Range") || "";
+      total = /\/(\d+)$/.test(cr) ? parseInt(cr.split("/")[1], 10) : null;
+      draw();
+    } catch (err) {
+      P.message("browseMsg", "err", err.message);
+      document.getElementById("gridHead").innerHTML = "";
+      document.getElementById("gridBody").innerHTML = "";
+    }
+  }
+
+  function show(c, v) {
+    if (v === null || v === undefined) return "";
+    if (c.kind === "geom" && typeof v === "object") {
+      if (v.type === "Point") return v.coordinates.map(function (x) { return x.toFixed(6); }).join(", ");
+      return v.type;
+    }
+    if (typeof v === "object") v = JSON.stringify(v);
+    v = String(v);
+    return v.length > 60 ? v.slice(0, 57) + "…" : v;
+  }
+
+  function draw() {
+    var head = document.getElementById("gridHead"), body = document.getElementById("gridBody");
+    head.innerHTML = ""; body.innerHTML = "";
+    head.appendChild(el("tr", {}, cur.cols.map(function (c) { return el("th", { text: c.name, title: c.desc }); })));
+    var clickable = cur.writable && cur.pk && P.session;
+    rows.forEach(function (r) {
+      var tr = el("tr", { class: clickable ? "clickable" : null }, cur.cols.map(function (c) {
+        return el("td", { class: c.kind === "int" || c.kind === "num" ? "num" : null, text: show(c, r[c.name]) });
+      }));
+      if (clickable) tr.addEventListener("click", function () { edit(r); });
+      body.appendChild(tr);
+    });
+    var to = offset + rows.length;
+    document.getElementById("pageInfo").textContent = rows.length
+      ? "Rows " + (offset + 1) + "–" + to + (total !== null ? " of about " + total.toLocaleString() : "")
+      : "No rows.";
+    document.getElementById("prevBtn").disabled = offset === 0;
+    document.getElementById("nextBtn").disabled = rows.length < PAGE;
+  }
+
+  /* ---------- forms built from the column list ---------- */
+
+  function formCols() {
+    return cur.cols.filter(function (c) { return !AUDIT[c.name]; });
+  }
+
+  function labelColumn(tname) {
+    var t = tables[tname];
+    if (!t) return null;
+    var names = t.cols.filter(function (c) { return c.kind === "text"; }).map(function (c) { return c.name; });
+    // A short name beats a long description: the label has to fit a dropdown.
+    var prefs = ["name", "label", "scientific_name", "common_name"];
+    for (var i = 0; i < prefs.length; i++) if (names.indexOf(prefs[i]) >= 0) return prefs[i];
+    var named = names.filter(function (n) { return /_name$|_label$/.test(n); })[0];
+    if (named) return named;
+    return names.indexOf("code") >= 0 ? "code" : names.indexOf("description") >= 0 ? "description" : null;
+  }
+
+  // Foreign keys become a dropdown when the referenced table is small enough
+  // to list; otherwise a number field with a pointer to where the ids live.
+  async function fkOptions(fk) {
+    if (fkCache[fk.table] !== undefined) return fkCache[fk.table];
+    var lab = labelColumn(fk.table);
+    var sel = fk.column + (lab ? "," + lab : "");
+    try {
+      var r = await P.api("/rest/v1/" + fk.table + "?select=" + sel + "&limit=501&order=" + (lab || fk.column));
+      fkCache[fk.table] = r.length > 500 ? null : r.map(function (x) {
+        return { v: x[fk.column], t: x[fk.column] + (lab && x[lab] ? " — " + x[lab] : "") };
+      });
+    } catch (err) { fkCache[fk.table] = null; }
+    return fkCache[fk.table];
+  }
+
+  function fieldFor(c, value) {
+    var id = "f_" + c.name + "_" + Math.random().toString(36).slice(2, 7);
+    var input;
+    if (c.enumv) {
+      input = el("select", { id: id }, [el("option", { value: "", text: "" })].concat(
+        c.enumv.map(function (v) { return el("option", { value: v, text: v }); })));
+    } else if (c.kind === "bool") {
+      input = el("select", { id: id }, [el("option", { value: "", text: "" }),
+        el("option", { value: "true", text: "yes" }), el("option", { value: "false", text: "no" })]);
+    } else if (c.kind === "int" || c.kind === "num") {
+      input = el("input", { id: id, type: "number", step: c.kind === "int" ? "1" : "any" });
+    } else if (c.kind === "date") {
+      input = el("input", { id: id, type: "date" });
+    } else if (c.kind === "ts") {
+      input = el("input", { id: id, type: "datetime-local", step: "1" });
+    } else if (c.kind === "json") {
+      input = el("textarea", { id: id, rows: "2" });
+    } else {
+      input = el("input", { id: id, type: "text" });
+    }
+    input.dataset.col = c.name;
+    setValue(input, c, value);
+
+    var help = c.desc;
+    if (c.kind === "geom") help = "Longitude, latitude (WGS 84), e.g. 7.877, 48.268 — or WKT/EWKT. " + help;
+    if (c.pk) help = (value === undefined ? "Leave empty to assign automatically. " : "Primary key. ") + help;
+    if (c.fk) help = "Refers to " + c.fk.table + ". " + help;
+
+    var field = el("div", { class: "field" }, [el("label", { for: id, text: c.name }), input,
+      help ? el("p", { class: "help", text: help }) : null]);
+
+    if (c.fk && !c.enumv) {
+      fkOptions(c.fk).then(function (opts) {
+        if (!opts) return;
+        var s = el("select", { id: id }, [el("option", { value: "", text: "" })].concat(
+          opts.map(function (o) { return el("option", { value: String(o.v), text: o.t }); })));
+        s.dataset.col = c.name;
+        s.value = value === null || value === undefined ? "" : String(value);
+        field.replaceChild(s, input);
+        s.dataset.initial = input.dataset.initial;
+      });
+    }
+    return field;
+  }
+
+  function setValue(input, c, v) {
+    var s = "";
+    if (v !== null && v !== undefined) {
+      if (c.kind === "geom" && typeof v === "object") s = v.type === "Point" ? v.coordinates.join(", ") : JSON.stringify(v);
+      else if (c.kind === "ts") s = String(v).slice(0, 19);
+      else if (typeof v === "object") s = JSON.stringify(v);
+      else s = String(v);
+    }
+    input.value = s;
+    input.dataset.initial = s;
+  }
+
+  // "" -> null; numbers as numbers; "lon, lat" -> EWKT. Throws with a readable
+  // message so a typo is caught here rather than as a 400 from PostgREST.
+  function convert(c, s) {
+    if (s === "" || s === undefined) return null;
+    switch (c.kind) {
+      case "int":
+        if (!/^-?\d+$/.test(s)) throw new Error(c.name + ": \"" + s + "\" is not a whole number");
+        return parseInt(s, 10);
+      case "num":
+        var n = Number(String(s).replace(",", "."));
+        if (isNaN(n)) throw new Error(c.name + ": \"" + s + "\" is not a number");
+        return n;
+      case "bool":
+        if (/^(true|yes|1|ja)$/i.test(s)) return true;
+        if (/^(false|no|0|nein)$/i.test(s)) return false;
+        throw new Error(c.name + ": \"" + s + "\" is not yes/no");
+      case "geom":
+        var m = /^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(s);
+        return m ? "SRID=4326;POINT(" + m[1] + " " + m[2] + ")" : s;
+      case "json":
+        try { return JSON.parse(s); } catch (e) { throw new Error(c.name + ": not valid JSON"); }
+      default:
+        return s;
+    }
+  }
+
+  function buildForm(form, row) {
+    form.innerHTML = "";
+    formCols().forEach(function (c) {
+      form.appendChild(fieldFor(c, row ? row[c.name] : undefined));
+    });
+  }
+
+  function readForm(form, onlyChanged) {
+    var out = {};
+    Array.prototype.forEach.call(form.querySelectorAll("[data-col]"), function (input) {
+      var c = cur.cols.filter(function (x) { return x.name === input.dataset.col; })[0];
+      if (onlyChanged && input.value === input.dataset.initial) return;
+      if (!onlyChanged && input.value === "") return;
+      out[c.name] = convert(c, input.value);
+    });
+    return out;
+  }
+
+  /* ---------- correct one row ---------- */
+
+  function edit(r) {
+    editing = r;
+    document.getElementById("editPanel").hidden = false;
+    document.getElementById("editTitle").textContent = "Correct " + cur.name + " " + cur.pk + " = " + r[cur.pk];
+    P.message("editMsg", "", "");
+    buildForm(document.getElementById("editForm"), r);
+    document.getElementById("editPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function save() {
+    var btn = document.getElementById("saveBtn");
+    var changes;
+    try { changes = readForm(document.getElementById("editForm"), true); }
+    catch (err) { P.message("editMsg", "err", err.message); return; }
+    if (!Object.keys(changes).length) { P.message("editMsg", "warn", "Nothing changed."); return; }
+    btn.disabled = true;
+    try {
+      var out = await P.api("/rest/v1/" + cur.name + "?" + cur.pk + "=eq." + encodeURIComponent(editing[cur.pk]),
+        { method: "PATCH", body: changes, headers: { "Prefer": "return=representation" } });
+      if (!out || !out.length) {
+        P.message("editMsg", "err", "Nothing was saved: your role may not change rows in " + cur.name +
+          ". Correcting field data needs the curator role; ask the curator of your team.");
+      } else {
+        P.message("editMsg", "ok", "Saved: " + Object.keys(changes).join(", ") + ".");
+        edit(out[0]);
+        P.message("editMsg", "ok", "Saved: " + Object.keys(changes).join(", ") + ".");
+        load();
+      }
+    } catch (err) { P.message("editMsg", "err", err.message); }
+    finally { btn.disabled = false; }
+  }
+
+  /* ---------- add ---------- */
+
+  async function add() {
+    var body;
+    try { body = readForm(document.getElementById("addForm"), false); }
+    catch (err) { P.message("addMsg", "err", err.message); return; }
+    if (!Object.keys(body).length) { P.message("addMsg", "warn", "Fill in at least one field."); return; }
+    var btn = document.getElementById("addBtn");
+    btn.disabled = true;
+    try {
+      var out = await P.api("/rest/v1/" + cur.name, { method: "POST", body: body,
+        headers: { "Prefer": "return=representation" } });
+      var id = out && out[0] && cur.pk ? " as " + cur.pk + " " + out[0][cur.pk] : "";
+      P.message("addMsg", "ok", "Added" + id + ".");
+      buildForm(document.getElementById("addForm"), null);
+      offset = 0; load();
+    } catch (err) { P.message("addMsg", "err", err.message); }
+    finally { btn.disabled = false; }
+  }
+
+  /* ---------- CSV ---------- */
+
+  // RFC 4180: quoted fields, doubled quotes, commas and newlines inside quotes.
+  // Semicolons are accepted as the separator too, since that is what a German
+  // Excel writes.
+  function parseCsv(text) {
+    text = text.replace(/^﻿/, "");
+    var first = text.split(/\r?\n/)[0] || "";
+    var sep = (first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ";" : ",";
+    var out = [], row = [], f = "", q = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (q) {
+        if (ch === '"' && text[i + 1] === '"') { f += '"'; i++; }
+        else if (ch === '"') q = false;
+        else f += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === sep) { row.push(f); f = ""; }
+      else if (ch === "\n" || ch === "\r") {
+        if (ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(f); f = "";
+        if (row.length > 1 || row[0] !== "") out.push(row);
+        row = [];
+      } else f += ch;
+    }
+    row.push(f);
+    if (row.length > 1 || row[0] !== "") out.push(row);
+    return out;
+  }
+
+  function resetCsv() {
+    csvRows = null;
+    document.getElementById("csvImport").disabled = true;
+    document.getElementById("csvText").value = "";
+    document.getElementById("csvFile").value = "";
+    P.message("csvMsg", "", "");
+  }
+
+  function checkCsv() {
+    csvRows = null;
+    document.getElementById("csvImport").disabled = true;
+    var grid = parseCsv(document.getElementById("csvText").value);
+    if (grid.length < 2) { P.message("csvMsg", "err", "Need a header line and at least one row."); return; }
+    if (grid.length > 10001) { P.message("csvMsg", "err", "More than 10,000 rows — split the file."); return; }
+    var byName = {};
+    cur.cols.forEach(function (c) { byName[c.name.toLowerCase()] = c; });
+    var header = grid[0].map(function (h) { return h.trim(); });
+    var unknown = header.filter(function (h) { return !byName[h.toLowerCase()]; });
+    if (unknown.length) {
+      P.message("csvMsg", "err", "Unknown column" + (unknown.length > 1 ? "s" : "") + ": " + unknown.join(", ") +
+        "\nKnown: " + formCols().map(function (c) { return c.name; }).join(", "));
+      return;
+    }
+    var cols = header.map(function (h) { return byName[h.toLowerCase()]; });
+    var errors = [], out = [];
+    grid.slice(1).forEach(function (r, i) {
+      var o = {};
+      cols.forEach(function (c, j) {
+        try { o[c.name] = convert(c, (r[j] || "").trim()); }
+        catch (err) { if (errors.length < 10) errors.push("line " + (i + 2) + ": " + err.message); }
+      });
+      out.push(o);
+    });
+    if (errors.length) { P.message("csvMsg", "err", errors.join("\n")); return; }
+    csvRows = out;
+    document.getElementById("csvImport").disabled = false;
+    P.message("csvMsg", "ok", out.length + " row" + (out.length > 1 ? "s" : "") + " ready for " + cur.name +
+      " (columns: " + cols.map(function (c) { return c.name; }).join(", ") + ").");
+  }
+
+  async function importCsv() {
+    if (!csvRows) return;
+    var btn = document.getElementById("csvImport");
+    btn.disabled = true;
+    try {
+      // One request = one statement = one transaction: all rows or none.
+      await P.api("/rest/v1/" + cur.name, { method: "POST", body: csvRows, headers: { "Prefer": "return=minimal" } });
+      P.message("csvMsg", "ok", "Imported " + csvRows.length + " rows into " + cur.name + ".");
+      csvRows = null;
+      offset = 0; load();
+    } catch (err) {
+      P.message("csvMsg", "err", "Nothing was imported: " + err.message);
+      btn.disabled = false;
+    }
+  }
+
+  function download(name, blob) {
+    var a = el("a", { href: URL.createObjectURL(blob), download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  async function downloadCsv() {
+    try {
+      var res = await P.api("/rest/v1/" + cur.name + "?select=*&limit=10000" + orderQuery() + filterQuery(),
+                            { raw: true, headers: { "Accept": "text/csv" } });
+      download(cur.name + ".csv", await res.blob());
+    } catch (err) { P.message("browseMsg", "err", err.message); }
+  }
+
+  /* ---------- wiring ---------- */
+
+  document.getElementById("dataset").addEventListener("change", function (e) { choose(e.target.value); });
+  // Back/forward and pasted links change only the hash, which does not reload.
+  window.addEventListener("hashchange", function () {
+    var n = location.hash.slice(1);
+    if (tables[n] && (!cur || cur.name !== n)) { document.getElementById("dataset").value = n; choose(n); }
+  });
+  document.getElementById("applyBtn").addEventListener("click", function () { offset = 0; load(); });
+  document.getElementById("fVal").addEventListener("keydown", function (e) { if (e.key === "Enter") { offset = 0; load(); } });
+  document.getElementById("prevBtn").addEventListener("click", function () { offset = Math.max(0, offset - PAGE); load(); });
+  document.getElementById("nextBtn").addEventListener("click", function () { offset += PAGE; load(); });
+  document.getElementById("csvBtn").addEventListener("click", downloadCsv);
+  document.getElementById("saveBtn").addEventListener("click", function (e) { e.preventDefault(); save(); });
+  document.getElementById("cancelBtn").addEventListener("click", function (e) {
+    e.preventDefault(); document.getElementById("editPanel").hidden = true; });
+  document.getElementById("addBtn").addEventListener("click", function (e) { e.preventDefault(); add(); });
+  document.getElementById("csvCheck").addEventListener("click", checkCsv);
+  document.getElementById("csvImport").addEventListener("click", importCsv);
+  document.getElementById("csvText").addEventListener("input", function () {
+    csvRows = null; document.getElementById("csvImport").disabled = true; });
+  document.getElementById("csvFile").addEventListener("change", function (e) {
+    var f = e.target.files[0];
+    if (!f) return;
+    f.text().then(function (t) { document.getElementById("csvText").value = t; checkCsv(); });
+  });
+  document.getElementById("csvTemplate").addEventListener("click", function () {
+    var head = formCols().filter(function (c) { return !c.pk; }).map(function (c) { return c.name; }).join(",");
+    download(cur.name + "_template.csv", new Blob([head + "\n"], { type: "text/csv" }));
+  });
+
+  if (!P.session) {
+    var h = document.getElementById("signHint");
+    h.appendChild(document.createTextNode("To add or correct, "));
+    h.appendChild(el("a", { href: "/portal/account/", text: "sign in" }));
+    h.appendChild(document.createTextNode(" first."));
+  }
+
+  loadSpec().catch(function (err) { P.message("specMsg", "err", "Could not read the API description: " + err.message); });
+})();
+</script>
+</body>
+</html>

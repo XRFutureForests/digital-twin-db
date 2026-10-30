@@ -15,18 +15,26 @@ scripts/
 │   ├── import_trees.py             # Unified tree import from template CSV
 │   ├── ingest_sensor_data.py       # Provider-agnostic sensor/reading import (CSV/JSON)
 │   ├── link_sensors_to_trees.py    # Link sensors to trees (writes sensor_ref)
-│   └── fill_missing_heights.py     # Backfill height_m from allometric H-D models
+│   ├── fill_missing_heights.py     # Backfill height_m from allometric H-D models
+│   ├── import_tls_heights.py       # Ecosense beech heights from the TLS reference (dry run; --apply)
+│   ├── fill_missing_ages.py        # Backfill age_years by Chapman-Richards height-age inversion
+│   └── fill_missing_biomass.py     # Backfill biomass_kg / carbon_content_kg (Zianis 2005 AGB)
 ├── seed/                     # Optional demo/test data (never auto-applied)
-│   ├── ecosense_growth_variants.sql # Growth variants generated from real Ecosense baseline (see docs/variant-scenario-model.md)
-│   └── mathisle_growth_variants.sql
-├── silva/                    # SILVA growth-model coupling
-│   └── silva_writeback.py          # Write SILVA projections back to growth_simulations
+│   ├── ecosense_baseline_variant.sql # natural_growth scenario + baseline_2025 variant (see docs/variant-scenario-model.md)
+│   ├── mathisle_baseline_variant.sql
+│   └── ecosense_zwisel_stem.sql      # 2nd stem of the 4_56 forked tree (post-import)
 └── utils/                    # Utility and debug scripts
     ├── check_db_schema.py          # Inspect database schema
     ├── generate_jwt.py             # Mint ANON/SERVICE_ROLE JWTs from JWT_SECRET
     ├── profiling.py                # Per-stage timing helper used by --profile
     └── test_import_upload.py       # Test import file upload
 ```
+
+SILVA growth simulation is **not** here: it lives in the
+[silva-connector](../../silva-connector) repo, which runs silvaR in R and writes
+back over libpq. The `scripts/silva/silva_writeback.py` draft that used to sit
+here described a CSV round-trip that was never implemented and was removed
+2026-09-02 (XRFF-351). See [docs/silva-coupling.md](../docs/silva-coupling.md).
 
 ## Prerequisites
 
@@ -90,9 +98,13 @@ fresh `docker compose up` produces a clean, empty database — real forest data
 ```bash
 # Generate growth variants from the real Ecosense baseline — optional
 # (creates the location-scoped natural_growth scenario, assigns the baseline
-# trees to baseline_2025, and chains growth_2035/growth_2045). See
+# trees to baseline_2025). Growth variants come from silva-connector. See
 # docs/variant-scenario-model.md for how to copy this pattern for your own variant.
-docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/ecosense_growth_variants.sql
+docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/ecosense_baseline_variant.sql
+
+# Add the second stem of the ecosense 4_56 Zwisel (forked tree). Required after
+# every ecosense tree import — import_trees.py only writes stem_number = 1.
+docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/ecosense_zwisel_stem.sql
 ```
 
 ## Utility Scripts
