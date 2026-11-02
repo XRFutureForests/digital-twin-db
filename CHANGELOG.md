@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   load its schema cache. Clients that select the base schema with `Accept-Profile: pointclouds`
   must send `point_clouds`.
 
+**Fixed**
+
+- Inserting through `public.point_clouds`, `public.environments`, `public.sensors` or
+  `public.stems` without the id failed with a NOT NULL violation, and `created_at` (plus
+  `is_active`, `installation_date` and `external_metadata` on sensors) was written as NULL. Their
+  insert triggers copy the whole row, and the views had no column defaults. Migration
+  `20261102110000_view_insert_defaults` (init `72-`) gives the four views their base tables'
+  defaults.
+- A fresh init stopped in `30-load-lookup-tables.sql`, which still loaded `datasource_types.csv`
+  after the file was renamed to `data_source_types.csv` in September. Existing databases were not
+  affected.
+
 ## [2.0.2] - 2026-11-02
 
 **Documentation for new users and data providers**

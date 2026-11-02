@@ -490,7 +490,7 @@ CREATE TEMP TABLE temp_datasource_types (
     Description TEXT
 );
 
-\copy temp_datasource_types FROM '/var/lib/postgresql/lookups/datasource_types.csv' WITH (FORMAT csv, HEADER true);
+\copy temp_datasource_types FROM '/var/lib/postgresql/lookups/data_source_types.csv' WITH (FORMAT csv, HEADER true);
 
 INSERT INTO trees.DataSourceTypes (data_source_type_name, Description)
 SELECT data_source_type_name, Description FROM temp_datasource_types
