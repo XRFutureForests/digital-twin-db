@@ -49,12 +49,12 @@ approach was chosen, write it in the knowledge hub and link to it.
 
 ## Schema Migrations
 
-Schema history lives in `supabase/migrations/` (Supabase CLI). Every migration is also mirrored, additively, into the next numbered file under `docker/volumes/db/init/` (currently `11-` to `76-`), because the `db` image bakes that directory and a fresh init must produce today's schema. That directory's `10-baseline-schema.sql` is a point-in-time snapshot (2026-07-17) consolidating the former 10-29 and 32-37 init files, which had accreted into a replay-history problem — later files restructured objects earlier files created, so a fresh init replayed the project's history instead of producing today's schema directly. `30-load-lookup-tables.sql` and `31-refresh-lookup-functions.sql` load CSV data, not schema; keep the file names in `30-` in step with `data/lookups/` when a CSV is renamed.
+Schema history lives in `supabase/migrations/` (Supabase CLI). Every migration is also mirrored, additively, into the next numbered file under `docker/volumes/db/init/` (currently `11-` to `77-`), because the `db` image bakes that directory and a fresh init must produce today's schema. That directory's `10-baseline-schema.sql` is a point-in-time snapshot (2026-07-17) consolidating the former 10-29 and 32-37 init files, which had accreted into a replay-history problem — later files restructured objects earlier files created, so a fresh init replayed the project's history instead of producing today's schema directly. `30-load-lookup-tables.sql` and `31-refresh-lookup-functions.sql` load CSV data, not schema; keep the file names in `30-` in step with `data/lookups/` when a CSV is renamed.
 
 **Adding a schema change:**
 1. `npx supabase migration new <description>` — creates a new timestamped file under `supabase/migrations/`
 2. Write the DDL (use `IF NOT EXISTS` / `IF EXISTS` guards for idempotency)
-3. Mirror it into the next numbered file under `docker/volumes/db/init/` (e.g. `77-<description>.sql`) — additive only, never restructuring `10-baseline-schema.sql`'s objects
+3. Mirror it into the next numbered file under `docker/volumes/db/init/` (e.g. `78-<description>.sql`) — additive only, never restructuring `10-baseline-schema.sql`'s objects
 4. Apply it to the dev database as `supabase_admin`, then `NOTIFY pgrst, 'reload schema'` ([RUNBOOK.md §6](RUNBOOK.md#6-schema-changes-reset-and-rebuild)); before committing, check that a fresh init from the rebuilt image (`docker compose build db`) produces the same schema
 5. Regenerate the generated schema docs and commit them with the migration: `python scripts/utils/generate_schema_docs.py` rewrites `docs/database-dictionary.md` and `docs/database-erd.dbml`; `--check` exits 1 when either is stale
 

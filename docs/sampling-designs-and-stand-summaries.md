@@ -129,9 +129,11 @@ Because SILVA variants are tree rows like the baseline, the same view gives each
 per-hectare trajectory. On the census sites the values equal silva-connector's stand values.
 Always filter on `variant_id`: one variant takes about 0.1 s; all forest states of all sites
 (about 7,000 rows) take about 12 s, longer than the 3 s an anonymous request may run, so an
-unfiltered download of this view fails. `plot_summaries` and `tree_expansion_factors` are
-fast without a filter too: they resolve each plot once (`shared.plot_inclusion`) rather than
-per tree. Filter on the id itself, not through a join: in SQL,
+unfiltered download of this view fails. `plot_summaries` (about 1.5 s on dt.unr) and
+`tree_expansion_factors` work without a filter too: they resolve each plot once
+(`shared.plot_inclusion`) and compute each tree's factor once. Keep `shared.ef_value` free of
+a `SET` clause: a SQL function with one is never inlined, which made the summary 20 times
+slower. Filter on the id itself, not through a join: in SQL,
 `WHERE s.variant_id = (SELECT … )` is fast, while `JOIN shared.variants v … WHERE v.location_id = …`
 computes every variant before filtering (measured: about 2 s against 2 minutes).
 
