@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-11-02
+
+**Documentation for new users and data providers**
+
+- The README now presents the repository as a single-tree inventory database for forest
+  digital twins, with the database architecture first: the location, scenario and variant
+  model with one row per tree per forest state, the provenance mechanisms, the seven schemas,
+  the API and the access tiers. Then how each kind of data gets in, how to run your own
+  instance, and the University of Freiburg instance as one example deployment.
+- Portal: the start page opens with the tree look survey as its own section, has a general
+  introduction and links the inventory CSV template and its preparation guide; the docs page
+  begins with what the lab means by a forest digital twin; the job page `/jobs/` now uses
+  the portal's stylesheet and shows the shared logo band and top bar.
+
 ## [2.0.1] - 2026-11-02
 
 ### 2026-11-02
