@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Stand summaries with sampling error** (XRFF-627)
+
+- Migration `20261102140000_stand_summaries` (init `75-`) computes stand-level results in the
+  database. `public.plot_summaries`: per sample unit, variant and species, living stems, basal
+  area, volume, biomass and carbon per hectare (a value is NULL when a counted tree lacks it).
+  `shared.estimate_stand(design, variant, by_species, confidence)`, also
+  `/rest/v1/rpc/estimate_stand`: the design-based estimate for census, simple random,
+  systematic (as simple random) and stratified designs, with standard error, relative
+  standard error %, margin of error, sampling error % and confidence interval at 90, 95 or
+  99 % (Student t), number of units, area and total. Values agree with R `survey`.
+  `public.stand_summaries` and `public.ue_stand_summary`: every variant for each design of its
+  site at 95 %. Two-phase designs are not estimated yet.
+
 **Sampling designs and expansion factors** (XRFF-626)
 
 - Migration `20261102130000_sampling_designs` (init `74-`) lets the database hold sampled

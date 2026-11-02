@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261102130000_sampling_designs`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261102140000_stand_summaries`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -1474,6 +1474,7 @@ portal's API page.
 | `management_regimes` | Management axis of scenarios: id + name + description + the silvaR thinning preset (silva_rules). Regime 0 holds no trees. |
 | `phanerophyte_height_classes` | Public API view for phanerophyte height classes lookup table |
 | `phenology_observations` | Public API view for tree phenology observations |
+| `plot_summaries` | Per sample unit (plot, or the census plot of a fully mapped site), variant and species: living trees per hectare and their basal area, volume, biomass and carbon per hectare, each tree weighted by its expansion factor. A value is NULL when a counted tree lacks it. Sum over species for the all-species value. Filter on variant_id. |
 | `plots` | Public API view for sub-plot divisions within locations |
 | `point_clouds` | Public API view for point clouds table |
 | `qsms` | Public API view for QSM reconstructions |
@@ -1488,6 +1489,7 @@ portal's API page.
 | `shoot_elongation_types` | Public API view for shoot elongation types lookup table |
 | `simulation_runs` | One row per growth simulation run: identity, configuration and the size of the trajectory it produced. Backed by trees.simulation_runs; counts aggregated from trees.growth_simulations. |
 | `species` | Public API view for tree species reference table |
+| `stand_summaries` | Per-hectare stand values of every variant for each sampling design of its site, all species (by_species false) and per species: estimate, standard error, relative standard error %, margin of error and sampling error % at 95 %, confidence interval, units, area and total. Census designs have no sampling error. Filter on variant_id; other confidence levels via /rpc/estimate_stand. |
 | `stems` | Public API view for tree stems table |
 | `strata` | Strata of stratified sampling designs, with area. |
 | `tree_expansion_factors` | Trees per hectare each tree stands for (shared.expansion_factor_ha on the main stem's DBH), with the plot's design, stratum and sampling weight. Filter on variant_id. NULL where the plot has no area or design. |
@@ -1499,6 +1501,7 @@ portal's API page.
 | `ue_scenarios` | Scenario picker for Unreal: every scenario with its numeric code and text axes, how many tree-holding variants it has and the years they span, and baseline_variant_id -- the measured state (in natural_growth) its chain was projected from, so a picker can offer the base year in every scenario. has_trees=false rows are climate-data buckets. GET /rest/v1/ue_scenarios?location_id=eq.1&has_trees=eq.true&order=scenario_code |
 | `ue_sensor_readings` | Enriched sensor time-series for UE Blueprint. Includes sensor type, unit, timestamp_unix (epoch seconds) and the sensor's location_id, keyed by sensor_id. Look up the linked tree once via ue_sensors, not per reading. GET /ue_sensor_readings?location_id=eq.<site>&order=timestamp.desc&limit=100000 (one site), or ?sensor_id=eq.<id>&order=timestamp.desc&limit=96 (one sensor). |
 | `ue_sensors` | Flat sensor catalogue for UE Blueprint. One row per sensor with type, model (enriched instrument), data owner, location, latest reading (ISO and latest_timestamp_unix epoch seconds), linked tree info (populated after sensor_tree_links is filled), and the probe placement parsed from the label (placement_ring stem\|middle\|edge, placement_direction N\|E\|S\|W\|NE, placement_depth_cm, placement_distance_cm; NULL = the label carries none). GET /ue_sensors?tree_entity_id=eq.<tree_entity_id> |
+| `ue_stand_summary` | public.stand_summaries under the ue_ prefix for Unreal: GET /ue_stand_summary?variant_id=eq.<id>&by_species=is.false |
 | `ue_trees` | Flat tree catalogue for UE Blueprint import. One row per tree with the location/scenario/variant hierarchy (id + name at each level), the scenario axes (scenario_code = regime*10 + pathway, management_regime, climate_pathway), the variant's simulation_year / sort_order / time_delta_yrs, species, main-stem DBH, competition flag, tree_status (healthy \| dead = standing snag, render it \| harvested = gone, hide it), sensor cross-reference and projected source coordinates (original_x/original_y in source_crs, EPSG:32632 -- preferred for UE placement) plus flattened latitude/longitude. Filter by variant_id to load one time step. Pickers: ue_scenarios, ue_variants. |
 | `ue_variants` | Time-step picker for Unreal: one row per variant with simulation_year (the number), variant_name (the text), sort_order, lineage and the scenario axes. GET /rest/v1/ue_variants?location_id=eq.1&scenario_code=eq.23&order=sort_order then GET /rest/v1/ue_trees?variant_id=eq.<id> |
 | `variant_types` | Public API view for data variant type classifications |

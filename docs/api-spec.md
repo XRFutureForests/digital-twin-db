@@ -143,7 +143,7 @@ Column lists are in the [Data Dictionary](database-dictionary.md) and in `GET /r
 
 ### 3.1 All Available Resources
 
-57 views. Everyone (including `anon`) can read every one of them; `job_status` returns only
+60 views. Everyone (including `anon`) can read every one of them; `job_status` returns only
 the caller's own jobs (all jobs for curators, `[]` for `anon`). "Write" is the tier a write
 through the view needs (I = insert, U = update, D = delete); "—" means the view is read-only
 over REST.
@@ -196,6 +196,8 @@ over REST.
 | `/rest/v1/growth_simulations` | per-tree SILVA trajectories (`trees.growth_simulations`) |
 | `/rest/v1/simulation_runs` | `trees.simulation_runs` plus trajectory counts |
 | `/rest/v1/tree_expansion_factors` | per tree: trees per hectare it stands for (`shared.expansion_factor_ha` on the main stem's DBH), with the plot's sampling design, stratum and sampling weight; filter on `variant_id` |
+| `/rest/v1/plot_summaries` | per sample unit (plot, or the census plot of a fully mapped site), variant and species: living stems, basal area, volume, biomass and carbon per hectare, weighted by expansion factor; filter on `variant_id` |
+| `/rest/v1/stand_summaries` | per variant and sampling design of its site, all species and per species: per-hectare estimate with standard error, relative standard error %, margin of error, sampling error % and confidence interval at 95 %, units, area, total; census designs have no sampling error; filter on `variant_id` |
 | `/rest/v1/job_status` | `shared.processing_jobs`, filtered by RLS to the caller's own jobs ([requesting-a-job.md](requesting-a-job.md)) |
 
 **Unreal Engine views** (read-only; flat, join-free payloads for Blueprint HTTP import)
@@ -209,6 +211,7 @@ over REST.
 | `/rest/v1/ue_sensor_readings` | readings with sensor type, unit, `timestamp_unix` and `location_id` |
 | `/rest/v1/ue_environments` | environments + location + scenario + variant type + process, period also as integer years |
 | `/rest/v1/ue_climate` | the same, merged across `variant_name`: one row per location, scenario and period |
+| `/rest/v1/ue_stand_summary` | `stand_summaries` for Unreal: `?variant_id=eq.<id>&by_species=is.false` gives one variant's per-hectare values in one GET |
 
 `growth_simulations` and `simulation_runs` expose simulator output and are read-only over REST. Writes go to `trees.simulation_runs` and `trees.growth_simulations` directly over libpq, from the [silva-connector](../../silva-connector) repo — see [silva-coupling.md](silva-coupling.md). The `silva_input` export view was dropped 2026-09-02 (XRFF-351).
 
