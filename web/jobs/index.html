@@ -25,32 +25,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Request a job — Forest Digital Twin</title>
 <style>
+  /* Same tokens as web/portal/portal.css (XR Future Forests Lab design spec on
+     the University of Freiburg CD); see the comment there. */
   :root {
-    --bg: #f6f7f5;
+    --font: Social, Arial, "Helvetica Neue", Helvetica, sans-serif;
+    --bg: #ffffff;
     --panel: #ffffff;
-    --ink: #1b2019;
-    --muted: #5d6b5c;
-    --line: #d9ded6;
-    --accent: #2f6f4e;
+    --ink: #2a2a2a;
+    --heading: #000149;
+    --muted: #5c5c5c;
+    --line: #e9e1d6;
+    --field: #8a8a8a;
+    --accent: #00856c;
     --accent-ink: #ffffff;
-    --warn: #8a4b16;
-    --err: #9b2c2c;
-    --ok: #2f6f4e;
-    --code-bg: #f0f2ee;
+    --warn: #8f6b30;
+    --err: #b60000;
+    --ok: #00856c;
+    --code-bg: #faf8f1;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #141713;
-      --panel: #1c211a;
-      --ink: #e6eae3;
-      --muted: #9aa898;
-      --line: #2f382d;
-      --accent: #6db08a;
-      --accent-ink: #10150f;
-      --warn: #d9a066;
-      --err: #e88b8b;
-      --ok: #6db08a;
-      --code-bg: #131711;
+      --bg: #222222;
+      --panel: #2a2a2a;
+      --ink: #f2f2f2;
+      --heading: #ffffff;
+      --muted: #b0b0b0;
+      --line: #3d3d3d;
+      --accent: #27b29b;
+      --accent-ink: #1f1f1f;
+      --warn: #d2c4ac;
+      --err: #ff8a80;
+      --ok: #27b29b;
+      --code-bg: #1f1f1f;
     }
   }
   * { box-sizing: border-box; }
@@ -60,16 +66,16 @@
     padding-inline: 20px;
     background: var(--bg);
     color: var(--ink);
-    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 15px/1.5 var(--font);
   }
   .wrap { max-width: 940px; margin: 0 auto; }
-  h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
-  h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
+  h1 { font-size: 24px; margin: 0 0 4px; font-weight: 600; color: var(--heading); }
+  h2 { font-size: 17px; margin: 0 0 12px; font-weight: 600; color: var(--heading); }
   .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
   .panel {
     background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 18px;
     margin-bottom: 18px;
   }
@@ -78,8 +84,8 @@
   input[type=text], input[type=email], input[type=password], input[type=number], select {
     width: 100%;
     padding: 7px 9px;
-    border: 1px solid var(--line);
-    border-radius: 5px;
+    border: 1px solid var(--field);
+    border-radius: 0;
     background: var(--bg);
     color: var(--ink);
     font: inherit;
@@ -90,7 +96,7 @@
     background: var(--accent);
     color: var(--accent-ink);
     border: 0;
-    border-radius: 5px;
+    border-radius: 0;
     padding: 8px 16px;
     font: inherit;
     font-weight: 500;
@@ -107,7 +113,7 @@
   .row > button { flex: 0 0 auto; }
   .field { margin-bottom: 14px; }
   .req::after { content: " *"; color: var(--err); }
-  .msg { padding: 10px 12px; border-radius: 5px; font-size: 14px; margin-bottom: 14px; }
+  .msg { padding: 10px 12px; border-radius: 0; font-size: 14px; margin-bottom: 14px; }
   .msg.err { background: color-mix(in srgb, var(--err) 12%, transparent); color: var(--err); }
   .msg.ok  { background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -122,7 +128,7 @@
   pre {
     background: var(--code-bg);
     border: 1px solid var(--line);
-    border-radius: 5px;
+    border-radius: 0;
     padding: 10px;
     overflow-x: auto;
     font-size: 12.5px;
@@ -135,7 +141,7 @@
     padding: 0; font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline;
   }
   .who { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 0; font-size: 13px; }
 </style>
 </head>
 <body>

@@ -36,11 +36,16 @@ reaches a browser.
 | `docs/index.html` | data model, schema map, docs and repository links |
 | `api/index.html` | developer guide |
 | `lib.js` | config, session (with token refresh), API calls, top bar |
-| `portal.css` | shared look, same palette as `web/jobs/` |
+| `portal.css` | shared look, same tokens as `web/jobs/`; follows the lab design spec (knowledge hub `09-LAB-OPERATIONS/xrffl-design-spec`) |
+| `img/ufr-logo.svg`, `img/xrffl-logo.svg` | University of Freiburg wordmark and XR Future Forests Lab logo, used unaltered |
 | `config.example.js` | copy to `config.js` and fill in; `config.js` is gitignored |
 
 No build step and no dependencies, for the same reason as the job page: nginx serves the
 files as they are.
+
+The two logos are trademarks of the University of Freiburg and are not covered by this
+repository's licence. The university logo policy requires the lab logo to appear only next
+to the university wordmark, so keep them together if you rework the top bar.
 
 ## Deploying it
 

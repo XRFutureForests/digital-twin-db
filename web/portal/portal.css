@@ -1,31 +1,57 @@
-/* Shared look for the portal pages. Same palette as web/jobs/, so moving
-   between the portal and the job page does not feel like changing sites. */
+/* Shared look for the portal pages, following the XR Future Forests Lab design
+   spec (knowledge hub, 09-LAB-OPERATIONS/xrffl-design-spec), which sits on the
+   University of Freiburg corporate design (cd.uni-freiburg.de). web/jobs/ uses
+   the same tokens, so moving between the portal and the job page does not feel
+   like changing sites.
+
+   Colours are CD values; the two "derived" ones darken CD green just enough
+   for small text and white button labels to reach WCAG AA (4.5:1). The house
+   font Social is licensed per machine, so it is used only when installed
+   locally; everyone else gets Arial, the CD's everyday font. */
 :root {
-  --bg: #f6f7f5;
+  --font: Social, Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+
+  --bg: #ffffff;
   --panel: #ffffff;
-  --ink: #1b2019;
-  --muted: #5d6b5c;
-  --line: #d9ded6;
-  --accent: #2f6f4e;
+  --band: #f6f1e3;          /* CD Sand 100 % */
+  --ink: #2a2a2a;
+  --heading: #000149;       /* CD Dunkelblau, as on uni-freiburg.de */
+  --muted: #5c5c5c;
+  --line: #e9e1d6;
+  --field: #8a8a8a;        /* form borders, 3.4:1 on white, 4.7:1 on dark */          /* CD Braun 20 % */
+  --brand: #00a082;         /* CD Grün 100 %, the lab logo colour */
+  --accent: #00856c;        /* derived: CD green for text and buttons */
+  --accent-hover: #006e59;  /* derived */
   --accent-ink: #ffffff;
-  --warn: #8a4b16;
-  --err: #9b2c2c;
-  --ok: #2f6f4e;
-  --code-bg: #f0f2ee;
+  --uni: #344a9a;           /* CD Blau */
+  --warn: #8f6b30;          /* CD Braun 100 % */
+  --err: #b60000;
+  --ok: #00856c;
+  --code-bg: #faf8f1;       /* CD Sand 50 % */
+  --logo-uni: #344a9a;
+  --logo-lab: #00a082;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #141713;
-    --panel: #1c211a;
-    --ink: #e6eae3;
-    --muted: #9aa898;
-    --line: #2f382d;
-    --accent: #6db08a;
-    --accent-ink: #10150f;
-    --warn: #d9a066;
-    --err: #e88b8b;
-    --ok: #6db08a;
-    --code-bg: #131711;
+    --bg: #222222;
+    --panel: #2a2a2a;
+    --band: #00004a;        /* CD Dunkelblau: both logos may sit on it in white */
+    --ink: #f2f2f2;
+    --heading: #ffffff;
+    --muted: #b0b0b0;
+    --line: #3d3d3d;
+    --brand: #27b29b;       /* CD Grün 80 % */
+    --accent: #27b29b;
+    --accent-hover: #7bc6b4; /* CD Grün 60 % */
+    --accent-ink: #1f1f1f;
+    --uni: #afb1d8;         /* CD Blau 40 % */
+    --warn: #d2c4ac;        /* CD Braun 40 % */
+    --err: #ff8a80;
+    --ok: #27b29b;
+    --code-bg: #1f1f1f;
+    --logo-uni: #ffffff;
+    --logo-lab: #ffffff;
   }
 }
 * { box-sizing: border-box; }
@@ -33,64 +59,82 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.5 var(--font);
 }
 a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
 .wrap { max-width: 1040px; margin: 0 auto; padding: 20px; }
 
-/* top bar */
+/* Top bar: a sand band with the university wordmark and the lab logo (the lab
+   logo may only appear next to the university's), then the site navigation. */
+.logoband { background: var(--band); }
+.logoband .wrap { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 16px; }
+.logo { display: block; background-color: currentColor;
+        -webkit-mask: var(--src) no-repeat left center / contain; mask: var(--src) no-repeat left center / contain; }
+.logo-uni { --src: url("/portal/img/ufr-logo.svg"); color: var(--logo-uni); width: 188px; height: 21px; }
+.logo-lab { --src: url("/portal/img/xrffl-logo.svg"); color: var(--logo-lab); width: 124px; height: 50px; }
 .topbar { border-bottom: 1px solid var(--line); background: var(--panel); }
-.topbar .wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding-block: 10px; }
-.brand { font-weight: 600; color: var(--ink); text-decoration: none; margin-right: 8px; }
-.nav { display: flex; gap: 14px; flex-wrap: wrap; flex: 1; }
-.nav a { color: var(--muted); text-decoration: none; font-size: 14px; }
-.nav a.here { color: var(--ink); font-weight: 600; }
+.topbar .wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding-block: 0; }
+.brand { font-weight: 600; color: var(--heading); text-decoration: none; margin-right: 8px; padding-block: 12px; }
+.brand:hover { color: var(--heading); }
+.nav { display: flex; gap: 18px; flex-wrap: wrap; flex: 1; align-self: stretch; }
+.nav a { color: var(--ink); text-decoration: none; font-size: 14px; display: flex; align-items: center;
+         border-bottom: 3px solid transparent; padding-top: 3px; }
+.nav a:hover { color: var(--accent); }
+.nav a.here { border-bottom-color: var(--brand); font-weight: 600; }
 .whoami { font-size: 13px; color: var(--muted); }
+@media (max-width: 560px) {
+  .logo-uni { width: 141px; height: 16px; }
+  .logo-lab { width: 94px; height: 38px; }
+}
 
-h1 { font-size: 22px; margin: 6px 0 4px; font-weight: 600; }
-h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
-h3 { font-size: 15px; margin: 14px 0 6px; font-weight: 600; }
+h1 { font-size: 24px; margin: 6px 0 4px; font-weight: 600; color: var(--heading); }
+h2 { font-size: 17px; margin: 0 0 12px; font-weight: 600; color: var(--heading); }
+h3 { font-size: 15px; margin: 14px 0 6px; font-weight: 600; color: var(--heading); }
 .sub { color: var(--muted); margin: 0 0 22px; font-size: 14px; max-width: 760px; }
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 8px;
   padding: 18px;
   margin-bottom: 18px;
 }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 18px; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; }
+.card { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--brand);
+        padding: 16px; display: flex; flex-direction: column; }
 .card h2 { margin-bottom: 4px; }
 .card .who { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
 .card ul { margin: 0; padding-left: 18px; font-size: 14px; }
 .card li { margin-bottom: 4px; }
 
-label { display: block; font-weight: 500; margin-bottom: 4px; font-size: 14px; }
+label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
 .help { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
 input[type=text], input[type=email], input[type=password], input[type=number],
 input[type=date], input[type=datetime-local], select, textarea {
   width: 100%;
   padding: 7px 9px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  border: 1px solid var(--field);
+  border-radius: 0;
   background: var(--bg);
   color: var(--ink);
   font: inherit;
   font-size: 14px;
 }
-textarea { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; }
-input[type=checkbox] { width: auto; margin-right: 8px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+textarea { font-family: var(--mono); font-size: 13px; }
+input[type=checkbox] { width: auto; margin-right: 8px; accent-color: var(--accent); }
 button {
   background: var(--accent);
   color: var(--accent-ink);
   border: 0;
-  border-radius: 5px;
+  border-radius: 0;
   padding: 8px 16px;
   font: inherit;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
 }
+button:hover:not(:disabled) { background: var(--accent-hover); }
 button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+button.secondary:hover:not(:disabled) { background: transparent; border-color: var(--accent); color: var(--accent); }
 button.small { padding: 4px 10px; font-size: 13px; }
 button:disabled { opacity: .5; cursor: not-allowed; }
 .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
@@ -99,27 +143,26 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0 16px; }
 .field { margin-bottom: 14px; }
 .req::after { content: " *"; color: var(--err); }
-.msg { padding: 10px 12px; border-radius: 5px; font-size: 14px; margin-bottom: 14px; white-space: pre-wrap; }
-.msg.err  { background: color-mix(in srgb, var(--err) 12%, transparent); color: var(--err); }
-.msg.ok   { background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); }
-.msg.warn { background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); }
+.msg { padding: 10px 12px; font-size: 14px; margin-bottom: 14px; white-space: pre-wrap; border-left: 4px solid currentColor; }
+.msg.err  { background: color-mix(in srgb, var(--err) 10%, transparent); color: var(--err); }
+.msg.ok   { background: color-mix(in srgb, var(--ok) 10%, transparent); color: var(--ok); }
+.msg.warn { background: color-mix(in srgb, var(--warn) 10%, transparent); color: var(--warn); }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { color: var(--muted); font-weight: 500; font-size: 13px; white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 tr.clickable { cursor: pointer; }
 tr.clickable:hover td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
 .tablewrap { overflow-x: auto; }
 table.grid td { white-space: nowrap; }
 .badge { font-size: 12px; padding: 2px 8px; border-radius: 99px; white-space: nowrap;
-         background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
-.badge.good { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
-.badge.strong { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
-pre, code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+         background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--muted); }
+.badge.good { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.badge.strong { background: color-mix(in srgb, var(--uni) 16%, transparent); color: var(--uni); }
+pre, code { font-family: var(--mono); }
 pre {
   background: var(--code-bg);
   border: 1px solid var(--line);
-  border-radius: 5px;
   padding: 10px;
   overflow-x: auto;
   font-size: 12.5px;
@@ -127,10 +170,10 @@ pre {
   white-space: pre-wrap;
   word-break: break-word;
 }
-code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+code { background: var(--code-bg); padding: 1px 5px; font-size: 13px; }
 details { border-bottom: 1px solid var(--line); padding: 6px 0; }
 summary { cursor: pointer; }
 .muted { color: var(--muted); }
 .secret { font-size: 18px; letter-spacing: .04em; padding: 8px 12px; background: var(--code-bg);
-          border: 1px dashed var(--line); border-radius: 5px; display: inline-block; user-select: all; }
+          border: 1px dashed var(--line); display: inline-block; user-select: all; }
 [hidden] { display: none !important; }
