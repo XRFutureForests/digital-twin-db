@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-11-02
+
 **The schema `pointclouds` is now `point_clouds`**
 
 - Migration `20261102100000_rename_pointclouds_schema` (init `71-`) renames the schema, so
