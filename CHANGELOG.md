@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Faster summaries; which SILVA run holds the chain**
+
+- Migration `20261102150000_set_based_summaries_and_chain_run` (init `76-`): `plot_summaries`
+  and `tree_expansion_factors` resolve each plot once (new view `shared.plot_inclusion`) and
+  share one formula (`shared.ef_value`) with `shared.expansion_factor_ha`. Same results; an
+  unfiltered `plot_summaries` takes 0.1 s instead of 16 s, so the portal can list it.
+- `public.simulation_runs` gains `holds_variant_chain`. `is_promoted` is never cleared when a
+  later run takes the chain over (`--replace`), so a scenario can have several promoted runs;
+  the newest holds the chain. No data changes.
+
 **Stand summaries with sampling error** (XRFF-627)
 
 - Migration `20261102140000_stand_summaries` (init `75-`) computes stand-level results in the

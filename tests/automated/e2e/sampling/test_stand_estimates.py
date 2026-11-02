@@ -152,3 +152,23 @@ def test_unsupported_confidence_refused(cur):
     with pytest.raises(psycopg2.errors.RaiseException):
         estimate(cursor, d, variant, confidence=0.8)
     cursor.execute("ROLLBACK TO SAVEPOINT s")
+
+
+def test_set_based_expansion_factor_matches_function(cur):
+    """plot_summaries and tree_expansion_factors resolve plots set-based
+    (shared.plot_inclusion); shared.expansion_factor_ha walks up from one plot.
+    Both must give the same factor for every tree and the same sample unit for
+    every plot, including the test designs built here."""
+    cursor, variant, loc, (sp_a, _) = cur
+    d = design(cursor, "t_equiv", "systematic", radius=12.62)
+    trees(cursor, variant, loc, plot(cursor, loc, "t_equiv_a", d), 2, sp_a)
+    cursor.execute(
+        "SELECT count(*) FILTER (WHERE e.expansion_factor_ha IS DISTINCT FROM "
+        "shared.expansion_factor_ha(e.plot_id, e.dbh_cm)) FROM public.tree_expansion_factors e"
+    )
+    assert cursor.fetchone()[0] == 0
+    cursor.execute(
+        "SELECT count(*) FILTER (WHERE pi.sample_unit_id IS DISTINCT FROM shared.sample_unit_id(pi.plot_id)) "
+        "FROM shared.plot_inclusion pi"
+    )
+    assert cursor.fetchone()[0] == 0

@@ -194,7 +194,7 @@ over REST.
 | `/rest/v1/variants` | `shared.variants` with location, scenario, variant type and scenario axes resolved |
 | `/rest/v1/attribute_provenance` | where each acquired `shared.locations` value came from, with the source's name, version and citation from `shared.processes`; written only by `set_location_attributes` |
 | `/rest/v1/growth_simulations` | per-tree SILVA trajectories (`trees.growth_simulations`) |
-| `/rest/v1/simulation_runs` | `trees.simulation_runs` plus trajectory counts |
+| `/rest/v1/simulation_runs` | `trees.simulation_runs` plus trajectory counts; `holds_variant_chain` marks the run whose variants a scenario currently shows (the newest promoted run) |
 | `/rest/v1/tree_expansion_factors` | per tree: trees per hectare it stands for (`shared.expansion_factor_ha` on the main stem's DBH), with the plot's sampling design, stratum and sampling weight; filter on `variant_id` |
 | `/rest/v1/plot_summaries` | per sample unit (plot, or the census plot of a fully mapped site), variant and species: living stems, basal area, volume, biomass and carbon per hectare, weighted by expansion factor; filter on `variant_id` |
 | `/rest/v1/stand_summaries` | per variant and sampling design of its site, all species and per species: per-hectare estimate with standard error, relative standard error %, margin of error, sampling error % and confidence interval at 95 %, units, area, total; census designs have no sampling error; filter on `variant_id` |

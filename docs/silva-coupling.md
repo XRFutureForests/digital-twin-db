@@ -91,6 +91,11 @@ variant chain UE reads, but any number of trajectories can sit side by side
 under their own `simulation_run_id`. `--no-promote` writes the first two targets and leaves
 the chain alone.
 
+`is_promoted` records that a run wrote the chain when it ran; it is never cleared. A later
+promoted run of the same location and scenario (`--replace`) takes the chain over, so a
+scenario can have several promoted runs. `public.simulation_runs.holds_variant_chain` marks
+the one that holds it now: the newest promoted run (migration `20261102150000`).
+
 ### Reading a run back
 
 Every run records the parameters that produced it (XRFF-374) — without that,

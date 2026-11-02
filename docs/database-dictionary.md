@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261102140000_stand_summaries`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261102150000_set_based_summaries_and_chain_run`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -946,7 +946,7 @@ One row per forest growth simulation run: what was simulated, by which simulator
 | `horizon_years` | integer | yes |  |  | Projection horizon in years, as requested (silva-connector: --years, a multiple of 5). |
 | `seed` | integer | yes |  |  | Random seed. The one parameter that makes two otherwise identical runs differ, and the reason this table exists. |
 | `is_mortality_enabled` | boolean | yes |  |  | True if the simulator was allowed to kill trees during the run. |
-| `is_promoted` | boolean | yes |  |  | True if the run was promoted to the shared.variants chain UE reads. False for a comparison-only run (silva-connector --no-promote). |
+| `is_promoted` | boolean | yes |  |  | True if the run wrote the shared.variants chain UE reads when it ran. Never cleared: a later promoted run of the same location and scenario (--replace) takes the chain over, and public.simulation_runs.holds_variant_chain marks the one that holds it now. False for a comparison-only run (silva-connector --no-promote). |
 | `run_params` | jsonb |  | `'{}'::jsonb` |  | Simulator-specific parameters as named keys, e.g. {"competition": "sf_polygon", "variant_prefix": "silva", "replace": true}. Named parameters only -- never a command line. An absent key on a run predating 2026-09-02 means the value was not recorded, not that it was unset. |
 | `created_at` | timestamp with time zone |  | `now()` |  |  |
 | `created_by` | character varying(200) | yes |  |  |  |
@@ -1436,6 +1436,7 @@ Constraints: `CHECK (((cover_percent >= (0)::numeric) AND (cover_percent <= (100
 | `point_clouds.processing_lineage` | Recursive view showing point cloud processing lineage and depth |
 | `sensor.active_sensors_status` | Active sensors with their latest reading information |
 | `sensor.sensor_tree_view` | View showing relationships between sensors and trees with detailed information |
+| `shared.plot_inclusion` | Every plot with its resolved sampling design and inclusion area (its own, else the nearest enclosing plot's), the design's minimum DBH, whether the design has inclusion rules, and the sample unit its trees belong to. The set-based equivalent of shared.sample_unit_id() and the resolution in shared.expansion_factor_ha(). |
 | `shared.recent_changes` | Unified view of recent changes across all audited tables |
 | `shared.user_activity_summary` | Summary of user activity and change patterns |
 | `trees.trees_with_metrics` | Trees with computed metrics (basal area, crown volume, stem count) |
