@@ -1,6 +1,6 @@
 # Forest Digital Twin Database
 
-Self-hosted Supabase PostgreSQL database for digital forest twin research. 7 custom schemas (shared, pointclouds, trees, sensor, environments, imagery, forest_floor), PostGIS spatial extensions, REST API via PostgREST/Kong, auth via GoTrue. University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung).
+Self-hosted Supabase PostgreSQL database for digital forest twin research. 7 custom schemas (shared, point_clouds, trees, sensor, environments, imagery, forest_floor), PostGIS spatial extensions, REST API via PostgREST/Kong, auth via GoTrue. University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung).
 
 
 ## Documentation Map
@@ -49,16 +49,16 @@ approach was chosen, write it in the knowledge hub and link to it.
 
 ## Schema Migrations
 
-Schema history lives in `supabase/migrations/` (Supabase CLI). Every migration is also mirrored, additively, into the next numbered file under `docker/volumes/db/init/` (currently `11-` to `70-`), because the `db` image bakes that directory and a fresh init must produce today's schema. That directory's `10-baseline-schema.sql` is a point-in-time snapshot (2026-07-17) consolidating the former 10-29 and 32-37 init files, which had accreted into a replay-history problem — later files restructured objects earlier files created, so a fresh init replayed the project's history instead of producing today's schema directly. `30-load-lookup-tables.sql` and `31-refresh-lookup-functions.sql` are unchanged (CSV data loading, not schema).
+Schema history lives in `supabase/migrations/` (Supabase CLI). Every migration is also mirrored, additively, into the next numbered file under `docker/volumes/db/init/` (currently `11-` to `71-`), because the `db` image bakes that directory and a fresh init must produce today's schema. That directory's `10-baseline-schema.sql` is a point-in-time snapshot (2026-07-17) consolidating the former 10-29 and 32-37 init files, which had accreted into a replay-history problem — later files restructured objects earlier files created, so a fresh init replayed the project's history instead of producing today's schema directly. `30-load-lookup-tables.sql` and `31-refresh-lookup-functions.sql` are unchanged (CSV data loading, not schema).
 
 **Adding a schema change:**
 1. `npx supabase migration new <description>` — creates a new timestamped file under `supabase/migrations/`
 2. Write the DDL (use `IF NOT EXISTS` / `IF EXISTS` guards for idempotency)
-3. Mirror it into the next numbered file under `docker/volumes/db/init/` (e.g. `71-<description>.sql`) — additive only, never restructuring `10-baseline-schema.sql`'s objects
+3. Mirror it into the next numbered file under `docker/volumes/db/init/` (e.g. `72-<description>.sql`) — additive only, never restructuring `10-baseline-schema.sql`'s objects
 4. Apply it to the dev database as `supabase_admin`, then `NOTIFY pgrst, 'reload schema'` ([RUNBOOK.md §6](RUNBOOK.md#6-schema-changes-reset-and-rebuild)); before committing, check that a fresh init from the rebuilt image (`docker compose build db`) produces the same schema
 5. Regenerate the generated schema docs and commit them with the migration: `python scripts/utils/generate_schema_docs.py` rewrites `docs/database-dictionary.md` and `docs/database-erd.dbml`; `--check` exits 1 when either is stale
 
-When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `pointclouds`, `environments`, `imagery`, `forest_floor`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot. Keep this schema list in sync with the `CREATE SCHEMA` statements in the init files — omitting one silently drops it from the new baseline.
+When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `point_clouds`, `environments`, `imagery`, `forest_floor`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot. Keep this schema list in sync with the `CREATE SCHEMA` statements in the init files — omitting one silently drops it from the new baseline.
 
 ## Consumers that read base tables directly
 

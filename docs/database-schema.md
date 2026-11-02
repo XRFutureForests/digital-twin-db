@@ -51,7 +51,7 @@ Every table's columns, types, nullability, defaults, foreign keys (with `ON DELE
 | `trees` | 29 | Tree measurements per forest state, simulator output, tree structure | trees, stems, phenology_observations, simulation_runs, growth_simulations, qsms, qsm_cylinders, tree_graph_edges, roots, crown_foliage_profiles, morphology lookups |
 | `sensor` | 5 | Environmental sensor hardware and time-series | sensor_types, sensors, sensor_readings, sensor_tree_links, units |
 | `environments` | 1 | Climate and soil per location, scenario and period | environments |
-| `pointclouds` | 3 | LiDAR scan data and processing lineage | point_clouds, scanner_types, scanners |
+| `point_clouds` | 3 | LiDAR scan data and processing lineage | point_clouds, scanner_types, scanners |
 | `imagery` | 1 | Aerial and ground-based images | images |
 | `forest_floor` | 2 | Plot/site-level surveys, not tied to a single tree | deadwood, ground_vegetation |
 | `public` | — | PostgREST API views over the schemas above | Views only — no data |
@@ -281,11 +281,11 @@ QSM (Quantitative Structure Model) reconstructions and their cylinder geometry, 
 
 **Lookup data source:** `data/lookups/root_system_types.csv`
 
-### 3.8 `pointclouds.point_clouds`
+### 3.8 `point_clouds.point_clouds`
 
 Original scans and processed derivatives share the table, linked via `parent_point_cloud_id`. File content is in S3; `file_path` must match `^s3://<bucket>/….(las|laz|ply)$`. `processing_status` is NULL for original scans. `variant_name` is required.
 
-**S3 helper functions:** `pointclouds.get_s3_bucket(file_path)`, `pointclouds.get_s3_key(file_path)`, `pointclouds.validate_s3_uri(file_path)`
+**S3 helper functions:** `point_clouds.get_s3_bucket(file_path)`, `point_clouds.get_s3_key(file_path)`, `point_clouds.validate_s3_uri(file_path)`
 
 ### 3.9 `sensor.sensors` and `sensor.units`
 
@@ -339,7 +339,7 @@ Field-level change tracking: one row per changed field, linked to the entity thr
 | `trees.trees` | `shared.audit_log_trees` |
 | `trees.stems` | `shared.audit_log_stems` |
 | `trees.phenology_observations` | `shared.audit_log_phenology_observations` |
-| `pointclouds.point_clouds` | `shared.audit_log_point_clouds` |
+| `point_clouds.point_clouds` | `shared.audit_log_point_clouds` |
 | `environments.environments` | `shared.audit_log_environments` |
 
 Point-cloud and phenology updates went unlogged from the 2026-09-23 renames until migration `20261030120000`. Inserts and deletes are not audited by the trigger.
@@ -385,7 +385,7 @@ Every constraint is listed per table in [database-dictionary.md](database-dictio
 | `trees.trees` | `location_id` | `shared.locations` | CASCADE |
 | `trees.trees` | `variant_id` | `shared.variants` | SET NULL |
 | `trees.trees` | `parent_tree_id` | `trees.trees` | SET NULL |
-| `trees.trees` | `point_cloud_id` | `pointclouds.point_clouds` | SET NULL |
+| `trees.trees` | `point_cloud_id` | `point_clouds.point_clouds` | SET NULL |
 | `trees.trees` | `data_source_type_id` | `trees.data_source_types` | SET NULL |
 | `trees.stems` | `tree_id` | `trees.trees` | CASCADE |
 | `trees.growth_simulations` | `simulation_run_id` | `trees.simulation_runs` | CASCADE |
@@ -393,7 +393,7 @@ Every constraint is listed per table in [database-dictionary.md](database-dictio
 | `sensor.sensor_readings` | `sensor_id` | `sensor.sensors` | CASCADE |
 | `sensor.sensor_tree_links` | `sensor_id` | `sensor.sensors` | CASCADE |
 | `sensor.sensor_tree_links` | `tree_id` | `trees.trees` | CASCADE |
-| `pointclouds.point_clouds` | `location_id` | `shared.locations` | CASCADE |
+| `point_clouds.point_clouds` | `location_id` | `shared.locations` | CASCADE |
 | `imagery.images` | `location_id` | `shared.locations` | CASCADE |
 | `shared.attribute_provenance` | `process_id` | `shared.processes` | RESTRICT |
 
@@ -403,7 +403,7 @@ Every constraint is listed per table in [database-dictionary.md](database-dictio
 |-------|-----------|-------------|
 | `trees.trees` | `height_m > 0 AND height_m <= 200` | Plausible tree height range |
 | `trees.trees` | `crown_base_height_m <= height_m` | Physical constraint |
-| `pointclouds.point_clouds` | `file_path ~ '^s3://...(las\|laz\|ply)$'` | S3 URI format validation |
+| `point_clouds.point_clouds` | `file_path ~ '^s3://...(las\|laz\|ply)$'` | S3 URI format validation |
 | `sensor.sensor_readings` | `quality IN (good, suspect, bad, missing, calibration)` | Valid quality flags |
 | `sensor.sensor_readings` | UNIQUE `(sensor_id, timestamp)` | Idempotent bulk insert support |
 | `shared.locations` | `slope_deg BETWEEN 0 AND 90` | Valid slope range |
@@ -426,7 +426,7 @@ The WGS84 working geometry columns have GIST indexes. Not indexed: the original-
 | `shared.plots` | `boundary`, `center_point` | Sub-plot spatial queries |
 | `trees.trees` | `position`, `crown_boundary` | Tree position and crown overlap queries |
 | `sensor.sensors` | `position` | Sensor proximity queries |
-| `pointclouds.point_clouds` | `scan_bounds` | Point cloud coverage queries |
+| `point_clouds.point_clouds` | `scan_bounds` | Point cloud coverage queries |
 | `imagery.images` | `position` | Camera position queries |
 | `forest_floor.deadwood` | `position` | Deadwood position queries |
 
@@ -436,7 +436,7 @@ The WGS84 working geometry columns have GIST indexes. Not indexed: the original-
 |-------|-------|---------|
 | `sensor.sensor_readings` | UNIQUE `(sensor_id, timestamp)` | Primary time-series access pattern and idempotent insert |
 | `sensor.sensor_readings` | `(timestamp DESC)` | Cross-sensor time range queries |
-| `pointclouds.point_clouds` | `(scan_date DESC)` | Latest scan retrieval |
+| `point_clouds.point_clouds` | `(scan_date DESC)` | Latest scan retrieval |
 | `trees.trees` | `(measurement_date DESC)` | Latest measurement retrieval |
 
 ### 5.3 Lineage Indexes

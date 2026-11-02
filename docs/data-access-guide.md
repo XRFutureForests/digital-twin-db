@@ -323,7 +323,7 @@ UPDATE trees.trees SET height_m = 22.5 WHERE tree_id = 1234;
 UPDATE trees.stems SET dbh_cm = 31.2 WHERE stem_id = 5678;
 ```
 
-**Automatic audit logging:** AFTER UPDATE triggers on `trees.trees`, `trees.stems`, `trees.phenology_observations`, `environments.environments`, and `pointclouds.point_clouds` log changes to the fields below into `shared.audit_log`. The log records the field name, old value, new value, timestamp, and the GoTrue user ID of whoever made the change. No manual action is required. `forest_floor.deadwood` and `forest_floor.ground_vegetation` are not audited (site/plot-level surveys, not per-tree records). Set `app.change_reason` with `SET LOCAL` before an UPDATE to record why a value changed.
+**Automatic audit logging:** AFTER UPDATE triggers on `trees.trees`, `trees.stems`, `trees.phenology_observations`, `environments.environments`, and `point_clouds.point_clouds` log changes to the fields below into `shared.audit_log`. The log records the field name, old value, new value, timestamp, and the GoTrue user ID of whoever made the change. No manual action is required. `forest_floor.deadwood` and `forest_floor.ground_vegetation` are not audited (site/plot-level surveys, not per-tree records). Set `app.change_reason` with `SET LOCAL` before an UPDATE to record why a value changed.
 
 Audited fields (as recorded in `audit_log.field_name`):
 
@@ -332,7 +332,7 @@ Audited fields (as recorded in `audit_log.field_name`):
 | `trees.trees` | `Height_m`, `crown_width_m`, `crown_base_height_m`, `volume_m3`, `age_years`, `biomass_kg`, `carbon_content_kg`, `health_score`, `tree_status_id` |
 | `trees.stems` | `DBH_cm`, `stem_height_m`, `stem_volume_m3` |
 | `environments.environments` | `avg_temperature_c`, `stress_factor` |
-| `pointclouds.point_clouds` | `processing_status` |
+| `point_clouds.point_clouds` | `processing_status` |
 | `trees.phenology_observations` | `phenophase_status`, `intensity_percent` |
 
 The point-cloud and phenology entries log again since migration `20261030120000`; before it,

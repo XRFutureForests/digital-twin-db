@@ -27,7 +27,7 @@ DOMAIN_SCHEMAS = (
     "shared",
     "trees",
     "sensor",
-    "pointclouds",
+    "point_clouds",
     "environments",
     "imagery",
     "forest_floor",
@@ -52,7 +52,7 @@ KNOWN = {
 # a self-reference or a named role. Each is a decision, not drift.
 ROLE_QUALIFIED_FKS = {
     "environments.environments.parent_environment_id",
-    "pointclouds.point_clouds.parent_point_cloud_id",
+    "point_clouds.point_clouds.parent_point_cloud_id",
     "shared.variants.parent_variant_id",
     "trees.trees.parent_tree_id",
     # A natural-key FK with a role qualifier: the *typical* unit for a sensor

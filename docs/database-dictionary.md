@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261030120000_close_anon_writes_and_fix_audit`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261102100000_rename_pointclouds_schema`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -14,7 +14,7 @@ same name in `public` (listed at the end); write and read through those.
 | [`trees`](#trees) | 29 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
 | [`sensor`](#sensor) | 5 | Sensors, their time series, units, sensor-tree links |
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
-| [`pointclouds`](#pointclouds) | 3 | Point clouds and scanners |
+| [`point_clouds`](#point_clouds) | 3 | Point clouds and scanners |
 | [`imagery`](#imagery) | 1 | Images |
 | [`forest_floor`](#forest_floor) | 2 | Plot-level dead wood and ground vegetation surveys |
 
@@ -105,7 +105,7 @@ Links audit log entries to point cloud records
 | Column | Type | Null | Default | References | Description |
 |---|---|---|---|---|---|
 | `audit_log_id` | bigint |  |  | `shared.audit_log.audit_log_id` (cascade) |  |
-| `point_cloud_id` | integer |  |  | `pointclouds.point_clouds.point_cloud_id` (cascade) |  |
+| `point_cloud_id` | integer |  |  | `point_clouds.point_clouds.point_cloud_id` (cascade) |  |
 
 Constraints: primary key (audit_log_id, point_cloud_id).
 
@@ -365,7 +365,7 @@ Links process parameters to point cloud records
 | Column | Type | Null | Default | References | Description |
 |---|---|---|---|---|---|
 | `process_parameter_id` | integer |  |  | `shared.process_parameters.process_parameter_id` (cascade) |  |
-| `point_cloud_id` | integer |  |  | `pointclouds.point_clouds.point_cloud_id` (cascade) |  |
+| `point_cloud_id` | integer |  |  | `point_clouds.point_clouds.point_cloud_id` (cascade) |  |
 
 Constraints: primary key (process_parameter_id, point_cloud_id).
 
@@ -800,7 +800,7 @@ QSM (Quantitative Structure Model) reconstructions -- one row per reconstruction
 | `qsm_id` | bigint |  | serial |  |  |
 | `tree_entity_id` | uuid |  |  |  | Stable physical-tree identity (trees.trees.tree_entity_id) -- groups QSMs of the same tree across scans/tools/parameter sets |
 | `tree_id` | integer |  |  | `trees.trees.tree_id` (cascade) |  |
-| `point_cloud_id` | integer | yes |  | `pointclouds.point_clouds.point_cloud_id` (set null) |  |
+| `point_cloud_id` | integer | yes |  | `point_clouds.point_clouds.point_cloud_id` (set null) |  |
 | `process_id` | integer | yes |  | `shared.processes.process_id` (set null) |  |
 | `lod` | smallint | yes |  |  | CityGML representation level of detail, 0-4: 0 = 2D footprint, 1 = 2.5D height/root depth, 2 = crown + trunk as separable volumes, 3 = 3D morphological structure, 4 = internal detail plus structured semantics. This is the ONLY meaning of "LoD" in this database. It is not a rendering resolution and not a count of which parts exist -- for those see the render-resolution and structural-detail axes in docs/level-of-detail-vocabulary.md (XRFF-404). |
 | `local_crs` | text | yes |  |  | CRS of the cylinder coordinates in trees.qsmcylinders, or the literal value 'local' if none |
@@ -987,7 +987,7 @@ Tree measurement and simulation records with spatial positions
 | `tree_entity_id` | uuid | yes | `gen_random_uuid()` |  | Persistent UUID identifying the physical tree across all variants |
 | `variant_id` | integer | yes |  | `shared.variants.variant_id` (set null) | Forest state group — all trees sharing this variant_id belong to the same time step within a scenario. Use for UE time-travel switching. |
 | `parent_tree_id` | integer | yes |  | `trees.trees.tree_id` (set null) | Parent tree record for tracking growth or modifications |
-| `point_cloud_id` | integer | yes |  | `pointclouds.point_clouds.point_cloud_id` (set null) | Source point cloud if tree was detected from LiDAR |
+| `point_cloud_id` | integer | yes |  | `point_clouds.point_clouds.point_cloud_id` (set null) | Source point cloud if tree was detected from LiDAR |
 | `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) | Data collection campaign this measurement belongs to |
 | `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
 | `plot_id` | integer | yes |  | `shared.plots.plot_id` (set null) | Sub-plot within the location where tree is located |
@@ -1199,26 +1199,26 @@ Environmental condition variants derived from sensors, models, or user input
 
 Constraints: `CHECK (((avg_co2_ppm >= (200)::numeric) AND (avg_co2_ppm <= (2000)::numeric)))`; `CHECK ((avg_global_radiation_w_m2 >= (0)::numeric))`; `CHECK (((avg_humidity_percent >= (0)::numeric) AND (avg_humidity_percent <= (100)::numeric)))`; `CHECK (((avg_soil_moisture_percent >= (0)::numeric) AND (avg_soil_moisture_percent <= (100)::numeric)))`; `CHECK (((avg_soil_temperature_c >= ('-20'::integer)::numeric) AND (avg_soil_temperature_c <= (40)::numeric)))`; `CHECK (((avg_temperature_c >= ('-50'::integer)::numeric) AND (avg_temperature_c <= (60)::numeric)))`; `CHECK (((avg_wind_speed_ms >= (0)::numeric) AND (avg_wind_speed_ms <= (100)::numeric)))`; `CHECK (((dominant_wind_direction_deg >= (0)::numeric) AND (dominant_wind_direction_deg < (360)::numeric)))`; `CHECK (((end_date IS NULL) OR (start_date IS NULL) OR (end_date >= start_date)))`; `CHECK ((nutrient_nitrogen_mg_kg >= (0)::numeric))`; `CHECK ((nutrient_phosphorus_mg_kg >= (0)::numeric))`; `CHECK ((nutrient_potassium_mg_kg >= (0)::numeric))`; `CHECK (((soil_ph >= (3)::numeric) AND (soil_ph <= (10)::numeric)))`; `CHECK (((stress_factor >= (0)::numeric) AND (stress_factor <= (1)::numeric)))`; `CHECK ((total_precipitation_mm >= (0)::numeric))`; primary key (environment_id).
 
-## pointclouds
+## point_clouds
 
 Point clouds and scanners
 
-[`point_clouds`](#pointcloudspoint_clouds) · [`scanner_types`](#pointcloudsscanner_types) · [`scanners`](#pointcloudsscanners)
+[`point_clouds`](#point_cloudspoint_clouds) · [`scanner_types`](#point_cloudsscanner_types) · [`scanners`](#point_cloudsscanners)
 
-### pointclouds.point_clouds
+### point_clouds.point_clouds
 
 LiDAR point cloud variants - original scans and processed results
 
 | Column | Type | Null | Default | References | Description |
 |---|---|---|---|---|---|
 | `point_cloud_id` | integer |  | serial |  | Unique identifier for this point cloud record |
-| `parent_point_cloud_id` | integer | yes |  | `pointclouds.point_clouds.point_cloud_id` (set null) | Parent point cloud for processing lineage tracking |
+| `parent_point_cloud_id` | integer | yes |  | `point_clouds.point_clouds.point_cloud_id` (set null) | Parent point cloud for processing lineage tracking |
 | `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
 | `scenario_id` | integer | yes |  | `shared.scenarios.scenario_id` (set null) |  |
 | `variant_type_id` | integer |  |  | `shared.variant_types.variant_type_id` |  |
 | `process_id` | integer | yes |  | `shared.processes.process_id` (set null) |  |
 | `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) | Data collection campaign this scan belongs to |
-| `scanner_id` | integer | yes |  | `pointclouds.scanners.scanner_id` (set null) | Physical scanner hardware used for this scan |
+| `scanner_id` | integer | yes |  | `point_clouds.scanners.scanner_id` (set null) | Physical scanner hardware used for this scan |
 | `variant_name` | character varying(300) |  |  |  |  |
 | `scan_date` | timestamp with time zone | yes |  |  |  |
 | `sensor_model` | character varying(200) | yes |  |  |  |
@@ -1243,7 +1243,7 @@ LiDAR point cloud variants - original scans and processed results
 
 Constraints: `CHECK ((file_path ~ '^s3://[a-z0-9][a-z0-9\-]*[a-z0-9]/.*\.(las|laz|ply)$'::text))`; `CHECK ((file_size_mb >= (0)::numeric))`; `CHECK ((flight_altitude_m > (0)::numeric))`; `CHECK ((flight_speed_ms >= (0)::numeric))`; `CHECK (((overlap_percent >= (0)::numeric) AND (overlap_percent <= (100)::numeric)))`; `CHECK (((platform_type)::text = ANY (ARRAY[('terrestrial'::character varying)::text, ('aerial'::character varying)::text, ('mobile'::character varying)::text, ('UAV'::character varying)::text])))`; `CHECK ((point_count >= 0))`; `CHECK ((point_density_per_m2 >= (0)::numeric))`; `CHECK (((processing_progress >= (0)::numeric) AND (processing_progress <= (100)::numeric)))`; `CHECK (((processing_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))`; `CHECK (((scan_angle_deg >= (0)::numeric) AND (scan_angle_deg <= (360)::numeric)))`; primary key (point_cloud_id).
 
-### pointclouds.scanner_types
+### point_clouds.scanner_types
 
 LiDAR scanner type classifications and manufacturers
 
@@ -1256,14 +1256,14 @@ LiDAR scanner type classifications and manufacturers
 
 Constraints: primary key (scanner_type_id); unique (scanner_type_name).
 
-### pointclouds.scanners
+### point_clouds.scanners
 
 Individual LiDAR scanner hardware instances
 
 | Column | Type | Null | Default | References | Description |
 |---|---|---|---|---|---|
 | `scanner_id` | integer |  | serial |  |  |
-| `scanner_type_id` | integer |  |  | `pointclouds.scanner_types.scanner_type_id` |  |
+| `scanner_type_id` | integer |  |  | `point_clouds.scanner_types.scanner_type_id` |  |
 | `serial_number` | character varying(100) | yes |  |  | Unique hardware serial number |
 | `acquisition_date` | date | yes |  |  | Date scanner was acquired |
 | `calibration_date` | date | yes |  |  | Last calibration date |
@@ -1366,7 +1366,7 @@ Constraints: `CHECK (((cover_percent >= (0)::numeric) AND (cover_percent <= (100
 |---|---|
 | `environments.active_environments` | Currently active environment variants with location and scenario context |
 | `environments.location_environment_summary` | Summary statistics of environmental conditions by location |
-| `pointclouds.processing_lineage` | Recursive view showing point cloud processing lineage and depth |
+| `point_clouds.processing_lineage` | Recursive view showing point cloud processing lineage and depth |
 | `sensor.active_sensors_status` | Active sensors with their latest reading information |
 | `sensor.sensor_tree_view` | View showing relationships between sensors and trees with detailed information |
 | `shared.recent_changes` | Unified view of recent changes across all audited tables |

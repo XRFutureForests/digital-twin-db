@@ -431,7 +431,7 @@ Configuration (defaults from `.env.example`):
 | `POOLER_PROXY_PORT_TRANSACTION` | `6543` | |
 | `POOLER_TENANT_ID` | `digital-forest-twin-local` | pooler username is `postgres.<POOLER_TENANT_ID>` |
 | `POOLER_DEFAULT_POOL_SIZE`, `POOLER_MAX_CLIENT_CONN`, `POOLER_DB_POOL_SIZE` | `20`, `100`, `5` | |
-| `PGRST_DB_SCHEMAS` | `public,storage,graphql_public,shared,pointclouds,trees,sensor,environments,imagery` | schemas PostgREST exposes |
+| `PGRST_DB_SCHEMAS` | `public,storage,graphql_public,shared,point_clouds,trees,sensor,environments,imagery` | schemas PostgREST exposes |
 | `SITE_URL`, `API_EXTERNAL_URL`, `SUPABASE_PUBLIC_URL` | `localhost` URLs | server: `https://dt.unr.uni-freiburg.de/db` |
 | `DISABLE_SIGNUP` | `true` | accounts are created by curators (XRFF-435) |
 | `PGDATA_PATH`, `STORAGE_PATH` | unset (named volume `db-data`, `./volumes/storage`) | server: `/media/data/dftdb/{pgdata,storage}` |

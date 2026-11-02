@@ -30,14 +30,14 @@ DICT_PATH = REPO_ROOT / "docs" / "database-dictionary.md"
 DBML_PATH = REPO_ROOT / "docs" / "database-erd.dbml"
 
 # Keep in sync with the CREATE SCHEMA statements in docker/volumes/db/init/.
-SCHEMAS = ["shared", "trees", "sensor", "environments", "pointclouds", "imagery", "forest_floor"]
+SCHEMAS = ["shared", "trees", "sensor", "environments", "point_clouds", "imagery", "forest_floor"]
 
 SCHEMA_NOTES = {
     "shared": "Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit",
     "trees": "Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups",
     "sensor": "Sensors, their time series, units, sensor-tree links",
     "environments": "Climate and soil per location, scenario and period",
-    "pointclouds": "Point clouds and scanners",
+    "point_clouds": "Point clouds and scanners",
     "imagery": "Images",
     "forest_floor": "Plot-level dead wood and ground vegetation surveys",
 }

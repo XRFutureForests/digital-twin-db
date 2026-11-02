@@ -75,7 +75,7 @@ Details: [docs/derived-value-provenance.md](docs/derived-value-provenance.md),
 |--------|-------|
 | `shared` | locations, plots, scenarios, management_regimes, climate_pathways, variants, variant_types, species, campaigns, soil_types, climate_zones, management_events, disturbance_events, processes and process_parameters, attribute_provenance, processing_jobs, audit_log, account_events |
 | `trees` | trees (persistent `tree_entity_id`), stems, phenology_observations, growth_simulations + simulation_runs, qsms + qsm_cylinders, tree_part_types + tree_graph_edges, roots, crown_foliage_profiles, tree_status and classification tables |
-| `pointclouds` | point_clouds (file paths, processing status and lineage), scanner_types, scanners |
+| `point_clouds` | point_clouds (file paths, processing status and lineage), scanner_types, scanners |
 | `sensor` | sensors, sensor_types, units, sensor_readings, sensor_tree_links |
 | `environments` | environments: temperature, humidity, soil moisture, nutrients, from sensors, manual entry or models |
 | `imagery` | images with spatial metadata and camera parameters |
@@ -126,7 +126,7 @@ Writing from scripts with a user account, and what a valid tree row needs:
 | Site attributes, climate, soil | RPCs `set_location_attributes` and `upsert_environment`, with provenance per value |
 | Growth projections | written as new variants of a scenario, never over the measured state |
 | QSMs | rTwig standardised cylinder CSV through `scripts/import/import_qsm.py` |
-| Point clouds | registered in `pointclouds.point_clouds` with lineage; the files stay in storage |
+| Point clouds | registered in `point_clouds.point_clouds` with lineage; the files stay in storage |
 
 Step by step: [RUNBOOK.md](RUNBOOK.md) section 3.
 
