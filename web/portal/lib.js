@@ -202,6 +202,11 @@
   function refreshWho() {
     var who = document.getElementById("topWho");
     if (!who) return;
+    // Re-read the stored session: the job page signs in and out itself.
+    try {
+      var raw = sessionStorage.getItem(TOKEN_KEY);
+      session = raw ? JSON.parse(raw) : null;
+    } catch (err) { /* keep what we have */ }
     who.innerHTML = "";
     if (session && session.user) {
       who.appendChild(document.createTextNode(session.user.email + " "));

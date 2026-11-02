@@ -1,6 +1,8 @@
 <!doctype html>
 <!--
-  Docs page: how the database is organised, where the reference documentation
+  Docs page: what the lab means by a forest digital twin (short form of the
+  knowledge hub's 01-PROJECT-OVERVIEW/forest-digital-twin-definition), how the
+  database is organised, where the reference documentation
   lives, and which repository does what.
 
   The schema map is hand-drawn, because what matters is how the core tables
@@ -37,10 +39,43 @@
 <div class="wrap">
   <h1>Docs</h1>
   <p class="sub">
-    How the twin's data is organised, where the full reference lives, and which
+    What we mean by a forest digital twin, how its data is organised, where the full reference lives, and which
     repository does what. For calling the API, see the <a href="/portal/api/">API guide</a>;
     to look at the data itself, the <a href="/portal/data/">data page</a>.
   </p>
+
+  <div class="panel feature">
+    <h2>What we mean by a forest digital twin</h2>
+    <p>
+      A forest digital twin is a digital counterpart of one identifiable real
+      forest, built for a stated purpose. Ours serves research and teaching: it
+      lets researchers and students walk through the lab's research forests in VR,
+      starting with ECOSENSE, see what the sensors measure, and compare how the forest develops under
+      different management and climate. A twin has three parts:
+    </p>
+    <ul>
+      <li><strong>Structure, from measurement.</strong> Which trees stand where, with
+        species, height, diameter and crown. Today it comes from the field inventory.
+        LiDAR scans are the second source, being connected now: single trees are
+        derived from the point clouds on the <a href="https://3dtrees.earth">3DTrees
+        platform</a> and pushed into this database. Terrain and live sensors (sap flow, soil
+        moisture, temperature, CO<sub>2</sub>) complete the picture.</li>
+      <li><strong>Function, from process models.</strong> The SILVA growth model
+        projects every tree in 5-year steps to 2075, once for each combination of
+        management regime and climate pathway. Each projected state is stored as a
+        new variant beside the measured one, never written over it, so a
+        measurement and a model output are never confused.</li>
+      <li><strong>A link back to the forest, through people.</strong> The VR scenes
+        and dashboards show researchers, students and practitioners what the data
+        and the projections mean. Nothing in the system acts on the forest by
+        itself; in engineering terms it is a digital shadow with a strong
+        presentation layer.</li>
+    </ul>
+    <p class="help">
+      Working definition of the XR Future Forests Lab, October 2026. The database
+      below is the single source for the VR scenes and the dashboards.
+    </p>
+  </div>
 
   <div class="panel">
     <h2>The data model in five sentences</h2>

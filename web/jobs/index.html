@@ -24,124 +24,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Request a job — Forest Digital Twin</title>
+<link rel="stylesheet" href="/portal/portal.css">
 <style>
-  /* Same tokens as web/portal/portal.css (XR Future Forests Lab design spec on
-     the University of Freiburg CD); see the comment there. */
-  :root {
-    --font: Social, Arial, "Helvetica Neue", Helvetica, sans-serif;
-    --bg: #ffffff;
-    --panel: #ffffff;
-    --ink: #2a2a2a;
-    --heading: #000149;
-    --muted: #5c5c5c;
-    --line: #e9e1d6;
-    --field: #8a8a8a;
-    --accent: #00856c;
-    --accent-ink: #ffffff;
-    --warn: #8f6b30;
-    --err: #b60000;
-    --ok: #00856c;
-    --code-bg: #faf8f1;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #222222;
-      --panel: #2a2a2a;
-      --ink: #f2f2f2;
-      --heading: #ffffff;
-      --muted: #b0b0b0;
-      --line: #3d3d3d;
-      --accent: #27b29b;
-      --accent-ink: #1f1f1f;
-      --warn: #d2c4ac;
-      --err: #ff8a80;
-      --ok: #27b29b;
-      --code-bg: #1f1f1f;
-    }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    padding-block: 24px;
-    padding-inline: 20px;
-    background: var(--bg);
-    color: var(--ink);
-    font: 15px/1.5 var(--font);
-  }
-  .wrap { max-width: 940px; margin: 0 auto; }
-  h1 { font-size: 24px; margin: 0 0 4px; font-weight: 600; color: var(--heading); }
-  h2 { font-size: 17px; margin: 0 0 12px; font-weight: 600; color: var(--heading); }
-  .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 0;
-    padding: 18px;
-    margin-bottom: 18px;
-  }
-  label { display: block; font-weight: 500; margin-bottom: 4px; font-size: 14px; }
-  .help { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
-  input[type=text], input[type=email], input[type=password], input[type=number], select {
-    width: 100%;
-    padding: 7px 9px;
-    border: 1px solid var(--field);
-    border-radius: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font: inherit;
-    font-size: 14px;
-  }
-  input[type=checkbox] { width: auto; margin-right: 8px; }
-  button {
-    background: var(--accent);
-    color: var(--accent-ink);
-    border: 0;
-    border-radius: 0;
-    padding: 8px 16px;
-    font: inherit;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  button.secondary {
-    background: transparent;
-    color: var(--ink);
-    border: 1px solid var(--line);
-  }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-  .row > * { flex: 1 1 220px; }
-  .row > button { flex: 0 0 auto; }
-  .field { margin-bottom: 14px; }
-  .req::after { content: " *"; color: var(--err); }
-  .msg { padding: 10px 12px; border-radius: 0; font-size: 14px; margin-bottom: 14px; }
-  .msg.err { background: color-mix(in srgb, var(--err) 12%, transparent); color: var(--err); }
-  .msg.ok  { background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: 500; font-size: 13px; }
-  .tablewrap { overflow-x: auto; }
-  .badge { font-size: 12px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  /* The shared look, logo band and top bar come from the portal
+     (web/portal/portal.css, XR Future Forests Lab design spec); only what is
+     particular to this page lives here. */
   .badge.pending   { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
   .badge.running   { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
   .badge.completed { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
   .badge.failed    { background: color-mix(in srgb, var(--err) 18%, transparent); color: var(--err); }
-  pre {
-    background: var(--code-bg);
-    border: 1px solid var(--line);
-    border-radius: 0;
-    padding: 10px;
-    overflow-x: auto;
-    font-size: 12.5px;
-    margin: 8px 0 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
   .linkish {
     background: none; border: 0; color: var(--accent);
     padding: 0; font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline;
   }
+  .linkish:hover:not(:disabled) { background: none; color: var(--accent-hover); }
   .who { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-  code { background: var(--code-bg); padding: 1px 5px; border-radius: 0; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -235,6 +132,10 @@
 
 <!-- Config first: the page reads window.DFTDB on load. -->
 <script src="config.js"></script>
+<script src="/portal/lib.js"></script>
+<script>
+Portal.topbar("/jobs/");
+</script>
 <script>
 (function () {
   "use strict";
@@ -269,6 +170,8 @@
       if (s) sessionStorage.setItem(TOKEN_KEY, JSON.stringify(s));
       else sessionStorage.removeItem(TOKEN_KEY);
     } catch (err) { /* private mode; the session just will not survive a reload */ }
+    // Keep the shared top bar's "signed in as" in step with this page.
+    if (window.Portal) Portal.refreshWho();
   }
 
   function headers(auth) {

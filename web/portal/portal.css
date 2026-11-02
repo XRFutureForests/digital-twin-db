@@ -18,8 +18,8 @@
   --ink: #2a2a2a;
   --heading: #000149;       /* CD Dunkelblau, as on uni-freiburg.de */
   --muted: #5c5c5c;
-  --line: #e9e1d6;
-  --field: #8a8a8a;        /* form borders, 3.4:1 on white, 4.7:1 on dark */          /* CD Braun 20 % */
+  --line: #e9e1d6;          /* CD Braun 20 % */
+  --field: #8a8a8a;         /* form borders, 3.4:1 on white, 4.7:1 on dark */
   --brand: #00a082;         /* CD Grün 100 %, the lab logo colour */
   --accent: #00856c;        /* derived: CD green for text and buttons */
   --accent-hover: #006e59;  /* derived */
@@ -98,6 +98,8 @@ h3 { font-size: 15px; margin: 14px 0 6px; font-weight: 600; color: var(--heading
   padding: 18px;
   margin-bottom: 18px;
 }
+.panel.feature { border-left: 4px solid var(--brand); }
+.panel.feature p:last-child { margin-bottom: 0; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 18px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--brand);
         padding: 16px; display: flex; flex-direction: column; }
