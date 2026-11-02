@@ -342,7 +342,7 @@ Changes to other fields (e.g., `species_id`, `measurement_date`) are not audited
 ```sql
 IF OLD.your_field IS DISTINCT FROM NEW.your_field THEN
     PERFORM shared.create_audit_log(
-        'Trees', record_id, 'your_field',
+        'trees', record_id, 'your_field',
         OLD.your_field::TEXT, NEW.your_field::TEXT,
         v_reason, 'field_update'
     );
@@ -352,8 +352,9 @@ END IF;
 **Querying audit history:**
 
 ```sql
--- All changes to a specific tree variant ('Trees', 'Stems', 'Environments', 'PointClouds', 'PhenologyObservations')
-SELECT * FROM shared.get_audit_history('Trees', 1234);
+-- All changes to a specific tree variant; the first argument is the table name
+-- ('trees', 'stems', 'environments', 'point_clouds', 'phenology_observations')
+SELECT * FROM shared.get_audit_history('trees', 1234);
 
 -- Recent changes across all tables
 SELECT * FROM shared.recent_changes ORDER BY timestamp DESC LIMIT 50;

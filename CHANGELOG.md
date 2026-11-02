@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   load its schema cache. Clients that select the base schema with `Accept-Profile: pointclouds`
   must send `point_clouds`.
 
+**Audit labels are table names**
+
+- `shared.create_audit_log()` and `shared.get_audit_history()` take the table name
+  (`'point_clouds'`, `'trees'`, `'environments'`, `'stems'`, `'phenology_observations'`) instead
+  of the CamelCase labels `'PointClouds'`, `'Trees'` and so on, and `shared.recent_changes.table_name`
+  returns the same names. Migration `20261102120000_audit_table_labels_snake_case` (init `73-`).
+  No stored data changes. A caller passing an old label now gets an error instead of an empty
+  history.
+
 **Fixed**
 
 - Inserting through `public.point_clouds`, `public.environments`, `public.sensors` or
