@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the 3 s anonymous limit; migration `20261102160000_stand_summaries_compute_once` (init `77-`)
   makes `shared.ef_value` inlinable (no `SET` clause) and computes each tree's factor once:
   1.5 s unfiltered and 9 ms per variant on dt.unr, so the portal can list and download it.
+  Migration `20261102170000_stand_summaries_one_pass` (init `78-`): `stand_summaries` gets the
+  all-species and per-species rows from one pass (`shared.estimate_stand_domains`) instead of
+  two calls per forest state; `estimate_stand` is unchanged for callers.
 - `public.simulation_runs` gains `holds_variant_chain`. `is_promoted` is never cleared when a
   later run takes the chain over (`--replace`), so a scenario can have several promoted runs;
   the newest holds the chain. No data changes.

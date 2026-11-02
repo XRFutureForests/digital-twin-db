@@ -128,8 +128,8 @@ GET /rest/v1/ue_stand_summary?variant_id=eq.<id>&by_species=is.false
 Because SILVA variants are tree rows like the baseline, the same view gives each scenario's
 per-hectare trajectory. On the census sites the values equal silva-connector's stand values.
 Always filter on `variant_id`: one variant takes about 0.1 s; all forest states of all sites
-(about 7,000 rows) take about 12 s, longer than the 3 s an anonymous request may run, so an
-unfiltered download of this view fails. `plot_summaries` (about 1.5 s on dt.unr) and
+(about 7,000 rows) take about 2–3 s, close to the 3 s an anonymous request may run, and grow
+with every forest state added. `plot_summaries` (about 1.5 s on dt.unr) and
 `tree_expansion_factors` work without a filter too: they resolve each plot once
 (`shared.plot_inclusion`) and compute each tree's factor once. Keep `shared.ef_value` free of
 a `SET` clause: a SQL function with one is never inlined, which made the summary 20 times
