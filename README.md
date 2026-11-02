@@ -222,4 +222,4 @@ If you use this database or its schema in a publication, please cite it. See
 [CITATION.cff](CITATION.cff) for machine-readable metadata, or:
 
 > Sperlich, M. (2026). Forest Digital Twin Database - A Supabase-powered PostgreSQL/PostGIS
-> Schema (Version 2.0.1). University of Freiburg. https://doi.org/10.5281/zenodo.21509858
+> Schema (Version 2.0.2). University of Freiburg. https://doi.org/10.5281/zenodo.21509858
