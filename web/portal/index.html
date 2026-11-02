@@ -28,11 +28,12 @@
 
   <h1>Forest Digital Twin</h1>
   <p class="sub">
-    Field measurements, sensors, LiDAR products and growth simulations for the
-    lab's forest sites, in one PostgreSQL/PostGIS database. Everything below
-    reads and writes that same database; pick the door that fits what you
-    want to do. What we mean by a forest digital twin is on the
-    <a href="/portal/docs/">docs page</a>.
+    A shared single-tree database for forest digital twins: field inventories,
+    trees derived from LiDAR, sensor time series and growth simulations, each
+    kept with where it came from. The data you bring is what the lab's VR
+    forests are built from. Everything below reads and writes that same
+    database; pick the door that fits what you want to do. What we mean by a
+    forest digital twin is on the <a href="/portal/docs/">docs page</a>.
   </p>
 
   <div class="cards">
@@ -50,6 +51,10 @@
       <p class="who">Account with the <code>contributor</code> role</p>
       <ul>
         <li><a href="/portal/data/">Add or correct data</a> — forms, or paste a CSV</li>
+        <li>Bringing a whole tree inventory? Prepare it with the
+          <a href="https://github.com/XRFutureForests/digital-twin-db/blob/main/data/templates/trees_import_template.csv">inventory CSV template</a>
+          and its <a href="https://github.com/XRFutureForests/digital-twin-db/blob/main/data/templates/DATA_PREPARATION_GUIDE.md">preparation guide</a>;
+          it is imported in one batch, so ask your curator or the lab</li>
         <li><a href="/jobs/">Run a model</a> — SILVA projections, syncs, batches</li>
       </ul>
     </div>

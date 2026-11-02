@@ -1,76 +1,75 @@
 # digital-twin-db
 
-The data tier of the forest digital twin — a self-hosted Supabase stack over PostgreSQL/PostGIS
-that holds the forest, its measurements, and every version of it through time.
+**A single-tree inventory database for forest digital twins.** PostgreSQL/PostGIS with a
+generated REST API, self-hosted as a Supabase stack.
 
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21509858-blue)](https://doi.org/10.5281/zenodo.21509858)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-A forest twin is not one dataset. It is tree inventories, LiDAR scans, sensor time series,
-imagery, growth projections and site conditions, all describing the same trees at different
-moments and from different instruments. This repo is the schema that lets them coexist
-without any one of them overwriting another — and the API that serves any of it to a VR
-scene, an R dashboard or an analysis script from a single flat query.
+Every tree is a record with a persistent identity. Field inventories, trees derived from LiDAR,
+sensor time series, site conditions and growth projections all attach to that record, each
+kept apart by where it came from, so nothing overwrites anything else. Any client reads the
+result through the same API: a VR scene, a dashboard, an analysis script in Python or R.
 
-## Where this sits
+It is meant for research groups and platforms that hold single-tree data and want one shared
+place for it, with the provenance kept.
 
-```mermaid
-flowchart TB
-    subgraph IN["writes in"]
-        AQ["aquarius-connector<br/>sensor readings"]
-        OD["open-data-connector<br/>climate · soil · weather"]
-        SV["silva-connector<br/>growth projections"]
-        IMP["scripts/import<br/>tree inventories"]
-    end
-    DB[("digital-twin-db<br/>PostgreSQL + PostGIS<br/>7 schemas")]
-    subgraph OUT["reads out"]
-        UE["Unreal Engine<br/>ue_trees · ue_sensors · ue_climate"]
-        DASH["digital-twin-dashboard<br/>R Shiny"]
-        API["REST API<br/>PostgREST"]
-    end
-    AQ & OD -- "public RPCs over REST" --> DB
-    SV -- "libpq, one transaction" --> DB
-    IMP -- "psycopg2" --> DB
-    DB --> UE & DASH & API
-```
+## Database architecture
 
-The data-provider connectors (aquarius, open-data) reach the database **only** through public
-RPCs over REST with the service-role key — no SQL, no package dependency in either direction —
-so a new data provider is a new connector repo rather than a change here. silva-connector and
-the dashboard are the deliberate exceptions: they read the base tables directly (silva-connector
-also writes them), as listed in [AGENTS.md](AGENTS.md#consumers-that-read-base-tables-directly).
-The import scripts in `scripts/import/` connect with psycopg2.
-
-## The idea that shapes the schema
-
-**Location → Scenario → Variant.**
+### The core model: one row per tree per forest state
 
 ```mermaid
 flowchart LR
-    L["Location<br/><i>ecosense</i>"] --> S1["Scenario<br/><i>natural_growth</i>"]
-    L --> S2["Scenario<br/><i>crop_tree_thinning_ssp370</i>"]
-    S1 --> V1["baseline_2025<br/><i>measured</i>"] --> V2["silva_2030"] --> V3["silva_2035"] --> V4["silva_2040"]
-    S2 --> W1["silva_2030"] --> W2["silva_2035"]
+    LOC["Location<br/><i>research site</i>"] --> PLOT["Plot"]
+    LOC --> SC["Scenario<br/><i>management regime ×<br/>climate pathway</i>"]
+    SC --> VAR["Variant<br/><i>one forest state,<br/>measured or simulated</i>"]
+    VAR --> TR["Tree<br/><i>one row per tree per variant,<br/>persistent tree_entity_id</i>"]
+    TR --> ST["Stems<br/><i>DBH</i>"]
+    TR --> STR["QSMs, branch graph,<br/>roots, crown profile"]
+    SP["Species"] --> TR
+    CA["Campaign<br/><i>collection event</i>"] --> TR
+    PR["Process<br/><i>method, version, parameters</i>"] -.-> TR
+    LOC --> SEN["Sensors"] --> RD["Readings"]
+    SEN -.-> TR
+    LOC --> ENV["Environments<br/><i>climate, soil per period</i>"]
+```
+
+A **location** is a site with its plots, sensors and site conditions. It owns **scenarios**,
+each one combination of a management regime (`shared.management_regimes`) and a climate
+pathway (`shared.climate_pathways`). A scenario owns a chain of **variants**
+(`shared.variants`): snapshots of the stand, one per time step or projection, linked by
+`parent_variant_id` so a client can walk the timeline.
+
+```mermaid
+flowchart LR
+    S1["Scenario<br/><i>natural_growth</i>"] --> V1["baseline_2025<br/><i>measured</i>"] --> V2["sim_2030"] --> V3["sim_2035"] --> V4["…"]
+    S2["Scenario<br/><i>thinning_ssp370</i>"] --> W1["sim_2030"] --> W2["sim_2035"]
     W1 -. "parent_variant_id" .-> V1
 ```
 
-A **Location** is a site. It owns its own **Scenarios**, each one combination of a management
-regime (`shared.management_regimes`) and a climate pathway (`shared.climate_pathways`), unique
-per location; scenarios of regime `none` (`ssp126` …) hold acquired climate data only. Each
-Scenario owns a chain of **Variants** (`shared.variants`) — snapshots of the stand, one per
-time step or projection, linked by `parent_variant_id`. The measured `baseline_2025` lives in
-`natural_growth`; every other projection chain starts from it.
+`trees.trees` holds **one row per tree per variant**. `tree_entity_id` stays the same for one
+physical tree across every measurement and projection, which is what lets
+`GET /rest/v1/ue_trees?variant_id=eq.<id>` return "the forest as it looked, or will look, at
+time X" in one flat query. It also means **every query against trees must filter on variant**,
+because a measured tree sits beside its projections. Point clouds and environments attach to
+a scenario rather than to a single variant.
 
-`trees.trees` holds one row per tree per variant (`variant_id`). That is what makes
-`GET /ue_trees?variant_id=eq.<id>` return "the forest as it looked, or will look, at time X"
-in one flat query — and it is why **every query against `trees.trees` must filter on variant**,
-since a measured tree sits there alongside its projections. `pointclouds.point_clouds` and
-`environments.environments` attach to a scenario (`scenario_id`, `variant_type_id` and a
-free-text `variant_name`), not to a variant row.
+Model, query patterns and examples: [docs/variant-scenario-model.md](docs/variant-scenario-model.md).
 
-Full model and query patterns: [docs/variant-scenario-model.md](docs/variant-scenario-model.md).
+### Provenance: a measurement and a model output are never confused
 
-## Seven schemas
+| Mechanism | What it records |
+|-----------|-----------------|
+| Variant type (`shared.variant_types`) | whether a whole forest state was measured or simulated; repeated on every tree row |
+| Campaign (`shared.campaigns`) | the collection event behind a measurement: `field_inventory`, `lidar_flight`, `drone_survey`, `sensor_deployment`, `manual_update` |
+| Process (`shared.processes`, `process_parameters`) | the method, version and parameters behind every derived or simulated value, through `process_id` |
+| Attribute provenance (`shared.attribute_provenance`) | source, version, licence and fetch time of each acquired site attribute |
+| Audit log | every field changed by an `UPDATE` on trees, stems, phenology, environments and point clouds, with the user who changed it; reversible |
+
+Details: [docs/derived-value-provenance.md](docs/derived-value-provenance.md),
+[docs/run-provenance.md](docs/run-provenance.md).
+
+### Seven schemas
 
 | Schema | Holds |
 |--------|-------|
@@ -78,56 +77,65 @@ Full model and query patterns: [docs/variant-scenario-model.md](docs/variant-sce
 | `trees` | trees (persistent `tree_entity_id`), stems, phenology_observations, growth_simulations + simulation_runs, qsms + qsm_cylinders, tree_part_types + tree_graph_edges, roots, crown_foliage_profiles, tree_status and classification tables |
 | `pointclouds` | point_clouds (file paths, processing status and lineage), scanner_types, scanners |
 | `sensor` | sensors, sensor_types, units, sensor_readings, sensor_tree_links |
-| `environments` | environments — temperature, humidity, soil moisture, nutrients, from sensors, manual entry or models |
+| `environments` | environments: temperature, humidity, soil moisture, nutrients, from sensors, manual entry or models |
 | `imagery` | images with spatial metadata and camera parameters |
-| `forest_floor` | deadwood, ground_vegetation — plot-level surveys, not tied to a tree |
+| `forest_floor` | deadwood, ground_vegetation: plot-level surveys, not tied to a tree |
 
 Every table and column: [docs/database-dictionary.md](docs/database-dictionary.md) (generated
-from the database).
-
-The `trees` QSM, part-type, graph-edge, root and crown-profile tables line up with the
-CityGML-conformant conceptual tree model of Ambarwari et al. (2024) — see
+from the database). The QSM, part-type, graph-edge, root and crown-profile tables follow the
+CityGML-conformant tree model of Ambarwari et al. (2024):
 [docs/citygml-qsm-mapping.md](docs/citygml-qsm-mapping.md).
 
-Most tables carry **row-level security**. **Audit logging** with user attribution records every
-field changed by an `UPDATE` on the tables whose values change after entry: `trees.trees`,
-`trees.stems`, `trees.phenology_observations`, `environments.environments`,
-`pointclouds.point_clouds`.
+### API and access
 
-## What the stack gives you
+The domain tables live in the seven schemas; the `public` schema holds only views, and
+PostgREST serves each of them as `/rest/v1/<view>`. There are pass-through views over single
+tables (`trees`, `stems`, `sensors`, `species`, …), composite views (`variants`,
+`growth_simulations`, `job_status`), and flat `ue_*` views (`ue_trees`, `ue_sensors`,
+`ue_climate`, …) for game engines and other clients that cannot join. Bulk and multi-step
+writes go through RPCs.
 
-PostgreSQL + PostGIS, PostgREST (auto-generated REST from the schema), a realtime WebSocket
-server, GoTrue auth with RLS, an S3-compatible storage API for point clouds, Deno edge
-functions, and Supabase Studio.
+```bash
+# every tree of one forest state, with species and DBH, as JSON
+curl "$API/rest/v1/ue_trees?variant_id=eq.1&select=tree_id,species_name,height_m,dbh_cm" \
+  -H "apikey: $ANON_KEY"
+```
 
-## Initialization is schema-only
+Row-level security decides every request from the caller's token:
 
-`docker compose up -d` gives you schemas, indexes, constraints, RLS policies, audit
-functions, API views, and reference data (species, soil types, climate zones) loaded from
-CSV — and **empty user tables**. Trees, sensors and readings are a separate, deliberate
-import step.
+| Caller | Can |
+|--------|-----|
+| anonymous | read every public view |
+| account without a role | the same, plus their own job history |
+| `contributor` | add field data; create and edit metadata (species, plots, sensors, campaigns, …); request model runs |
+| `curator` | also correct and delete field data; create accounts and grant `contributor` |
+| `admin` | also grant `curator` and `admin` |
+| `service_role` (connectors) | the bulk RPCs for sensors, readings and site data |
 
-| Files | What they do |
-|-------|--------------|
-| `10-baseline-schema.sql` | Point-in-time schema snapshot (2026-07-17) |
-| `11`–`29`, `29a`, `32`+ | Additive schema changes made since that snapshot — each adds, never restructures an earlier file's objects. A schema file the lookup loaders depend on must sort before `30-`; once `11`–`29` are used, add a letter suffix (`29a-`) |
-| `30`–`31` | Load the lookup CSVs and register their refresh functions |
+Endpoints, filters and the full write-rule table: [docs/api-spec.md](docs/api-spec.md).
+Writing from scripts with a user account, and what a valid tree row needs:
+[docs/data-access-guide.md](docs/data-access-guide.md).
 
-The gap around 30–31 is historical: the baseline consolidated the former 10–29 and 32–37
-files, and the two lookup files were left in place (background in the knowledge hub).
+## Bringing data in
 
-Keeping lookups in CSV means species or locations can be edited and refreshed without
-rebuilding the database. **A data fix in a lookup table needs both a migration and the CSV**
-— change only one and the next rebuild reverts it.
+| Data | Path in |
+|------|---------|
+| Field inventory | the 24-column CSV template [data/templates/trees_import_template.csv](data/templates/trees_import_template.csv) (only `LocationID`, `Latitude`, `Longitude` are required) through `scripts/import/import_trees.py`, or the data page of a running portal (form or pasted CSV). Preparing your own CSV: [DATA_PREPARATION_GUIDE.md](data/templates/DATA_PREPARATION_GUIDE.md) |
+| Single trees from LiDAR | derived by a point-cloud processing platform such as [3dtrees.earth](https://3dtrees.earth) and pushed in as measured trees with their campaign and process (being built) |
+| Sensor time series | provider-agnostic RPCs `bulk_upsert_sensors` and `bulk_insert_readings`, idempotent on `(sensor_id, timestamp)`; one small connector per provider |
+| Site attributes, climate, soil | RPCs `set_location_attributes` and `upsert_environment`, with provenance per value |
+| Growth projections | written as new variants of a scenario, never over the measured state |
+| QSMs | rTwig standardised cylinder CSV through `scripts/import/import_qsm.py` |
+| Point clouds | registered in `pointclouds.point_clouds` with lineage; the files stay in storage |
 
-Schema history lives in `supabase/migrations/` (Supabase CLI); the workflow is in
-[AGENTS.md](AGENTS.md).
+Step by step: [RUNBOOK.md](RUNBOOK.md) section 3.
 
-## Quick start
+## Running your own instance
 
 ```bash
 cd docker
-docker compose up -d      # ~30 s until all services report healthy
+cp .env.example .env      # then generate every secret, see RUNBOOK.md section 9
+docker compose up -d      # about 30 s until all services report healthy
 docker compose ps
 ```
 
@@ -137,23 +145,64 @@ docker compose ps
 | REST API (Kong) | <http://localhost:8000/rest/v1> |
 | PostgreSQL | `localhost:5432` (Supavisor pooler) |
 
-Production (dt.unr) serves the API only at `https://dt.unr.uni-freiburg.de/db` (REST under
-`/db/rest/v1`), on port 443; see [docs/deployment-guide.md](docs/deployment-guide.md).
+The stack is PostgreSQL + PostGIS, PostgREST, GoTrue auth with row-level security, a realtime
+WebSocket server, an S3-compatible storage API, Deno edge functions and Supabase Studio.
 
-Importing data, API usage, `psql` access, requesting jobs, reset, operation and troubleshooting are in
-**[RUNBOOK.md](RUNBOOK.md)**.
+A fresh start is **schema only**: schemas, indexes, constraints, policies, audit functions, API
+views and reference data (species, soil types, climate zones, loaded from CSV), with empty user
+tables. Data is a separate, deliberate import. Because the lookups live in CSV, a data fix in
+a lookup table needs both a migration and the CSV, or the next rebuild reverts it. Schema
+history is in `supabase/migrations/`; the change workflow is in [AGENTS.md](AGENTS.md).
 
-`docker/.env` holds database passwords, JWT secrets and API keys. It is gitignored — never
-commit it, and regenerate everything before any deployment.
+`docker/.env` holds database passwords, JWT secrets and API keys. It is gitignored: never
+commit it.
+
+Import, queries, jobs, reset, backup and troubleshooting: **[RUNBOOK.md](RUNBOOK.md)**.
+Production setup: [docs/deployment-guide.md](docs/deployment-guide.md).
+
+## The instance at the University of Freiburg
+
+The XR Future Forests Lab runs this database at
+**<https://dt.unr.uni-freiburg.de/portal/>**, reachable from the university network. The portal
+lets you browse and download any table without an account, add data with a contributor
+account, request model runs, and read a developer guide; the API is at
+`https://dt.unr.uni-freiburg.de/db/rest/v1/`. Accounts are created by your team's curator.
+
+In the lab's own pipeline, connectors feed the database and the twin is shown in Unreal Engine
+VR and R Shiny dashboards:
+
+```mermaid
+flowchart TB
+    subgraph IN["writes in"]
+        IMP["field inventory CSV"]
+        LID["3dtrees.earth<br/>single trees from LiDAR (being built)"]
+        AQ["aquarius-connector<br/>sensor readings"]
+        OD["open-data-connector<br/>climate · soil · weather"]
+        SV["silva-connector<br/>growth projections"]
+    end
+    DB[("digital-twin-db")]
+    subgraph OUT["reads out"]
+        UE["Unreal Engine VR<br/>ue_* views"]
+        DASH["R Shiny dashboards"]
+        API["portal, scripts<br/>REST API"]
+    end
+    IMP & LID & AQ & OD --> DB
+    SV -- "libpq, one transaction" --> DB
+    DB --> UE & DASH & API
+```
+
+Two of these consumers reach past the public views on purpose: silva-connector writes the
+base tables in one transaction, and the dashboards read them directly. The reasons are in
+[AGENTS.md](AGENTS.md#consumers-that-read-base-tables-directly).
 
 ## Documentation
 
 | You want | Read |
 |----------|------|
-| Install, import, API, reset, troubleshooting | [RUNBOOK.md](RUNBOOK.md) |
-| Schema data dictionary, API spec, data access, deployment | [docs/](docs/README.md) |
-| Why the variant model, the CityGML alignment, provenance design, scaling decisions | XR Future Forests Lab knowledge hub — `03-DATA-TIER/digital-twin-database` |
-| Unreal integration | knowledge hub — `05-PRESENTATION-TIER/data-fetcher-guide` |
+| Install, import, query, reset, operate | [RUNBOOK.md](RUNBOOK.md) |
+| Data dictionary, API spec, data access, deployment | [docs/](docs/README.md) |
+| The variant and scenario model | [docs/variant-scenario-model.md](docs/variant-scenario-model.md) |
+| Why the model looks like this (variants, CityGML alignment, provenance, scaling) | XR Future Forests Lab knowledge hub, `03-DATA-TIER/digital-twin-database` |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Release history | [CHANGELOG.md](CHANGELOG.md) |
 
