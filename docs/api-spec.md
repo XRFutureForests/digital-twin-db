@@ -143,7 +143,7 @@ Column lists are in the [Data Dictionary](database-dictionary.md) and in `GET /r
 
 ### 3.1 All Available Resources
 
-54 views. Everyone (including `anon`) can read every one of them; `job_status` returns only
+57 views. Everyone (including `anon`) can read every one of them; `job_status` returns only
 the caller's own jobs (all jobs for curators, `[]` for `anon`). "Write" is the tier a write
 through the view needs (I = insert, U = update, D = delete); "—" means the view is read-only
 over REST.
@@ -168,6 +168,9 @@ over REST.
 | `/rest/v1/sensors` | `sensor.sensors` | I/U/D contributor |
 | `/rest/v1/species` | `shared.species` | I/U/D contributor |
 | `/rest/v1/plots` | `shared.plots` | I/U/D contributor |
+| `/rest/v1/sampling_designs` | `shared.sampling_designs` | I/U/D contributor |
+| `/rest/v1/inclusion_rules` | `shared.inclusion_rules` | I/U/D contributor |
+| `/rest/v1/strata` | `shared.strata` | I/U/D contributor |
 | `/rest/v1/scenarios` | `shared.scenarios` | I/U/D contributor |
 | `/rest/v1/campaigns` | `shared.campaigns` | I/U/D contributor |
 | `/rest/v1/management_events` | `shared.management_events` | I/U/D contributor |
@@ -192,6 +195,7 @@ over REST.
 | `/rest/v1/attribute_provenance` | where each acquired `shared.locations` value came from, with the source's name, version and citation from `shared.processes`; written only by `set_location_attributes` |
 | `/rest/v1/growth_simulations` | per-tree SILVA trajectories (`trees.growth_simulations`) |
 | `/rest/v1/simulation_runs` | `trees.simulation_runs` plus trajectory counts |
+| `/rest/v1/tree_expansion_factors` | per tree: trees per hectare it stands for (`shared.expansion_factor_ha` on the main stem's DBH), with the plot's sampling design, stratum and sampling weight; filter on `variant_id` |
 | `/rest/v1/job_status` | `shared.processing_jobs`, filtered by RLS to the caller's own jobs ([requesting-a-job.md](requesting-a-job.md)) |
 
 **Unreal Engine views** (read-only; flat, join-free payloads for Blueprint HTTP import)

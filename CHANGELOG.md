@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Sampling designs and expansion factors** (XRFF-626)
+
+- Migration `20261102130000_sampling_designs` (init `74-`) lets the database hold sampled
+  inventories, not only full censuses. New tables `shared.sampling_designs` (strategy,
+  protocol and version, DBH measuring height, minimum DBH, reporting area),
+  `shared.inclusion_rules` (per DBH range a fixed radius or an angle-count basal-area factor;
+  several rules make nested circles) and `shared.strata` (with area). `shared.plots` gains
+  `sampling_design_id`, `stratum_id`, `parent_plot_id` (cluster → plot → subplot),
+  `sampling_weight` (default 1) and `area_source`; `trees.stems` gains
+  `dbh_measuring_height_m`.
+- `shared.expansion_factor_ha(plot_id, dbh_cm)` returns the trees per hectare one tree
+  stands for: 10000/(π r²) for a fixed radius, BAF/basal area for angle count, 10000/area
+  otherwise; NULL when unknown. A plot without a design or area takes them from its nearest
+  enclosing plot. New views `sampling_designs`, `inclusion_rules`, `strata` (contributors
+  write) and `tree_expansion_factors`; `plots` and `stems` gain the new columns at the end.
+  Additive: no existing column changes.
+- Seed `scripts/seed/census_site_plots.sql` gives each fully mapped site a census plot
+  `<location>_site` (area = convex hull of the measured baseline, as silva-connector uses)
+  and hangs the existing plots under it: Ecosense 2.891 ha, Mathisle 1.173 ha. Baseline
+  stems per hectare from it match silva-connector's stand values (515 + 6 trees without a
+  plot = 517; 622).
 - `docs/deployment-guide.md` has a section **Applying a migration** for dt.unr: how to tell
   which migrations the server has (compare a schema dump with dev; the server keeps no record),
   then pull, back up, apply each migration in one transaction, change the environment, verify,

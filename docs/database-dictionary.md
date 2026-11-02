@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261102120000_audit_table_labels_snake_case`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261102130000_sampling_designs`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -10,7 +10,7 @@ same name in `public` (listed at the end); write and read through those.
 
 | Schema | Tables | Holds |
 |---|---:|---|
-| [`shared`](#shared) | 31 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
+| [`shared`](#shared) | 34 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
 | [`trees`](#trees) | 29 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
 | [`sensor`](#sensor) | 5 | Sensors, their time series, units, sensor-tree links |
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
@@ -22,7 +22,7 @@ same name in `public` (listed at the end); write and read through those.
 
 Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit
 
-[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`species`](#sharedspecies) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
+[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`species`](#sharedspecies) · [`strata`](#sharedstrata) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
 
 ### shared.account_events
 
@@ -216,6 +216,27 @@ Links disturbance events to affected individual trees with damage assessment
 
 Constraints: `CHECK (((damage_level)::text = ANY (ARRAY[('none'::character varying)::text, ('light'::character varying)::text, ('moderate'::character varying)::text, ('severe'::character varying)::text, ('destroyed'::character varying)::text])))`; primary key (disturbance_event_id, tree_id).
 
+### shared.inclusion_rules
+
+Which trees a plot of this design records, by DBH range: within a fixed radius (one rule = fixed-radius plot, several = nested circles) or by angle count with a basal-area factor. Ranges of one design must not overlap. A design without rules uses each plot's own area (shared.plots.area_m2) as the inclusion area.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `inclusion_rule_id` | integer |  | serial |  |  |
+| `sampling_design_id` | integer |  |  | `shared.sampling_designs.sampling_design_id` (cascade) |  |
+| `min_dbh_cm` | numeric(6,2) |  | `0` |  | Lower DBH bound of the rule, inclusive. |
+| `max_dbh_cm` | numeric(6,2) | yes |  |  | Upper DBH bound of the rule, exclusive. NULL = no upper bound. |
+| `rule_type` | character varying(20) |  |  |  |  |
+| `radius_m` | numeric(7,3) | yes |  |  | Horizontal plot radius for fixed_radius rules. |
+| `basal_area_factor_m2ha` | numeric(7,3) | yes |  |  | Basal-area factor (m²/ha per counted tree) for angle_count rules, e.g. 4 in the German national inventory. |
+| `description` | text | yes |  |  |  |
+| `created_at` | timestamp with time zone | yes | `now()` |  |  |
+| `updated_at` | timestamp with time zone | yes | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+| `updated_by` | character varying(200) | yes |  |  |  |
+
+Constraints: `CHECK ((basal_area_factor_m2ha > (0)::numeric))`; `CHECK (((max_dbh_cm IS NULL) OR (max_dbh_cm > min_dbh_cm)))`; `CHECK ((min_dbh_cm >= (0)::numeric))`; `CHECK ((radius_m > (0)::numeric))`; `CHECK (((rule_type)::text = ANY ((ARRAY['fixed_radius'::character varying, 'angle_count'::character varying])::text[])))`; `CHECK (((((rule_type)::text = 'fixed_radius'::text) AND (radius_m IS NOT NULL) AND (basal_area_factor_m2ha IS NULL)) OR (((rule_type)::text = 'angle_count'::text) AND (basal_area_factor_m2ha IS NOT NULL) AND (radius_m IS NULL))))`; primary key (inclusion_rule_id).
+
 ### shared.locations
 
 Forest plot locations with spatial boundaries and environmental context
@@ -306,7 +327,7 @@ Sub-plot divisions within locations for detailed research grids
 | `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
 | `plot_name` | character varying(200) |  |  |  | Plot identifier, unique within a location |
 | `plot_number` | integer | yes |  |  | Numeric plot identifier for ordering |
-| `area_m2` | numeric(12,2) | yes |  |  | Plot area in square meters |
+| `area_m2` | numeric(12,2) | yes |  |  | Plot area in square metres: the inclusion area of every tree when the design has no inclusion rules (census or fixed-area plot). A plot without an area inherits the nearest enclosing plot's (parent_plot_id). Horizontal area; area_source says where it comes from. |
 | `boundary` | geometry(Polygon,4326) | yes |  |  | PostGIS polygon defining plot boundaries in WGS84 |
 | `center_point` | geometry(Point,4326) | yes |  |  |  |
 | `description` | text | yes |  |  |  |
@@ -314,8 +335,13 @@ Sub-plot divisions within locations for detailed research grids
 | `updated_at` | timestamp with time zone | yes |  |  |  |
 | `created_by` | character varying(200) | yes |  |  |  |
 | `updated_by` | character varying(200) | yes |  |  |  |
+| `sampling_design_id` | integer | yes |  | `shared.sampling_designs.sampling_design_id` (set null) | Sampling design (protocol) this plot was laid out and measured under. NULL = none recorded. |
+| `stratum_id` | integer | yes |  |  | Stratum of a stratified design; must belong to sampling_design_id. |
+| `parent_plot_id` | integer | yes |  | `shared.plots.plot_id` (set null) | Enclosing sample unit: a plot's cluster, or a subplot's plot. NULL = top level. |
+| `sampling_weight` | numeric(12,6) |  | `1` |  | Sampling weight of this unit for the estimator (Open Foris Arena's weight); 1 = equal weight. Not part of the expansion factor. |
+| `area_source` | character varying(20) | yes |  |  | Where area_m2 comes from: surveyed (measured boundary) \| nominal (protocol size) \| convex_hull (hull of the stem positions, as silva-connector derives stand area). |
 
-Constraints: `CHECK ((area_m2 > (0)::numeric))`; primary key (plot_id); unique (location_id, plot_name).
+Constraints: `CHECK ((area_m2 > (0)::numeric))`; `CHECK (((area_source)::text = ANY ((ARRAY['surveyed'::character varying, 'nominal'::character varying, 'convex_hull'::character varying])::text[])))`; `CHECK (((parent_plot_id IS NULL) OR (parent_plot_id <> plot_id)))`; `CHECK ((sampling_weight > (0)::numeric))`; primary key (plot_id); unique (location_id, plot_name).
 
 ### shared.process_metrics
 
@@ -438,6 +464,28 @@ Tracks external processing jobs and compute workflows
 
 Constraints: `CHECK (((attempts >= 0) AND (max_attempts >= 1)))`; `CHECK (((completed_at IS NULL) OR (completed_at >= submitted_at)))`; `CHECK (((started_at IS NULL) OR (started_at >= submitted_at)))`; `CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('running'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text])))`; primary key (processing_job_id); unique (external_job_id).
 
+### shared.sampling_designs
+
+One inventory protocol: how plots were chosen (strategy), which field manual and version, at which height DBH is measured and from which DBH trees are recorded. Plots point here; inclusion rules and strata hang off it. strategy = census means every tree of the plot area was recorded.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `sampling_design_id` | integer |  | serial |  |  |
+| `design_name` | character varying(200) |  |  |  |  |
+| `strategy` | character varying(30) |  |  |  | How the sample units were chosen: census \| simple_random \| systematic \| stratified_random \| stratified_systematic \| two_phase (Open Foris Arena's strategies plus census). |
+| `protocol_name` | character varying(200) | yes |  |  | Field manual or inventory protocol the data was measured under, e.g. BWI 2022 Aufnahmeanweisung. |
+| `protocol_version` | character varying(50) | yes |  |  |  |
+| `dbh_measuring_height_m` | numeric(4,2) |  | `1.3` |  | Height above ground at which DBH is measured under this protocol (1.3 m in Europe, 1.37 m in the US). trees.stems.dbh_measuring_height_m overrides it per stem. |
+| `min_dbh_cm` | numeric(6,2) | yes |  |  | Smallest DBH recorded under this protocol. Trees below it get no expansion factor. NULL = no threshold. |
+| `reporting_area_ha` | numeric(14,4) | yes |  |  | Area of the population the sample represents (the inventory area), for totals. NULL = per-hectare results only. |
+| `description` | text | yes |  |  |  |
+| `created_at` | timestamp with time zone | yes | `now()` |  |  |
+| `updated_at` | timestamp with time zone | yes | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+| `updated_by` | character varying(200) | yes |  |  |  |
+
+Constraints: `CHECK ((dbh_measuring_height_m > (0)::numeric))`; `CHECK ((min_dbh_cm >= (0)::numeric))`; `CHECK ((reporting_area_ha > (0)::numeric))`; `CHECK (((strategy)::text = ANY ((ARRAY['census'::character varying, 'simple_random'::character varying, 'systematic'::character varying, 'stratified_random'::character varying, 'stratified_systematic'::character varying, 'two_phase'::character varying])::text[])))`; primary key (sampling_design_id); unique (design_name).
+
 ### shared.scenarios
 
 One scenario per (location, management regime, climate pathway). scenario_code = regime*10 + pathway is the numeric key, scenario_name the text one; the name follows <pathway> | <regime> | <regime>_<pathway> and the axes are derived from it on insert when not given. Regime 0 scenarios hold acquired data only; the rest own a baseline and a variant timeline (Location -> Scenario -> Variant).
@@ -490,6 +538,24 @@ Tree species reference with growth characteristics
 | `leaf_type` | character varying(20) | yes |  |  | Leaf habit: needleleaf (conifers, larch included) or broadleaf. Independent of is_deciduous. Matches the Copernicus Dominant Leaf Type classes. |
 
 Constraints: `CHECK (((growth_rate)::text = ANY (ARRAY[('very_slow'::character varying)::text, ('slow'::character varying)::text, ('moderate'::character varying)::text, ('fast'::character varying)::text, ('very_fast'::character varying)::text])))`; `CHECK (((leaf_type)::text = ANY ((ARRAY['needleleaf'::character varying, 'broadleaf'::character varying])::text[])))`; `CHECK (((shade_tolerance)::text = ANY (ARRAY[('very_low'::character varying)::text, ('low'::character varying)::text, ('moderate'::character varying)::text, ('high'::character varying)::text, ('very_high'::character varying)::text])))`; primary key (species_id); unique (scientific_name).
+
+### shared.strata
+
+Strata of a stratified sampling design, with their area. A plot's stratum must belong to the plot's design.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `stratum_id` | integer |  | serial |  |  |
+| `sampling_design_id` | integer |  |  | `shared.sampling_designs.sampling_design_id` (cascade) |  |
+| `stratum_name` | character varying(200) |  |  |  |  |
+| `area_ha` | numeric(14,4) | yes |  |  | Stratum area in hectares; stratified estimators weight by it. |
+| `description` | text | yes |  |  |  |
+| `created_at` | timestamp with time zone | yes | `now()` |  |  |
+| `updated_at` | timestamp with time zone | yes | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+| `updated_by` | character varying(200) | yes |  |  |  |
+
+Constraints: `CHECK ((area_ha > (0)::numeric))`; primary key (stratum_id); unique (sampling_design_id, stratum_name); unique (stratum_id, sampling_design_id).
 
 ### shared.variant_types
 
@@ -898,7 +964,7 @@ Individual stem measurements for multi-stem trees
 | `stem_number` | integer |  |  |  | Stem number (1=main stem, 2+=secondary stems) |
 | `taper_type_id` | integer | yes |  | `trees.taper_types.taper_type_id` |  |
 | `straightness_type_id` | integer | yes |  | `trees.straightness_types.straightness_type_id` |  |
-| `dbh_cm` | numeric(6,2) | yes |  |  | Diameter at breast height (1.3m) in centimeters |
+| `dbh_cm` | numeric(6,2) | yes |  |  | Stem diameter in centimetres at the measuring height: dbh_measuring_height_m, else the sampling design's, else 1.3 m. |
 | `taper_ratio` | numeric(4,3) | yes |  |  | Ratio of top diameter to bottom diameter |
 | `sweep_cm_per_m` | numeric(5,2) | yes |  |  | Maximum horizontal deviation per meter of height |
 | `stem_height_m` | numeric(6,2) | yes |  |  |  |
@@ -907,8 +973,9 @@ Individual stem measurements for multi-stem trees
 | `wood_density_kg_m3` | numeric(6,2) | yes |  |  |  |
 | `created_at` | timestamp with time zone | yes | `now()` |  |  |
 | `updated_at` | timestamp with time zone | yes |  |  |  |
+| `dbh_measuring_height_m` | numeric(4,2) | yes |  |  | Height at which dbh_cm was measured, when it differs from the design's (e.g. raised above a buttress or a fork). NULL = the design's height, 1.3 m without a design. |
 
-Constraints: `CHECK (((bark_thickness_mm >= (0)::numeric) AND (bark_thickness_mm <= (200)::numeric)))`; `CHECK (((dbh_cm > (0)::numeric) AND (dbh_cm <= (1000)::numeric)))`; `CHECK (((stem_height_m > (0)::numeric) AND (stem_height_m <= (200)::numeric)))`; `CHECK ((stem_number >= 1))`; `CHECK ((stem_volume_m3 >= (0)::numeric))`; `CHECK ((sweep_cm_per_m >= (0)::numeric))`; `CHECK (((taper_ratio >= (0)::numeric) AND (taper_ratio <= (1)::numeric)))`; `CHECK (((wood_density_kg_m3 >= (100)::numeric) AND (wood_density_kg_m3 <= (2000)::numeric)))`; primary key (stem_id); unique (tree_id, stem_number).
+Constraints: `CHECK (((bark_thickness_mm >= (0)::numeric) AND (bark_thickness_mm <= (200)::numeric)))`; `CHECK (((dbh_cm > (0)::numeric) AND (dbh_cm <= (1000)::numeric)))`; `CHECK (((dbh_measuring_height_m IS NULL) OR (dbh_measuring_height_m > (0)::numeric)))`; `CHECK (((stem_height_m > (0)::numeric) AND (stem_height_m <= (200)::numeric)))`; `CHECK ((stem_number >= 1))`; `CHECK ((stem_volume_m3 >= (0)::numeric))`; `CHECK ((sweep_cm_per_m >= (0)::numeric))`; `CHECK (((taper_ratio >= (0)::numeric) AND (taper_ratio <= (1)::numeric)))`; `CHECK (((wood_density_kg_m3 >= (100)::numeric) AND (wood_density_kg_m3 <= (2000)::numeric)))`; primary key (stem_id); unique (tree_id, stem_number).
 
 ### trees.straightness_types
 
@@ -1400,6 +1467,7 @@ portal's API page.
 | `growth_orientations` | Public API view for growth orientations lookup table |
 | `growth_simulations` | Flat view of growth simulation projections with scenario and species names resolved. Filter by scenario_name + projection_year to get a full forest state for UE Time Machine. |
 | `images` | Public API view for imagery table |
+| `inclusion_rules` | Inclusion rules per sampling design: fixed radius or angle count by DBH range. |
 | `job_status` | Every job the caller is allowed to see -- their own, or all of them for a curator. Omits claimed_by and next_attempt_at, which are the runner's bookkeeping rather than the submitter's answer. An anon caller matches no policy and so reads an empty list. |
 | `locations` | Public API view for locations reference table |
 | `management_events` | Public API view for forest management events |
@@ -1411,6 +1479,7 @@ portal's API page.
 | `qsms` | Public API view for QSM reconstructions |
 | `root_system_types` | Public API view for root system types lookup table |
 | `roots` | Public API view for root system classification/geometry |
+| `sampling_designs` | Sampling designs (inventory protocols). Readable by everyone; contributors write. |
 | `scenarios` | Public API view: location-scoped scenarios (Location -> Scenario -> Variant), each a (management regime, climate pathway) pair with scenario_code = regime*10 + pathway. Insertable; omit the axis ids and they are derived from a conforming scenario_name. For names alongside ids use ue_scenarios. |
 | `sensor_readings` | Public API view for sensor readings table |
 | `sensor_tree_links` | Public API view for sensor-tree link table |
@@ -1420,6 +1489,8 @@ portal's API page.
 | `simulation_runs` | One row per growth simulation run: identity, configuration and the size of the trajectory it produced. Backed by trees.simulation_runs; counts aggregated from trees.growth_simulations. |
 | `species` | Public API view for tree species reference table |
 | `stems` | Public API view for tree stems table |
+| `strata` | Strata of stratified sampling designs, with area. |
+| `tree_expansion_factors` | Trees per hectare each tree stands for (shared.expansion_factor_ha on the main stem's DBH), with the plot's design, stratum and sampling weight. Filter on variant_id. NULL where the plot has no area or design. |
 | `tree_graph_edges` | Public API view for QSM topology edge overrides (observed/synthetic/derived) |
 | `tree_part_types` | Public API view for tree part types (CityGML feature classes) lookup table |
 | `trees` | Public API view for trees table |
