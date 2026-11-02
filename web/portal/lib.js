@@ -175,10 +175,19 @@
       return el("a", { href: p[0], class: p[0] === here ? "here" : null, text: p[1] });
     }));
     var who = el("span", { class: "whoami", id: "topWho" });
+    // Logos are CSS masks (portal.css) so dark mode can recolour them; the
+    // university wordmark leads, the lab logo may only appear beside it.
+    var logos = el("div", { class: "logoband" }, [
+      el("div", { class: "wrap" }, [
+        el("a", { href: "https://uni-freiburg.de/", class: "logo logo-uni", "aria-label": "Universität Freiburg" }),
+        el("a", { href: "/portal/", class: "logo logo-lab", "aria-label": "XR Future Forests Lab" })
+      ])
+    ]);
     var bar = el("div", { class: "topbar" }, [
       el("div", { class: "wrap" }, [el("a", { class: "brand", href: "/portal/", text: "Forest Digital Twin" }), nav, who])
     ]);
     document.body.insertBefore(bar, document.body.firstChild);
+    document.body.insertBefore(logos, bar);
     refreshWho();
 
     if (!cfg.anonKey) {
