@@ -20,7 +20,7 @@ per table that the API exposes, the `ue_*` views for Unreal Engine, and the RPC 
 | `trees` | 29 | `trees` (one row per tree per variant), `stems`, `phenology_observations`, `growth_simulations` + `simulation_runs` (SILVA output), `qsms` + `qsm_cylinders`, `tree_part_types`, `tree_graph_edges`, `roots` + `root_system_types`, `crown_foliage_profiles`, `tree_status`, `data_source_types`, morphology and crown classification lookups |
 | `sensor` | 5 | `sensors`, `sensor_readings`, `sensor_types`, `units`, `sensor_tree_links` |
 | `environments` | 1 | `environments`: climate and soil values per location, scenario and period |
-| `pointclouds` | 3 | `point_clouds` (file references and processing lineage), `scanners`, `scanner_types` |
+| `point_clouds` | 3 | `point_clouds` (file references and processing lineage), `scanners`, `scanner_types` |
 | `imagery` | 1 | `images` with position and camera orientation |
 | `forest_floor` | 2 | `deadwood`, `ground_vegetation`: plot-level surveys, not tied to one tree |
 
@@ -62,7 +62,7 @@ flowchart LR
     subgraph EN["environments"]
         env["environments"]
     end
-    subgraph PC["pointclouds"]
+    subgraph PC["point_clouds"]
         pcl["point_clouds"]
     end
     subgraph FF["forest_floor"]
@@ -137,7 +137,7 @@ tree across all its variants, and also keys its rows in `trees.growth_simulation
 An `AFTER UPDATE` trigger (`shared.audit_update_trigger`) writes one `shared.audit_log` row per
 changed field (`field_name`, `old_value`, `new_value`, `user_id`, `timestamp`, `ip_address`) on
 five tables: `trees.trees`, `trees.stems`, `trees.phenology_observations`,
-`environments.environments` and `pointclouds.point_clouds`. Junction tables
+`environments.environments` and `point_clouds.point_clouds`. Junction tables
 `shared.audit_log_trees`, `audit_log_stems`, `audit_log_phenology_observations`,
 `audit_log_environments` and `audit_log_point_clouds` tie each entry to its row. Inserts and
 deletes are not audited. The main data tables also carry `created_by` / `updated_by` columns,

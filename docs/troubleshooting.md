@@ -45,7 +45,7 @@ network and the port every service connects to. Changing it is fine, but it chan
 | lookup tables empty | `30-load-lookup-tables.sql` did not load the CSVs | `python scripts/admin/refresh_lookups.py` |
 | `generate_schema_docs.py --check` exits 1 | the schema changed without regenerating the docs | `python scripts/utils/generate_schema_docs.py`, commit both files |
 
-Expected after init: schemas `shared`, `trees`, `sensor`, `pointclouds`, `environments`,
+Expected after init: schemas `shared`, `trees`, `sensor`, `point_clouds`, `environments`,
 `imagery`, `forest_floor`; databases `postgres` and `_supabase` (with schemas `_analytics`,
 `_supavisor`); `SELECT count(*) FROM shared.species` returns 14.
 

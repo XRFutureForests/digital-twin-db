@@ -59,7 +59,7 @@ Port 54323 publishes Studio directly, bypassing Kong and its basic-auth.
 ## Differences from upstream Supabase
 
 1. Forest schemas added to `PGRST_DB_SCHEMAS`
-   (`shared,pointclouds,trees,sensor,environments,imagery`; `forest_floor` is reached through
+   (`shared,point_clouds,trees,sensor,environments,imagery`; `forest_floor` is reached through
    `public` views).
 2. `db` built from `Dockerfile.db` with the schema baked in, instead of init-file bind mounts.
 3. `PGDATA_PATH`, `STORAGE_PATH` and the `POSTGRES_*` memory variables, for the server's NFS

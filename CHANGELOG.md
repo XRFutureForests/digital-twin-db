@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**The schema `pointclouds` is now `point_clouds`**
+
+- Migration `20261102100000_rename_pointclouds_schema` (init `71-`) renames the schema, so
+  every schema and table name is snake_case; its table is `point_clouds.point_clouds`. Tables,
+  views, policies and grants follow the rename; the view trigger `public.point_clouds_insert()`
+  is rewritten. The REST resource `/rest/v1/point_clouds` is unchanged.
+- **Action for self-hosters:** in `docker/.env`, replace `pointclouds` with `point_clouds` in
+  `PGRST_DB_SCHEMAS` and restart PostgREST (`docker compose up -d rest`), or PostgREST cannot
+  load its schema cache. Clients that select the base schema with `Accept-Profile: pointclouds`
+  must send `point_clouds`.
+
 ## [2.0.2] - 2026-11-02
 
 **Documentation for new users and data providers**
