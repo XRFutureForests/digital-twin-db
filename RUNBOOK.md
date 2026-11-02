@@ -251,6 +251,8 @@ docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/mathis
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_zwisel_stem.sql
 # 396 ecosense TLS canopy heights -> yield-table heights; before the derived-value fills
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_canopy_height_fix.sql
+# fully mapped sites: one census plot per site, existing plots under it (stand summaries need it)
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/census_site_plots.sql
 # optional: species-default roots and crown foliage profiles
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/root_and_foliage_defaults.sql
 

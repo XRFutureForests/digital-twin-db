@@ -73,7 +73,7 @@ Details: [docs/derived-value-provenance.md](docs/derived-value-provenance.md),
 
 | Schema | Holds |
 |--------|-------|
-| `shared` | locations, plots, scenarios, management_regimes, climate_pathways, variants, variant_types, species, campaigns, soil_types, climate_zones, management_events, disturbance_events, processes and process_parameters, attribute_provenance, processing_jobs, audit_log, account_events |
+| `shared` | locations, plots, sampling_designs, inclusion_rules and strata, scenarios, management_regimes, climate_pathways, variants, variant_types, species, campaigns, soil_types, climate_zones, management_events, disturbance_events, processes and process_parameters, attribute_provenance, processing_jobs, audit_log, account_events |
 | `trees` | trees (persistent `tree_entity_id`), stems, phenology_observations, growth_simulations + simulation_runs, qsms + qsm_cylinders, tree_part_types + tree_graph_edges, roots, crown_foliage_profiles, tree_status and classification tables |
 | `point_clouds` | point_clouds (file paths, processing status and lineage), scanner_types, scanners |
 | `sensor` | sensors, sensor_types, units, sensor_readings, sensor_tree_links |
@@ -113,6 +113,21 @@ Row-level security decides every request from the caller's token:
 | `service_role` (connectors) | the bulk RPCs for sensors, readings and site data |
 
 Endpoints, filters and the full write-rule table: [docs/api-spec.md](docs/api-spec.md).
+
+### Stand summaries
+
+The database also reports the stand, not only the trees. Each plot belongs to a sampling
+design (a full census on a fully mapped site, or fixed-radius, nested-circle, angle-count and
+stratified samples), so every tree has an expansion factor. From that, `stand_summaries`
+gives stems, basal area, volume, biomass and carbon per hectare for every forest state,
+measured or projected, with standard error, sampling error in % and confidence interval:
+
+```bash
+curl "$API/rest/v1/stand_summaries?variant_id=eq.1&by_species=is.false&select=variable,estimate,sampling_error_pct" \
+  -H "apikey: $ANON_KEY"
+```
+
+Model, formulas and limits: [docs/sampling-designs-and-stand-summaries.md](docs/sampling-designs-and-stand-summaries.md).
 Writing from scripts with a user account, and what a valid tree row needs:
 [docs/data-access-guide.md](docs/data-access-guide.md).
 

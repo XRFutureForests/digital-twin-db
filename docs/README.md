@@ -15,6 +15,7 @@ what the database is, and [RUNBOOK.md](../RUNBOOK.md) for how to run and load it
 | [growth-simulation-schema.md](growth-simulation-schema.md) | `trees.simulation_runs` and `trees.growth_simulations`: tables, views, permissions |
 | [citygml-qsm-mapping.md](citygml-qsm-mapping.md) | Column-by-column mapping to the CityGML conceptual tree model |
 | [level-of-detail-vocabulary.md](level-of-detail-vocabulary.md) | What `lod` means in the database, and the detail terms used with growpy |
+| [sampling-designs-and-stand-summaries.md](sampling-designs-and-stand-summaries.md) | Sampling designs, inclusion rules, strata, expansion factors, census site plots; per-hectare stand summaries with standard error, sampling error % and confidence interval |
 
 `database-dictionary.md` and `database-erd.dbml` are written by
 `scripts/utils/generate_schema_docs.py` from the live database — regenerate them after a
