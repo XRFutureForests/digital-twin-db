@@ -13,12 +13,26 @@
 </head>
 <body>
 <div class="wrap">
+  <!-- The survey is a separate app with its own storage, not a door into the
+       database, so it sits apart from the twin's cards. -->
+  <section class="panel feature" aria-labelledby="surveyHead">
+    <h2 id="surveyHead">Tree look survey</h2>
+    <p>
+      Experts rate whether the lab's procedurally grown trees look right for
+      their species. The answers are kept apart from the twin database and guide
+      the work on the tree catalogue that the VR forests are built from.
+      By invitation: open it with the link you were sent.
+    </p>
+    <p><a href="/survey/">Go to the survey</a></p>
+  </section>
+
   <h1>Forest Digital Twin</h1>
   <p class="sub">
     Field measurements, sensors, LiDAR products and growth simulations for the
     lab's forest sites, in one PostgreSQL/PostGIS database. Everything below
     reads and writes that same database; pick the door that fits what you
-    want to do.
+    want to do. What we mean by a forest digital twin is on the
+    <a href="/portal/docs/">docs page</a>.
   </p>
 
   <div class="cards">
@@ -29,7 +43,6 @@
         <li><a href="/ecosense/">ECOSENSE dashboard</a> — trees, sensors, time series</li>
         <li><a href="/mathisle/">Mathisle dashboard</a></li>
         <li><a href="/portal/data/">Browse any table</a> and download it as CSV</li>
-        <li><a href="/survey/">Tree look survey</a> — rate whether trees look right for their species; by invitation, open it with the link you were sent</li>
       </ul>
     </div>
     <div class="card">

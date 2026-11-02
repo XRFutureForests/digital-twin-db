@@ -5,14 +5,15 @@ Static pages served at **<https://dt.unr.uni-freiburg.de/portal/>** — the site
 
 | Page | For | What it does |
 |---|---|---|
-| `/portal/` | everyone | landing page: which door fits what you want to do, and how to get access |
+| `/portal/` | everyone | landing page: the tree look survey (a separate app, kept apart from the database), then which door fits what you want to do, and how to get access |
 | `/portal/data/` | read: anyone; write: `contributor`+ | browse any public table or view, filter, download CSV; add rows by form or pasted CSV; correct a row |
 | `/portal/account/` | everyone with an account; team tools for `curator`+ | sign in, change your own password; curators create accounts, grant/revoke `contributor`, reset passwords |
-| `/portal/docs/` | everyone | data model in five sentences, schema map, per-schema tables with live row counts, links to the reference docs and the repositories |
+| `/portal/docs/` | everyone | what the lab means by a forest digital twin, data model in five sentences, schema map, per-schema tables with live row counts, links to the reference docs and the repositories |
 | `/portal/api/` | developers | developer guide: connection, sign-in, read and write recipes (curl/Python/R), running a model (SILVA modes, live parameter table), ground rules, live endpoint list |
 
-The job page (`web/jobs/`, `/jobs/`) is part of the same site and shares the sign-in: both
-keep the session under the same `sessionStorage` key.
+The job page (`web/jobs/`, `/jobs/`) is part of the same site: it loads `portal.css` and
+`lib.js` for the shared look and top bar, and shares the sign-in, because both keep the
+session under the same `sessionStorage` key.
 
 ## Nothing here knows the schema
 
