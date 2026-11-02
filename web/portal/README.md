@@ -5,7 +5,7 @@ Static pages served at **<https://dt.unr.uni-freiburg.de/portal/>** — the site
 
 | Page | For | What it does |
 |---|---|---|
-| `/portal/` | everyone | landing page: the tree look survey (a separate app, kept apart from the database), then which door fits what you want to do, and how to get access |
+| `/portal/` | everyone | landing page: which door fits what you want to do, the tree look survey (a separate app, kept apart from the database), and how to get access |
 | `/portal/data/` | read: anyone; write: `contributor`+ | browse any public table or view, filter, download CSV; add rows by form or pasted CSV; correct a row |
 | `/portal/account/` | everyone with an account; team tools for `curator`+ | sign in, change your own password; curators create accounts, grant/revoke `contributor`, reset passwords |
 | `/portal/docs/` | everyone | what the lab means by a forest digital twin, data model in five sentences, schema map, per-schema tables with live row counts, links to the reference docs and the repositories |
