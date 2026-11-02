@@ -105,14 +105,8 @@ Nothing is edited on the server; the checkouts are disposable. Deploy by pushing
 
 - `digital-twin-db` on the server tracks `dev` (it is a test host; `main` moves only at a
   Zenodo release). `digital-twin-dashboard` tracks `main`.
-- **Schema changes are applied by hand.** The running cluster is never re-initialised, so the
-  baked init files do not reach it:
-
-  ```bash
-  cd ~/dev/digital-twin-db && git pull
-  docker exec -i dftdb-db psql -U supabase_admin -d postgres < supabase/migrations/<file>.sql
-  docker exec dftdb-db psql -U supabase_admin -d postgres -c "NOTIFY pgrst, 'reload schema'"
-  ```
+- **Schema changes are applied by hand**, one migration at a time: [Applying a
+  migration](#applying-a-migration).
 
 - **Env changes need a recreate**, not a restart: `cd docker && docker compose up -d --force-recreate`.
 
@@ -126,6 +120,131 @@ Files on the host that are not in any repository; a re-clone must restore them:
 | `digital-twin-dashboard/docker/.env` | dashboard secrets |
 | `digital-twin-dashboard/apps/*/.Renviron` (two files) | Shiny app settings |
 | `digital-twin-dashboard/docker/nginx/ssl/*.pem` | TLS certificate and key |
+
+## Applying a migration
+
+Written from the deploy of 2026-11-02 (release 2.0.3, migrations `20261102100000` to
+`20261102120000`). Afterwards a schema-only dump of `shared`, `trees`, `sensor`,
+`point_clouds`, `environments`, `imagery`, `forest_floor` and `public`, grants included, was
+identical on dev and dt.unr.
+
+**Only migrations change the running database.** Postgres runs the init files in
+`docker/volumes/db/init/` only on an empty `PGDATA`, and `PGDATA` here is a long-lived
+directory on the NFS export. `docker compose build db && docker compose up -d` rebuilds the
+image and leaves the database as it was. The init files matter only for a new cluster.
+
+**The server checkout tracks `dev`**, so a migration reaches dt.unr when it is pulled and
+applied, not at a Zenodo release.
+
+### Where the server stands
+
+dt.unr keeps no record of applied migrations: they are run with `psql`, not the Supabase CLI,
+so there is no `supabase_migrations` table. Compare the server with dev instead. Dev has every
+committed migration applied, and a fresh init from the rebuilt image reproduces it. From a
+workstation with the dev stack running, in Git Bash:
+
+```bash
+ARGS="-U supabase_admin -d postgres --schema-only --no-owner \
+      -n shared -n trees -n sensor -n point_clouds -n environments -n imagery -n forest_floor -n public"
+docker exec dftdb-db pg_dump $ARGS | tr -d '\r' | sort > schema_dev.txt
+ssh dt.unr.uni-freiburg.de "docker exec dftdb-db pg_dump $ARGS" | tr -d '\r' | sort > schema_unr.txt
+diff schema_dev.txt schema_unr.txt && echo "dt.unr matches dev"
+```
+
+The dumps are sorted because the two databases can list the same `GRANT` lines in a different
+order; to read a difference in context, dump again without `| sort`. `tr -d '\r'` drops carriage
+returns: six account functions on dt.unr were created from a file with Windows line endings and
+keep them in their bodies, which changes nothing about how they run.
+
+An empty diff means dt.unr is at the newest file in `supabase/migrations/`. Otherwise, find the
+oldest migration whose objects the diff shows missing and apply from that one on. **Apply in
+file-name order and skip none:** later migrations change objects that earlier ones create or
+rename.
+
+### Steps
+
+Run on the server, as `max` (in the `docker` group; no sudo needed).
+
+1. **Pull.** The checkout must be clean: nothing is edited on the server.
+
+   ```bash
+   cd ~/dev/digital-twin-db && test -z "$(git status --porcelain)" && git pull --ff-only && git log --oneline -1
+   ```
+
+2. **Back up.** The nightly dump can be most of a day old. Take a fresh one (about 20 s,
+   written to `/media/data/dftdb/backups/`):
+
+   ```bash
+   scripts/server/backup-db.sh
+   ```
+
+3. **Read each migration's header and the CHANGELOG entry** for a step outside SQL. Example: the
+   schema rename `20261102100000` also needed `pointclouds` replaced with `point_clouds` in
+   `PGRST_DB_SCHEMAS` in `docker/.env`.
+
+4. **Apply each migration as one transaction:**
+
+   ```bash
+   cd docker
+   docker compose exec -T db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -1 \
+       < ../supabase/migrations/<file>.sql
+   ```
+
+   `-1` wraps the file in one transaction, and `ON_ERROR_STOP=1` makes the first error roll
+   all of it back. Without both flags, psql reports the error, carries on and commits the rest,
+   which leaves the migration half applied. A file containing a statement that cannot run in a
+   transaction (`CREATE INDEX CONCURRENTLY`, `VACUUM`) must run without `-1`; none does so far.
+
+5. **Change the environment if the migration needs it**, keeping a copy:
+
+   ```bash
+   cp .env .env.bak-$(date +%F)-<what>
+   # edit .env
+   docker compose up -d rest          # recreates PostgREST with the new env
+   ```
+
+   With no env change, reload PostgREST's schema cache instead:
+
+   ```bash
+   docker compose exec -T db psql -U supabase_admin -d postgres -c "NOTIFY pgrst, 'reload schema'"
+   ```
+
+6. **Verify.** The REST surface, PostgREST's log, then the comparison with dev above:
+
+   ```bash
+   K=$(grep '^ANON_KEY=' .env | cut -d= -f2-); B=https://dt.unr.uni-freiburg.de/db/rest/v1
+   for p in point_clouds trees sensors ue_trees; do
+       printf '%s ' $p; curl -s -o /dev/null -w '%{http_code}\n' -H "apikey: $K" "$B/$p?limit=1"
+   done                                               # each 200
+   docker compose logs --since 10m rest | grep -iE 'error|fail'    # nothing
+   ```
+
+   Then query whatever the migration changed: a column default, a function body, a renamed
+   schema.
+
+### When it fails
+
+- **The migration stops with an error.** With `-1` and `ON_ERROR_STOP=1` nothing was changed.
+  Fix the migration on dev, test it there, commit, pull on the server and apply again.
+- **A migration ran without `-1` and stopped part-way.** Do not just re-run it: its `IF EXISTS`
+  guards can skip the half that landed and hide the half that did not. Compare with dev to see
+  what is in place, then either finish it with a follow-up migration or restore the dump from
+  step 2 ([RUNBOOK.md §7](../RUNBOOK.md#restore)).
+- **Every REST call fails after an env change.** PostgREST cannot build its schema cache,
+  usually because `PGRST_DB_SCHEMAS` names a schema that does not exist. `docker compose logs
+  rest` names it; correct `.env`, or restore the `.env.bak-*` copy, and `docker compose up -d
+  rest` again.
+
+### Traps
+
+- **Send SQL to the server over stdin.** Inside `ssh host '...'` the single quotes of SQL string
+  literals end the shell string, and the query arrives without them. Write the SQL to a file and
+  run `ssh host 'cd ~/dev/digital-twin-db/docker && docker compose exec -T db psql -U
+  supabase_admin -d postgres' < check.sql`.
+- **The `db` container has 64 MB of `/dev/shm`.** A large parallel query, such as aggregating
+  `shared.recent_changes` (about 2 million rows), fails with `could not resize shared memory
+  segment ... No space left on device`. Run such checks after `SET
+  max_parallel_workers_per_gather = 0;`.
 
 ## Scheduled work: systemd timers, no cron
 

@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- `docs/deployment-guide.md` has a section **Applying a migration** for dt.unr: how to tell
+  which migrations the server has (compare a schema dump with dev; the server keeps no record),
+  then pull, back up, apply each migration in one transaction, change the environment, verify,
+  and what to do when a step fails.
+
 ## [2.0.3] - 2026-11-02
 
 **The schema `pointclouds` is now `point_clouds`**
