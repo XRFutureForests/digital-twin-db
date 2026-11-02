@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-02
+
+### 2026-11-02
+
+**Portal in the lab and university corporate design**
+
+- `/portal/` and `/jobs/` follow the XR Future Forests Lab design spec on the University of
+  Freiburg corporate design: a logo band with the university wordmark and the lab logo
+  (`web/portal/img/`, trademarks outside this repository's licence), dark blue headings, CD
+  green accents with an accessible darker green for links and buttons, square corners, the
+  Social/Arial font stack, stronger form borders, and a matching dark mode.
+
 ### 2026-10-30 (after 2.0.0)
 
 **Security: three writes the role model never allowed are closed**
