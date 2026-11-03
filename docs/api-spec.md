@@ -137,7 +137,7 @@ sensor-tree links, deadwood):
 | `access_level` | Readable by |
 |---|---|
 | `public` | everyone |
-| `campus` | requests from the university network (132.230.0.0/16, includes the VPN) and any signed-in account |
+| `campus` | requests from the university network (132.230.0.0/16 incl. the VPN, and internal 10.0.0.0/8 addresses) and any signed-in account |
 | `registered` | any signed-in account |
 | `team` | members of the campaign's `owner_team_id` |
 
