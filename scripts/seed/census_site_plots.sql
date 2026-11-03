@@ -24,6 +24,10 @@
 --    baseline tree stands for 10000 / site area trees per hectare.
 --
 -- Plots without baseline trees (sensor monitoring areas) are left alone.
+-- Locations that already carry their own sampling design (a plot in a design
+-- other than full_census, e.g. the Pathfinder superplots of
+-- import_pathfinder.py) are left alone too: their measured plot is the census
+-- unit, and a convex hull of its stems would understate its area.
 -- Trees with no plot_id get no expansion factor; the script reports them.
 --
 -- The hull is taken from the baseline only. Simulated variants keep the same
@@ -45,6 +49,9 @@ WITH baseline AS (
       JOIN shared.variant_types vt ON vt.variant_type_id = v.variant_type_id
      WHERE v.parent_variant_id IS NULL
        AND vt.variant_type_name = 'original'
+       AND NOT EXISTS (SELECT 1 FROM shared.plots op
+                         JOIN shared.sampling_designs od ON od.sampling_design_id = op.sampling_design_id
+                        WHERE op.location_id = v.location_id AND od.design_name <> 'full_census')
 ),
 hull AS (
     SELECT b.location_id,
@@ -86,6 +93,9 @@ UPDATE shared.plots p
  WHERE site.location_id = p.location_id
    AND site.plot_name = (SELECT l.location_name || '_site' FROM shared.locations l WHERE l.location_id = p.location_id)
    AND p.plot_id <> site.plot_id
+   AND NOT EXISTS (SELECT 1 FROM shared.plots op
+                     JOIN shared.sampling_designs od ON od.sampling_design_id = op.sampling_design_id
+                    WHERE op.location_id = p.location_id AND od.design_name <> 'full_census')
    AND EXISTS (
         SELECT 1
           FROM trees.trees t

@@ -60,3 +60,5 @@ tests/manual/results/
 # No repo-root tmp/, temp/ or outputs/ - scratch lives in data/tmp/.
 /data/output/
 /data/tmp/
+# Pathfinder field GeoPackages: fetched from Zenodo by scripts/import/import_pathfinder.py fetch
+/data/input/pathfinder/*/

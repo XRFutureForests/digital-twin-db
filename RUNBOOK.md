@@ -255,6 +255,11 @@ docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosen
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/census_site_plots.sql
 # optional: species-default roots and crown foliage profiles
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/root_and_foliage_defaults.sql
+# Pathfinder superplots (5 sites, field inventory only): fetch once, then load the generated SQL;
+# it carries its own design, plots, scenario and baseline variant, so no other seed is needed
+python scripts/import/import_pathfinder.py fetch
+python scripts/import/import_pathfinder.py sql
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < data/tmp/pathfinder_import.sql
 
 # 4. derived values, in this order (each takes --dry-run)
 python scripts/import/fill_missing_heights.py

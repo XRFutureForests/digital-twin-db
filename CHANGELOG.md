@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Five Pathfinder superplots as new locations** (XRFF-641)
+
+- `scripts/import/import_pathfinder.py`: `fetch` reads the field-data GeoPackages of the
+  Pathfinder superplots (doi 10.5281/zenodo.20623034, CC BY 4.0) out of the Zenodo country ZIPs
+  by HTTP range requests, never the point clouds; `sql` writes one idempotent SQL file keyed on
+  natural keys, so the same file loads any instance. Locations `tratice`, `krucmanove`,
+  `goettingen2`, `valsain`, `vallombrosa_douglas` (also in `data/lookups/locations.csv`), each
+  with a census sampling design on its 0.25 ha plot, a `natural_growth` scenario with a
+  `baseline_<year>` variant, 496 trees, 343 deadwood pieces and 14 regeneration tallies.
+- Migration `20261103120000_species_lawson_cypress_holly_wych_elm` (init `82-`): three species
+  of those plots, also in `data/lookups/species.csv`.
+- Migration `20261103130000_regeneration_survey_area` (init `83-`): regeneration tallies carry
+  their survey area (`survey_area_m2`) instead of sitting on subplots. A subplot with its own
+  area counted as a second census unit without trees and lowered stems per hectare.
+- `scripts/seed/census_site_plots.sql` leaves locations alone that carry their own sampling
+  design, so it no longer replaces a measured plot by the convex hull of its stems.
+
 **Outside inventories: source ids, protocol codes, regeneration, richer deadwood** (XRFF-639, XRFF-640)
 
 - Migration `20261103100000_outside_inventory_tree_source` (init `80-`). Trees gain

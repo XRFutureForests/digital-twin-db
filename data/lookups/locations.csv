@@ -1,3 +1,8 @@
 LocationName,Description,CenterLongitude,CenterLatitude,Elevation_m,Slope_deg,Aspect,SoilTypeName,ClimateZoneName,ForestGrowthRegion,SoilMoistness,SoilNutrientSupply,CrsEpsg
 ecosense,Ecosense sensor-network research site in the University of Freiburg forest (mixed species; named monitoring sub-areas are plots),7.878040,48.268132,445.0,10.0,NW,Alfisol,Cfb,99.73.04,5,3,32632
 mathisle,Mathisle field research area - University of Freiburg,8.088,47.885,998.0,9.4,N,,,99.73.13,5,3,32632
+tratice,PathFinder superplot Tratice (Slovenia); European forest category 7.2; 0.25 ha census plot measured with mobile laser scanning 2023-2024 (3Dtrees.earth dataset 3604). Field inventory only.,15.386474,46.463358,,,,,,,,,3794
+krucmanove,PathFinder superplot Krucmanove (Slovenia); European forest category 3.2; 0.25 ha census plot measured with mobile laser scanning 2023-2024 (3Dtrees.earth dataset 3603). Field inventory only.,13.938905,46.367276,,,,,,,,,3794
+goettingen2,PathFinder superplot Göttingen 2 (Germany); European forest category 6; 0.25 ha census plot measured with mobile laser scanning 2023-2024 (3Dtrees.earth dataset 3592). Field inventory only.,9.960998,51.567190,,,,,,,,,25832
+valsain,PathFinder superplot Valsaín (Spain); European forest category 10.4; 0.25 ha census plot measured with mobile laser scanning 2023-2024 (3Dtrees.earth dataset 3608). Field inventory only.,-4.042247,40.806169,,,,,,,,,25830
+vallombrosa_douglas,PathFinder superplot Vallombrosa Douglasia (Italy); European forest category 14.2; 0.25 ha census plot measured with mobile laser scanning 2023-2024 (3Dtrees.earth dataset 3595). Field inventory only.,11.576294,43.776135,,,,,,,,,25832

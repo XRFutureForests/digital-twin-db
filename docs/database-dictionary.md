@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261103110000_forest_floor_regeneration_and_deadwood`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261103130000_regeneration_survey_area`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -1473,13 +1473,13 @@ Constraints: `CHECK (((cover_percent >= (0)::numeric) AND (cover_percent <= (100
 
 ### forest_floor.regeneration
 
-Regeneration tallies: live and dead counts per species and size class on a plot or subplot. The subplot is a shared.plots row (usually a child of the main plot through parent_plot_id) whose own area_m2 turns counts into per-hectare values; see public.regeneration_per_ha. Size classes follow the protocol of the plot's sampling design.
+Regeneration tallies: live and dead counts per species and size class on a survey area within a plot (survey_area_m2, else the plot's area). See public.regeneration_per_ha. Size classes follow the protocol of the plot's sampling design.
 
 | Column | Type | Null | Default | References | Description |
 |---|---|---|---|---|---|
 | `regeneration_id` | integer |  | serial |  |  |
 | `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
-| `plot_id` | integer | yes |  | `shared.plots.plot_id` (set null) | The (sub)plot the tally was made on. Its area_m2, or the nearest enclosing plot's, is the survey area. |
+| `plot_id` | integer | yes |  | `shared.plots.plot_id` (set null) | The plot the tally was made in. The survey area is survey_area_m2, else the plot's area_m2 (or the nearest enclosing plot's). |
 | `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) |  |
 | `species_id` | integer | yes |  | `shared.species.species_id` (set null) |  |
 | `size_class` | character varying(20) |  |  |  | seedling \| sapling, as the protocol defines them (e.g. Pathfinder: seedlings on 12 x 12 m, saplings on 0.01 ha). |
@@ -1495,8 +1495,9 @@ Regeneration tallies: live and dead counts per species and size class on a plot 
 | `updated_at` | timestamp with time zone | yes | `now()` |  |  |
 | `created_by` | character varying(200) | yes |  |  |  |
 | `updated_by` | character varying(200) | yes |  |  |  |
+| `survey_area_m2` | numeric(10,2) | yes |  |  | Area the tally was counted on, in m2 (e.g. Pathfinder saplings: 100 m2 within the 0.25 ha plot). NULL = the whole plot's resolved area. Not a plot of its own: a plot with its own area would count as a tree sample unit. |
 
-Constraints: `CHECK ((dead_count >= 0))`; `CHECK ((live_count >= 0))`; `CHECK ((mean_height_m >= (0)::numeric))`; `CHECK (((size_class)::text = ANY ((ARRAY['seedling'::character varying, 'sapling'::character varying])::text[])))`; `CHECK (((source_attributes IS NULL) OR (jsonb_typeof(source_attributes) = 'object'::text)))`; `CHECK (((source_regeneration_id IS NULL) OR (campaign_id IS NOT NULL)))`; primary key (regeneration_id).
+Constraints: `CHECK ((dead_count >= 0))`; `CHECK ((live_count >= 0))`; `CHECK ((mean_height_m >= (0)::numeric))`; `CHECK (((size_class)::text = ANY ((ARRAY['seedling'::character varying, 'sapling'::character varying])::text[])))`; `CHECK (((source_attributes IS NULL) OR (jsonb_typeof(source_attributes) = 'object'::text)))`; `CHECK (((source_regeneration_id IS NULL) OR (campaign_id IS NOT NULL)))`; `CHECK ((survey_area_m2 > (0)::numeric))`; primary key (regeneration_id).
 
 ## Views
 
@@ -1553,7 +1554,7 @@ portal's API page.
 | `point_clouds` | Public API view for point clouds table |
 | `qsms` | Public API view for QSM reconstructions |
 | `regeneration` | Regeneration tallies: live and dead counts per species and size class on a plot or subplot. Writable by contributors. |
-| `regeneration_per_ha` | Regeneration per hectare: each tally's counts divided by the survey area of its plot (the plot's own area_m2, else the nearest enclosing plot's). NULL per-hectare values where no area is known. |
+| `regeneration_per_ha` | Regeneration per hectare: each tally's counts divided by its survey area (survey_area_m2, else the plot's area_m2 or the nearest enclosing plot's). NULL per-hectare values where no area is known. |
 | `root_system_types` | Public API view for root system types lookup table |
 | `roots` | Public API view for root system classification/geometry |
 | `sampling_designs` | Sampling designs (inventory protocols). Readable by everyone; contributors write. |
