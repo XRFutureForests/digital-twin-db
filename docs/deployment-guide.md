@@ -39,6 +39,15 @@ bind mount: a reload does not pick up edits, force-recreate the container.
 
 Kong still returns 401 without an `apikey` header, and row-level security still applies.
 
+### Portal and API: campus only
+
+Since 2026-11-03 (owner) the dashboard's nginx answers 403, with a one-line explanation, on
+`/portal/` and every `/db/` path unless the client address is 132.230.0.0/16, 10.0.0.0/8, this
+host (127.0.0.1) or one of its Docker bridges (172.16.0.0/12). People outside use the
+university VPN. The dashboards and `/survey/` stay public (the QR codes on the trees are opened
+over mobile data). The list is the `geo $dt_campus_only_ok` block in the dashboard's
+`docker/nginx/nginx.conf`; remove the `if` lines there to open the portal again.
+
 ### The network header
 
 Datasets can be visible to the university network only (XRFF-625). The dashboard's nginx maps

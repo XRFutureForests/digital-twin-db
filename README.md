@@ -184,7 +184,8 @@ Production setup: [docs/deployment-guide.md](docs/deployment-guide.md).
 ## The instance at the University of Freiburg
 
 The XR Future Forests Lab runs this database at
-**<https://dt.unr.uni-freiburg.de/portal/>**, reachable from the university network. The portal
+**<https://dt.unr.uni-freiburg.de/portal/>**, reachable from the university network only (from
+outside, connect through the university VPN; portal and API answer 403 otherwise). The portal
 lets you browse and download any table without an account, add data with a contributor
 account, request model runs, and read a developer guide; the API is at
 `https://dt.unr.uni-freiburg.de/db/rest/v1/`. Accounts are created by your team's curator.
