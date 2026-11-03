@@ -255,6 +255,34 @@ FROM auth.users ORDER BY created_at;
 
 ---
 
+## Dataset access levels and teams
+
+What a caller may read also depends on the dataset (XRFF-625). A dataset is a campaign: give
+trees, sensors, point clouds or images a `campaign_id` and they follow the campaign's rules.
+
+| Campaign column | Meaning |
+|---|---|
+| `licence` | required; an SPDX id such as `CC-BY-4.0`, or "all rights reserved" |
+| `access_level` | `public` (everyone), `campus` (university network incl. VPN, or any signed-in account), `registered` (any signed-in account), `team` (members of `owner_team_id`) |
+| `owner_team_id` | the team that owns the data; required for `team` |
+| `embargo_until` | until this date only the team, curators and admins see it |
+| `citation`, `doi` | how to cite it |
+
+1. A curator creates the team (portal data page, table `teams`) and adds members with
+   `add_team_member`; a team curator can add plain members to their own team:
+   ```bash
+   curl -X POST "$API/rest/v1/rpc/add_team_member" -H "apikey: $ANON_KEY" \
+        -H "Authorization: Bearer $CURATOR_JWT" -H "Content-Type: application/json" \
+        -d '{"p_team_id": 1, "p_email": "colleague@uni-freiburg.de", "p_is_team_curator": false}'
+   ```
+2. A member creates the campaign with its licence, level and owner team, then loads the data
+   with that `campaign_id`.
+3. `POST /rest/v1/rpc/my_access` shows what the database knows about you: network (campus or
+   internet), signed in or not, role, teams.
+
+Data without a campaign stays public. The dashboards read as `dashboard_reader`, which sees what
+an anonymous caller from outside sees, so restricted datasets never appear there.
+
 ## Permissions summary
 
 | Role | Who | What they can do |

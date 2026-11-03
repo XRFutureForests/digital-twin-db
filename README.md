@@ -112,6 +112,12 @@ Row-level security decides every request from the caller's token:
 | `admin` | also grant `curator` and `admin` |
 | `service_role` (connectors) | the bulk RPCs for sensors, readings and site data |
 
+What a caller reads also depends on the dataset. Each campaign has a licence and an access
+level set by its owner: `public`, `campus` (the university network, or any signed-in
+account), `registered` (any signed-in account) or `team` (the owning team), plus an optional
+embargo. Curators and the owning team see everything; data without a campaign is public.
+Details: [docs/api-spec.md](docs/api-spec.md) §2.2.
+
 Endpoints, filters and the full write-rule table: [docs/api-spec.md](docs/api-spec.md).
 
 ### Stand summaries

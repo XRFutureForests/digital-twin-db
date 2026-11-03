@@ -39,6 +39,15 @@ bind mount: a reload does not pick up edits, force-recreate the container.
 
 Kong still returns 401 without an `apikey` header, and row-level security still applies.
 
+### The network header
+
+Datasets can be visible to the university network only (XRFF-625). The dashboard's nginx maps
+the client address to `X-DT-Network: campus` for 132.230.0.0/16 and `internet` for everything
+else on `/db/rest/v1/`, replacing any value the client sent; the database reads it in
+`shared.request_network()`. That is only safe while Kong (8000) and the database are reachable
+from this host alone, as above: anyone who reaches Kong directly can claim to be on campus.
+Check what the database sees with `POST /db/rest/v1/rpc/my_access`.
+
 ## Server-specific `docker/.env`
 
 | Variable | Server value |

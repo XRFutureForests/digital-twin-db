@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261102170000_stand_summaries_one_pass`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261102180000_dataset_access_levels`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -10,7 +10,7 @@ same name in `public` (listed at the end); write and read through those.
 
 | Schema | Tables | Holds |
 |---|---:|---|
-| [`shared`](#shared) | 34 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
+| [`shared`](#shared) | 36 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
 | [`trees`](#trees) | 29 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
 | [`sensor`](#sensor) | 5 | Sensors, their time series, units, sensor-tree links |
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
@@ -22,7 +22,7 @@ same name in `public` (listed at the end); write and read through those.
 
 Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit
 
-[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`species`](#sharedspecies) · [`strata`](#sharedstrata) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
+[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`species`](#sharedspecies) · [`strata`](#sharedstrata) · [`team_members`](#sharedteam_members) · [`teams`](#sharedteams) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
 
 ### shared.account_events
 
@@ -38,8 +38,9 @@ Account creations, role changes and password resets made through public.create_a
 | `action` | text |  |  |  |  |
 | `old_role` | text | yes |  |  |  |
 | `new_role` | text | yes |  |  |  |
+| `team_id` | integer | yes |  |  |  |
 
-Constraints: `CHECK ((action = ANY (ARRAY['create'::text, 'set_role'::text, 'reset_password'::text])))`; primary key (account_event_id).
+Constraints: `CHECK ((action = ANY (ARRAY['create'::text, 'set_role'::text, 'reset_password'::text, 'team_add'::text, 'team_remove'::text])))`; primary key (account_event_id).
 
 ### shared.attribute_provenance
 
@@ -151,8 +152,14 @@ Data collection campaigns (LiDAR flights, field inventories, sensor deployments)
 | `updated_at` | timestamp with time zone | yes |  |  |  |
 | `created_by` | character varying(200) | yes |  |  |  |
 | `updated_by` | character varying(200) | yes |  |  |  |
+| `owner_team_id` | integer | yes |  | `shared.teams.team_id` | Team that owns the dataset. Its members see the campaign at every access level and during an embargo. Required for access_level team. |
+| `licence` | character varying(100) |  |  |  | Licence of the dataset, preferably an SPDX identifier (CC-BY-4.0, CC0-1.0, ...) or "all rights reserved". Required. |
+| `access_level` | character varying(20) |  | `'public'::character varying` |  | Who may read the campaign's rows: public (everyone), campus (university network incl. VPN, and any signed-in account), registered (any signed-in account), team (members of owner_team_id). Curators and admins see all. |
+| `embargo_until` | date | yes |  |  | Until this date only the owning team, curators and admins see the campaign's rows, whatever the access level. NULL = no embargo. |
+| `citation` | text | yes |  |  | How to cite the dataset. |
+| `doi` | character varying(255) | yes |  |  | DOI of the dataset, if published (e.g. 10.5281/zenodo.123). |
 
-Constraints: `CHECK (((campaign_type)::text = ANY (ARRAY[('lidar_flight'::character varying)::text, ('field_inventory'::character varying)::text, ('sensor_deployment'::character varying)::text, ('drone_survey'::character varying)::text, ('manual_update'::character varying)::text])))`; `CHECK (((end_date IS NULL) OR (end_date >= start_date)))`; primary key (campaign_id); unique (campaign_name).
+Constraints: `CHECK (((access_level)::text = ANY ((ARRAY['public'::character varying, 'campus'::character varying, 'registered'::character varying, 'team'::character varying])::text[])))`; `CHECK ((((access_level)::text <> 'team'::text) OR (owner_team_id IS NOT NULL)))`; `CHECK ((btrim((licence)::text) <> ''::text))`; `CHECK (((campaign_type)::text = ANY (ARRAY[('lidar_flight'::character varying)::text, ('field_inventory'::character varying)::text, ('sensor_deployment'::character varying)::text, ('drone_survey'::character varying)::text, ('manual_update'::character varying)::text])))`; `CHECK (((end_date IS NULL) OR (end_date >= start_date)))`; primary key (campaign_id); unique (campaign_name).
 
 ### shared.climate_pathways
 
@@ -556,6 +563,36 @@ Strata of a stratified sampling design, with their area. A plot's stratum must b
 | `updated_by` | character varying(200) | yes |  |  |  |
 
 Constraints: `CHECK ((area_ha > (0)::numeric))`; primary key (stratum_id); unique (sampling_design_id, stratum_name); unique (stratum_id, sampling_design_id).
+
+### shared.team_members
+
+Who belongs to which team. Written through public.add_team_member / remove_team_member: curators and admins for any team, team curators for their own team (members only).
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `team_id` | integer |  |  | `shared.teams.team_id` (cascade) |  |
+| `user_id` | uuid |  |  | `auth.users.id` (cascade) |  |
+| `is_team_curator` | boolean |  | `false` |  |  |
+| `created_at` | timestamp with time zone | yes | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+
+Constraints: primary key (team_id, user_id).
+
+### shared.teams
+
+A group that owns datasets (campaigns). Members see their team's campaigns at every access level and during an embargo; team curators manage the membership.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `team_id` | integer |  | serial |  |  |
+| `team_name` | character varying(200) |  |  |  |  |
+| `description` | text | yes |  |  |  |
+| `created_at` | timestamp with time zone | yes | `now()` |  |  |
+| `updated_at` | timestamp with time zone | yes | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+| `updated_by` | character varying(200) | yes |  |  |  |
+
+Constraints: primary key (team_id); unique (team_name).
 
 ### shared.variant_types
 
@@ -1493,6 +1530,7 @@ portal's API page.
 | `stand_summaries` | Per-hectare stand values of every variant for each sampling design of its site, all species (by_species false) and per species: estimate, standard error, relative standard error %, margin of error and sampling error % at 95 %, confidence interval, units, area and total. Census designs have no sampling error. Filter on variant_id; other confidence levels via /rpc/estimate_stand. |
 | `stems` | Public API view for tree stems table |
 | `strata` | Strata of stratified sampling designs, with area. |
+| `teams` | Teams that own datasets. Readable by everyone; curators create and change them. |
 | `tree_expansion_factors` | Trees per hectare each tree stands for (shared.expansion_factor_ha on the main stem's DBH), with the plot's design, stratum and sampling weight. Filter on variant_id. NULL where the plot has no area or design. |
 | `tree_graph_edges` | Public API view for QSM topology edge overrides (observed/synthetic/derived) |
 | `tree_part_types` | Public API view for tree part types (CityGML feature classes) lookup table |

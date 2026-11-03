@@ -107,7 +107,7 @@ call `shared.is_contributor()`, `shared.is_curator()` and `shared.is_admin()`, w
 
 | Caller | JWT | Access |
 |--------|-----|--------|
-| anonymous | `role: anon` | SELECT on every public view; may call `ue_sensor_state_at`, `ue_sensor_readings_latest`; `request_job` is refused |
+| anonymous | `role: anon` | SELECT on every public view, limited to the datasets it may see (below); may call `ue_sensor_state_at`, `ue_sensor_readings_latest`, `my_access`; `request_job` is refused |
 | account, no tier | `role: authenticated` | Read-only: SELECT, its own rows in `job_status`, `list_accounts` refuses it |
 | contributor | `app_metadata.role: contributor` | INSERT on field data; full CRUD on metadata; `request_job()` |
 | curator | `app_metadata.role: curator` | Contributor rights, plus UPDATE/DELETE on field data, every job in `job_status`, `climate_pathways` / `management_regimes`, managing read-only and contributor accounts |
@@ -128,9 +128,34 @@ call `shared.is_contributor()`, `shared.is_curator()` and `shared.is_admin()`, w
 | Lookups | `variant_types`, `sensor_types`, `soil_types`, `climate_zones`, `tree_status`, morphology lookups, `tree_part_types`, `root_system_types`, `scanner_types` | — | — |
 | Jobs | `shared.processing_jobs` | only via `request_job()` | the job runner (direct database connection) |
 
-**Tables without RLS**, guarded by grants alone: `shared.variants`, `trees.growth_simulations`,
-`sensor.sensor_tree_links`, `trees.data_source_types`, `sensor.units`, `shared.lookup_registry`,
-`shared.audit_log_phenology_observations`. `anon` and `authenticated` hold no write grant on
+**Dataset access levels** (migration `20261102180000`, XRFF-625). A dataset is a campaign;
+trees, sensors, point clouds and images point at one through `campaign_id`. The campaign's
+`access_level` decides who reads its rows and the rows that hang off them (stems, phenology,
+roots, crown profiles, QSMs and their cylinders and edges, growth simulations, sensor readings,
+sensor-tree links, deadwood):
+
+| `access_level` | Readable by |
+|---|---|
+| `public` | everyone |
+| `campus` | requests from the university network (132.230.0.0/16, includes the VPN) and any signed-in account |
+| `registered` | any signed-in account |
+| `team` | members of the campaign's `owner_team_id` |
+
+Curators and admins read everything. Members of the owning team read their team's campaigns
+at every level and during an `embargo_until`; during an embargo nobody else does. Rows without
+a campaign are public. The network comes from the `X-DT-Network` header that the server's nginx
+sets from the client address (a client cannot set it there); `POST /rpc/my_access` shows what
+the database knows about the caller. A contributor may only add or change rows of campaigns
+without an owner team or of their own teams. Every campaign needs a `licence`.
+
+Teams: `/rest/v1/teams` (readable by everyone, curators write). Members are managed with
+`POST /rpc/add_team_member {"p_team_id", "p_email", "p_is_team_curator"}`,
+`/rpc/remove_team_member {"p_team_id", "p_email"}` and `/rpc/list_team_members {"p_team_id"}`:
+curators and admins for any team, team curators for plain members of their own team.
+
+**Tables without RLS**, guarded by grants alone: `shared.variants`, `trees.data_source_types`,
+`sensor.units`, `shared.lookup_registry`, `shared.audit_log_phenology_observations`.
+(`trees.growth_simulations` and `sensor.sensor_tree_links` have RLS since `20261102180000`.) `anon` and `authenticated` hold no write grant on
 any of them, so they are written only by `service_role`, silva-connector (libpq) and the
 import scripts.
 
@@ -143,7 +168,7 @@ Column lists are in the [Data Dictionary](database-dictionary.md) and in `GET /r
 
 ### 3.1 All Available Resources
 
-60 views. Everyone (including `anon`) can read every one of them; `job_status` returns only
+61 views. Everyone (including `anon`) can read every one of them, within the dataset access levels in §2.2; `job_status` returns only
 the caller's own jobs (all jobs for curators, `[]` for `anon`). "Write" is the tier a write
 through the view needs (I = insert, U = update, D = delete); "—" means the view is read-only
 over REST.
@@ -172,7 +197,8 @@ over REST.
 | `/rest/v1/inclusion_rules` | `shared.inclusion_rules` | I/U/D contributor |
 | `/rest/v1/strata` | `shared.strata` | I/U/D contributor |
 | `/rest/v1/scenarios` | `shared.scenarios` | I/U/D contributor |
-| `/rest/v1/campaigns` | `shared.campaigns` | I/U/D contributor |
+| `/rest/v1/campaigns` | `shared.campaigns` | I/U/D contributor (a team-owned campaign: team members or curators); `licence` required; also `owner_team_id`, `access_level`, `embargo_until`, `citation`, `doi` |
+| `/rest/v1/teams` | `shared.teams` | I/U/D curator |
 | `/rest/v1/management_events` | `shared.management_events` | I/U/D contributor |
 | `/rest/v1/disturbance_events` | `shared.disturbance_events` | I/U/D contributor |
 | `/rest/v1/locations` | `shared.locations` | I/U contributor; no D |

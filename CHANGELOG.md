@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Dataset ownership, licence and access levels** (XRFF-625)
+
+- Migration `20261102180000_dataset_access_levels` (init `79-`). Campaigns gain `owner_team_id`,
+  `licence` (required), `access_level` (`public`, `campus`, `registered`, `team`; default
+  `public`), `embargo_until`, `citation` and `doi`. Restrictive row-level policies hide the rows
+  of a campaign the caller may not read and the rows hanging off them. `campus` means the
+  university network (header `X-DT-Network`, set by the server's nginx) or any signed-in
+  account. Curators and the owning team see everything. Rows without a campaign stay public, so
+  existing data is unchanged.
+- Teams: `shared.teams`, `shared.team_members`, view `teams`, RPCs `add_team_member`,
+  `remove_team_member`, `list_team_members`; `my_access` shows what the database knows about the
+  caller. Contributors may only write into campaigns without an owner team or of their own teams.
+- `ue_trees`, `growth_simulations` and `simulation_runs` now run with the caller's rights;
+  `trees.growth_simulations` and `sensor.sensor_tree_links` have row-level security.
+- New role `dashboard_reader` (member of `anon`) for the dashboards, which read as `postgres`
+  until now and bypassed row-level security. Each host sets its password (RUNBOOK §9).
+
 **Faster summaries; which SILVA run holds the chain**
 
 - Migration `20261102150000_set_based_summaries_and_chain_run` (init `76-`): `plot_summaries`

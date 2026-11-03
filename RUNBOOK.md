@@ -441,6 +441,23 @@ Configuration (defaults from `.env.example`):
 
 Provider credentials (Aquarius, …) live in the connector repos, never here.
 
+### The dashboard's database role
+
+The dashboards read as `dashboard_reader` (migration `20261102180000`): a member of `anon`, so
+row-level security applies and they see public datasets only. The migration creates it without
+a login. Give it one on each host, put the same password into
+`digital-twin-dashboard/docker/.env` (`DB_USER=dashboard_reader`, `DB_PASSWORD=...`), and
+recreate the Shiny container:
+
+```bash
+PW=$(openssl rand -base64 32 | tr -d '/+=')
+docker exec -i dftdb-db psql -U supabase_admin -d postgres -q \
+    -c "ALTER ROLE dashboard_reader WITH LOGIN PASSWORD '$PW'"
+```
+
+Through the pooler the user is `dashboard_reader.<POOLER_TENANT_ID>`. A new table the dashboard
+must read needs `GRANT SELECT ... TO anon`, which `dashboard_reader` inherits.
+
 ### Service start order (from `docker-compose.yml`)
 
 ```
