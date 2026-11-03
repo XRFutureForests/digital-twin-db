@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Outside inventories: source ids, protocol codes, regeneration, richer deadwood** (XRFF-639, XRFF-640)
+
+- Migration `20261103100000_outside_inventory_tree_source` (init `80-`). Trees gain
+  `source_tree_id` (the producer's own id; unique per campaign and variant, requires a campaign)
+  and `source_attributes` (a JSON object of protocol codes without a column, keyed by the
+  source's column names). Both are in `public.trees`. `campaign_type` accepts `laser_scan` for
+  ground-based TLS and MLS.
+- Migration `20261103110000_forest_floor_regeneration_and_deadwood` (init `81-`). New table
+  `forest_floor.regeneration` (live and dead counts per species and size class `seedling` /
+  `sapling` on a plot or subplot), with views `regeneration` and `regeneration_per_ha` (counts
+  per hectare through the plot's survey area). Deadwood gains `campaign_id`, `geom` (the piece as
+  any geometry, e.g. a line), `diameter_top_cm`, `void_diameter_cm`, `source_deadwood_id` and
+  `source_attributes`; ground vegetation gains `campaign_id`. All three follow the dataset
+  access levels: before, a deadwood row was hidden only through its tree.
+
 **Dataset ownership, licence and access levels** (XRFF-625)
 
 - Migration `20261102180000_dataset_access_levels` (init `79-`). Campaigns gain `owner_team_id`,

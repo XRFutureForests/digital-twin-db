@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261102180000_dataset_access_levels`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261103110000_forest_floor_regeneration_and_deadwood`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -16,7 +16,7 @@ same name in `public` (listed at the end); write and read through those.
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
 | [`point_clouds`](#point_clouds) | 3 | Point clouds and scanners |
 | [`imagery`](#imagery) | 1 | Images |
-| [`forest_floor`](#forest_floor) | 2 | Plot-level dead wood and ground vegetation surveys |
+| [`forest_floor`](#forest_floor) | 3 | Plot-level dead wood and ground vegetation surveys |
 
 ## shared
 
@@ -140,7 +140,7 @@ Data collection campaigns (LiDAR flights, field inventories, sensor deployments)
 |---|---|---|---|---|---|
 | `campaign_id` | integer |  | serial |  |  |
 | `campaign_name` | character varying(200) |  |  |  |  |
-| `campaign_type` | character varying(50) |  |  |  | Type of data collection campaign |
+| `campaign_type` | character varying(50) |  |  |  | Type of data collection campaign: field_inventory, lidar_flight (airborne laser scanning), drone_survey (UAV, incl. ULS), laser_scan (ground-based TLS or MLS), sensor_deployment, manual_update. |
 | `location_id` | integer | yes |  | `shared.locations.location_id` (set null) |  |
 | `start_date` | date |  |  |  |  |
 | `end_date` | date | yes |  |  |  |
@@ -159,7 +159,7 @@ Data collection campaigns (LiDAR flights, field inventories, sensor deployments)
 | `citation` | text | yes |  |  | How to cite the dataset. |
 | `doi` | character varying(255) | yes |  |  | DOI of the dataset, if published (e.g. 10.5281/zenodo.123). |
 
-Constraints: `CHECK (((access_level)::text = ANY ((ARRAY['public'::character varying, 'campus'::character varying, 'registered'::character varying, 'team'::character varying])::text[])))`; `CHECK ((((access_level)::text <> 'team'::text) OR (owner_team_id IS NOT NULL)))`; `CHECK ((btrim((licence)::text) <> ''::text))`; `CHECK (((campaign_type)::text = ANY (ARRAY[('lidar_flight'::character varying)::text, ('field_inventory'::character varying)::text, ('sensor_deployment'::character varying)::text, ('drone_survey'::character varying)::text, ('manual_update'::character varying)::text])))`; `CHECK (((end_date IS NULL) OR (end_date >= start_date)))`; primary key (campaign_id); unique (campaign_name).
+Constraints: `CHECK (((access_level)::text = ANY ((ARRAY['public'::character varying, 'campus'::character varying, 'registered'::character varying, 'team'::character varying])::text[])))`; `CHECK ((((access_level)::text <> 'team'::text) OR (owner_team_id IS NOT NULL)))`; `CHECK ((btrim((licence)::text) <> ''::text))`; `CHECK (((campaign_type)::text = ANY (ARRAY['lidar_flight'::text, 'field_inventory'::text, 'sensor_deployment'::text, 'drone_survey'::text, 'manual_update'::text, 'laser_scan'::text])))`; `CHECK (((end_date IS NULL) OR (end_date >= start_date)))`; primary key (campaign_id); unique (campaign_name).
 
 ### shared.climate_pathways
 
@@ -1148,8 +1148,10 @@ Tree measurement and simulation records with spatial positions
 | `discolouration_percent` | numeric(5,2) | yes |  |  | ICP Forests-style foliage discolouration assessment (0-100%) |
 | `crown_transparency_percent` | numeric(5,2) | yes |  |  | ICP Forests-style crown transparency assessment (0-100%) |
 | `sensor_ref` | character varying(100) | yes |  |  | Source-agnostic reference identifying the sensor cluster installed on this tree. Matches the prefix of sensor.sensors.serial_number, so all of a tree's sensors resolve from it. For the current Ecosense data this value is the external provider's name prefix (e.g. Beech_Mixed_8), but the column carries no provider semantics. NULL for non-instrumented trees. |
+| `source_tree_id` | text | yes |  |  | The producer's own identifier of this tree (e.g. Pathfinder tree_id, a 3Dtrees.earth instance id). Unique per campaign and variant, so re-importing or re-pushing the same inventory is idempotent. Requires campaign_id. |
+| `source_attributes` | jsonb | yes |  |  | Protocol-specific codes without a column of their own, as a JSON object keyed by the source's column names (e.g. {"canopy_layer": "1", "rs_visibility": "2", "species_raw": "Larix_europaea"}). The protocol is the plot's sampling design. A code becomes a column once a second source shares it. |
 
-Constraints: `CHECK (((age_years >= 0) AND (age_years <= 5000)))`; `CHECK ((biomass_kg >= (0)::numeric))`; `CHECK ((carbon_content_kg >= (0)::numeric))`; `CHECK ((crown_base_height_m >= (0)::numeric))`; `CHECK (((crown_base_height_m IS NULL) OR (crown_base_height_m <= height_m)))`; `CHECK (((crown_transparency_percent >= (0)::numeric) AND (crown_transparency_percent <= (100)::numeric)))`; `CHECK (((crown_width_m >= (0)::numeric) AND (crown_width_m <= (100)::numeric)))`; `CHECK (((defoliation_percent >= (0)::numeric) AND (defoliation_percent <= (100)::numeric)))`; `CHECK (((discolouration_percent >= (0)::numeric) AND (discolouration_percent <= (100)::numeric)))`; `CHECK (((health_score >= (0)::numeric) AND (health_score <= (1)::numeric)))`; `CHECK (((height_confidence >= (0)::numeric) AND (height_confidence <= (1)::numeric)))`; `CHECK (((height_m > (0)::numeric) AND (height_m <= (200)::numeric)))`; `CHECK (((lean_angle_deg >= (0)::numeric) AND (lean_angle_deg <= (90)::numeric)))`; `CHECK (((lean_direction_azimuth >= 0) AND (lean_direction_azimuth < 360)))`; `CHECK (((position_confidence >= (0)::numeric) AND (position_confidence <= (1)::numeric)))`; `CHECK (((species_confidence >= (0)::numeric) AND (species_confidence <= (1)::numeric)))`; `CHECK ((volume_m3 >= (0)::numeric))`; primary key (tree_id).
+Constraints: `CHECK (((age_years >= 0) AND (age_years <= 5000)))`; `CHECK ((biomass_kg >= (0)::numeric))`; `CHECK ((carbon_content_kg >= (0)::numeric))`; `CHECK ((crown_base_height_m >= (0)::numeric))`; `CHECK (((crown_base_height_m IS NULL) OR (crown_base_height_m <= height_m)))`; `CHECK (((crown_transparency_percent >= (0)::numeric) AND (crown_transparency_percent <= (100)::numeric)))`; `CHECK (((crown_width_m >= (0)::numeric) AND (crown_width_m <= (100)::numeric)))`; `CHECK (((defoliation_percent >= (0)::numeric) AND (defoliation_percent <= (100)::numeric)))`; `CHECK (((discolouration_percent >= (0)::numeric) AND (discolouration_percent <= (100)::numeric)))`; `CHECK (((health_score >= (0)::numeric) AND (health_score <= (1)::numeric)))`; `CHECK (((height_confidence >= (0)::numeric) AND (height_confidence <= (1)::numeric)))`; `CHECK (((height_m > (0)::numeric) AND (height_m <= (200)::numeric)))`; `CHECK (((lean_angle_deg >= (0)::numeric) AND (lean_angle_deg <= (90)::numeric)))`; `CHECK (((lean_direction_azimuth >= 0) AND (lean_direction_azimuth < 360)))`; `CHECK (((position_confidence >= (0)::numeric) AND (position_confidence <= (1)::numeric)))`; `CHECK (((source_attributes IS NULL) OR (jsonb_typeof(source_attributes) = 'object'::text)))`; `CHECK (((source_tree_id IS NULL) OR (campaign_id IS NOT NULL)))`; `CHECK (((species_confidence >= (0)::numeric) AND (species_confidence <= (1)::numeric)))`; `CHECK ((volume_m3 >= (0)::numeric))`; primary key (tree_id).
 
 ## sensor
 
@@ -1416,7 +1418,7 @@ Constraints: `CHECK (((file_format)::text = ANY (ARRAY[('jpg'::character varying
 
 Plot-level dead wood and ground vegetation surveys
 
-[`deadwood`](#forest_floordeadwood) · [`ground_vegetation`](#forest_floorground_vegetation)
+[`deadwood`](#forest_floordeadwood) · [`ground_vegetation`](#forest_floorground_vegetation) · [`regeneration`](#forest_floorregeneration)
 
 ### forest_floor.deadwood
 
@@ -1431,7 +1433,7 @@ Dead wood inventory including standing dead, fallen logs, stumps, and branches
 | `species_id` | integer | yes |  | `shared.species.species_id` (set null) |  |
 | `wood_type` | character varying(50) |  |  |  | Type of dead wood: standing, fallen, stump, or branch |
 | `length_m` | numeric(6,2) | yes |  |  |  |
-| `diameter_cm` | numeric(6,2) | yes |  |  |  |
+| `diameter_cm` | numeric(6,2) | yes |  |  | Diameter in centimetres: at the base (thick end) for lying pieces and stumps, at breast height for standing dead trees. |
 | `decay_class` | integer | yes |  |  | Decay stage from 1 (fresh) to 5 (fully decomposed) |
 | `volume_m3` | numeric(10,3) | yes |  |  |  |
 | `position` | geometry(Point,4326) | yes |  |  |  |
@@ -1439,8 +1441,14 @@ Dead wood inventory including standing dead, fallen logs, stumps, and branches
 | `notes` | text | yes |  |  |  |
 | `created_at` | timestamp with time zone | yes | `now()` |  |  |
 | `created_by` | character varying(200) | yes |  |  |  |
+| `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) | Data collection campaign (dataset) this record belongs to; decides who may read it (access levels). |
+| `geom` | geometry(Geometry,4326) | yes |  |  | The piece as measured, any geometry in WGS84: a line for a lying piece, a point for a stump. position stays the representative point. |
+| `diameter_top_cm` | numeric(6,2) | yes |  |  | Diameter at the thin end of a lying piece, in centimetres. |
+| `void_diameter_cm` | numeric(6,2) | yes |  |  | Diameter of the hollow core, in centimetres (NSW coarseWoodyDebrisVoidSpace). 0 = solid. |
+| `source_deadwood_id` | text | yes |  |  | The producer's own identifier of this piece. Unique per campaign; requires campaign_id. |
+| `source_attributes` | jsonb | yes |  |  | Protocol codes without a column of their own, as a JSON object keyed by the source's column names (e.g. the raw typology). |
 
-Constraints: `CHECK (((decay_class >= 1) AND (decay_class <= 5)))`; `CHECK ((diameter_cm > (0)::numeric))`; `CHECK ((length_m > (0)::numeric))`; `CHECK ((volume_m3 >= (0)::numeric))`; `CHECK (((wood_type)::text = ANY (ARRAY[('standing'::character varying)::text, ('fallen'::character varying)::text, ('stump'::character varying)::text, ('branch'::character varying)::text])))`; primary key (deadwood_id).
+Constraints: `CHECK (((decay_class >= 1) AND (decay_class <= 5)))`; `CHECK ((diameter_cm > (0)::numeric))`; `CHECK ((diameter_top_cm > (0)::numeric))`; `CHECK ((length_m > (0)::numeric))`; `CHECK (((source_attributes IS NULL) OR (jsonb_typeof(source_attributes) = 'object'::text)))`; `CHECK (((source_deadwood_id IS NULL) OR (campaign_id IS NOT NULL)))`; `CHECK ((void_diameter_cm >= (0)::numeric))`; `CHECK ((volume_m3 >= (0)::numeric))`; `CHECK (((wood_type)::text = ANY (ARRAY[('standing'::character varying)::text, ('fallen'::character varying)::text, ('stump'::character varying)::text, ('branch'::character varying)::text])))`; primary key (deadwood_id).
 
 ### forest_floor.ground_vegetation
 
@@ -1459,8 +1467,36 @@ Ground vegetation survey records by plot and layer
 | `notes` | text | yes |  |  |  |
 | `created_at` | timestamp with time zone | yes | `now()` |  |  |
 | `created_by` | character varying(200) | yes |  |  |  |
+| `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) | Data collection campaign (dataset) this record belongs to; decides who may read it (access levels). |
 
 Constraints: `CHECK (((cover_percent >= (0)::numeric) AND (cover_percent <= (100)::numeric)))`; `CHECK ((height_cm >= (0)::numeric))`; `CHECK (((layer)::text = ANY (ARRAY[('herb'::character varying)::text, ('shrub'::character varying)::text, ('moss'::character varying)::text, ('litter'::character varying)::text, ('fern'::character varying)::text, ('grass'::character varying)::text])))`; primary key (ground_vegetation_id).
+
+### forest_floor.regeneration
+
+Regeneration tallies: live and dead counts per species and size class on a plot or subplot. The subplot is a shared.plots row (usually a child of the main plot through parent_plot_id) whose own area_m2 turns counts into per-hectare values; see public.regeneration_per_ha. Size classes follow the protocol of the plot's sampling design.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `regeneration_id` | integer |  | serial |  |  |
+| `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
+| `plot_id` | integer | yes |  | `shared.plots.plot_id` (set null) | The (sub)plot the tally was made on. Its area_m2, or the nearest enclosing plot's, is the survey area. |
+| `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) |  |
+| `species_id` | integer | yes |  | `shared.species.species_id` (set null) |  |
+| `size_class` | character varying(20) |  |  |  | seedling \| sapling, as the protocol defines them (e.g. Pathfinder: seedlings on 12 x 12 m, saplings on 0.01 ha). |
+| `live_count` | integer |  | `0` |  | Live individuals counted. |
+| `dead_count` | integer |  | `0` |  | Dead individuals counted. |
+| `mean_height_m` | numeric(5,2) | yes |  |  | Mean height of the counted individuals, when recorded. |
+| `position` | geometry(Point,4326) | yes |  |  | Where the tally was made, when recorded (subplot centre or measured point). |
+| `measurement_date` | date | yes |  |  |  |
+| `source_regeneration_id` | text | yes |  |  | The producer's own identifier of this tally. Unique per campaign; requires campaign_id. |
+| `source_attributes` | jsonb | yes |  |  | Protocol codes without a column of their own, as a JSON object keyed by the source's column names (e.g. the raw species name). |
+| `notes` | text | yes |  |  |  |
+| `created_at` | timestamp with time zone | yes | `now()` |  |  |
+| `updated_at` | timestamp with time zone | yes | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+| `updated_by` | character varying(200) | yes |  |  |  |
+
+Constraints: `CHECK ((dead_count >= 0))`; `CHECK ((live_count >= 0))`; `CHECK ((mean_height_m >= (0)::numeric))`; `CHECK (((size_class)::text = ANY ((ARRAY['seedling'::character varying, 'sapling'::character varying])::text[])))`; `CHECK (((source_attributes IS NULL) OR (jsonb_typeof(source_attributes) = 'object'::text)))`; `CHECK (((source_regeneration_id IS NULL) OR (campaign_id IS NOT NULL)))`; primary key (regeneration_id).
 
 ## Views
 
@@ -1516,6 +1552,8 @@ portal's API page.
 | `plots` | Public API view for sub-plot divisions within locations |
 | `point_clouds` | Public API view for point clouds table |
 | `qsms` | Public API view for QSM reconstructions |
+| `regeneration` | Regeneration tallies: live and dead counts per species and size class on a plot or subplot. Writable by contributors. |
+| `regeneration_per_ha` | Regeneration per hectare: each tally's counts divided by the survey area of its plot (the plot's own area_m2, else the nearest enclosing plot's). NULL per-hectare values where no area is known. |
 | `root_system_types` | Public API view for root system types lookup table |
 | `roots` | Public API view for root system classification/geometry |
 | `sampling_designs` | Sampling designs (inventory protocols). Readable by everyone; contributors write. |
