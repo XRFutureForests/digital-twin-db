@@ -46,9 +46,9 @@ The forms are generated from the API's own OpenAPI description, so every public 
 there. The database decides what your role may do; an update it refuses comes back as
 "nothing was saved", not as a fake success.
 
-Supabase Studio is **not** a write path for colleagues: it logs in with the shared
-`DASHBOARD_PASSWORD`, acts as `supabase_admin`, and is reachable only through an SSH
-tunnel on the server.
+Supabase Studio is **not** a write path for colleagues: it has no login of its own, acts
+as `supabase_admin`, and is reachable only through an SSH tunnel to the server's loopback
+port 54323 (the tunnel is the access control).
 
 ### Option B — Python import scripts (batch uploads)
 

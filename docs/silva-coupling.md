@@ -193,8 +193,9 @@ unused, each verified against the running database before removal:
 - its `ba` column emitted legacy SILVA 4.5 species codes, which collide with
   `tum_wwk_short` on 4, 5 and 6;
 - its data-source filter (`field | lidar | photogrammetry`) returned 1,198 of
-  the 2,225 measured trees and *zero* mathisle trees, all of which are typed
-  `estimated`;
+  the 2,225 measured trees and *zero* mathisle trees, all of which were then typed
+  `estimated` (the old height fill relabelled them; they are `field` again since
+  2026-11-04);
 - it offered no way to select a base variant, so it could only ever describe the
   measured baseline.
 
