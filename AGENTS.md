@@ -114,7 +114,7 @@ documented dependency for an undocumented one.
 | Stop all services (from `docker/`) | `docker compose down` |
 | Open Studio UI | http://localhost:54323 |
 | Query REST API | http://localhost:8000/rest/v1 |
-| Reset and rebuild the database | the procedure in [RUNBOOK.md §6](RUNBOOK.md#6-schema-changes-reset-and-rebuild) (`scripts/admin/reset_database.py` skips the image rebuild — do not use it) |
+| Reset and rebuild the database | the procedure in [RUNBOOK.md §6](RUNBOOK.md#6-schema-changes-reset-and-rebuild) |
 | Regenerate schema docs | `python scripts/utils/generate_schema_docs.py` (`--check` exits 1 when stale) |
 
 ## Environment Variables

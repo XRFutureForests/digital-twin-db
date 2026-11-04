@@ -9,7 +9,6 @@ scripts/
 ├── README.md
 ├── admin/                    # Administrative scripts
 │   ├── refresh_lookups.py          # Refresh lookup tables from CSV
-│   ├── reset_database.py           # Full database reset
 │   └── validate_species_gbif.py    # Validate species names via GBIF
 ├── import/                   # Data import & sync scripts
 │   ├── import_trees.py             # Unified tree import from template CSV
@@ -25,9 +24,7 @@ scripts/
 │   └── ecosense_zwisel_stem.sql      # 2nd stem of the 4_56 forked tree (post-import)
 └── utils/                    # Utility and debug scripts
     ├── check_db_schema.py          # Inspect database schema
-    ├── generate_jwt.py             # Mint ANON/SERVICE_ROLE JWTs from JWT_SECRET
-    ├── profiling.py                # Per-stage timing helper used by --profile
-    └── test_import_upload.py       # Test import file upload
+    └── generate_jwt.py             # Mint ANON/SERVICE_ROLE JWTs from JWT_SECRET
 ```
 
 SILVA growth simulation is **not** here: it lives in the
@@ -115,9 +112,6 @@ All utility scripts are in `scripts/utils/`.
 # Test database connection and inspect schema
 python scripts/utils/check_db_schema.py
 
-# Validate and test import files (dry-run)
-python scripts/utils/test_import_upload.py
-
 # Regenerate docs/database-dictionary.md and docs/database-erd.dbml from the database
 # (run after every migration; --check exits 1 when either is stale)
 python scripts/utils/generate_schema_docs.py
@@ -127,9 +121,9 @@ python scripts/utils/generate_schema_docs.py
 
 Administrative scripts for database management (in `scripts/admin/`):
 
-Do not use `reset_database.py` to reset the database: it skips the image rebuild, so new
-init files never run, and it deletes a data path that no longer exists. Follow the reset
-procedure in [RUNBOOK.md §6](../RUNBOOK.md#6-schema-changes-reset-and-rebuild) instead.
+To reset the database, follow the procedure in
+[RUNBOOK.md §6](../RUNBOOK.md#6-schema-changes-reset-and-rebuild) (the old
+`reset_database.py` skipped the image rebuild and was removed).
 
 ```bash
 # Refresh all lookup tables from CSV

@@ -462,7 +462,7 @@ Schema history lives in `supabase/migrations/` (Supabase CLI) — the source of 
 
 ### 6.3 Migration Strategy
 
-The init files run automatically when the Docker container initializes for the first time. To reset and rebuild the database, follow [RUNBOOK.md §6](../RUNBOOK.md#6-schema-changes-reset-and-rebuild) (`scripts/admin/reset_database.py` skips the image rebuild).
+The init files run automatically when the Docker container initializes for the first time. To reset and rebuild the database, follow [RUNBOOK.md §6](../RUNBOOK.md#6-schema-changes-reset-and-rebuild).
 
 For a new schema change: add a timestamped file under `supabase/migrations/` (`npx supabase migration new <description>`), mirror it into the next numbered init file (additive only, never restructuring the baseline), then regenerate [database-dictionary.md](database-dictionary.md) and [database-erd.dbml](database-erd.dbml) with `scripts/utils/generate_schema_docs.py`. See `AGENTS.md` §"Schema Migrations" for the full workflow, including when and how to re-snapshot the baseline.
 

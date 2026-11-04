@@ -230,7 +230,6 @@ cd docker && docker compose build db && docker compose up -d db
 ### Full rebuild
 
 `docker compose down -v` **deletes all data** (both named volumes). Back up first (§7).
-`scripts/admin/reset_database.py` is not this procedure: it skips the image rebuild.
 
 ```bash
 # 1. wipe volumes, rebuild the baked image, boot (init scripts run on first boot)

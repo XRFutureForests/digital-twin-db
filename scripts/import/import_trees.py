@@ -20,6 +20,8 @@ Examples:
 import argparse
 import logging
 import sys
+import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import pandas as pd
@@ -29,7 +31,18 @@ from psycopg2.extras import execute_values
 # Allow importing from scripts/utils/ when running as a script
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.db import get_db_connection
-from utils.profiling import init_profiler
+
+STAGE_SECONDS: dict[str, float] = {}  # --profile: wall time per stage
+
+
+@contextmanager
+def track(stage: str):
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        STAGE_SECONDS[stage] = time.perf_counter() - start
+
 
 # The 24 columns of data/templates/trees_import_template.csv.
 TEMPLATE_COLUMNS = [
@@ -557,7 +570,6 @@ def main():
         level=logging.DEBUG if args.verbose else logging.WARNING,
         format="%(levelname)s: %(message)s",
     )
-    timer = init_profiler(enabled=args.profile)
 
     csv_path = Path(args.csv_file).resolve()
 
@@ -571,7 +583,7 @@ def main():
         sys.exit(1)
 
     print(f"\nLoading {csv_path.name}...")
-    with timer.track("parse_csv"):
+    with track("parse_csv"):
         df = pd.read_csv(csv_path, comment="#")
 
     # Summary
@@ -579,7 +591,7 @@ def main():
 
     # Validate structure
     print("\nValidating CSV format...")
-    with timer.track("validate"):
+    with track("validate"):
         errors, warnings = validate_csv(df, csv_path)
 
     for w in warnings:
@@ -619,7 +631,7 @@ def main():
     else:
         print("\nImporting trees...")
 
-    with timer.track("insert_rows"):
+    with track("insert_rows"):
         import_trees(df, dry_run=args.dry_run, append=args.append)
 
     # Final verification
@@ -648,14 +660,11 @@ def main():
         conn.close()
 
     if args.profile:
-        total = timer.get_total_time()
-        row_count = len(df)
-        rows_per_sec = row_count / total if total > 0 else 0
-        print(
-            f"Rows: {row_count} | {rows_per_sec:.0f} rows/s",
-            file=sys.stderr,
-        )
-        timer.print_report()
+        total = sum(STAGE_SECONDS.values())
+        rows_per_sec = len(df) / total if total > 0 else 0
+        print(f"Rows: {len(df)} | {rows_per_sec:.0f} rows/s", file=sys.stderr)
+        for stage, seconds in STAGE_SECONDS.items():
+            print(f"  {stage:<12} {seconds:8.2f} s", file=sys.stderr)
 
     print("\nDone.")
 

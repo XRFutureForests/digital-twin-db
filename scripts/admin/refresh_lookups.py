@@ -17,10 +17,9 @@ import sys
 # Configuration
 CONTAINER_NAME = "dftdb-db"
 
-# Keep in step with shared.lookup_registry. The two lists were maintained by
-# hand and drifted -- three keys the SQL supported were missing here, so --all
-# silently skipped them (XRFF-496). validate_against_registry() below now fails
-# loudly on a mismatch instead of leaving it to be noticed by accident.
+# Keep in step with shared.lookup_registry by hand. The two lists drifted once
+# -- three keys the SQL supported were missing here, so --all silently skipped
+# them (XRFF-496). Nothing checks this automatically.
 AVAILABLE_TABLES = {
     "species": ("species.csv", "Tree species definitions"),
     "locations": ("locations.csv", "Research plot locations"),
@@ -227,31 +226,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
-
-def validate_against_registry(conn) -> list[str]:
-    """Return the discrepancies between this module and shared.lookup_registry.
-
-    The registry drives the loader; this dict drives the CLI. They are two hand-
-    maintained lists of the same thing, which is exactly how three lookups came
-    to be missing here while the SQL supported them.
-    """
-    cur = conn.cursor()
-    cur.execute("SELECT logical_key, csv_file FROM shared.lookup_registry")
-    registry = dict(cur.fetchall())
-    # locations and scenarios keep bespoke branches and are not in the registry.
-    BESPOKE = {"locations", "scenarios"}
-
-    problems = []
-    for key in sorted(set(registry) - set(AVAILABLE_TABLES)):
-        problems.append(f"in shared.lookup_registry but not in AVAILABLE_TABLES: {key}")
-    for key in sorted(set(AVAILABLE_TABLES) - set(registry) - BESPOKE):
-        problems.append(f"in AVAILABLE_TABLES but not in shared.lookup_registry: {key}")
-    for key in sorted(set(registry) & set(AVAILABLE_TABLES)):
-        csv_here = AVAILABLE_TABLES[key][0]
-        if csv_here != registry[key]:
-            problems.append(
-                f"{key}: CSV differs -- AVAILABLE_TABLES says {csv_here!r}, "
-                f"shared.lookup_registry says {registry[key]!r}"
-            )
-    return problems
