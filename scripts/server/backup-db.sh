@@ -19,6 +19,8 @@
 #
 # So: this backs up the irreplaceable 64 MB every night and treats the 8.4 GB
 # as a cache. Restoring a cluster means this dump plus an aquarius re-sync.
+# The cache rule holds only for refetchable sources (aquarius, open-meteo);
+# readings from any other source are copied to a second file, see below.
 #
 # WHERE IT WRITES
 # ---------------
@@ -81,8 +83,25 @@ fi
 mv -- "$TMP" "$TARGET"
 log "wrote $(basename "$TARGET") ($(du -h "$TARGET" | cut -f1))"
 
+# The readings excluded above are a cache only for sources that can re-send
+# them (aquarius, open-meteo). Readings loaded any other way -- a logger CSV
+# through ingest_sensor_data.py -- exist nowhere else, so they are copied here.
+# Restore: \copy sensor.sensor_readings FROM ... CSV HEADER after the dump.
+OTHER="$BACKUP_DIR/dftdb_${STAMP}.readings_other.csv.gz"
+if ! docker exec "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -c \
+        "\\copy (SELECT r.* FROM sensor.sensor_readings r JOIN sensor.sensors s USING (sensor_id)
+                  WHERE s.source IS DISTINCT FROM 'aquarius' AND s.source IS DISTINCT FROM 'open-meteo')
+          TO STDOUT WITH (FORMAT csv, HEADER)" \
+     | gzip -6 > "$OTHER.partial"; then
+    log "FATAL: copy of non-refetchable readings failed"
+    rm -f -- "$OTHER.partial"
+    exit 1
+fi
+mv -- "$OTHER.partial" "$OTHER"
+log "wrote $(basename "$OTHER") ($(gzip -dc "$OTHER" | tail -n +2 | wc -l) readings)"
+
 # Retention. -mtime +N is strictly older than N days, so 30 keeps ~31 files.
-DELETED=$(find "$BACKUP_DIR" -maxdepth 1 -name 'dftdb_*.sql.gz' \
+DELETED=$(find "$BACKUP_DIR" -maxdepth 1 \( -name 'dftdb_*.sql.gz' -o -name 'dftdb_*.readings_other.csv.gz' \) \
     -type f -mtime +"$RETENTION_DAYS" -print -delete | wc -l)
 [ "$DELETED" -gt 0 ] && log "pruned $DELETED backup(s) older than $RETENTION_DAYS days"
 
