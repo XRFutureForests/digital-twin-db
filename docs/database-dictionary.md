@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261103130000_regeneration_survey_area`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261104120000_height_source_register`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -1105,7 +1105,7 @@ Tree measurement and simulation records with spatial positions
 | `measurement_date` | date | yes |  |  | Actual date of field measurement (may differ from created_at) |
 | `data_source_type_id` | integer | yes |  | `trees.data_source_types.data_source_type_id` (set null) | FK to trees.data_source_types — how the data was collected or generated |
 | `height_m` | numeric(6,2) | yes |  |  |  |
-| `height_source` | character varying(50) | yes |  |  | How height_m was arrived at. NULL means unrecorded -- it is not a claim that the height was measured. Values in use: 'measured' (field instrument), 'allometric_pylometree' (H-D model fill, see scripts/import/fill_missing_heights.py), 'simulated_silva' (SILVA projection, see silva-connector). Pair with data_source_type_id, which records how the tree record as a whole was produced, and process_id, which identifies the run. |
+| `height_source` | character varying(50) | yes |  |  | How height_m was arrived at. NULL means unrecorded -- it is not a claim that the height was measured. Values in use: 'measured' (field instrument), 'measured_tls' (terrestrial laser scan, scripts/import/import_tls_heights.py), 'allometric_fitted_species' / 'allometric_fitted_leaf_type' (Naslund H-D curve fitted to this database's measured trees, per species or pooled per leaf type, see scripts/import/fill_missing_heights.py), 'allometric_yield_table' (yield-table height, scripts/seed/ecosense_canopy_height_fix.sql), 'simulated_silva' (SILVA projection, see silva-connector). Pair with data_source_type_id, which records how the tree record as a whole was produced, and process_id, which identifies the run. |
 | `crown_width_m` | numeric(6,2) | yes |  |  |  |
 | `crown_base_height_m` | numeric(6,2) | yes |  |  |  |
 | `crown_boundary` | geometry(Polygon,4326) | yes |  |  | PostGIS polygon defining crown extent |

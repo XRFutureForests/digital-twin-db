@@ -203,7 +203,7 @@ Each row is one physical-tree record within one forest state (variant).
 | `variant_id` | Forest state this row belongs to (§3.2) |
 | `scenario_id` | Convenience FK, resynced from the variant |
 | `data_source_type_id` | How the record as a whole was produced → `trees.data_source_types`: `field`, `lidar`, `photogrammetry`, `estimated`, `simulated` |
-| `height_source` | How `height_m` was arrived at; NULL means unrecorded. Deliberately unconstrained (§7.2); values in use are listed in the column comment (`measured`, `allometric_pylometree`, `simulated_silva`) |
+| `height_source` | How `height_m` was arrived at; NULL means unrecorded. Deliberately unconstrained (§7.2); values in use are listed in the column comment (`measured`, `measured_tls`, `allometric_fitted_species`, `allometric_fitted_leaf_type`, `allometric_yield_table`, `simulated_silva`) |
 | `live_crown_ratio` | Generated: `(height_m - crown_base_height_m) / height_m` |
 | `sensor_ref` | Source-agnostic reference to the sensor cluster on this tree; matches the prefix of `sensor.sensors.serial_number` so all of a tree's sensors resolve from it (for current Ecosense data e.g. `Beech_Mixed_8`). NULL if not instrumented. See §3.10 |
 | `tree_number` | Local tree number within location/plot (field inventory numbering) |

@@ -260,8 +260,11 @@ python scripts/import/import_pathfinder.py fetch
 python scripts/import/import_pathfinder.py sql
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < data/tmp/pathfinder_import.sql
 
-# 4. derived values, in this order (each takes --dry-run)
+# 4. derived values, in this order (each takes --dry-run). Heights are fitted per species to
+#    the measured trees; a changed height clears crown, volume, age and biomass for the rest.
 python scripts/import/fill_missing_heights.py
+(cd ../silva-connector && docker compose -f docker/docker-compose.yml run --rm silvar \
+   Rscript /work/scripts/fill_allometry.R)          # crown + volume; needs PGPASSWORD
 python scripts/import/fill_missing_ages.py
 python scripts/import/fill_missing_biomass.py
 
