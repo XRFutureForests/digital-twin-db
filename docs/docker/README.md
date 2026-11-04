@@ -54,7 +54,8 @@ fresh init. The migration workflow is in [AGENTS.md](../../AGENTS.md#schema-migr
 The auth upstream uses the container name `dftdb-auth`, not the service name `auth`: on the
 campus network the short name `auth` resolves to a university host.
 
-Port 54323 publishes Studio directly, bypassing Kong and its basic-auth.
+Port 54323 publishes Studio directly, bypassing Kong and its basic-auth, so it (and the
+logflare 4000 and inbucket 2500/9000/1100 ports) is bound to `127.0.0.1` only.
 
 ## Differences from upstream Supabase
 
@@ -64,7 +65,7 @@ Port 54323 publishes Studio directly, bypassing Kong and its basic-auth.
 2. `db` built from `Dockerfile.db` with the schema baked in, instead of init-file bind mounts.
 3. `PGDATA_PATH`, `STORAGE_PATH` and the `POSTGRES_*` memory variables, for the server's NFS
    layout ([deployment-guide.md](../deployment-guide.md)).
-4. Studio published on 54323.
+4. Studio published on 54323 (loopback only).
 5. Job queue `shared.processing_jobs` + `request_job()` RPC instead of Edge Functions
    (XRFF-257; [requesting-a-job.md](../requesting-a-job.md)).
 6. Signup closed by default (`DISABLE_SIGNUP=true`).

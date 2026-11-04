@@ -188,13 +188,12 @@ mints it at sign-in from `raw_app_meta_data`. Confirmed end to end: before the
 update the token carried no role and `request_job()` refused it; after it, the
 same account signed in and queued a job.
 
-**Studio on the server is not exposed.** `dftdb-studio` publishes 54323, and the
-campus client-subnet ACL blocks every inbound port but 22 and 443, so reach it
-through an SSH tunnel:
+**Studio on the server is not exposed.** `dftdb-studio` publishes 54323 on
+loopback only (it has no login of its own), so reach it through an SSH tunnel:
 
 ```bash
 ssh -L 54323:localhost:54323 dt.unr.uni-freiburg.de
-# then open http://localhost:54323 — DASHBOARD_USERNAME / DASHBOARD_PASSWORD from docker/.env
+# then open http://localhost:54323 — no login: the tunnel is the access control
 ```
 
 #### Why *Invite user* is not the route

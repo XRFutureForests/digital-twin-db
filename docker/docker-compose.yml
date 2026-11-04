@@ -13,7 +13,8 @@ services:
     image: supabase/studio:2025.11.10-sha-5291fe3
     restart: unless-stopped
     ports:
-      - 54323:3000
+      # Loopback only: this port skips Kong's basic-auth. Reach it via SSH tunnel.
+      - 127.0.0.1:54323:3000
     healthcheck:
       test: [ "CMD", "node", "-e", "fetch('http://studio:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})" ]
       timeout: 10s
@@ -89,9 +90,9 @@ services:
     image: inbucket/inbucket:3.0.3
     restart: unless-stopped
     ports:
-      - 2500:2500 # SMTP
-      - 9000:9000 # web interface
-      - 1100:1100 # POP3
+      - 127.0.0.1:2500:2500 # SMTP
+      - 127.0.0.1:9000:9000 # web interface
+      - 127.0.0.1:1100:1100 # POP3
 
   auth:
     container_name: dftdb-auth
@@ -328,7 +329,7 @@ services:
     image: supabase/logflare:1.22.6
     restart: unless-stopped
     ports:
-      - 4000:4000
+      - 127.0.0.1:4000:4000
     # Uncomment to use Big Query backend for analytics
     # volumes:
     #   - type: bind
