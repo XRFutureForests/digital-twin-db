@@ -14,7 +14,7 @@ scripts/
 │   ├── import_trees.py             # Unified tree import from template CSV
 │   ├── ingest_sensor_data.py       # Provider-agnostic sensor/reading import (CSV/JSON)
 │   ├── link_sensors_to_trees.py    # Link sensors to trees (writes sensor_ref)
-│   ├── fill_missing_heights.py     # Backfill height_m from allometric H-D models
+│   ├── fill_missing_heights.py     # Backfill height_m from H-D curves fitted to measured trees
 │   ├── import_tls_heights.py       # Ecosense beech heights from the TLS reference (dry run; --apply)
 │   ├── fill_missing_ages.py        # Backfill age_years by Chapman-Richards height-age inversion
 │   └── fill_missing_biomass.py     # Backfill biomass_kg / carbon_content_kg (Zianis 2005 AGB)
