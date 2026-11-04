@@ -73,11 +73,15 @@ reap_grace_seconds = 120
 # Runs in the silva-connector container, which joins the database's compose
 # network: the published 5432 is Supavisor and rejects a plain postgres user.
 # 32 s for ecosense, 9 s for mathisle -- the timeout is generous on purpose.
+# `timeout` runs INSIDE the container and ends R before the runner's own limit:
+# the runner can only kill the `docker compose` client, and the container it
+# leaves behind would still commit the results of a job already marked failed.
 [workflows.silva]
 command = [
     "/usr/bin/docker", "compose",
     "-f", "/home/max/dev/silva-connector/docker/docker-compose.yml",
     "run", "--rm", "silvar",
+    "timeout", "--kill-after=30", "840",
     "Rscript", "/work/scripts/run_simulation.R",
 ]
 timeout_seconds = 900
