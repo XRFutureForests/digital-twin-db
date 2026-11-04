@@ -30,6 +30,9 @@ Sensor RPC fields (see docker/volumes/db/init/10-baseline-schema.sql):
     longitude (used to build `position` if no WKT column is present),
     sampling_interval_seconds, unit, external_id, external_metadata (dict),
     is_active, created_by
+    Required: location_id, sensor_type_id, sensor_model,
+    sampling_interval_seconds, external_id (the upsert key). A blank
+    is_active means active.
 
 Reading RPC fields:
     sensor_id (or external_id, resolved via a lookup against
@@ -58,10 +61,14 @@ SERVICE_ROLE_KEY = os.getenv("SERVICE_ROLE_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "http://localhost:8000")
 API_TIMEOUT = 60
 
-SENSOR_REQUIRED = {"location_id", "sensor_type_id", "sensor_model", "sampling_interval_seconds"}
+# external_id is required: bulk_upsert_sensors upserts ON CONFLICT (external_id),
+# and a NULL never conflicts, so a re-run without it inserts every sensor again.
+SENSOR_REQUIRED = {
+    "location_id", "sensor_type_id", "sensor_model", "sampling_interval_seconds", "external_id",
+}
 SENSOR_FIELDS = SENSOR_REQUIRED | {
     "plot_id", "source", "serial_number", "position", "latitude", "longitude",
-    "unit", "external_id", "external_metadata", "is_active", "created_by",
+    "unit", "external_metadata", "is_active", "created_by",
 }
 READING_REQUIRED = {"timestamp", "value"}
 READING_FIELDS = READING_REQUIRED | {"sensor_id", "external_id", "quality"}
@@ -147,8 +154,9 @@ def coerce_sensor(row: dict, row_num: int) -> tuple[dict | None, str | None]:
     out["source"] = row.get("source") or None
     out["serial_number"] = row.get("serial_number") or None
     out["unit"] = row.get("unit") or None
-    out["external_id"] = row.get("external_id") or None
-    out["is_active"] = str(row.get("is_active", "true")).lower() not in ("false", "0", "")
+    out["external_id"] = str(row["external_id"])
+    # a blank cell means "not stated", which is active -- with or without --mapping
+    out["is_active"] = str(row.get("is_active") or "true").lower() not in ("false", "0")
     out["created_by"] = row.get("created_by") or "ingest_sensor_data"
 
     if row.get("position"):
