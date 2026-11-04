@@ -6,7 +6,10 @@ Imports tree data from any CSV file that follows the standard template format
 (see data/templates/trees_import_template.csv).
 
 Usage:
-    python import_trees.py <csv_file> [--dry-run]
+    python import_trees.py <csv_file> [--dry-run] [--append]
+
+A location that already has trees is refused unless --append says the rows are
+new trees: trees have no natural key, so a repeated import would duplicate them.
 
 Examples:
     python import_trees.py ../../data/imports/mathisle_trees_import.csv
@@ -232,7 +235,7 @@ def clean(val):
     return val
 
 
-def import_trees(df, dry_run=False):
+def import_trees(df, dry_run=False, append=False):
     """Import tree data from a validated DataFrame."""
     conn = get_db_connection()
     cur = conn.cursor()
@@ -270,8 +273,10 @@ def import_trees(df, dry_run=False):
 
     df["_PlotID"] = df.apply(resolve_plot, axis=1)
 
-    # Check existing trees for these locations
+    # Trees have no natural key, so a second run of the same CSV would insert
+    # every tree again. Refuse unless the caller says the rows are new.
     location_ids = df["_LocationID"].dropna().unique()
+    occupied = []
     for loc_id in location_ids:
         cur.execute(
             "SELECT count(*) FROM trees.trees WHERE location_id = %s", (int(loc_id),)
@@ -281,6 +286,13 @@ def import_trees(df, dry_run=False):
             print(
                 f"  Note: {existing} trees already exist for LocationID={int(loc_id)}"
             )
+            occupied.append(int(loc_id))
+    if occupied and not append and not dry_run:
+        conn.close()
+        raise SystemExit(
+            f"Locations {occupied} already have trees; re-importing would duplicate "
+            "them. Pass --append if these rows are new trees."
+        )
 
     # Build datasource_type_id_map (new schema); fall back to None if table missing
     datasource_type_id_map: dict[str, int] | None = None
@@ -455,7 +467,6 @@ def import_trees(df, dry_run=False):
         template=template,
         fetch=True,
     )
-    conn.commit()
     print(f"  Inserted {len(tree_ids)} trees")
 
     # Insert stems for trees with DBH
@@ -473,11 +484,12 @@ def import_trees(df, dry_run=False):
             VALUES %s
         """
         execute_values(cur, stem_query, stems)
-        conn.commit()
         print(f"  Inserted {len(stems)} stem measurements")
     else:
         print("  No DBH measurements to insert")
 
+    # One commit for trees and stems, so a failed stem insert leaves nothing behind.
+    conn.commit()
     conn.close()
 
 
@@ -527,6 +539,11 @@ def main():
     parser.add_argument("csv_file", help="Path to the CSV file to import")
     parser.add_argument(
         "--dry-run", action="store_true", help="Validate only, do not insert data"
+    )
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="Import into locations that already have trees (the rows must be new trees)",
     )
     parser.add_argument(
         "--profile", action="store_true", help="Print per-stage timing report"
@@ -603,7 +620,7 @@ def main():
         print("\nImporting trees...")
 
     with timer.track("insert_rows"):
-        import_trees(df, dry_run=args.dry_run)
+        import_trees(df, dry_run=args.dry_run, append=args.append)
 
     # Final verification
     if not args.dry_run:
