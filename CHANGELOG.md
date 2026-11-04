@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   skid_road).
 - Everyone reads; contributors create; the creator or a curator changes and deletes. Published
   through `public.management_*`, `public.thinning_*` and `public.fork_locks`.
+- Marks and harvest links follow the dataset access levels: they are hidden with their tree.
+- `management.feature_types` is a regular lookup: `data/lookups/feature_types.csv`, registered in
+  `shared.lookup_registry`, refreshed by `refresh_all_lookups` and `refresh_lookups.py`. The CSV
+  is baked into the db image, so rebuild the image before applying the migration.
 
 **ECOSENSE and Mathislewald campaigns, first re-identification data** (XRFF-478, XRFF-465)
 

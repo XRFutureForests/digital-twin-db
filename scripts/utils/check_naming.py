@@ -31,6 +31,7 @@ DOMAIN_SCHEMAS = (
     "environments",
     "imagery",
     "forest_floor",
+    "management",
 )
 
 # Deviations that predate the convention being written down, each with the issue
@@ -62,6 +63,7 @@ ROLE_QUALIFIED_FKS = {
     "shared.scenarios.management_regime_id",
     "trees.growth_simulations.base_tree_id",
     "trees.simulation_runs.base_variant_id",
+    "management.forks.base_variant_id",
         }
 
 # Provenance columns are deliberately not CHECK-guarded: a new writer with a new

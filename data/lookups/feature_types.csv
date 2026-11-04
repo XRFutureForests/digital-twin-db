@@ -1,0 +1,7 @@
+feature_type_id,feature_type_name,description
+1,skid,Polyline for creating skid roads.
+2,wind,Polygon for selecting trees that have been blown over.
+3,bio,Polygon for selecting trees that are compromised by biotic factors.
+4,zbuffer,Buffer around crop trees that will be developed.
+5,skid_width,Buffer for displaying skid road width.
+6,skid_dist,Buffer for displaying skid road distances.

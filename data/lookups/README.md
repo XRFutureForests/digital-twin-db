@@ -89,6 +89,14 @@ SELECT * FROM shared.refresh_lookup('sensor_types');
 | `axis_structures.csv` | `trees.AxisStructures` | Main axis structure (single leader/polycormic) |
 | `growth_forms.csv` | `trees.GrowthForms` | General growth form classifications |
 
+### Management Schema
+
+Loaded by `87-management-schema.sql`, because `30-load-lookup-tables.sql` runs before the table exists. The ids are fixed: the Shiny app filters on them.
+
+| File | Target Table | Description |
+|------|--------------|-------------|
+| `feature_types.csv` | `management.feature_types` | Kinds of features drawn in a planning variant |
+
 ## Adding New Species
 
 Edit `species.csv` and add a new row:

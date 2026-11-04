@@ -12,9 +12,9 @@
 --   * Planning never changes a tree. A mark lives in management.thinning_trees
 --     only. The prototype gave a marked tree a new version with one of four
 --     'harvesting ...' statuses (tree_status_id 7-10) when a fork was applied;
---     here only the actual harvest writes the tree -- a new row with status
---     'harvested' -- together with a shared.management_events row. Why the tree
---     came out (planned, windthrow, biotic, skid road) is recorded per tree in
+--     here only the actual harvest touches the tree, together with a
+--     shared.management_events row. Why the tree came out (planned, windthrow,
+--     biotic, skid road) is recorded per tree in
 --     shared.management_events_trees.harvest_cause, the counterpart of
 --     shared.disturbance_events_trees, so tree_status keeps one 'harvested'.
 --   * A mark points at trees.trees.tree_entity_id, the identity a tree keeps
@@ -45,11 +45,15 @@
 -- auto-updatable, so RLS on the base tables decides and a write RLS filters out
 -- reports 0 rows (cf. 20261030110000_view_triggers_report_rls_skips).
 --
--- NOT HERE: applying a fork (writing the harvested tree rows, the event and its
--- tree links). That depends on how tree versions are written, which is not
--- settled yet.
+-- Dataset access levels (XRFF-625): a mark or harvest link is hidden with its
+-- tree, like the other child tables of trees.trees.
 --
--- Mirrored to init 70-management-schema.sql.
+-- NOT HERE: applying a fork (recording the harvest on the tree, the event and
+-- its tree links). trees_variant_entity_key allows one row per tree per
+-- variant, so a harvest cannot be a new row in the same variant; how a change
+-- between two inventories reaches the tree is not settled yet.
+--
+-- Mirrored to init 87-management-schema.sql.
 -- =============================================================================
 
 CREATE SCHEMA IF NOT EXISTS management;
@@ -92,17 +96,71 @@ CREATE TABLE IF NOT EXISTS management.feature_types (
     description       text
 );
 
-INSERT INTO management.feature_types (feature_type_id, feature_type_name, description) VALUES
-    (1, 'skid',       'Polyline for creating skid roads.'),
-    (2, 'wind',       'Polygon for selecting trees that have been blown over.'),
-    (3, 'bio',        'Polygon for selecting trees that are compromised by biotic factors.'),
-    (4, 'zbuffer',    'Buffer around crop trees that will be developed.'),
-    (5, 'skid_width', 'Buffer for displaying skid road width.'),
-    (6, 'skid_dist',  'Buffer for displaying skid road distances.')
-ON CONFLICT (feature_type_id) DO NOTHING;
-
 COMMENT ON TABLE management.feature_types IS
     'Kinds of features drawn in a fork. Fixed ids, read by the Shiny app.';
+
+-- Rows come from data/lookups/feature_types.csv like every other lookup.
+-- 30-load-lookup-tables.sql runs before this table exists, so the first load
+-- goes through the registry here. The CSV is baked into the db image: rebuild
+-- the image before applying this to a running database. The id is the natural
+-- key, because the id is what the app relies on.
+INSERT INTO shared.lookup_registry (logical_key, schema_name, table_name, csv_file, csv_columns, natural_key) VALUES
+    ('feature_types', 'management', 'feature_types', 'feature_types.csv', ARRAY['feature_type_id','feature_type_name','description'], 'feature_type_id')
+ON CONFLICT (logical_key) DO UPDATE SET
+    schema_name = EXCLUDED.schema_name,
+    table_name  = EXCLUDED.table_name,
+    csv_file    = EXCLUDED.csv_file,
+    csv_columns = EXCLUDED.csv_columns,
+    natural_key = EXCLUDED.natural_key;
+
+DO $$
+DECLARE
+    v_status text;
+BEGIN
+    SELECT r.status INTO v_status FROM shared.refresh_lookup_generic('feature_types') r;
+    IF v_status <> 'OK' THEN
+        RAISE EXCEPTION 'loading management.feature_types failed: %', v_status;
+    END IF;
+END $$;
+
+-- refresh_all_lookups names its lookups one by one, so a new one has to be added.
+CREATE OR REPLACE FUNCTION shared.refresh_all_lookups()
+RETURNS TABLE(table_name text, rows_before integer, rows_after integer, status text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+BEGIN
+    -- Refresh in dependency order
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('soil_types');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('climate_zones');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('variant_types');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('scenarios');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('species');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('locations');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('sensor_types');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('tree_status');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('taper_types');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('straightness_types');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('branching_patterns');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('bark_characteristics');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('datasource_types');
+    -- Tree Morphology tables (from tree_anatomy.pdf)
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('height_classes');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_architectures');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('branch_elongation_habits');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('growth_orientations');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('shoot_elongation_types');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_shapes');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('geometric_crown_solids');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('axis_structures');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('growth_forms');
+    -- Tree Condition tables (FIA/NEON/ICP Forests-aligned)
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('crown_classes');
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('damage_agents');
+    -- Management planning
+    RETURN QUERY SELECT * FROM shared.refresh_lookup('feature_types');
+END;
+$function$;
 
 
 CREATE TABLE IF NOT EXISTS management.forks (
@@ -230,8 +288,7 @@ COMMENT ON COLUMN management.fork_locks.locked_by IS
 
 
 -- Which trees an executed management event removed, and why. The counterpart
--- of shared.disturbance_events_trees; tree_id is the row the event wrote (the
--- 'harvested' version).
+-- of shared.disturbance_events_trees.
 CREATE TABLE IF NOT EXISTS shared.management_events_trees (
     management_event_id integer NOT NULL
                         REFERENCES shared.management_events(management_event_id) ON DELETE CASCADE,
@@ -467,6 +524,31 @@ BEGIN
 END $$;
 
 
+-- Marks point at the tree entity, so they need the entities of the hidden rows.
+CREATE OR REPLACE FUNCTION shared.hidden_tree_entity_ids()
+RETURNS SETOF uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO ''
+AS $f$
+    SELECT t.tree_entity_id FROM trees.trees t
+     WHERE t.tree_id IN (SELECT shared.hidden_tree_ids());
+$f$;
+
+GRANT EXECUTE ON FUNCTION shared.hidden_tree_entity_ids() TO anon, authenticated, service_role;
+
+DROP POLICY IF EXISTS "Dataset access level" ON management.thinning_trees;
+CREATE POLICY "Dataset access level" ON management.thinning_trees AS RESTRICTIVE FOR SELECT
+    USING ((SELECT NOT shared.has_restricted_campaigns())
+           OR tree_entity_id NOT IN (SELECT shared.hidden_tree_entity_ids()));
+
+DROP POLICY IF EXISTS "Dataset access level" ON shared.management_events_trees;
+CREATE POLICY "Dataset access level" ON shared.management_events_trees AS RESTRICTIVE FOR SELECT
+    USING ((SELECT NOT shared.has_restricted_campaigns())
+           OR tree_id NOT IN (SELECT shared.hidden_tree_ids()));
+
+
 -- -----------------------------------------------------------------------------
 -- 4. Grants (the grant follows the policy, cf. 20261029110000)
 -- -----------------------------------------------------------------------------
@@ -558,9 +640,8 @@ GRANT EXECUTE ON FUNCTION management.fork_lock_release(integer, text) TO authent
 -- 6. Views
 -- -----------------------------------------------------------------------------
 
--- Open marks with the tree's position. The tree is its current row in the
--- fork's base variant: the one without a successor in that variant. Marks of
--- committed forks and of trees already harvested drop out.
+-- Open marks with the tree's position: its row in the fork's base variant.
+-- Marks of committed forks and of trees already harvested drop out.
 CREATE OR REPLACE VIEW management.v_thinning_open WITH (security_invoker = on) AS
 SELECT
     tt.fork_id,
@@ -581,16 +662,8 @@ SELECT
     l.location_name
 FROM management.thinning_trees tt
 JOIN management.forks f ON f.fork_id = tt.fork_id
-JOIN LATERAL (
-    SELECT t.*
-      FROM trees.trees t
-     WHERE t.tree_entity_id = tt.tree_entity_id
-       AND t.variant_id = f.base_variant_id
-       AND NOT EXISTS (SELECT 1 FROM trees.trees c
-                        WHERE c.parent_tree_id = t.tree_id AND c.variant_id = t.variant_id)
-     ORDER BY t.tree_id DESC
-     LIMIT 1
-) t ON true
+JOIN trees.trees t ON t.tree_entity_id = tt.tree_entity_id
+                  AND t.variant_id = f.base_variant_id
 LEFT JOIN trees.tree_status ts ON ts.tree_status_id = t.tree_status_id
 LEFT JOIN shared.species sp    ON sp.species_id = t.species_id
 LEFT JOIN shared.locations l   ON l.location_id = t.location_id
@@ -598,7 +671,7 @@ WHERE NOT f.is_committed
   AND ts.tree_status_name IS DISTINCT FROM 'harvested';
 
 COMMENT ON VIEW management.v_thinning_open IS
-    'Marks of forks not yet applied, with the current position of each tree in the fork''s base variant. Harvested trees drop out.';
+    'Marks of forks not yet applied, with the position of each tree in the fork''s base variant. Harvested trees drop out.';
 
 CREATE OR REPLACE VIEW management.v_fork_locks WITH (security_invoker = on) AS
 SELECT

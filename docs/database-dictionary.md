@@ -1,28 +1,29 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261104140000_entity_match_method_first_campaign`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261104150000_management_schema`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
-Every table of the seven domain schemas. The REST API exposes most of them as a view of the
+Every table of the eight domain schemas. The REST API exposes most of them as a view of the
 same name in `public` (listed at the end); write and read through those.
 
 | Schema | Tables | Holds |
 |---|---:|---|
-| [`shared`](#shared) | 36 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
+| [`shared`](#shared) | 37 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
 | [`trees`](#trees) | 31 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
 | [`sensor`](#sensor) | 5 | Sensors, their time series, units, sensor-tree links |
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
 | [`point_clouds`](#point_clouds) | 3 | Point clouds and scanners |
 | [`imagery`](#imagery) | 1 | Images |
 | [`forest_floor`](#forest_floor) | 3 | Plot-level dead wood and ground vegetation surveys |
+| [`management`](#management) | 7 | Planning areas, planning variants (forks), drawn features, thinning marks, fork locks |
 
 ## shared
 
 Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit
 
-[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`species`](#sharedspecies) · [`strata`](#sharedstrata) · [`team_members`](#sharedteam_members) · [`teams`](#sharedteams) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
+[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_events_trees`](#sharedmanagement_events_trees) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`species`](#sharedspecies) · [`strata`](#sharedstrata) · [`team_members`](#sharedteam_members) · [`teams`](#sharedteams) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
 
 ### shared.account_events
 
@@ -309,6 +310,20 @@ Forest management activities (thinning, planting, harvesting, etc.)
 | `updated_by` | character varying(200) | yes |  |  |  |
 
 Constraints: `CHECK ((affected_area_m2 > (0)::numeric))`; `CHECK (((end_date IS NULL) OR (end_date >= event_date)))`; `CHECK (((event_type)::text = ANY (ARRAY[('thinning'::character varying)::text, ('planting'::character varying)::text, ('harvesting'::character varying)::text, ('pruning'::character varying)::text, ('fertilization'::character varying)::text, ('prescribed_burn'::character varying)::text, ('salvage_logging'::character varying)::text, ('site_preparation'::character varying)::text, ('other'::character varying)::text])))`; primary key (management_event_id).
+
+### shared.management_events_trees
+
+Links management events to the individual trees they affected.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `management_event_id` | integer |  |  | `shared.management_events.management_event_id` (cascade) |  |
+| `tree_id` | integer |  |  | `trees.trees.tree_id` (cascade) |  |
+| `harvest_cause` | character varying(50) | yes |  |  | Why the tree was removed: planned (regular management), windthrow, biotic, skid_road. NULL for events that do not remove the tree. |
+| `fork_id` | integer | yes |  | `management.forks.fork_id` (set null) | The fork the removal was planned in, if any. |
+| `notes` | text | yes |  |  |  |
+
+Constraints: `CHECK (((harvest_cause)::text = ANY ((ARRAY['planned'::character varying, 'windthrow'::character varying, 'biotic'::character varying, 'skid_road'::character varying])::text[])))`; primary key (management_event_id, tree_id).
 
 ### shared.management_regimes
 
@@ -1547,6 +1562,125 @@ Regeneration tallies: live and dead counts per species and size class on a surve
 
 Constraints: `CHECK ((dead_count >= 0))`; `CHECK ((live_count >= 0))`; `CHECK ((mean_height_m >= (0)::numeric))`; `CHECK (((size_class)::text = ANY ((ARRAY['seedling'::character varying, 'sapling'::character varying])::text[])))`; `CHECK (((source_attributes IS NULL) OR (jsonb_typeof(source_attributes) = 'object'::text)))`; `CHECK (((source_regeneration_id IS NULL) OR (campaign_id IS NOT NULL)))`; `CHECK ((survey_area_m2 > (0)::numeric))`; primary key (regeneration_id).
 
+## management
+
+Planning areas, planning variants (forks), drawn features, thinning marks, fork locks
+
+[`areas`](#managementareas) · [`feature_types`](#managementfeature_types) · [`features`](#managementfeatures) · [`fork_locks`](#managementfork_locks) · [`forks`](#managementforks) · [`thinning_runs`](#managementthinning_runs) · [`thinning_trees`](#managementthinning_trees)
+
+### management.areas
+
+Management area: a reference polygon drawn by a user, on one site.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `area_id` | integer |  | identity |  |  |
+| `location_id` | integer |  |  | `shared.locations.location_id` |  |
+| `geom` | geometry(Polygon,4326) |  |  |  |  |
+| `description` | text | yes |  |  |  |
+| `created_at` | timestamp with time zone |  | `now()` |  |  |
+| `updated_at` | timestamp with time zone | yes |  |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+
+Constraints: primary key (area_id).
+
+### management.feature_types
+
+Kinds of features drawn in a fork. Fixed ids, read by the Shiny app.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `feature_type_id` | smallint |  |  |  |  |
+| `feature_type_name` | character varying(100) |  |  |  |  |
+| `description` | text | yes |  |  |  |
+
+Constraints: primary key (feature_type_id); unique (feature_type_name).
+
+### management.features
+
+Areas and lines drawn in a fork: skid roads, windthrow/biotic damage polygons, crop-tree buffers.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `feature_id` | integer |  | identity |  |  |
+| `fork_id` | integer |  |  | `management.forks.fork_id` (cascade) |  |
+| `feature_type_id` | smallint |  |  | `management.feature_types.feature_type_id` |  |
+| `skid_width_m` | double precision | yes |  |  |  |
+| `skid_distance_m` | double precision | yes |  |  |  |
+| `geom` | geometry(Geometry,4326) |  |  |  |  |
+| `description` | text | yes |  |  |  |
+| `created_at` | timestamp with time zone |  | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+
+Constraints: primary key (feature_id).
+
+### management.fork_locks
+
+Check-out lock per fork, held by the editing session. Taken, refreshed and released through management.fork_lock_acquire/_heartbeat/_release.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `fork_id` | integer |  |  | `management.forks.fork_id` (cascade) |  |
+| `locked_by` | character varying(200) |  |  |  | auth.uid() of the holder; for a caller without a user token, the name it passed. |
+| `session_id` | text |  |  |  |  |
+| `locked_at` | timestamp with time zone |  | `now()` |  |  |
+| `heartbeat_at` | timestamp with time zone |  | `now()` |  |  |
+
+Constraints: primary key (fork_id).
+
+### management.forks
+
+Planning variant ("fork") of a management area.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `fork_id` | integer |  | identity |  |  |
+| `area_id` | integer |  |  | `management.areas.area_id` (cascade) |  |
+| `base_variant_id` | integer |  |  | `shared.variants.variant_id` | shared.variants row whose trees the plan was made on. Same site as the area. |
+| `scenario_id` | integer | yes |  | `shared.scenarios.scenario_id` | Optional shared.scenarios row the plan works towards (e.g. crop_tree_thinning). Same site as the area. |
+| `description` | text | yes |  |  |  |
+| `is_committed` | boolean |  | `false` |  | The fork has been applied. Marks of a committed fork no longer show in v_thinning_open. |
+| `created_at` | timestamp with time zone |  | `now()` |  |  |
+| `updated_at` | timestamp with time zone | yes |  |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+
+Constraints: primary key (fork_id).
+
+### management.thinning_runs
+
+Parameters of the thinning run per fork (target diameter per species, upper storey, Hegyi factor, quality classes), so a saved thinning can be reopened with the values it was computed with.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `fork_id` | integer |  |  | `management.forks.fork_id` (cascade) |  |
+| `params` | jsonb |  |  |  |  |
+| `created_at` | timestamp with time zone |  | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+
+Constraints: primary key (fork_id).
+
+### management.thinning_trees
+
+Crop trees and removal marks per fork. A mark never changes the tree; it takes effect when the harvest is recorded.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `fork_id` | integer |  |  | `management.forks.fork_id` (cascade) |  |
+| `tree_entity_id` | uuid |  |  |  | trees.trees.tree_entity_id: the tree across all its versions. Must exist in the fork's base variant. |
+| `role` | text |  |  |  |  |
+| `z_tree_entity_id` | uuid | yes |  |  |  |
+| `quality_rvr` | character(1) | yes |  |  |  |
+| `dbh_cm` | double precision | yes |  |  |  |
+| `df24_group` | text | yes |  |  |  |
+| `target_dbh_cm` | double precision | yes |  |  |  |
+| `spacing_radius_m` | double precision | yes |  |  |  |
+| `hegyi_index` | double precision | yes |  |  |  |
+| `hegyi_share` | double precision | yes |  |  |  |
+| `created_at` | timestamp with time zone |  | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+
+Constraints: `CHECK ((role = ANY (ARRAY['z'::text, 'removal'::text])))`; primary key (fork_id, tree_entity_id).
+
 ## Views
 
 ### Views in the domain schemas
@@ -1555,6 +1689,8 @@ Constraints: `CHECK ((dead_count >= 0))`; `CHECK ((live_count >= 0))`; `CHECK ((
 |---|---|
 | `environments.active_environments` | Currently active environment variants with location and scenario context |
 | `environments.location_environment_summary` | Summary statistics of environmental conditions by location |
+| `management.v_fork_locks` | Current fork locks; is_stale = heartbeat older than 10 minutes, so the lock can be taken over. |
+| `management.v_thinning_open` | Marks of forks not yet applied, with the position of each tree in the fork's base variant. Harvested trees drop out. |
 | `point_clouds.processing_lineage` | Recursive view showing point cloud processing lineage and depth |
 | `sensor.active_sensors_status` | Active sensors with their latest reading information |
 | `sensor.sensor_tree_view` | View showing relationships between sensors and trees with detailed information |
@@ -1586,6 +1722,7 @@ portal's API page.
 | `disturbance_events` | Public API view for natural disturbance events |
 | `entity_matches` | Every re-identification decision, superseded ones included. Writable by contributors; revise by inserting a decision that supersedes the current one. |
 | `environments` | Public API view for environments table |
+| `fork_locks` | Current fork locks (management.v_fork_locks). Read-only; lock through the fork_lock_* functions. |
 | `geometric_crown_solids` | Public API view for geometric crown solids lookup table |
 | `ground_vegetation` | Public API view for ground vegetation surveys |
 | `growth_forms` | Public API view for growth forms lookup table |
@@ -1595,7 +1732,12 @@ portal's API page.
 | `inclusion_rules` | Inclusion rules per sampling design: fixed radius or angle count by DBH range. |
 | `job_status` | Every job the caller is allowed to see -- their own, or all of them for a curator. Omits claimed_by and next_attempt_at, which are the runner's bookkeeping rather than the submitter's answer. An anon caller matches no policy and so reads an empty list. |
 | `locations` | Public API view for locations reference table |
+| `management_areas` | Management areas (management.areas). |
 | `management_events` | Public API view for forest management events |
+| `management_events_trees` | Trees affected by management events (shared.management_events_trees). |
+| `management_feature_types` | Kinds of drawn features (management.feature_types). |
+| `management_features` | Features drawn in a fork (management.features). |
+| `management_forks` | Planning variants of management areas (management.forks). |
 | `management_regimes` | Management axis of scenarios: id + name + description + the silvaR thinning preset (silva_rules). Regime 0 holds no trees. |
 | `observations` | Trees as detected or measured by one campaign, the input of re-identification. Writable by contributors. |
 | `phanerophyte_height_classes` | Public API view for phanerophyte height classes lookup table |
@@ -1621,6 +1763,9 @@ portal's API page.
 | `stems` | Public API view for tree stems table |
 | `strata` | Strata of stratified sampling designs, with area. |
 | `teams` | Teams that own datasets. Readable by everyone; curators create and change them. |
+| `thinning_open` | Open marks with tree positions (management.v_thinning_open). Read-only. |
+| `thinning_runs` | Thinning run parameters per fork (management.thinning_runs). |
+| `thinning_trees` | Crop-tree and removal marks per fork (management.thinning_trees). |
 | `tree_expansion_factors` | Trees per hectare each tree stands for (shared.expansion_factor_ha on the main stem's DBH), with the plot's design, stratum and sampling weight. Filter on variant_id. NULL where the plot has no area or design. |
 | `tree_graph_edges` | Public API view for QSM topology edge overrides (observed/synthetic/derived) |
 | `tree_part_types` | Public API view for tree part types (CityGML feature classes) lookup table |

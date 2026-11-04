@@ -54,6 +54,7 @@ AVAILABLE_TABLES = {
     "data_source_types": ("data_source_types.csv", "Tree data source types"),
     "crown_classes": ("crown_classes.csv", "Crown class definitions"),
     "damage_agents": ("damage_agents.csv", "Damage agent types"),
+    "feature_types": ("feature_types.csv", "Management feature types"),
 }
 
 
