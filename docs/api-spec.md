@@ -168,7 +168,7 @@ Column lists are in the [Data Dictionary](database-dictionary.md) and in `GET /r
 
 ### 3.1 All Available Resources
 
-61 views. Everyone (including `anon`) can read every one of them, within the dataset access levels in §2.2; `job_status` returns only
+66 views. Everyone (including `anon`) can read every one of them, within the dataset access levels in §2.2; `job_status` returns only
 the caller's own jobs (all jobs for curators, `[]` for `anon`). "Write" is the tier a write
 through the view needs (I = insert, U = update, D = delete); "—" means the view is read-only
 over REST.
@@ -184,6 +184,8 @@ over REST.
 | `/rest/v1/tree_graph_edges` | `trees.tree_graph_edges` | I contributor; U/D curator |
 | `/rest/v1/roots` | `trees.roots` | I contributor; U/D curator |
 | `/rest/v1/crown_foliage_profiles` | `trees.crown_foliage_profiles` | I contributor; U/D curator |
+| `/rest/v1/observations` | `trees.observations` | I contributor; U/D curator; only into the caller's writable campaigns |
+| `/rest/v1/entity_matches` | `trees.entity_matches` | I contributor; U/D curator; revise by inserting a decision with `supersedes_entity_match_id` |
 | `/rest/v1/deadwood` | `forest_floor.deadwood` | I contributor; U/D curator |
 | `/rest/v1/ground_vegetation` | `forest_floor.ground_vegetation` | I contributor; U/D curator |
 | `/rest/v1/point_clouds` | `point_clouds.point_clouds` | I contributor; U/D curator |
@@ -224,6 +226,7 @@ over REST.
 | `/rest/v1/tree_expansion_factors` | per tree: trees per hectare it stands for (`shared.expansion_factor_ha` on the main stem's DBH), with the plot's sampling design, stratum and sampling weight; filter on `variant_id` |
 | `/rest/v1/plot_summaries` | per sample unit (plot, or the census plot of a fully mapped site), variant and species: living stems, basal area, volume, biomass and carbon per hectare, weighted by expansion factor; filter on `variant_id` |
 | `/rest/v1/stand_summaries` | per variant and sampling design of its site, all species and per species: per-hectare estimate with standard error, relative standard error %, margin of error, sampling error % and confidence interval at 95 %, units, area, total; census designs have no sampling error; filter on `variant_id` |
+| `/rest/v1/current_entity_matches` | the one current re-identification decision per observation, with its location, campaign and tree row |
 | `/rest/v1/job_status` | `shared.processing_jobs`, filtered by RLS to the caller's own jobs ([requesting-a-job.md](requesting-a-job.md)) |
 
 **Unreal Engine views** (read-only; flat, join-free payloads for Blueprint HTTP import)

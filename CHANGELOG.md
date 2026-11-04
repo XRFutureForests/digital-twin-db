@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Tree re-identification across campaigns** (XRFF-465)
+
+- Migration `20261104130000_tree_reidentification` (init `85-`). `trees.trees` gains the unique
+  key `(variant_id, tree_entity_id)`: a physical tree appears at most once per forest state.
+- New `trees.observations`: one tree as one campaign detected or measured it. A field tree points
+  at its tree row; a detection from a point cloud carries position, DBH, height, planimetric
+  position uncertainty in metres, `point_cloud_id` and `instance_id` (unique per cloud).
+- New `trees.entity_matches`: which physical tree (`tree_entity_id`) an observation belongs to,
+  with `decision` (`matched`, `new`, `ambiguous`), `method`, `score`, the campaign matched
+  against, who decided and when. A revision supersedes the previous decision, which is kept;
+  per observation exactly one decision is current.
+- Views `public.observations`, `public.entity_matches` (contributors write) and
+  `public.current_entity_matches`. Both tables follow the dataset access levels; a match is
+  hidden with its observation.
+
 **Five Pathfinder superplots as new locations** (XRFF-641)
 
 - `scripts/import/import_pathfinder.py`: `fetch` reads the field-data GeoPackages of the

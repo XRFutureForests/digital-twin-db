@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261104120000_height_source_register`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261104130000_tree_reidentification`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -11,7 +11,7 @@ same name in `public` (listed at the end); write and read through those.
 | Schema | Tables | Holds |
 |---|---:|---|
 | [`shared`](#shared) | 36 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
-| [`trees`](#trees) | 29 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
+| [`trees`](#trees) | 31 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
 | [`sensor`](#sensor) | 5 | Sensors, their time series, units, sensor-tree links |
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
 | [`point_clouds`](#point_clouds) | 3 | Point clouds and scanners |
@@ -630,7 +630,7 @@ Constraints: `CHECK (((simulation_year >= 1900) AND (simulation_year <= 2300)))`
 
 Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups
 
-[`axis_structures`](#treesaxis_structures) · [`bark_characteristics`](#treesbark_characteristics) · [`branch_elongation_habits`](#treesbranch_elongation_habits) · [`branching_patterns`](#treesbranching_patterns) · [`crown_architectures`](#treescrown_architectures) · [`crown_classes`](#treescrown_classes) · [`crown_foliage_profiles`](#treescrown_foliage_profiles) · [`crown_shapes`](#treescrown_shapes) · [`damage_agents`](#treesdamage_agents) · [`data_source_types`](#treesdata_source_types) · [`geometric_crown_solids`](#treesgeometric_crown_solids) · [`growth_forms`](#treesgrowth_forms) · [`growth_orientations`](#treesgrowth_orientations) · [`growth_simulations`](#treesgrowth_simulations) · [`phanerophyte_height_classes`](#treesphanerophyte_height_classes) · [`phenology_observations`](#treesphenology_observations) · [`qsm_cylinders`](#treesqsm_cylinders) · [`qsms`](#treesqsms) · [`root_system_types`](#treesroot_system_types) · [`roots`](#treesroots) · [`shoot_elongation_types`](#treesshoot_elongation_types) · [`simulation_runs`](#treessimulation_runs) · [`stems`](#treesstems) · [`straightness_types`](#treesstraightness_types) · [`taper_types`](#treestaper_types) · [`tree_graph_edges`](#treestree_graph_edges) · [`tree_part_types`](#treestree_part_types) · [`tree_status`](#treestree_status) · [`trees`](#treestrees)
+[`axis_structures`](#treesaxis_structures) · [`bark_characteristics`](#treesbark_characteristics) · [`branch_elongation_habits`](#treesbranch_elongation_habits) · [`branching_patterns`](#treesbranching_patterns) · [`crown_architectures`](#treescrown_architectures) · [`crown_classes`](#treescrown_classes) · [`crown_foliage_profiles`](#treescrown_foliage_profiles) · [`crown_shapes`](#treescrown_shapes) · [`damage_agents`](#treesdamage_agents) · [`data_source_types`](#treesdata_source_types) · [`entity_matches`](#treesentity_matches) · [`geometric_crown_solids`](#treesgeometric_crown_solids) · [`growth_forms`](#treesgrowth_forms) · [`growth_orientations`](#treesgrowth_orientations) · [`growth_simulations`](#treesgrowth_simulations) · [`observations`](#treesobservations) · [`phanerophyte_height_classes`](#treesphanerophyte_height_classes) · [`phenology_observations`](#treesphenology_observations) · [`qsm_cylinders`](#treesqsm_cylinders) · [`qsms`](#treesqsms) · [`root_system_types`](#treesroot_system_types) · [`roots`](#treesroots) · [`shoot_elongation_types`](#treesshoot_elongation_types) · [`simulation_runs`](#treessimulation_runs) · [`stems`](#treesstems) · [`straightness_types`](#treesstraightness_types) · [`taper_types`](#treestaper_types) · [`tree_graph_edges`](#treestree_graph_edges) · [`tree_part_types`](#treestree_part_types) · [`tree_status`](#treestree_status) · [`trees`](#treestrees)
 
 ### trees.axis_structures
 
@@ -761,6 +761,29 @@ How tree measurement data was collected or generated
 
 Constraints: primary key (data_source_type_id); unique (data_source_type_name).
 
+### trees.entity_matches
+
+Re-identification decisions: which physical tree (tree_entity_id) an observation belongs to, how that was decided and by whom. Revisable: a new decision supersedes the previous one, which is kept. Per observation the decisions form one chain, so exactly one is current (public.current_entity_matches).
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `entity_match_id` | bigint |  | serial |  |  |
+| `observation_id` | bigint |  |  | `trees.observations.observation_id` (cascade) |  |
+| `tree_entity_id` | uuid | yes |  |  | The physical tree the observation is assigned to: an existing entity for matched, a new UUID for new. NULL only for ambiguous. No foreign key: an entity is a UUID shared by tree rows, not a row of its own. |
+| `decision` | character varying(20) |  |  |  | matched (an existing tree) \| new (no counterpart; a new entity) \| ambiguous (no safe decision; held for review). |
+| `method` | character varying(100) |  |  |  | How the decision was reached. Deliberately unconstrained so a new method needs no migration; values in use: single_campaign (the only campaign at its site: every observation is new), tag_number (field tag or tree number), spatial (position gate plus attribute score), manual (a person's review). |
+| `score` | numeric(4,3) | yes |  |  | Match confidence from 0 to 1, when the method gives one. |
+| `reference_campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) | The campaign matched against (the other half of the campaign pair). NULL when there was none, e.g. a single-campaign site. |
+| `process_id` | integer | yes |  | `shared.processes.process_id` (set null) | The matching process and version, when a process decided. |
+| `decided_by` | character varying(200) |  |  |  | Who decided: a person's e-mail or a process name. |
+| `decided_at` | timestamp with time zone |  | `now()` |  |  |
+| `supersedes_entity_match_id` | bigint | yes |  |  | The earlier decision on the same observation that this one replaces. Superseded decisions are kept, never deleted. |
+| `notes` | text | yes |  |  |  |
+| `created_at` | timestamp with time zone | yes | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+
+Constraints: `CHECK ((((decision)::text = 'ambiguous'::text) OR (tree_entity_id IS NOT NULL)))`; `CHECK (((decision)::text = ANY ((ARRAY['matched'::character varying, 'new'::character varying, 'ambiguous'::character varying])::text[])))`; `CHECK (((score >= (0)::numeric) AND (score <= (1)::numeric)))`; `CHECK ((supersedes_entity_match_id <> entity_match_id))`; primary key (entity_match_id); unique (entity_match_id, observation_id).
+
 ### trees.geometric_crown_solids
 
 Geometric crown shape models for simulation (area, volume, drag calculations)
@@ -836,6 +859,31 @@ Per-tree forest growth projections from SILVA, FVS, iLand, or manual estimation.
 | `created_by` | character varying(200) | yes |  |  |  |
 
 Constraints: `CHECK (((basal_area_m2 IS NULL) OR (basal_area_m2 >= (0)::numeric)))`; `CHECK (((biomass_kg IS NULL) OR (biomass_kg >= (0)::numeric)))`; `CHECK (((carbon_content_kg IS NULL) OR (carbon_content_kg >= (0)::numeric)))`; `CHECK (((crown_base_height_m IS NULL) OR (crown_base_height_m >= (0)::numeric)))`; `CHECK (((crown_base_height_m IS NULL) OR (height_m IS NULL) OR (crown_base_height_m <= height_m)))`; `CHECK (((crown_width_m IS NULL) OR (crown_width_m >= (0)::numeric)))`; `CHECK (((dbh_cm IS NULL) OR (dbh_cm > (0)::numeric)))`; `CHECK (((health_score IS NULL) OR ((health_score >= (0)::numeric) AND (health_score <= (1)::numeric))))`; `CHECK (((height_m IS NULL) OR (height_m > (0)::numeric)))`; `CHECK (((projection_year >= 1900) AND (projection_year <= 2300)))`; `CHECK (((simulator_name)::text = ANY (ARRAY[('SILVA'::character varying)::text, ('FVS'::character varying)::text, ('iLand'::character varying)::text, ('manual'::character varying)::text, ('other'::character varying)::text])))`; `CHECK (((stand_basal_area_m2ha IS NULL) OR (stand_basal_area_m2ha >= (0)::numeric)))`; `CHECK (((stand_biomass_tha IS NULL) OR (stand_biomass_tha >= (0)::numeric)))`; `CHECK (((stand_stem_count_ha IS NULL) OR (stand_stem_count_ha >= 0)))`; `CHECK (((stand_volume_m3ha IS NULL) OR (stand_volume_m3ha >= (0)::numeric)))`; `CHECK (((volume_m3 IS NULL) OR (volume_m3 >= (0)::numeric)))`; primary key (growth_simulation_id).
+
+### trees.observations
+
+One tree as detected or measured by one campaign: the input of re-identification. A field-inventory tree points at its tree row (tree_id) and needs no copied attributes; a detection from a point cloud carries its own position and attributes plus point_cloud_id and instance_id. The link to a physical tree is decided in trees.entity_matches, never here.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `observation_id` | bigint |  | serial |  |  |
+| `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
+| `campaign_id` | integer |  |  | `shared.campaigns.campaign_id` | The campaign (dataset) that made the observation; decides who may read it (access levels). |
+| `process_id` | integer | yes |  | `shared.processes.process_id` (set null) | The detection or measurement process (e.g. a segmentation pipeline and version). |
+| `tree_id` | integer | yes |  | `trees.trees.tree_id` (set null) | The tree row that carries this observation in its campaign's variant, when there is one: the field tree itself, or the tree created for a detection decided as new. At most one observation per tree row. |
+| `point_cloud_id` | integer | yes |  | `point_clouds.point_clouds.point_cloud_id` (set null) | The point cloud the tree was detected in. |
+| `instance_id` | text | yes |  |  | The tree's label within that point cloud (e.g. TreeID). Unique per point cloud; requires point_cloud_id. |
+| `observed_on` | date | yes |  |  |  |
+| `position` | geometry(Point,4326) | yes |  |  | Stem position as observed, WGS84. NULL when the observation is a tree row, which holds the position. |
+| `position_uncertainty_m` | numeric(6,3) | yes |  |  | Planimetric position uncertainty in metres, as the source states it. |
+| `species_id` | integer | yes |  | `shared.species.species_id` (set null) |  |
+| `dbh_cm` | numeric(6,2) | yes |  |  | DBH as observed, centimetres. NULL when the observation is a tree row. |
+| `height_m` | numeric(6,2) | yes |  |  | Height as observed, metres. NULL when the observation is a tree row. |
+| `source_attributes` | jsonb | yes |  |  | Source fields without a column of their own, as a JSON object keyed by the source's names. |
+| `created_at` | timestamp with time zone | yes | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+
+Constraints: `CHECK ((dbh_cm > (0)::numeric))`; `CHECK (((height_m > (0)::numeric) AND (height_m <= (200)::numeric)))`; `CHECK (((instance_id IS NULL) OR (point_cloud_id IS NOT NULL)))`; `CHECK ((position_uncertainty_m >= (0)::numeric))`; `CHECK (((source_attributes IS NULL) OR (jsonb_typeof(source_attributes) = 'object'::text)))`; `CHECK (((tree_id IS NOT NULL) OR ("position" IS NOT NULL)))`; primary key (observation_id).
 
 ### trees.phanerophyte_height_classes
 
@@ -1088,7 +1136,7 @@ Tree measurement and simulation records with spatial positions
 | Column | Type | Null | Default | References | Description |
 |---|---|---|---|---|---|
 | `tree_id` | integer |  | serial |  | Unique row identifier for this tree record |
-| `tree_entity_id` | uuid | yes | `gen_random_uuid()` |  | Persistent UUID identifying the physical tree across all variants |
+| `tree_entity_id` | uuid | yes | `gen_random_uuid()` |  | Persistent UUID identifying the physical tree across all variants. Unique within a variant (trees_variant_entity_key). How an entity was assigned across campaigns is recorded in trees.entity_matches. |
 | `variant_id` | integer | yes |  | `shared.variants.variant_id` (set null) | Forest state group — all trees sharing this variant_id belong to the same time step within a scenario. Use for UE time-travel switching. |
 | `parent_tree_id` | integer | yes |  | `trees.trees.tree_id` (set null) | Parent tree record for tracking growth or modifications |
 | `point_cloud_id` | integer | yes |  | `point_clouds.point_clouds.point_cloud_id` (set null) | Source point cloud if tree was detected from LiDAR |
@@ -1531,10 +1579,12 @@ portal's API page.
 | `crown_classes` | Public API view for crown classes (competitive/social position) lookup table |
 | `crown_foliage_profiles` | Public API view for crown foliage density/distribution profiles |
 | `crown_shapes` | Public API view for crown shapes lookup table |
+| `current_entity_matches` | The one current decision per observation, with the observation's location, campaign and tree row. |
 | `damage_agents` | Public API view for damage agents lookup table |
 | `data_source_types` | Data source type classifications (field, lidar, photogrammetry, estimated, simulated) |
 | `deadwood` | Public API view for dead wood inventory |
 | `disturbance_events` | Public API view for natural disturbance events |
+| `entity_matches` | Every re-identification decision, superseded ones included. Writable by contributors; revise by inserting a decision that supersedes the current one. |
 | `environments` | Public API view for environments table |
 | `geometric_crown_solids` | Public API view for geometric crown solids lookup table |
 | `ground_vegetation` | Public API view for ground vegetation surveys |
@@ -1547,6 +1597,7 @@ portal's API page.
 | `locations` | Public API view for locations reference table |
 | `management_events` | Public API view for forest management events |
 | `management_regimes` | Management axis of scenarios: id + name + description + the silvaR thinning preset (silva_rules). Regime 0 holds no trees. |
+| `observations` | Trees as detected or measured by one campaign, the input of re-identification. Writable by contributors. |
 | `phanerophyte_height_classes` | Public API view for phanerophyte height classes lookup table |
 | `phenology_observations` | Public API view for tree phenology observations |
 | `plot_summaries` | Per sample unit (plot, or the census plot of a fully mapped site), variant and species: living trees per hectare and their basal area, volume, biomass and carbon per hectare, each tree weighted by its expansion factor. A value is NULL when a counted tree lacks it. Sum over species for the all-species value. Filter on variant_id. |
