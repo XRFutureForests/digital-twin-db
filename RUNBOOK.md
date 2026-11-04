@@ -252,6 +252,12 @@ docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosen
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_canopy_height_fix.sql
 # fully mapped sites: one census plot per site, existing plots under it (stand summaries need it)
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/census_site_plots.sql
+# campaigns of both sites, ECOSENSE inventory extent as its census plot, first observations;
+# after census_site_plots.sql, which would put the convex hull back
+docker exec -i dftdb-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -1 < scripts/seed/ecosense_mathisle_campaigns.sql
+# ECOSENSE leaves-on TLS stems as observations matched to the inventory (needs lidar-to-unreal's
+# data/output/ecosense_tls_reference/reference_trees.csv; dry run without --apply)
+python scripts/import/import_tls_observations.py --apply
 # optional: species-default roots and crown foliage profiles
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/root_and_foliage_defaults.sql
 # Pathfinder superplots (5 sites, field inventory only): fetch once, then load the generated SQL;

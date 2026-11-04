@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261104130000_tree_reidentification`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261104140000_entity_match_method_first_campaign`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -771,7 +771,7 @@ Re-identification decisions: which physical tree (tree_entity_id) an observation
 | `observation_id` | bigint |  |  | `trees.observations.observation_id` (cascade) |  |
 | `tree_entity_id` | uuid | yes |  |  | The physical tree the observation is assigned to: an existing entity for matched, a new UUID for new. NULL only for ambiguous. No foreign key: an entity is a UUID shared by tree rows, not a row of its own. |
 | `decision` | character varying(20) |  |  |  | matched (an existing tree) \| new (no counterpart; a new entity) \| ambiguous (no safe decision; held for review). |
-| `method` | character varying(100) |  |  |  | How the decision was reached. Deliberately unconstrained so a new method needs no migration; values in use: single_campaign (the only campaign at its site: every observation is new), tag_number (field tag or tree number), spatial (position gate plus attribute score), manual (a person's review). |
+| `method` | character varying(100) |  |  |  | How the decision was reached. Deliberately unconstrained so a new method needs no migration; values in use: first_campaign (the first campaign at its site: every observation it makes is new), single_campaign (the only campaign at its site), tag_number (field tag or tree number), spatial (position gate plus attribute check, e.g. mutual nearest partner within 1 m and a compatible DBH), manual (a person's review). |
 | `score` | numeric(4,3) | yes |  |  | Match confidence from 0 to 1, when the method gives one. |
 | `reference_campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) | The campaign matched against (the other half of the campaign pair). NULL when there was none, e.g. a single-campaign site. |
 | `process_id` | integer | yes |  | `shared.processes.process_id` (set null) | The matching process and version, when a process decided. |

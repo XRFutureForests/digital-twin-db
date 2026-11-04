@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**ECOSENSE and Mathislewald campaigns, first re-identification data** (XRFF-478, XRFF-465)
+
+- `scripts/seed/ecosense_mathisle_campaigns.sql`: campaigns `ecosense_inventory_2024`,
+  `ecosense_tls_2024_leaf_on`, `ecosense_tls_2024_leaf_off` and `mathisle_inventory_2025`, filled
+  from the inventory readme and ODK export on the projects share and from the TLS reference
+  (inventory licences `all rights reserved` until the owners choose one); the measured baseline
+  trees carry their inventory campaign; ECOSENSE's census plot and location boundary become the
+  inventory extent (2.911 ha instead of the 2.891 ha convex hull; stems per hectare 515 → 511);
+  one observation and a first decision `new` per baseline tree.
+- `scripts/import/import_tls_observations.py`: the leaves-on TLS stems as observations, 1,057
+  matched to inventory trees and 106 ambiguous.
+- Migration `20261104140000_entity_match_method_first_campaign` (init `86-`): `first_campaign`
+  in the `entity_matches.method` register.
+- ECOSENSE baseline `measurement_date`: each tree's ODK field day (2024-10-14 to 2024-11-26)
+  instead of 2025-09-11, the date of the source file; 9 trees without an ODK match keep it.
+
 **Tree re-identification across campaigns** (XRFF-465)
 
 - Migration `20261104130000_tree_reidentification` (init `85-`). `trees.trees` gains the unique
