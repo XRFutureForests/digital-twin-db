@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261104150000_management_schema`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261105100000_orthophoto_catalog_and_tree_views`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -15,7 +15,7 @@ same name in `public` (listed at the end); write and read through those.
 | [`sensor`](#sensor) | 5 | Sensors, their time series, units, sensor-tree links |
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
 | [`point_clouds`](#point_clouds) | 3 | Point clouds and scanners |
-| [`imagery`](#imagery) | 1 | Images |
+| [`imagery`](#imagery) | 4 | Images |
 | [`forest_floor`](#forest_floor) | 3 | Plot-level dead wood and ground vegetation surveys |
 | [`management`](#management) | 7 | Planning areas, planning variants (forks), drawn features, thinning marks, fork locks |
 
@@ -1213,8 +1213,10 @@ Tree measurement and simulation records with spatial positions
 | `sensor_ref` | character varying(100) | yes |  |  | Source-agnostic reference identifying the sensor cluster installed on this tree. Matches the prefix of sensor.sensors.serial_number, so all of a tree's sensors resolve from it. For the current Ecosense data this value is the external provider's name prefix (e.g. Beech_Mixed_8), but the column carries no provider semantics. NULL for non-instrumented trees. |
 | `source_tree_id` | text | yes |  |  | The producer's own identifier of this tree (e.g. Pathfinder tree_id, a 3Dtrees.earth instance id). Unique per campaign and variant, so re-importing or re-pushing the same inventory is idempotent. Requires campaign_id. |
 | `source_attributes` | jsonb | yes |  |  | Protocol-specific codes without a column of their own, as a JSON object keyed by the source's column names (e.g. {"canopy_layer": "1", "rs_visibility": "2", "species_raw": "Larix_europaea"}). The protocol is the plot's sampling design. A code becomes a column once a second source shares it. |
+| `quality_rvr` | character(1) | yes |  |  | Roundwood grade after the RVR sorting (A, B, C, D). A new version of a tree inherits it when left empty. |
+| `crown_poly` | geometry(MultiPolygon,25832) | yes |  |  | Crown outline for the map, possibly in several parts, in EPSG:25832. crown_boundary is the single polygon in WGS84. |
 
-Constraints: `CHECK (((age_years >= 0) AND (age_years <= 5000)))`; `CHECK ((biomass_kg >= (0)::numeric))`; `CHECK ((carbon_content_kg >= (0)::numeric))`; `CHECK ((crown_base_height_m >= (0)::numeric))`; `CHECK (((crown_base_height_m IS NULL) OR (crown_base_height_m <= height_m)))`; `CHECK (((crown_transparency_percent >= (0)::numeric) AND (crown_transparency_percent <= (100)::numeric)))`; `CHECK (((crown_width_m >= (0)::numeric) AND (crown_width_m <= (100)::numeric)))`; `CHECK (((defoliation_percent >= (0)::numeric) AND (defoliation_percent <= (100)::numeric)))`; `CHECK (((discolouration_percent >= (0)::numeric) AND (discolouration_percent <= (100)::numeric)))`; `CHECK (((health_score >= (0)::numeric) AND (health_score <= (1)::numeric)))`; `CHECK (((height_confidence >= (0)::numeric) AND (height_confidence <= (1)::numeric)))`; `CHECK (((height_m > (0)::numeric) AND (height_m <= (200)::numeric)))`; `CHECK (((lean_angle_deg >= (0)::numeric) AND (lean_angle_deg <= (90)::numeric)))`; `CHECK (((lean_direction_azimuth >= 0) AND (lean_direction_azimuth < 360)))`; `CHECK (((position_confidence >= (0)::numeric) AND (position_confidence <= (1)::numeric)))`; `CHECK (((source_attributes IS NULL) OR (jsonb_typeof(source_attributes) = 'object'::text)))`; `CHECK (((source_tree_id IS NULL) OR (campaign_id IS NOT NULL)))`; `CHECK (((species_confidence >= (0)::numeric) AND (species_confidence <= (1)::numeric)))`; `CHECK ((volume_m3 >= (0)::numeric))`; primary key (tree_id).
+Constraints: `CHECK (((age_years >= 0) AND (age_years <= 5000)))`; `CHECK ((biomass_kg >= (0)::numeric))`; `CHECK ((carbon_content_kg >= (0)::numeric))`; `CHECK ((crown_base_height_m >= (0)::numeric))`; `CHECK (((crown_base_height_m IS NULL) OR (crown_base_height_m <= height_m)))`; `CHECK (((crown_transparency_percent >= (0)::numeric) AND (crown_transparency_percent <= (100)::numeric)))`; `CHECK (((crown_width_m >= (0)::numeric) AND (crown_width_m <= (100)::numeric)))`; `CHECK (((defoliation_percent >= (0)::numeric) AND (defoliation_percent <= (100)::numeric)))`; `CHECK (((discolouration_percent >= (0)::numeric) AND (discolouration_percent <= (100)::numeric)))`; `CHECK (((health_score >= (0)::numeric) AND (health_score <= (1)::numeric)))`; `CHECK (((height_confidence >= (0)::numeric) AND (height_confidence <= (1)::numeric)))`; `CHECK (((height_m > (0)::numeric) AND (height_m <= (200)::numeric)))`; `CHECK (((lean_angle_deg >= (0)::numeric) AND (lean_angle_deg <= (90)::numeric)))`; `CHECK (((lean_direction_azimuth >= 0) AND (lean_direction_azimuth < 360)))`; `CHECK (((position_confidence >= (0)::numeric) AND (position_confidence <= (1)::numeric)))`; `CHECK ((quality_rvr = ANY (ARRAY['A'::bpchar, 'B'::bpchar, 'C'::bpchar, 'D'::bpchar])))`; `CHECK (((source_attributes IS NULL) OR (jsonb_typeof(source_attributes) = 'object'::text)))`; `CHECK (((source_tree_id IS NULL) OR (campaign_id IS NOT NULL)))`; `CHECK (((species_confidence >= (0)::numeric) AND (species_confidence <= (1)::numeric)))`; `CHECK ((volume_m3 >= (0)::numeric))`; primary key (tree_id).
 
 ## sensor
 
@@ -1446,7 +1448,22 @@ Constraints: primary key (scanner_id); unique (serial_number).
 
 Images
 
-[`images`](#imageryimages)
+[`deadwood_polygons`](#imagerydeadwood_polygons) · [`images`](#imageryimages) · [`ortho_analyses`](#imageryortho_analyses) · [`orthophotos`](#imageryorthophotos)
+
+### imagery.deadwood_polygons
+
+Dead wood segmented from an orthophoto. Remote sensing output; pieces measured on the ground are in forest_floor.deadwood.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `deadwood_polygon_id` | bigint |  | serial |  |  |
+| `ortho_analysis_id` | integer |  |  | `imagery.ortho_analyses.ortho_analysis_id` (cascade) |  |
+| `geom` | geometry(MultiPolygon,4326) |  |  |  | Polygon in WGS84 (EPSG:4326) |
+| `confidence` | real | yes |  |  | Confidence reported by the model |
+| `area_m2` | double precision | yes |  |  | Area in square meters, computed on import |
+| `source_attributes` | jsonb | yes |  |  | Remaining attributes of the imported file |
+
+Constraints: primary key (deadwood_polygon_id).
 
 ### imagery.images
 
@@ -1476,6 +1493,57 @@ Aerial and ground-based imagery with spatial metadata and camera parameters
 | `updated_by` | character varying(200) | yes |  |  |  |
 
 Constraints: `CHECK (((file_format)::text = ANY (ARRAY[('jpg'::character varying)::text, ('png'::character varying)::text, ('tiff'::character varying)::text, ('raw'::character varying)::text, ('geotiff'::character varying)::text])))`; `CHECK ((ground_sample_distance_cm > (0)::numeric))`; `CHECK (((heading_deg >= (0)::numeric) AND (heading_deg < (360)::numeric)))`; `CHECK (((pitch_deg >= ('-90'::integer)::numeric) AND (pitch_deg <= (90)::numeric)))`; `CHECK (((roll_deg >= ('-180'::integer)::numeric) AND (roll_deg <= (180)::numeric)))`; primary key (image_id).
+
+### imagery.ortho_analyses
+
+One analysis run on an orthophoto, e.g. dead wood segmentation from deadtrees.earth
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `ortho_analysis_id` | integer |  | serial |  |  |
+| `orthophoto_id` | integer |  |  | `imagery.orthophotos.orthophoto_id` (cascade) |  |
+| `analysis_type` | text |  | `'deadwood'::text` |  | Kind of analysis |
+| `source` | text |  | `'deadtrees.earth'::text` |  | Who produced the result |
+| `model` | text | yes |  |  | Model or method used |
+| `run_date` | date | yes |  |  | Date of the analysis run |
+| `source_file` | text | yes |  |  | File the result was imported from |
+| `source_crs` | text | yes |  |  | Coordinate reference system of the imported file |
+| `n_features` | integer | yes |  |  | Number of polygons imported |
+| `area_ha` | numeric(12,4) | yes |  |  | Total polygon area in hectares |
+| `coverage_pct` | numeric(5,2) | yes |  |  | Share of the polygon area inside the orthophoto bbox. Below 100 the file may not belong to this image. |
+| `is_active` | boolean |  | `true` |  | Whether the analysis is offered in the app |
+| `notes` | text | yes |  |  |  |
+| `created_at` | timestamp with time zone |  | `now()` |  |  |
+| `updated_at` | timestamp with time zone |  | `now()` |  |  |
+| `created_by` | text | yes |  |  |  |
+| `updated_by` | text | yes |  |  |  |
+
+Constraints: `CHECK ((analysis_type = 'deadwood'::text))`; `CHECK (((coverage_pct >= (0)::numeric) AND (coverage_pct <= (100)::numeric)))`; primary key (ortho_analysis_id).
+
+### imagery.orthophotos
+
+Drone orthophotos selectable as a map layer. Catalog only: the rasters are Cloud Optimized GeoTIFFs served by TiTiler.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `orthophoto_id` | integer |  | serial |  |  |
+| `location_id` | integer | yes |  | `shared.locations.location_id` (set null) |  |
+| `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` | Campaign the flight belongs to; decides who may read it, as on imagery.images |
+| `flight_date` | date | yes |  |  | Date of the flight |
+| `camera_model` | text | yes |  |  | Camera or sensor used |
+| `ground_sample_distance_cm` | numeric(6,2) | yes |  |  | Ground sample distance in centimeters per pixel |
+| `tile_url` | text |  |  |  | XYZ tile template with {z}/{x}/{y}; the browser requests tiles from this address directly |
+| `min_zoom` | integer |  | `10` |  | Lowest zoom level the layer is shown at |
+| `max_native_zoom` | integer |  | `22` |  | Highest zoom level the COG resolves; above it tiles are scaled up |
+| `attribution` | text | yes |  |  | Attribution shown on the map |
+| `is_active` | boolean |  | `true` |  | Whether the flight is offered in the app |
+| `bbox` | geometry(Polygon,4326) | yes |  |  | Extent of the image in WGS84 (EPSG:4326) |
+| `created_at` | timestamp with time zone |  | `now()` |  |  |
+| `updated_at` | timestamp with time zone |  | `now()` |  |  |
+| `created_by` | text | yes |  |  |  |
+| `updated_by` | text | yes |  |  |  |
+
+Constraints: primary key (orthophoto_id).
 
 ## forest_floor
 
@@ -1689,6 +1757,9 @@ Constraints: `CHECK ((role = ANY (ARRAY['z'::text, 'removal'::text])))`; primary
 |---|---|
 | `environments.active_environments` | Currently active environment variants with location and scenario context |
 | `environments.location_environment_summary` | Summary statistics of environmental conditions by location |
+| `imagery.v_deadwood` | Dead wood polygons of active analyses, with their orthophoto. |
+| `imagery.v_ortho_analyses` | Active analyses per orthophoto, newest first. |
+| `imagery.v_orthophotos` | Active orthophotos for the map, newest first, with the site name and the bbox as four numbers. |
 | `management.v_fork_locks` | Current fork locks; is_stale = heartbeat older than 10 minutes, so the lock can be taken over. |
 | `management.v_thinning_open` | Marks of forks not yet applied, with the position of each tree in the fork's base variant. Harvested trees drop out. |
 | `point_clouds.processing_lineage` | Recursive view showing point cloud processing lineage and depth |
@@ -1697,7 +1768,11 @@ Constraints: `CHECK ((role = ANY (ARRAY['z'::text, 'removal'::text])))`; primary
 | `shared.plot_inclusion` | Every plot with its resolved sampling design and inclusion area (its own, else the nearest enclosing plot's), the design's minimum DBH, whether the design has inclusion rules, and the sample unit its trees belong to. The set-based equivalent of shared.sample_unit_id() and the resolution in shared.expansion_factor_ha(). |
 | `shared.recent_changes` | Unified view of recent changes across all audited tables |
 | `shared.user_activity_summary` | Summary of user activity and change patterns |
+| `shared.v_locations_overview` | Sites with soil, climate and counts. tree_count counts trees (tree_entity_id), not their versions; a row without an entity counts as one tree. |
 | `trees.trees_with_metrics` | Trees with computed metrics (basal area, crown volume, stem count) |
+| `trees.v_trees_full` | Every tree row of every variant with species, status, site and main stem. |
+| `trees.v_trees_geojson` | Every tree row of every variant, position as GeoJSON, for export. |
+| `trees.v_trees_latest` | Current state: the newest measured row of each tree across all variants, without harvested trees. Simulated, model and XR-edited rows do not count as measured. |
 
 ### Public API views
 
@@ -1719,6 +1794,7 @@ portal's API page.
 | `damage_agents` | Public API view for damage agents lookup table |
 | `data_source_types` | Data source type classifications (field, lidar, photogrammetry, estimated, simulated) |
 | `deadwood` | Public API view for dead wood inventory |
+| `deadwood_polygons` | Dead wood segmented from orthophotos (imagery.deadwood_polygons). |
 | `disturbance_events` | Public API view for natural disturbance events |
 | `entity_matches` | Every re-identification decision, superseded ones included. Writable by contributors; revise by inserting a decision that supersedes the current one. |
 | `environments` | Public API view for environments table |
@@ -1740,6 +1816,8 @@ portal's API page.
 | `management_forks` | Planning variants of management areas (management.forks). |
 | `management_regimes` | Management axis of scenarios: id + name + description + the silvaR thinning preset (silva_rules). Regime 0 holds no trees. |
 | `observations` | Trees as detected or measured by one campaign, the input of re-identification. Writable by contributors. |
+| `ortho_analyses` | Analysis runs on orthophotos (imagery.ortho_analyses). |
+| `orthophotos` | Drone orthophoto catalog (imagery.orthophotos). |
 | `phanerophyte_height_classes` | Public API view for phanerophyte height classes lookup table |
 | `phenology_observations` | Public API view for tree phenology observations |
 | `plot_summaries` | Per sample unit (plot, or the census plot of a fully mapped site), variant and species: living trees per hectare and their basal area, volume, biomass and carbon per hectare, each tree weighted by its expansion factor. A value is NULL when a counted tree lacks it. Sum over species for the all-species value. Filter on variant_id. |

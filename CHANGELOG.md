@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Drone orthophotos, dead wood polygons, tree quality**
+
+- `imagery.orthophotos` is a catalog of drone flights: the rasters stay behind TiTiler and the
+  browser fetches tiles from `tile_url`. A new flight is one row. Flights follow the dataset access
+  levels through `campaign_id`.
+- `imagery.ortho_analyses` and `imagery.deadwood_polygons` hold dead wood segmented from an
+  orthophoto; deleting an analysis removes its polygons. Both follow their orthophoto's access.
+- `trees.trees.quality_rvr` (A, B, C, D): a new version of a tree inherits it from the most recent
+  version with the same `tree_entity_id`. Not published through `public.trees`.
+- `trees.trees.crown_poly`: crown outline in several parts (MultiPolygon, EPSG:25832), not
+  inherited by a new version.
+- `trees.v_trees_latest`: the newest measured row of each tree across all variants, without
+  harvested trees. A tree a later inventory does not find stays visible.
+- New views for the Shiny app: `imagery.v_orthophotos`, `v_ortho_analyses`, `v_deadwood`,
+  `trees.v_trees_full`, `trees.v_trees_geojson`, `trees.v_trees_latest`,
+  `shared.v_locations_overview`. The imagery ones are published through
+  `public.orthophotos`, `public.ortho_analyses` and `public.deadwood_polygons`.
+
 **Forest management planning schema**
 
 - New schema `management` (ported from the Shiny app's simple-postgres prototype): management

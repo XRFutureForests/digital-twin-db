@@ -52,7 +52,7 @@ Every table's columns, types, nullability, defaults, foreign keys (with `ON DELE
 | `sensor` | 5 | Environmental sensor hardware and time-series | sensor_types, sensors, sensor_readings, sensor_tree_links, units |
 | `environments` | 1 | Climate and soil per location, scenario and period | environments |
 | `point_clouds` | 3 | LiDAR scan data and processing lineage | point_clouds, scanner_types, scanners |
-| `imagery` | 1 | Aerial and ground-based images | images |
+| `imagery` | 4 | Aerial and ground-based images, drone orthophoto catalog, dead wood segmented from orthophotos | images, orthophotos, ortho_analyses, deadwood_polygons |
 | `forest_floor` | 2 | Plot/site-level surveys, not tied to a single tree | deadwood, ground_vegetation |
 | `public` | — | PostgREST API views over the schemas above | Views only — no data |
 
