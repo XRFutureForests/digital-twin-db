@@ -375,6 +375,23 @@ Dev and the server have **separate** secrets since 2026-11-09 (XRFF-661): until 
 server's `docker/.env` was a copy of dev's, so every dev checkout held keys that worked against
 dt.unr. Never copy a `.env` between hosts; generate each host's secrets on that host.
 
+**The database password** (`POSTGRES_PASSWORD`) is set once, at init, on seven roles:
+`authenticator`, `pgbouncer`, `postgres`, `supabase_admin`, `supabase_auth_admin`,
+`supabase_functions_admin`, `supabase_storage_admin`. `dashboard_reader` has its own. To change it
+on a running cluster (done on dt.unr 2026-11-09, XRFF-662):
+
+1. Back up `docker/.env` and silva-connector's `docker/.env`.
+2. `ALTER ROLE … WITH PASSWORD` for all seven in one transaction. Run it as `supabase_admin` over
+   `psql -h 127.0.0.1` inside `dftdb-db`: loopback inside the container is `trust`. For the same
+   reason, a password test must connect to the container's network address, not 127.0.0.1.
+3. Delete the pooler's tenant: `DELETE FROM _supavisor.tenants WHERE external_id = '<POOLER_TENANT_ID>'`
+   in the `_supabase` database. The tenant stores `pgbouncer`'s password, and `pooler.exs` only
+   creates a missing tenant, so without this the pooler keeps the old password and every pooled
+   connection fails, the dashboard's among them. The pooler recreates the tenant when it starts.
+4. Write the new value into `docker/.env` (`POSTGRES_PASSWORD`) and silva-connector's
+   `docker/.env` (`PGPASSWORD`), then `docker compose up -d --force-recreate` and
+   `docker restart dtdash-nginx`. The job runner and the backup read `docker/.env` themselves.
+
 | # | Destination | Keys | Notes |
 |---|---|---|---|
 | 1 | `digital-twin-db/docker/.env` | `POSTGRES_PASSWORD`, `ANON_KEY`, `SERVICE_ROLE_KEY`, `JWT_SECRET` | Source of truth. Changing `JWT_SECRET` invalidates both API keys — regenerate them with `python scripts/utils/generate_jwt.py` |
