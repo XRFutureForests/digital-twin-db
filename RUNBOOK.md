@@ -371,6 +371,10 @@ The database password and API keys live in `docker/.env` here, but **three other
 hold copies**. Rotate the database first, then every consumer, then verify; there is no CI
 and no secret store, so nothing else will tell you a consumer broke.
 
+Dev and the server have **separate** secrets since 2026-11-09 (XRFF-661): until then the
+server's `docker/.env` was a copy of dev's, so every dev checkout held keys that worked against
+dt.unr. Never copy a `.env` between hosts; generate each host's secrets on that host.
+
 | # | Destination | Keys | Notes |
 |---|---|---|---|
 | 1 | `digital-twin-db/docker/.env` | `POSTGRES_PASSWORD`, `ANON_KEY`, `SERVICE_ROLE_KEY`, `JWT_SECRET` | Source of truth. Changing `JWT_SECRET` invalidates both API keys — regenerate them with `python scripts/utils/generate_jwt.py` |

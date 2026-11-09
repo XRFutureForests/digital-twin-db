@@ -318,6 +318,10 @@ services:
       # Comment out everything below this point if you are using an external Postgres database
   db:
     container_name: dftdb-db
+    # Compose's default 10 s is too short for a shutdown checkpoint on the
+    # server's NFS PGDATA: a recreate then kills Postgres and the next start
+    # replays the WAL for minutes (2026-11-09).
+    stop_grace_period: 120s
     # Built from Dockerfile.db which bakes all SQL init scripts into the image,
     # avoiding WSL bind-mount hash path failures on reboot (file mounts get stale
     # /run/desktop/mnt/host/wsl/... paths; directory mounts use direct paths).

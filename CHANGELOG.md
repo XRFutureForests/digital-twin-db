@@ -19,6 +19,12 @@ Security:
 - Stems, sensor readings, roots, crown profiles, phenology, QSMs, cylinders and graph edges can
   be added only where the parent tree's, sensor's or QSM's campaign is writable for the caller.
 - Kong and the pooler listen on the loopback addresses only (127.0.0.1 and ::1).
+- dt.unr has its own JWT secret and API keys (rotated 2026-11-09). Its `docker/.env` had been a
+  copy of dev's, so every dev checkout held keys valid on the server. Deployed with the rest of
+  this entry; `dt.unr` matches dev in a schema-only dump.
+- The `db` service stops with a 120 s grace period: the default 10 s killed Postgres mid-
+  checkpoint on the server's NFS disk and cost minutes of WAL replay on the next start.
+- Migration `20261109130000`: `trees.fill_from_variant()` closed to PUBLIC on every database.
 
 Integrity:
 - `trees.variant_id` is required. A composite foreign key holds a tree's `location_id`,

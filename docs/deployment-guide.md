@@ -132,6 +132,15 @@ Nothing is edited on the server; the checkouts are disposable. Deploy by pushing
   migration](#applying-a-migration).
 
 - **Env changes need a recreate**, not a restart: `cd docker && docker compose up -d --force-recreate`.
+  A recreate restarts Postgres; with compose's old 10 s stop timeout it was killed mid-checkpoint
+  and replayed its WAL for minutes on the NFS disk, and the dependent services gave up
+  (2026-11-09). The `db` service now has `stop_grace_period: 120s`. If `up` still reports
+  `dftdb-db is unhealthy`, wait until `docker exec dftdb-db pg_isready -U postgres -h localhost`
+  succeeds, then run `docker compose up -d` again.
+- **After Kong is recreated, restart the dashboard's nginx** (`docker restart dtdash-nginx`).
+  Its `proxy_pass http://dftdb-kong:8000/...` names Kong literally, so nginx resolves it once at
+  start (the `resolver` line applies only to variables) and keeps the old container's address:
+  `/db/` answers 502 until the restart (2026-11-09).
 
 Files on the host that are not in any repository; a re-clone must restore them:
 
