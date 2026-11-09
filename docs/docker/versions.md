@@ -11,10 +11,8 @@ and the `FROM` line of `docker/Dockerfile.db`; record every change here.
 | studio | `supabase/studio:2025.11.10-sha-5291fe3` |
 | auth | `supabase/gotrue:v2.182.1` |
 | rest | `postgrest/postgrest:v13.0.7` |
-| realtime | `supabase/realtime:v2.63.0` |
 | storage | `supabase/storage-api:v1.29.0` |
 | meta | `supabase/postgres-meta:v0.93.1` |
-| functions | `supabase/edge-runtime:v1.69.23` |
 | analytics | `supabase/logflare:1.22.6` |
 | supavisor | `supabase/supavisor:2.7.4` |
 | kong | `kong:2.8.1` |

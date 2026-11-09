@@ -246,12 +246,13 @@ curl -X POST "http://localhost:8000/rest/v1/variants" \
   -d '{"location_id": <location_id>, "scenario_id": <new_id>, "variant_type_id": 4, "variant_name": "silva_2060", "simulation_year": 2060, "time_delta_yrs": 35, "sort_order": 7, "parent_variant_id": <prev_id>}'
 ```
 
-Tree rows for a new variant must carry its `variant_id`, `scenario_id` and `variant_type_id`.
-SILVA projections are written this way by silva-connector ([silva-coupling.md](silva-coupling.md)).
-`scripts/import/import_trees.py` does **not** set them — it writes `scenario_id = NULL` and no
-`variant_id` — so a CSV import is assigned to its variant afterwards by a seed script such as
-`scripts/seed/ecosense_baseline_variant.sql`, which creates `natural_growth` and
-`baseline_2025` and attaches the imported trees.
+Every tree row needs its `variant_id` (required since 2026-11-09, XRFF-661). Its `scenario_id`,
+`location_id` and `variant_type_id` are filled from the variant when left out, and refused when
+they disagree with it (`trees_variant_fkey`); deleting a variant deletes its trees. SILVA
+projections are written by silva-connector ([silva-coupling.md](silva-coupling.md)). A CSV
+import names its variant: the variant is created first, for the measured state by a seed
+script such as `scripts/seed/ecosense_baseline_variant.sql` (`natural_growth` with
+`baseline_2025`), then `scripts/import/import_trees.py <csv> --variant baseline_2025` fills it.
 
 ---
 

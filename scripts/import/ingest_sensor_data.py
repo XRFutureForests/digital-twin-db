@@ -24,7 +24,7 @@ Options:
     --dry-run               Validate and report without writing.
     --batch-size N          Rows per RPC call (default 500).
 
-Sensor RPC fields (see docker/volumes/db/init/10-baseline-schema.sql):
+Sensor RPC fields (see supabase/migrations/20261109120000_baseline_snapshot.sql):
     location_id, plot_id, source, sensor_type_id, sensor_model,
     serial_number, position (WKT, e.g. "POINT(7.8 47.9)"), latitude,
     longitude (used to build `position` if no WKT column is present),
@@ -46,8 +46,10 @@ Examples:
 
 import argparse
 import json
+import math
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -202,7 +204,18 @@ def coerce_reading(row: dict, row_num: int, sensor_id_by_external: dict[str, int
         out["value"] = float(row["value"])
     except ValueError as e:
         return None, f"row {row_num}: invalid value: {e}"
+    if not math.isfinite(out["value"]):
+        # JSON has no NaN or Infinity: one such value would fail its whole batch.
+        return None, f"row {row_num}: value is not a finite number"
 
+    # The database stores an instant. A local logger time without an offset
+    # would be read as UTC and land one or two hours off, silently.
+    try:
+        stamp = datetime.fromisoformat(str(row["timestamp"]).replace("Z", "+00:00"))
+    except ValueError as e:
+        return None, f"row {row_num}: invalid timestamp: {e}"
+    if stamp.tzinfo is None:
+        return None, f"row {row_num}: timestamp '{row['timestamp']}' has no UTC offset (e.g. +00:00 or Z)"
     out["timestamp"] = row["timestamp"]
 
     quality = row.get("quality") or "good"

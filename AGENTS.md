@@ -24,7 +24,7 @@ approach was chosen, write it in the knowledge hub and link to it.
 | Scope | Modify only what the request requires — no adjacent cleanup | Always |
 | Exit codes | An ingestion or connector script must exit non-zero if any record failed to write — an unattended run's exit code is the only signal the job runner has | Always |
 | Secrets | Never commit `.env` or credentials; use `docker/.env` (gitignored) | Before any git operation |
-| Schema changes | Add a new file under `supabase/migrations/`; never edit the baseline or old numbered init files | Before schema edits |
+| Schema changes | Add a new timestamped file under `supabase/migrations/`; never edit the snapshot or anything in `supabase/migrations/archive/` | Before schema edits |
 | Docker | Run `docker compose up -d` from `docker/` (there is no compose file at the repo root) | Before all local dev |
 | Task tracking | Check Linear for existing issues before creating new ones | Always |
 | Language | Keep code and documentation in English | For all written artifacts |
@@ -34,12 +34,12 @@ approach was chosen, write it in the knowledge hub and link to it.
 | Path | Purpose |
 |------|---------|
 | `docker/` | Docker Compose + all service configs (`.env` managed locally) |
-| `supabase/migrations/` | Schema change history (Supabase CLI) — source of truth for schema evolution |
+| `supabase/migrations/` | The schema, as one chain: the 2026-11-09 snapshot and every migration after it. The `db` image runs it on a fresh init; `archive/` holds the history before the snapshot |
 | `scripts/import/` | CSV/JSON data importers (trees, provider-agnostic sensor ingestion) |
 | `scripts/admin/` | DB admin utilities: reset, refresh lookups, GBIF species validation |
 | `scripts/runner/` | The job runner that drains `shared.processing_jobs`, with its systemd units |
 | `scripts/server/` | dt.unr-only: NFS data dirs, nightly backup unit, account creation |
-| `scripts/seed/` | Baseline-variant and default-row SQL applied after import |
+| `scripts/seed/` | Baseline-variant SQL (before the tree import, which names the variant) and default-row SQL (after it) |
 | `scripts/provenance/` | Process Run Crate emitter (XRFF-407) |
 | `scripts/utils/` | `db.py` connection helper, schema inspection, JWT generation, import-file tests |
 | `docs/` | Reference: schema dictionary, API spec, deployment, troubleshooting (index in `docs/README.md`) |
@@ -49,16 +49,33 @@ approach was chosen, write it in the knowledge hub and link to it.
 
 ## Schema Migrations
 
-Schema history lives in `supabase/migrations/` (Supabase CLI). Every migration is also mirrored, additively, into the next numbered file under `docker/volumes/db/init/` (currently `11-` to `79-`), because the `db` image bakes that directory and a fresh init must produce today's schema. That directory's `10-baseline-schema.sql` is a point-in-time snapshot (2026-07-17) consolidating the former 10-29 and 32-37 init files, which had accreted into a replay-history problem — later files restructured objects earlier files created, so a fresh init replayed the project's history instead of producing today's schema directly. `30-load-lookup-tables.sql` and `31-refresh-lookup-functions.sql` load CSV data, not schema; keep the file names in `30-` in step with `data/lookups/` when a CSV is renamed.
+`supabase/migrations/` is the only schema chain. The `db` image (`docker/Dockerfile.db`) copies it into the init directory and runs `*.sql` in name order, after the `supabase/postgres` image's own platform migrations (named 2021… to 2025…). It holds:
+
+- `10000000000001_extensions.sql`: PostGIS and the grants on `extensions`. The name sorts it before the platform migrations, so their later grants reach PostGIS too.
+- `20261109120000_baseline_snapshot.sql`: the whole application schema (`shared`, `trees`, `sensor`, `point_clouds`, `environments`, `imagery`, `forest_floor`, `public`) plus the `dashboard_reader` role, cut on 2026-11-09 (XRFF-661).
+- `20261109120001_reference_data.sql`: the rows a fresh init held then: lookups and the rows earlier migrations seeded.
+- every later migration.
+
+After all of them, `docker/volumes/db/refresh-lookups.sql` reloads the lookups from `data/lookups/*.csv`, which stay the source of truth for reference data. `archive/` holds the history before the snapshot. It is not copied into the image: `.dockerignore` excludes it, and the image runs only top-level files anyway.
 
 **Adding a schema change:**
 1. `npx supabase migration new <description>` — creates a new timestamped file under `supabase/migrations/`
 2. Write the DDL (use `IF NOT EXISTS` / `IF EXISTS` guards for idempotency)
-3. Mirror it into the next numbered file under `docker/volumes/db/init/` (e.g. `80-<description>.sql`) — additive only, never restructuring `10-baseline-schema.sql`'s objects
-4. Apply it to the dev database as `supabase_admin`, then `NOTIFY pgrst, 'reload schema'` ([RUNBOOK.md §6](RUNBOOK.md#6-schema-changes-reset-and-rebuild)); before committing, check that a fresh init from the rebuilt image (`docker compose build db`) produces the same schema
-5. Regenerate the generated schema docs and commit them with the migration: `python scripts/utils/generate_schema_docs.py` rewrites `docs/database-dictionary.md` and `docs/database-erd.dbml`; `--check` exits 1 when either is stale
+3. Apply it to the dev database as `supabase_admin`, then `NOTIFY pgrst, 'reload schema'` ([RUNBOOK.md §6](RUNBOOK.md#6-schema-changes-reset-and-rebuild)). Before committing, check that a fresh init from the rebuilt image (`docker compose build db`) produces the same schema as dev: `pg_dump --schema-only` both and diff
+4. Regenerate the generated schema docs and commit them with the migration: `python scripts/utils/generate_schema_docs.py` rewrites `docs/database-dictionary.md` and `docs/database-erd.dbml`; `--check` exits 1 when either is stale
 
-When `supabase/migrations/` accumulates enough changes that the two sources drift, re-snapshot: `pg_dump --schema-only` the live DB (scoped to `shared`, `trees`, `sensor`, `point_clouds`, `environments`, `imagery`, `forest_floor`, `public` — not `extensions`/`storage`, which the base `supabase/postgres` image already owns), verify it structurally matches the live DB (table/view/function/policy counts, lookup row counts) via a throwaway container, then replace the baseline file with the new snapshot. Keep this schema list in sync with the `CREATE SCHEMA` statements in the init files — omitting one silently drops it from the new baseline.
+**Re-snapshotting**, when the chain after the snapshot grows long:
+1. Fresh-init a throwaway container from the current image.
+2. `pg_dump --schema-only` the eight schemas, and `--data-only --disable-triggers` every non-empty table in them.
+3. Write these as a new timestamped snapshot pair, and move the older files to `archive/`.
+4. Fresh-init a second container from the new image and compare the two in a full `pg_dump --schema-only`, `pg_dumpall --globals-only` and the data dump.
+
+Three things a schema-scoped dump does not carry, all handled in the 2026-11-09 snapshot's header and footer:
+- roles (`dashboard_reader`);
+- the global default `ALTER DEFAULT PRIVILEGES … REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`;
+- the fact that `supabase_admin`'s default privileges in `public` would grant anon and authenticated everything on each re-created object. The snapshot switches those defaults off while it loads.
+
+Order, CHECK-constraint spelling and sequence positions may differ; nothing else may.
 
 ## Consumers that read base tables directly
 
@@ -136,4 +153,4 @@ and server overrides — is [RUNBOOK.md §9](RUNBOOK.md#9-reference).
 - [ ] Commands match current Docker Compose setup
 - [ ] RUNBOOK §9 environment variable list matches `docker/.env.example`
 
-**Last Updated:** 2026-10-30
+**Last Updated:** 2026-11-09

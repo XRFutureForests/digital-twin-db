@@ -125,7 +125,7 @@ def backfill_aquarius_names(conn, mappings):
         for full_id, aq in unresolved:
             print(f"     {full_id} ({aq})")
 
-    return resolved
+    return resolved, len(ambiguous) + len(unresolved)
 
 
 def get_ecosense_sensors(conn):
@@ -249,7 +249,7 @@ def main():
     conn = get_db_connection()
     try:
         mappings = load_reference_map()
-        resolved = backfill_aquarius_names(conn, mappings)
+        resolved, failed_mappings = backfill_aquarius_names(conn, mappings)
         if not resolved:
             print("\n❌ No trees resolved — import tree data first")
             return 1
@@ -269,7 +269,8 @@ def main():
         print(f"Created {inserted} new sensor-tree links")
         print("\nQuery linked data:")
         print("  SELECT * FROM public.ue_sensors WHERE tree_id IS NOT NULL;")
-        return 0
+        # An unattended run's exit code is all the job runner sees.
+        return 1 if failed_mappings else 0
 
     except Exception as e:
         conn.rollback()

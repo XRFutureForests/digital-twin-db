@@ -64,7 +64,7 @@ Model, query patterns and examples: [docs/variant-scenario-model.md](docs/varian
 | Campaign (`shared.campaigns`) | the collection event behind a measurement: `field_inventory`, `lidar_flight`, `drone_survey`, `sensor_deployment`, `manual_update` |
 | Process (`shared.processes`, `process_parameters`) | the method, version and parameters behind every derived or simulated value, through `process_id` |
 | Attribute provenance (`shared.attribute_provenance`) | source, version, licence and fetch time of each acquired site attribute |
-| Audit log | every field changed by an `UPDATE` on trees, stems, phenology, environments and point clouds, with the user who changed it; reversible |
+| Audit log | every field changed by an `UPDATE` on trees, stems, phenology, environments and point clouds, with the account, API role or database role that changed it and the reason; readable by curators |
 
 Details: [docs/derived-value-provenance.md](docs/derived-value-provenance.md),
 [docs/run-provenance.md](docs/run-provenance.md).
@@ -115,8 +115,14 @@ Row-level security decides every request from the caller's token:
 What a caller reads also depends on the dataset. Each campaign has a licence and an access
 level set by its owner: `public`, `campus` (the university network, or any signed-in
 account), `registered` (any signed-in account) or `team` (the owning team), plus an optional
-embargo. Curators and the owning team see everything; data without a campaign is public.
+embargo. Curators and the owning team see everything; data without a campaign is public. Rows
+that hang off a tree or sensor (stems, readings, QSMs, roots, …) follow its dataset, for
+reading and for adding. `ue_trees` carries each tree's licence and citation; a projected tree
+inherits them from the latest measurement of the same tree.
 Details: [docs/api-spec.md](docs/api-spec.md) §2.2.
+
+The functions in the base schemas are closed to anonymous and signed-in callers except the
+helpers row-level security itself calls; the RPCs meant for clients live in `public`.
 
 Endpoints, filters and the full write-rule table: [docs/api-spec.md](docs/api-spec.md).
 
@@ -141,7 +147,7 @@ Writing from scripts with a user account, and what a valid tree row needs:
 
 | Data | Path in |
 |------|---------|
-| Field inventory | the 24-column CSV template [data/templates/trees_import_template.csv](data/templates/trees_import_template.csv) (only `LocationID`, `Latitude`, `Longitude` are required) through `scripts/import/import_trees.py`, or the data page of a running portal (form or pasted CSV). Preparing your own CSV: [DATA_PREPARATION_GUIDE.md](data/templates/DATA_PREPARATION_GUIDE.md) |
+| Field inventory | the 24-column CSV template [data/templates/trees_import_template.csv](data/templates/trees_import_template.csv) (only `LocationID`, `Latitude`, `Longitude` are required) through `scripts/import/import_trees.py --variant <forest state>`, or the data page of a running portal (form or pasted CSV). Every tree belongs to a forest state, so the variant exists first. Preparing your own CSV: [DATA_PREPARATION_GUIDE.md](data/templates/DATA_PREPARATION_GUIDE.md) |
 | Single trees from LiDAR | derived by a point-cloud processing platform such as [3dtrees.earth](https://3dtrees.earth) and pushed in as measured trees with their campaign and process (being built) |
 | Sensor time series | provider-agnostic RPCs `bulk_upsert_sensors` and `bulk_insert_readings`, idempotent on `(sensor_id, timestamp)`; one small connector per provider |
 | Site attributes, climate, soil | RPCs `set_location_attributes` and `upsert_environment`, with provenance per value |
@@ -166,8 +172,8 @@ docker compose ps
 | REST API (Kong) | <http://localhost:8000/rest/v1> |
 | PostgreSQL | `localhost:5432` (Supavisor pooler) |
 
-The stack is PostgreSQL + PostGIS, PostgREST, GoTrue auth with row-level security, a realtime
-WebSocket server, an S3-compatible storage API, Deno edge functions and Supabase Studio.
+The stack is PostgreSQL + PostGIS, PostgREST, GoTrue auth with row-level security, an
+S3-compatible storage API and Supabase Studio.
 
 A fresh start is **schema only**: schemas, indexes, constraints, policies, audit functions, API
 views and reference data (species, soil types, climate zones, loaded from CSV), with empty user

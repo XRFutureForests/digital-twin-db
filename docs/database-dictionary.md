@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261104140000_entity_match_method_first_campaign`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261109120001_reference_data`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -509,7 +509,7 @@ One scenario per (location, management regime, climate pathway). scenario_code =
 | `climate_pathway_id` | smallint |  |  | `shared.climate_pathways.climate_pathway_id` | Climate axis -> shared.climate_pathways. 0 = historical. Filled from scenario_name by trigger when omitted. |
 | `scenario_code` | integer | yes | generated: `((management_regime_id * 10) + climate_pathway_id)` |  | management_regime_id * 10 + climate_pathway_id, generated. The sort key Unreal uses: tens digit = regime, units digit = pathway. natural_growth = 10, crop_tree_thinning_ssp585 = 23, a bare ssp370 climate bucket = 2. |
 
-Constraints: primary key (scenario_id); unique (location_id, management_regime_id, climate_pathway_id); unique (location_id, scenario_name).
+Constraints: primary key (scenario_id); unique (location_id, management_regime_id, climate_pathway_id); unique (location_id, scenario_name); unique (scenario_id, location_id).
 
 ### shared.soil_types
 
@@ -614,7 +614,7 @@ Forest state snapshots — each row is one time step at one location within one 
 |---|---|---|---|---|---|
 | `variant_id` | integer |  | serial |  |  |
 | `location_id` | integer |  |  | `shared.locations.location_id` (cascade) | The forest site this variant belongs to — top level of the Location → Scenario → Variant hierarchy |
-| `scenario_id` | integer |  |  | `shared.scenarios.scenario_id` (cascade) | The scenario (set of assumptions) this variant belongs to |
+| `scenario_id` | integer |  |  |  | The scenario (set of assumptions) this variant belongs to |
 | `variant_type_id` | integer |  |  | `shared.variant_types.variant_type_id` | Type of data in this variant (original field measurement, simulated growth, etc.) |
 | `variant_name` | character varying(200) |  |  |  |  |
 | `simulation_year` | integer | yes |  |  | Calendar year this forest state represents |
@@ -624,7 +624,7 @@ Forest state snapshots — each row is one time step at one location within one 
 | `created_at` | timestamp with time zone | yes | `now()` |  |  |
 | `parent_variant_id` | integer | yes |  | `shared.variants.variant_id` (set null) | The variant this state developed from (baseline has none). Encodes the timeline/intervention lineage within a scenario. |
 
-Constraints: `CHECK (((simulation_year >= 1900) AND (simulation_year <= 2300)))`; `CHECK ((time_delta_yrs >= (0)::numeric))`; primary key (variant_id); unique (location_id, scenario_id, variant_name).
+Constraints: `CHECK (((simulation_year >= 1900) AND (simulation_year <= 2300)))`; `CHECK ((time_delta_yrs >= (0)::numeric))`; primary key (variant_id); unique (location_id, scenario_id, variant_name); unique (variant_id, scenario_id, location_id, variant_type_id).
 
 ## trees
 
@@ -1137,13 +1137,13 @@ Tree measurement and simulation records with spatial positions
 |---|---|---|---|---|---|
 | `tree_id` | integer |  | serial |  | Unique row identifier for this tree record |
 | `tree_entity_id` | uuid | yes | `gen_random_uuid()` |  | Persistent UUID identifying the physical tree across all variants. Unique within a variant (trees_variant_entity_key). How an entity was assigned across campaigns is recorded in trees.entity_matches. |
-| `variant_id` | integer | yes |  | `shared.variants.variant_id` (set null) | Forest state group — all trees sharing this variant_id belong to the same time step within a scenario. Use for UE time-travel switching. |
+| `variant_id` | integer |  |  |  | Forest state group — all trees sharing this variant_id belong to the same time step within a scenario. Use for UE time-travel switching. |
 | `parent_tree_id` | integer | yes |  | `trees.trees.tree_id` (set null) | Parent tree record for tracking growth or modifications |
 | `point_cloud_id` | integer | yes |  | `point_clouds.point_clouds.point_cloud_id` (set null) | Source point cloud if tree was detected from LiDAR |
 | `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) | Data collection campaign this measurement belongs to |
 | `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
 | `plot_id` | integer | yes |  | `shared.plots.plot_id` (set null) | Sub-plot within the location where tree is located |
-| `scenario_id` | integer | yes |  | `shared.scenarios.scenario_id` (set null) |  |
+| `scenario_id` | integer |  |  |  |  |
 | `variant_type_id` | integer |  |  | `shared.variant_types.variant_type_id` |  |
 | `process_id` | integer | yes |  | `shared.processes.process_id` (set null) |  |
 | `species_id` | integer | yes |  | `shared.species.species_id` (set null) |  |

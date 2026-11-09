@@ -52,7 +52,7 @@ Your prepared CSV must have these 23 columns. The import creates one record in `
 | Column | Type | Description |
 |--------|------|-------------|
 | `CampaignID` | Integer | Foreign key to `shared.Campaigns` (data collection campaign) |
-| `VariantTypeID` | Integer | Foreign key to `shared.VariantTypes` (1=original, 2=processed, 3=manual, 8=repeat_measurement) |
+| `VariantTypeID` | Integer | Optional. The type follows from the variant named with `import_trees.py --variant`; a value given here must match it (1=original, 2=processed, 3=manual, 8=repeat_measurement) |
 | `DataSourceType` | String | How data was collected: `lidar`, `field`, `photogrammetry`, `estimated`, `simulated` |
 | `SourceCRS` | Integer | EPSG code of original coordinate system before WGS84 transformation (e.g., `32632` for UTM 32N). For data provenance tracking |
 | `TreeStatusID` | Integer | Foreign key to `trees.TreeStatus` (1=healthy, 2=stressed, 3=declining, 4=dead, 5=harvested, 6=missing) |
@@ -410,11 +410,12 @@ Once your CSV matches the template format, use the import scripts in `scripts/im
 # Activate environment
 conda activate digital-twin
 
-# Import trees (replace with your prepared CSV path)
-python scripts/import/import_trees.py data/imports/my_trees_prepared.csv
+# Import trees into an existing forest state (replace with your prepared CSV path).
+# Every row needs coordinates, and a PlotID must exist at the row's location.
+python scripts/import/import_trees.py data/imports/my_trees_prepared.csv --variant baseline_2025
 
-# Import sensors
-python scripts/import/import_sensors.py data/imports/my_sensors_prepared.csv
+# Import sensors (reading timestamps need a UTC offset)
+python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors_prepared.csv
 ```
 
 See [scripts/README.md](../../scripts/README.md) for detailed import script documentation.

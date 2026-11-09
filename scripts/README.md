@@ -11,7 +11,7 @@ scripts/
 │   ├── refresh_lookups.py          # Refresh lookup tables from CSV
 │   └── validate_species_gbif.py    # Validate species names via GBIF
 ├── import/                   # Data import & sync scripts
-│   ├── import_trees.py             # Unified tree import from template CSV
+│   ├── import_trees.py             # Tree import from template CSV into one variant (--variant)
 │   ├── ingest_sensor_data.py       # Provider-agnostic sensor/reading import (CSV/JSON)
 │   ├── link_sensors_to_trees.py    # Link sensors to trees (writes sensor_ref)
 │   ├── fill_missing_heights.py     # Backfill height_m from H-D curves fitted to measured trees
@@ -59,12 +59,13 @@ All import scripts are in `scripts/import/`. Before importing, prepare your data
 Import trees from any CSV following the standard template format (see `data/templates/`):
 
 ```bash
-# Import from a prepared CSV (validates, then inserts)
-python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
-python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
+# The variant first (scripts/seed/<site>_baseline_variant.sql creates baseline_2025),
+# then the trees into it (validates, then inserts)
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv --variant baseline_2025
+python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv --variant baseline_2025
 
 # Dry run — validate only, no data inserted
-python scripts/import/import_trees.py data/imports/my_data.csv --dry-run
+python scripts/import/import_trees.py data/imports/my_data.csv --variant baseline_2025 --dry-run
 ```
 
 ### Import Sensor Data
@@ -93,10 +94,10 @@ fresh `docker compose up` produces a clean, empty database — real forest data
 (ecosense, mathisle) and its growth variants are loaded manually, on purpose.
 
 ```bash
-# Generate growth variants from the real Ecosense baseline — optional
-# (creates the location-scoped natural_growth scenario, assigns the baseline
-# trees to baseline_2025). Growth variants come from silva-connector. See
-# docs/variant-scenario-model.md for how to copy this pattern for your own variant.
+# The location-scoped natural_growth scenario and its baseline_2025 variant.
+# Run BEFORE import_trees.py --variant baseline_2025, which fills it. Growth
+# variants come from silva-connector. See docs/variant-scenario-model.md for how
+# to copy this pattern for your own variant.
 docker exec -i dftdb-db psql -U postgres -d <POSTGRES_DB> -f - < scripts/seed/ecosense_baseline_variant.sql
 
 # Add the second stem of the ecosense 4_56 Zwisel (forked tree). Required after

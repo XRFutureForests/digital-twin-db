@@ -77,8 +77,8 @@ PROCESS = {
 def ensure_process(cur, version: str) -> int:
     cur.execute(
         """SELECT process_id FROM shared.processes
-           WHERE process_name = %s AND algorithm_name = %s AND version = %s""",
-        (PROCESS["process_name"], PROCESS["algorithm_name"], version),
+           WHERE process_name = %s AND version = %s""",
+        (PROCESS["process_name"], version),
     )
     row = cur.fetchone()
     if row:

@@ -6,6 +6,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Security, integrity and lean-up from the 2026-11-09 audit** (XRFF-661)
+
+Security:
+- Functions in the base schemas are closed to anonymous and signed-in callers. Before, anyone
+  could reload the lookup tables, write or read the audit log through
+  `POST /rest/v1/rpc/<name>` with a `Content-Profile: shared` header, past row-level security.
+  Only the row-level security helpers stay callable. New functions start closed to PUBLIC.
+- The JWT signing secret is no longer a database setting. Every database role, the dashboards'
+  read-only one included, could read it and sign a `service_role` token. `jwt.sql` is gone.
+- `shared.audit_log`: curators read all of it; other accounts see only their own changes.
+- Stems, sensor readings, roots, crown profiles, phenology, QSMs, cylinders and graph edges can
+  be added only where the parent tree's, sensor's or QSM's campaign is writable for the caller.
+- Kong and the pooler listen on the loopback addresses only (127.0.0.1 and ::1).
+
+Integrity:
+- `trees.variant_id` is required. A composite foreign key holds a tree's `location_id`,
+  `scenario_id` and `variant_type_id` equal to its variant's, and the same holds between
+  variants and scenarios. A trigger fills them from `variant_id` when a writer leaves them out.
+  Deleting a variant deletes its trees instead of orphaning them.
+- The audit log records who made a change: the account, otherwise the API or database role.
+- `trees.assign_height_class()` recomputes the class whenever there is a height. 229 trees on
+  dev had a class from before their height was refitted.
+- `shared.revert_field_change()` is removed: it logged a revert without changing the value.
+
+FAIR:
+- `ue_trees` gains `campaign_id`, `licence`, `citation` and `doi`. A projected tree takes them
+  from the latest measurement of the same physical tree.
+
+Scripts:
+- `import_trees.py` takes `--variant` (required), refuses missing coordinates and a plot number
+  that does not exist at the row's site, and counts existing trees per variant. The baseline
+  seeds now run before the import.
+- `ingest_sensor_data.py` refuses non-finite values and timestamps without a UTC offset, per
+  row.
+- `import_tls_observations.py` refuses to re-run over decisions made by people.
+- `link_sensors_to_trees.py` and `refresh_lookups.py` exit 1 when a record failed.
+- Fixes:
+  - `emit_ro_crate.py` crashed on every run;
+  - `import_qsm.py` read a blank `is_virtual` cell as true;
+  - `fill_missing_ages.py` looked its process up by the wrong key;
+  - `census_site_plots.sql` overwrote the surveyed ECOSENSE area;
+  - the job page lost its session after an hour.
+- Server scripts:
+  - `backup-db.sh` writes dumps readable by its owner only;
+  - `setup_data_dirs.py` gives `backups/` to the account the backup runs as;
+  - `create-user.sh` keeps the service key and new password off the command line;
+  - `generate_jwt.py` no longer prints the secret.
+
+Lean:
+- One schema chain. `supabase/migrations/` holds a 2026-11-09 snapshot (schema, reference data)
+  and every later migration, and the image builds from it. The 77 mirrored init files are gone,
+  and the history before the snapshot is in `supabase/migrations/archive/`. A fresh init from
+  the new chain matches one from the old chain in schema, roles and reference rows.
+- The unused Edge Runtime and Realtime services are removed.
+- Three duplicate indexes on `trees.trees` are removed.
+- Not done: links from the lookup codes to a published vocabulary need a choice of vocabulary
+  first.
+
+
 **ECOSENSE and Mathislewald campaigns, first re-identification data** (XRFF-478, XRFF-465)
 
 - `scripts/seed/ecosense_mathisle_campaigns.sql`: campaigns `ecosense_inventory_2024`,

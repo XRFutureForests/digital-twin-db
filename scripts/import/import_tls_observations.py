@@ -165,6 +165,15 @@ def main() -> int:
                            x double precision, y double precision, dbh_cm numeric, height_m numeric,
                            attrs jsonb) ON COMMIT DROP""")
             execute_values(cur, "INSERT INTO tls VALUES %s", rows)
+            # Deleting the observations cascades to every decision on them, also
+            # the superseding ones people added. Those are not the loader's to drop.
+            cur.execute("""SELECT count(*) FROM trees.entity_matches m
+                             JOIN trees.observations o USING (observation_id)
+                             JOIN shared.campaigns c ON c.campaign_id = o.campaign_id
+                            WHERE c.campaign_name = %s AND m.decided_by <> %s""", (CAMPAIGN, DECIDED_BY))
+            if cur.fetchone()[0]:
+                raise RuntimeError("this campaign's observations carry decisions not made by this loader; "
+                                   "re-running would delete them")
             cur.execute("""DELETE FROM trees.observations o USING shared.campaigns c
                             WHERE c.campaign_id = o.campaign_id AND c.campaign_name = %s""", (CAMPAIGN,))
             print("replaced observations:", cur.rowcount)

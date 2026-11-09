@@ -200,8 +200,8 @@ Each row is one physical-tree record within one forest state (variant).
 | Column | Note |
 |--------|------|
 | `tree_entity_id` | Stable identity of the physical tree across all rows, variants and scenarios. Defaults to `gen_random_uuid()`; the column is nullable |
-| `variant_id` | Forest state this row belongs to (§3.2) |
-| `scenario_id` | Convenience FK, resynced from the variant |
+| `variant_id` | Forest state this row belongs to (§3.2). Required |
+| `location_id`, `scenario_id`, `variant_type_id` | Copies of the variant's, kept for filtering without a join. A composite foreign key (`trees_variant_fkey`) holds them equal to the variant's and follows a change to it; a writer may leave them out and `trees.fill_from_variant()` fills them |
 | `data_source_type_id` | How the record as a whole was produced → `trees.data_source_types`: `field`, `lidar`, `photogrammetry`, `estimated`, `simulated` |
 | `height_source` | How `height_m` was arrived at; NULL means unrecorded. Deliberately unconstrained (§7.2); values in use are listed in the column comment (`measured`, `measured_tls`, `allometric_fitted_species`, `allometric_fitted_leaf_type`, `allometric_yield_table`, `simulated_silva`) |
 | `live_crown_ratio` | Generated: `(height_m - crown_base_height_m) / height_m` |
@@ -303,7 +303,7 @@ Source-agnostic: Aquarius is one of several possible providers.
 
 ### 3.10 `sensor.sensor_readings`
 
-High-volume time series. The unique index on `(sensor_id, timestamp)` serves every per-sensor query (read backwards for `ORDER BY timestamp DESC`) and makes `bulk_insert_readings` (EXECUTE for `service_role` only) idempotent. Series sampling faster than every 15 minutes are stored at one reading per hour — the raw point nearest each hour boundary, timestamp as measured, not a mean — by the ingesting connector and, for rows loaded before 2026-09-16, by init file `44-thin-fast-series-to-hourly.sql`; the rule is spelled out there and in `aquarius_connector.sync.nearest_hour_samples`, and the two must agree. `scenario_id` is NULL for real readings.
+High-volume time series. The unique index on `(sensor_id, timestamp)` serves every per-sensor query (read backwards for `ORDER BY timestamp DESC`) and makes `bulk_insert_readings` (EXECUTE for `service_role` only) idempotent. Series sampling faster than every 15 minutes are stored at one reading per hour — the raw point nearest each hour boundary, timestamp as measured, not a mean — by the ingesting connector and, for rows loaded before 2026-09-16, by migration `20260916110000_thin_fast_series_to_hourly.sql` (now in `supabase/migrations/archive/`); the rule is spelled out there and in `aquarius_connector.sync.nearest_hour_samples`, and the two must agree. `scenario_id` is NULL for real readings.
 
 **Indexes:** UNIQUE `(sensor_id, timestamp)`, `(timestamp DESC)`, `(quality)`, `(scenario_id)`. The former `(sensor_id, timestamp DESC)` and `(sensor_id)` indexes duplicated the unique key and were dropped 2026-09-16.
 
@@ -381,9 +381,9 @@ Every constraint is listed per table in [database-dictionary.md](database-dictio
 |------------|--------|-------------|-----------|
 | `shared.plots` | `location_id` | `shared.locations` | CASCADE |
 | `shared.scenarios` | `location_id` | `shared.locations` | CASCADE |
-| `shared.variants` | `scenario_id` | `shared.scenarios` | CASCADE |
+| `shared.variants` | `scenario_id`, `location_id` | `shared.scenarios` | CASCADE (and ON UPDATE CASCADE) |
 | `trees.trees` | `location_id` | `shared.locations` | CASCADE |
-| `trees.trees` | `variant_id` | `shared.variants` | SET NULL |
+| `trees.trees` | `variant_id`, `scenario_id`, `location_id`, `variant_type_id` | `shared.variants` | CASCADE (and ON UPDATE CASCADE) |
 | `trees.trees` | `parent_tree_id` | `trees.trees` | SET NULL |
 | `trees.trees` | `point_cloud_id` | `point_clouds.point_clouds` | SET NULL |
 | `trees.trees` | `data_source_type_id` | `trees.data_source_types` | SET NULL |
@@ -449,22 +449,25 @@ The WGS84 working geometry columns have GIST indexes. Not indexed: the original-
 
 ### 6.1 Migration Tool
 
-Schema history lives in `supabase/migrations/` (Supabase CLI) — the source of truth for schema evolution. `docker/volumes/db/init/` holds what the Docker image bakes for fresh deployments; its files are applied in numeric order by the PostgreSQL Docker initialization process on first container startup.
+`supabase/migrations/` is the one schema chain (Supabase CLI naming). The `db` image copies it into its init directory and runs the files in name order on the first start of an empty cluster, after the platform's own migrations.
 
-### 6.2 Init Files
+### 6.2 Files in the chain
 
 | File(s) | Description |
 |---------|-------------|
-| `10-baseline-schema.sql` | Consolidated schema snapshot (2026-07-17): all custom schemas, tables, views, functions, RLS policies and role-tier grants. Replaces the former `10-29` and `32-37` init files |
-| `11-` … `70-` | Additive mirrors of the migrations in `supabase/migrations/`, in order (e.g. `70-close-anon-writes-and-fix-audit.sql` = `20261030120000_close_anon_writes_and_fix_audit.sql`) |
-| `30-load-lookup-tables.sql` | Seeds lookup tables from `data/lookups/*.csv` (data, not schema) |
-| `31-refresh-lookup-functions.sql` | Functions to refresh lookup data |
+| `10000000000001_extensions.sql` | PostGIS and the grants on `extensions`; sorts before the platform migrations |
+| `20261109120000_baseline_snapshot.sql` | Snapshot (2026-11-09, XRFF-661) of every custom schema, table, view, function, RLS policy, grant and the `dashboard_reader` role |
+| `20261109120001_reference_data.sql` | The reference rows a fresh init held on that day (lookups, workflow menu, regimes, pathways, units, census plots) |
+| later timestamped files | Every change since |
+| `archive/` | The history before the snapshot (the 2026-07-17 baseline and its 77 successors); not part of the image |
+
+After the chain, `docker/volumes/db/refresh-lookups.sql` reloads the lookup tables from `data/lookups/*.csv`.
 
 ### 6.3 Migration Strategy
 
-The init files run automatically when the Docker container initializes for the first time. To reset and rebuild the database, follow [RUNBOOK.md §6](../RUNBOOK.md#6-schema-changes-reset-and-rebuild).
+The chain runs automatically when the Docker container initializes for the first time. To reset and rebuild the database, follow [RUNBOOK.md §6](../RUNBOOK.md#6-schema-changes-reset-and-rebuild).
 
-For a new schema change: add a timestamped file under `supabase/migrations/` (`npx supabase migration new <description>`), mirror it into the next numbered init file (additive only, never restructuring the baseline), then regenerate [database-dictionary.md](database-dictionary.md) and [database-erd.dbml](database-erd.dbml) with `scripts/utils/generate_schema_docs.py`. See `AGENTS.md` §"Schema Migrations" for the full workflow, including when and how to re-snapshot the baseline.
+For a new schema change: add a timestamped file under `supabase/migrations/` (`npx supabase migration new <description>`), then regenerate [database-dictionary.md](database-dictionary.md) and [database-erd.dbml](database-erd.dbml) with `scripts/utils/generate_schema_docs.py`. See `AGENTS.md` §"Schema Migrations" for the full workflow, including when and how to re-snapshot.
 
 
 ---
@@ -585,7 +588,7 @@ python scripts/utils/check_naming.py
 - [ ] Schema and table counts in §1.3 match the dictionary
 - [ ] Core ER diagram (§2) edges match the FKs in the dictionary
 - [ ] Foreign key table (§4.1) matches actual `ON DELETE` behaviour
-- [ ] Init file range in §6.2 matches `docker/volumes/db/init/`
+- [ ] The file list in §6.2 matches `supabase/migrations/`
 - [ ] Check constraints table (§4.2) matches the constraints listed in the dictionary
 
 ---

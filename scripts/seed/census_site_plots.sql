@@ -65,7 +65,7 @@ hull AS (
      GROUP BY b.location_id, l.location_name
     HAVING count(*) >= 3
 )
-INSERT INTO shared.plots (location_id, plot_name, area_m2, boundary, center_point,
+INSERT INTO shared.plots AS existing (location_id, plot_name, area_m2, boundary, center_point,
                           sampling_design_id, area_source, description)
 SELECT h.location_id,
        h.location_name || '_site',
@@ -83,7 +83,9 @@ ON CONFLICT (location_id, plot_name) DO UPDATE
        center_point       = EXCLUDED.center_point,
        sampling_design_id = EXCLUDED.sampling_design_id,
        area_source        = EXCLUDED.area_source,
-       description        = EXCLUDED.description;
+       description        = EXCLUDED.description
+ -- A surveyed area (ecosense_mathisle_campaigns.sql) beats the hull.
+ WHERE existing.area_source IS DISTINCT FROM 'surveyed';
 
 -- Attach the plots that hold baseline trees.
 UPDATE shared.plots p

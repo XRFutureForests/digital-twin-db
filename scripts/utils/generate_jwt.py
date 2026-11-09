@@ -42,11 +42,8 @@ service_payload = {
     "exp": 1893456000,
 }
 
-print(f"JWT_SECRET: {jwt_secret}")
-print()
 print("Copy these to your .env file:")
 print()
 print(f"ANON_KEY={create_jwt(anon_payload)}")
 print()
-print(f"SERVICE_ROLE_KEY={create_jwt(service_payload)}")
 print(f"SERVICE_ROLE_KEY={create_jwt(service_payload)}")

@@ -36,7 +36,7 @@ data/
 
 ## Lookup Tables (`lookups/`)
 
-These CSV files are the **source of truth** for database reference data. They are loaded into the database during initialization by `30-load-lookup-tables.sql`.
+These CSV files are the **source of truth** for database reference data. They are loaded into the database at the end of every fresh init (`docker/volumes/db/refresh-lookups.sql`) and on demand by `scripts/admin/refresh_lookups.py`.
 
 ### How It Works
 
@@ -156,9 +156,10 @@ Mathisle forest plot tree inventory.
 ```bash
 # Import tree data from prepared CSV (see data/templates/ for format)
 conda activate digital-twin
-python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
+# (the variant first: scripts/seed/ecosense_baseline_variant.sql)
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv --variant baseline_2025
 
-# Import sensor data (provider-agnostic: scripts/import/ingest_sensor_data.py, or a
+# Import sensor data (timestamps need a UTC offset, e.g. 2025-07-01T12:00:00+02:00 or ...Z) (provider-agnostic: scripts/import/ingest_sensor_data.py, or a
 # provider connector such as ../aquarius-connector for Aquarius)
 python scripts/import/ingest_sensor_data.py sensors data/imports/my_sensors.csv
 python scripts/import/ingest_sensor_data.py readings data/imports/my_readings.json

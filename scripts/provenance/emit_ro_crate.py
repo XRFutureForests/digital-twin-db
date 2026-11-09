@@ -334,7 +334,7 @@ def main():
 
     conn = get_db_connection()
     cur = conn.cursor()
-    runs = fetch_runs(cur, args.simulation_run_id)
+    runs = fetch_runs(cur, args.run_id)
 
     if not runs:
         print("No matching runs in trees.simulation_runs.", file=sys.stderr)

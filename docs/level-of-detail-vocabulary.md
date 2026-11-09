@@ -130,7 +130,7 @@ more detailed version of a 15 m tree, which it is not: it is a different tree.
 * **XRFF-267** — `trees.treeassets.lod` (table not built yet) is to be `SMALLINT` 0..4
   with the axis-1 meaning, plus `geometry_class`. `trees.qsms.lod` and
   `trees.roots.lod` already carry a `CHECK (lod BETWEEN 0 AND 4)` and a
-  `COMMENT ON COLUMN` stating this meaning (init `36-document-lod-columns.sql`).
+  `COMMENT ON COLUMN` stating this meaning (migration `20260903160000_document_lod_columns.sql`).
 * **growpy** — `docs/reference/module-reference.md` in the growpy repo adopts the
   axis-2/axis-3 terms and points back at this page.
 * **XRFF-249** — the position paper can cite a worked three-axis scheme as a

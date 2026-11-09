@@ -46,26 +46,14 @@ This directory contains all automated and manual tests for the digital-twin-db r
 
 ```
 tests/
-|-- automated/
-|   |-- e2e/                    # End-to-End import pipeline and API path tests (Priority >=15)
-|   |   |-- import/             # Full import script → DB → PostgREST round-trips
-|   |   `-- api/                # PostgREST endpoint response validation
-|   |-- integration/            # Migration correctness, RLS enforcement, schema checks
-|   |   |-- migrations/         # Schema migration SQL verification
-|   |   |-- rls/                # Row-Level Security policy tests
-|   |   `-- schema/             # PostgREST schema exposure checks
-|   `-- unit/                   # Complex Python transformation and parsing logic only
-|       |-- import/             # Data transformation functions in import scripts
-|       `-- utils/              # Coordinate reprojection, species validation, sensor parsing
-`-- manual/                     # Manual test scripts (bash)
-    |-- config.sh               # Shared DB connection and environment configuration
-    |-- README.md               # Manual test documentation
-    |-- test-all.sh             # Run all manual test suites
-    |-- results/                # Test outputs (in .gitignore)
-    `-- NN-feature/             # Test suites by Story
-        |-- samples/            # Input files (CSV, JSON, LAS)
-        |-- expected/           # Expected DB state or query outputs (REQUIRED)
-        `-- test-*.sh           # Test scripts using psql / curl against Supabase
+`-- automated/
+    |-- e2e/                    # Against the running local stack (database and API)
+    |   |-- access/             # Row-level security, dataset access levels, accounts, function privileges
+    |   |-- import/             # QSM and GraphML import round-trips
+    |   |-- integrity/          # Variant consistency of tree rows
+    |   |-- provenance/         # Process Run Crate emitter
+    |   `-- sampling/           # Expansion factors and stand estimates
+    `-- unit/                   # No database: parsing logic of the import scripts
 ```
 
 **Naming conventions:**
@@ -106,15 +94,14 @@ pytest tests/automated/
 **Run a specific test level:**
 
 ```bash
-pytest tests/automated/e2e/
-pytest tests/automated/integration/
+pytest tests/automated/e2e/      # needs `docker compose up -d`
 pytest tests/automated/unit/
 ```
 
 **Run a single test file:**
 
 ```bash
-pytest tests/automated/unit/import/test_transform.py -v
+pytest tests/automated/e2e/access/test_function_privileges.py -v
 ```
 
 **Run with coverage:**
@@ -123,21 +110,8 @@ pytest tests/automated/unit/import/test_transform.py -v
 pytest tests/automated/ --cov=scripts --cov-report=term-missing
 ```
 
-**Run manual DB verification scripts:**
-
-```bash
-# Configure DB connection
-cp tests/manual/config.sh.example tests/manual/config.sh
-# Edit config.sh with your local Supabase credentials
-
-# Run all manual tests
-bash tests/manual/test-all.sh
-
-# Run a specific Story's manual tests
-bash tests/manual/01-tree-import/test-import-trees.sh
-```
-
-**Note:** Manual scripts target the local Docker Compose Supabase stack, never the production database.
+The e2e tests write only inside transactions they roll back, against the local Docker
+Compose stack, never the production database.
 
 ---
 
@@ -150,9 +124,8 @@ bash tests/manual/01-tree-import/test-import-trees.sh
 - When Docker Compose Supabase stack version changes
 
 **Verification:**
-- [ ] All test directories exist (`automated/e2e/`, `automated/integration/`, `automated/unit/`, `manual/`)
-- [ ] `tests/manual/results/` is in `.gitignore`
+- [ ] The tree above matches `tests/automated/`
 - [ ] Test execution commands match current conda environment and pytest version
 - [ ] Links to API Spec and DB Schema resolve
 
-**Last Updated:** 2026-05-12
+**Last Updated:** 2026-11-09

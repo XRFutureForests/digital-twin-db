@@ -38,11 +38,16 @@ STORAGE_UID, STORAGE_GID = 0, 0
 
 DEFAULT_DATA_ROOT = Path("/media/data/dftdb")
 
+# backups/ is written by dt-db-backup.service, which runs as the account that
+# ran this script with sudo (User=max on dt.unr), not by the postgres image.
+BACKUP_UID = int(os.environ.get("SUDO_UID", "0"))
+BACKUP_GID = int(os.environ.get("SUDO_GID", "0"))
+
 # (subdirectory, owner uid, owner gid, mode)
 LAYOUT = [
     ("pgdata", POSTGRES_UID, POSTGRES_GID, 0o700),
     ("storage", STORAGE_UID, STORAGE_GID, 0o755),
-    ("backups", POSTGRES_UID, POSTGRES_GID, 0o755),
+    ("backups", BACKUP_UID, BACKUP_GID, 0o700),
 ]
 
 

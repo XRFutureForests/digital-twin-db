@@ -95,9 +95,9 @@
       </tbody>
     </table>
     <p>Geometry takes EWKT (<code>SRID=4326;POINT(lon lat)</code>) or GeoJSON. A new tree needs
-      <code>location_id</code>, <code>variant_type_id</code> (1 = measured) and <code>position</code>;
-      set <code>species_id</code>, <code>scenario_id</code>, <code>height_m</code> and
-      <code>measurement_date</code> too, because the VR scene uses them.</p>
+      <code>variant_id</code> (the forest state it belongs to) and <code>position</code>; its
+      location, scenario and variant type follow from the variant. Set <code>species_id</code>,
+      <code>height_m</code> and <code>measurement_date</code> too, because the VR scene uses them.</p>
     <pre id="exWrite"></pre>
     <h3>Three traps</h3>
     <ul>
@@ -105,7 +105,7 @@
         returns <code>200</code> with zero rows. Send <code>Prefer: return=representation</code> and check
         the response is not empty.</li>
       <li><strong>Corrections to measured data need a curator.</strong> Every change to heights, DBH,
-        health and status is logged with who made it, and can be reverted.</li>
+        health and status is logged with who made it; a curator corrects it with another update.</li>
       <li><strong>This is the production twin.</strong> The VR client and dashboards read the same rows.
         Mark test rows (e.g. <code>field_notes: "test"</code>), or develop against a local copy of the
         stack — <a href="https://github.com/XRFutureForests/digital-twin-db">digital-twin-db</a>,
@@ -236,7 +236,7 @@
   set("exWrite",
     'curl -X POST "$DT/rest/v1/trees" ' + BS + '\n' + H + ' ' + BS + '\n' +
     '  -H "Content-Type: application/json" -H "Prefer: return=representation" ' + BS + '\n' +
-    '  -d \'{"location_id": 2, "variant_type_id": 1, "species_id": 1, "height_m": 21.4,\n' +
+    '  -d \'{"variant_id": 1, "species_id": 1, "height_m": 21.4,\n' +
     '       "measurement_date": "2026-10-29", "position": "SRID=4326;POINT(8.0 47.9)"}\'');
   set("exJob",
     'curl -X POST "$DT/rest/v1/rpc/request_job" ' + BS + '\n' + H + ' -H "Content-Type: application/json" ' + BS + '\n' +

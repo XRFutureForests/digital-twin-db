@@ -63,17 +63,18 @@ API="${SUPABASE_URL:-http://localhost:${KONG_PORT:-8000}}"
 
 auth() {
     # $1 method, $2 path, $3 optional JSON body
+    # Headers and body go in through a file descriptor and stdin: curl's
+    # arguments are visible to every user on the host in `ps`.
     local method="$1" path="$2" body="${3:-}"
+    local headers
+    headers="$(printf 'apikey: %s\nAuthorization: Bearer %s\n' "$SERVICE_ROLE_KEY" "$SERVICE_ROLE_KEY")"
     if [ -n "$body" ]; then
-        curl -sS -X "$method" "$API$path" \
-            -H "apikey: $SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+        printf '%s' "$body" | curl -sS -X "$method" "$API$path" \
+            -H @<(printf '%s\n' "$headers") \
             -H "Content-Type: application/json" \
-            -d "$body"
+            --data-binary @-
     else
-        curl -sS -X "$method" "$API$path" \
-            -H "apikey: $SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SERVICE_ROLE_KEY"
+        curl -sS -X "$method" "$API$path" -H @<(printf '%s\n' "$headers")
     fi
 }
 
@@ -130,14 +131,14 @@ PASSWORD="${USER_PASSWORD:-$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)
 
 # email_confirm:true is the load-bearing part. Without it the account cannot
 # sign in and nothing says so.
-RESPONSE="$(auth POST "/auth/v1/admin/users" "$(python3 -c '
-import json, sys
+RESPONSE="$(auth POST "/auth/v1/admin/users" "$(NEW_PASSWORD="$PASSWORD" python3 -c '
+import json, os, sys
 print(json.dumps({
     "email": sys.argv[1],
-    "password": sys.argv[2],
+    "password": os.environ["NEW_PASSWORD"],
     "email_confirm": True,
-    "app_metadata": {"role": sys.argv[3]},
-}))' "$EMAIL" "$PASSWORD" "$ROLE")")"
+    "app_metadata": {"role": sys.argv[2]},
+}))' "$EMAIL" "$ROLE")")"
 
 CREATED_ID="$(printf '%s' "$RESPONSE" | python3 -c '
 import json, sys

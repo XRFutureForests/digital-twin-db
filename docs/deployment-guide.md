@@ -14,11 +14,14 @@ headsets sit), so everything public goes through the dashboard's nginx on 443.
 | `https://dt.unr.uni-freiburg.de/db/rest/v1/...` | PostgREST |
 | `https://dt.unr.uni-freiburg.de/db/auth/v1/...` | GoTrue |
 | `https://dt.unr.uni-freiburg.de/db/storage/v1/...` | Storage |
-| anything else under `/db/` | 404 — no Studio, Realtime, Edge Functions, pg-meta or analytics |
+| anything else under `/db/` | 404 — no Studio, pg-meta or analytics (Realtime and Edge Functions no longer run, since 2026-11-09) |
 | `/portal/` | the portal (`web/portal/`); `/` redirects here |
 | `/jobs/` | the job trigger page (`web/jobs/`) |
 
-Host ports, reachable only on the host itself:
+Host ports. Compose binds Kong and the pooler to the loopback addresses (127.0.0.1 and ::1)
+since 2026-11-09 (XRFF-661), so they are reachable on the host itself only, whatever the host
+firewall says; before, Docker published them on every interface and only a firewall rule kept
+them off the network:
 
 | Service | Server | Dev |
 |---|---|---|
@@ -54,8 +57,9 @@ Datasets can be visible to the university network only (XRFF-625). The dashboard
 the client address to `X-DT-Network: campus` for 132.230.0.0/16 and 10.0.0.0/8 (campus
 clients on the internal network arrive from 10.x addresses) and `internet` for everything else
 on `/db/rest/v1/`, replacing any value the client sent; the database reads it in
-`shared.request_network()`. That is only safe while Kong (8000) and the database are reachable
-from this host alone, as above: anyone who reaches Kong directly can claim to be on campus.
+`shared.request_network()`. That is safe because Kong and the database are reachable from this
+host alone, as above: anyone who reaches Kong directly can claim to be on campus. The dashboard
+reaches the pooler over the Docker network (`DB_HOST=dftdb-pooler`), not through a host port.
 Check what the database sees with `POST /db/rest/v1/rpc/my_access`.
 
 ## Server-specific `docker/.env`
@@ -147,10 +151,16 @@ Written from the deploy of 2026-11-02 (release 2.0.3, migrations `20261102100000
 `point_clouds`, `environments`, `imagery`, `forest_floor` and `public`, grants included, was
 identical on dev and dt.unr.
 
-**Only migrations change the running database.** Postgres runs the init files in
-`docker/volumes/db/init/` only on an empty `PGDATA`, and `PGDATA` here is a long-lived
+**Only migrations change the running database.** Postgres runs the chain in
+`supabase/migrations/` only on an empty `PGDATA`, and `PGDATA` here is a long-lived
 directory on the NFS export. `docker compose build db && docker compose up -d` rebuilds the
-image and leaves the database as it was. The init files matter only for a new cluster.
+image and leaves the database as it was. The chain matters only for a new cluster.
+
+**Never apply the snapshot to a running database.** `10000000000001_extensions.sql`,
+`20261109120000_baseline_snapshot.sql` and `20261109120001_reference_data.sql` build an
+empty cluster; the server already holds everything in them. A running database takes only
+the migrations dated after them, and, on 2026-11-09, the last pre-snapshot migration
+`archive/20261109100000_audit_security_and_integrity.sql`.
 
 **The server checkout tracks `dev`**, so a migration reaches dt.unr when it is pulled and
 applied, not at a Zenodo release.
@@ -175,10 +185,10 @@ order; to read a difference in context, dump again without `| sort`. `tr -d '\r'
 returns: six account functions on dt.unr were created from a file with Windows line endings and
 keep them in their bodies, which changes nothing about how they run.
 
-An empty diff means dt.unr is at the newest file in `supabase/migrations/`. Otherwise, find the
-oldest migration whose objects the diff shows missing and apply from that one on. **Apply in
-file-name order and skip none:** later migrations change objects that earlier ones create or
-rename.
+An empty diff means dt.unr is at the newest migration. Otherwise, find the oldest migration
+whose objects the diff shows missing and apply from that one on, from `archive/` for anything
+dated before the 2026-11-09 snapshot. **Apply in file-name order and skip none:** later
+migrations change objects that earlier ones create or rename.
 
 ### Steps
 

@@ -1,2 +1,3 @@
 docker/volumes/db/data
 docker/volumes/storage
+supabase/migrations/archive

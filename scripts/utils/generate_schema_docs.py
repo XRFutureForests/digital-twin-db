@@ -29,7 +29,7 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 DICT_PATH = REPO_ROOT / "docs" / "database-dictionary.md"
 DBML_PATH = REPO_ROOT / "docs" / "database-erd.dbml"
 
-# Keep in sync with the CREATE SCHEMA statements in docker/volumes/db/init/.
+# Keep in sync with the CREATE SCHEMA statements in supabase/migrations/.
 SCHEMAS = ["shared", "trees", "sensor", "environments", "point_clouds", "imagery", "forest_floor"]
 
 SCHEMA_NOTES = {

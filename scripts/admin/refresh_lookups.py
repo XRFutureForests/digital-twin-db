@@ -149,6 +149,10 @@ def run_psql(sql: str) -> bool:
             text=True,
         )
 
+        # refresh_lookup() returns a row with status 'ERROR: ...' instead of
+        # raising, so psql exits 0 for a lookup that did not refresh.
+        failed = result.returncode != 0 or "ERROR" in result.stdout
+
         # Color the output
         output = result.stdout
         output = output.replace("OK", f"{Colors.GREEN}OK{Colors.RESET}")
@@ -159,7 +163,7 @@ def run_psql(sql: str) -> bool:
             if line.strip():
                 print(line)
 
-        if result.returncode != 0:
+        if failed:
             print_color(result.stderr, Colors.RED)
             return False
 

@@ -61,8 +61,14 @@ services:
     image: kong:2.8.1
     restart: unless-stopped
     ports:
-      - ${KONG_HTTP_PORT}:8000/tcp
-      - ${KONG_HTTPS_PORT}:8443/tcp
+      # Loopback only: the server's nginx reaches Kong over the Docker network
+      # and sets X-DT-Network there; a client reaching Kong directly could
+      # claim to be on campus. Both loopbacks: on Windows `localhost` tries ::1
+      # first, and a missing IPv6 listener costs every connection ~200 ms.
+      - 127.0.0.1:${KONG_HTTP_PORT}:8000/tcp
+      - "[::1]:${KONG_HTTP_PORT}:8000/tcp"
+      - 127.0.0.1:${KONG_HTTPS_PORT}:8443/tcp
+      - "[::1]:${KONG_HTTPS_PORT}:8443/tcp"
     volumes:
       # https://github.com/supabase/supabase/issues/12661
       # Mount directory instead of file to avoid WSL bind-mount hash path issue on reboot
@@ -189,40 +195,6 @@ services:
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
     command: [ "postgrest" ]
 
-  realtime:
-    # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
-    container_name: dftdb-realtime
-    image: supabase/realtime:v2.63.0
-    restart: unless-stopped
-    depends_on:
-      db:
-        # Disable this if you are using an external Postgres database
-        condition: service_healthy
-      analytics:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "curl", "-sSfL", "--head", "-o", "/dev/null", "-H", "Authorization: Bearer ${ANON_KEY}", "http://localhost:4000/api/tenants/realtime-dev/health" ]
-      timeout: 5s
-      interval: 5s
-      retries: 3
-    environment:
-      PORT: 4000
-      DB_HOST: ${POSTGRES_HOST}
-      DB_PORT: ${POSTGRES_PORT}
-      DB_USER: supabase_admin
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_NAME: ${POSTGRES_DB}
-      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
-      DB_ENC_KEY: supabaserealtime
-      API_JWT_SECRET: ${JWT_SECRET}
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-      ERL_AFLAGS: -proto_dist inet_tcp
-      DNS_NODES: "''"
-      RLIMIT_NOFILE: "10000"
-      APP_NAME: realtime
-      SEED_SELF_HOST: true
-      RUN_JANITOR: true
-
   # To use S3 backed storage: docker compose -f docker-compose.yml -f docker-compose.s3.yml up
   storage:
     container_name: dftdb-storage
@@ -300,29 +272,6 @@ services:
       PG_META_DB_USER: supabase_admin
       PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
       CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
-
-  functions:
-    container_name: dftdb-edge-functions
-    image: supabase/edge-runtime:v1.69.23
-    restart: unless-stopped
-    volumes:
-      - ./volumes/functions:/home/deno/functions:Z
-    depends_on:
-      analytics:
-        condition: service_healthy
-    environment:
-      JWT_SECRET: ${JWT_SECRET}
-      SUPABASE_URL: http://kong:8000
-      SUPABASE_ANON_KEY: ${ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
-      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-      # TODO: Allow configuring VERIFY_JWT per function. This PR might help: https://github.com/supabase/cli/pull/786
-      VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
-    command: [ "start", "--main-service", "/home/deno/functions/main" ]
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
 
   analytics:
     container_name: dftdb-analytics
@@ -404,8 +353,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: ${POSTGRES_DB}
       POSTGRES_DB: ${POSTGRES_DB}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXP: ${JWT_EXPIRY}
     command:
       [
         "postgres",
@@ -466,8 +413,12 @@ services:
     image: supabase/supavisor:2.7.4
     restart: unless-stopped
     ports:
-      - ${POSTGRES_PORT}:5432
-      - ${POOLER_PROXY_PORT_TRANSACTION}:6543
+      # Loopback only: the dashboard reaches the pooler over the Docker network
+      # (dftdb-pooler:5432), scripts and the job runner run on this host.
+      - 127.0.0.1:${POSTGRES_PORT}:5432
+      - "[::1]:${POSTGRES_PORT}:5432"
+      - 127.0.0.1:${POOLER_PROXY_PORT_TRANSACTION}:6543
+      - "[::1]:${POOLER_PROXY_PORT_TRANSACTION}:6543"
     volumes:
       # Mount directory instead of file to avoid WSL bind-mount hash path issue on reboot
       - ./volumes/pooler:/etc/pooler:ro,z

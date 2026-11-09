@@ -72,10 +72,11 @@ def db():
         )
         campaign = cur.fetchone()[0]
         cur.execute(
-            "UPDATE trees.trees SET campaign_id = %s WHERE tree_id IN (SELECT tree_id FROM trees.trees "
-            "WHERE campaign_id IS NULL AND variant_id = (SELECT min(variant_id) FROM shared.variants) "
-            "ORDER BY tree_id LIMIT 5)",
-            (campaign,),
+            "UPDATE trees.trees SET campaign_id = %s WHERE tree_id IN (SELECT t.tree_id FROM trees.trees t "
+            "LEFT JOIN shared.campaigns c USING (campaign_id) "
+            "WHERE (c.campaign_name IS NULL OR c.campaign_name <> ALL(%s)) "
+            "AND t.variant_id = (SELECT min(variant_id) FROM shared.variants) ORDER BY t.tree_id LIMIT 5)",
+            (campaign, list(LEVELS)),
         )
     cur.execute(
         "SELECT c.campaign_name, array_agg(t.tree_id) FROM trees.trees t "
@@ -169,6 +170,35 @@ def test_outsider_cannot_write_into_or_claim_a_team_campaign(db):
             (team,),
         )
     cur.execute("ROLLBACK TO SAVEPOINT s")
+
+
+def test_outsider_cannot_add_child_rows_to_a_team_tree(db):
+    """Stems, readings, QSMs and the other child rows follow their tree's owner (XRFF-661)."""
+    cur, _, ids = db
+    team_tree = ids["c_team"][0]
+    insert_stem = "INSERT INTO trees.stems (tree_id, stem_number, dbh_cm) VALUES (%s, 99, 300)"
+    as_caller(cur, "authenticated", {"role": "authenticated", "sub": OUTSIDER,
+                                     "app_metadata": {"role": "contributor"}})
+    cur.execute("SAVEPOINT s")
+    with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+        cur.execute(insert_stem, (team_tree,))
+    cur.execute("ROLLBACK TO SAVEPOINT s")
+    as_caller(cur, "authenticated", {"role": "authenticated", "sub": MEMBER,
+                                     "app_metadata": {"role": "contributor"}})
+    cur.execute(insert_stem, (team_tree,))
+    cur.execute("RESET ROLE")
+
+
+def test_audit_log_is_for_curators(db):
+    cur, _, _ = db
+    as_caller(cur, "authenticated", {"role": "authenticated", "sub": OUTSIDER, "app_metadata": {}})
+    cur.execute("SELECT count(*) FROM shared.audit_log")
+    assert cur.fetchone()[0] == 0
+    as_caller(cur, "authenticated", {"role": "authenticated", "sub": OUTSIDER,
+                                     "app_metadata": {"role": "curator"}})
+    cur.execute("SELECT EXISTS (SELECT 1 FROM shared.audit_log)")
+    assert cur.fetchone()[0]
+    cur.execute("RESET ROLE")
 
 
 def test_licence_is_required(db):

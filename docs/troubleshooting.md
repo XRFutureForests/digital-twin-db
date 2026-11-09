@@ -16,9 +16,9 @@ docker compose logs --tail 100 <service>
 docker inspect dftdb-db --format '{{.State.Health.Status}}'
 ```
 
-Service names: `db`, `vector`, `analytics`, `studio`, `kong`, `auth`, `rest`, `realtime`,
-`storage`, `imgproxy`, `meta`, `functions`, `supavisor`, `mail`. Containers are `dftdb-<name>`,
-except `functions` → `dftdb-edge-functions` and `supavisor` → `dftdb-pooler`.
+Service names: `db`, `vector`, `analytics`, `studio`, `kong`, `auth`, `rest`, `storage`,
+`imgproxy`, `meta`, `supavisor`, `mail`. Containers are `dftdb-<name>`, except
+`supavisor` → `dftdb-pooler`.
 
 ## Startup
 
@@ -26,10 +26,11 @@ except `functions` → `dftdb-edge-functions` and `supavisor` → `dftdb-pooler`
 |---|---|---|
 | Studio or Kong never start | both wait for `analytics` to be healthy | `docker compose restart analytics`, wait ~15 s, `docker compose restart studio kong` |
 | `dftdb-analytics` unhealthy, log says `database "_supabase" does not exist` | the cluster was initialised incompletely | rebuild from scratch (Reset, below) |
-| `auth`, `realtime`, `storage` restart a few times on first start (`must be owner of function uid`) | they race the first init | wait 2–3 min; if it persists, `docker compose restart auth realtime storage` |
+| `auth`, `storage` restart a few times on first start (`must be owner of function uid`) | they race the first init | wait 2–3 min; if it persists, `docker compose restart auth storage` |
 | db log: `Database directory appears to contain a database; Skipping initialization` | the `db-data` volume holds an older cluster, so init files do not run | expected on every start after the first; to re-init, see Reset |
 | `password authentication failed for user supabase_admin` | `POSTGRES_PASSWORD` changed after the cluster was initialised; init sets role passwords once | restore the old password in `docker/.env`, or `ALTER ROLE … PASSWORD` for each role inside the container; a Reset also works but deletes the data |
-| `Bind for 0.0.0.0:8000 failed: port is already allocated` | another process holds the port | find it (`netstat -ano \| findstr :8000`, `ss -tlnp \| grep 8000`); or move `KONG_HTTP_PORT` in `docker/.env`. Studio's 54323 is fixed in `docker-compose.yml` |
+| `Bind for 127.0.0.1:8000 failed: port is already allocated` | another process holds the port | find it (`netstat -ano \| findstr :8000`, `ss -tlnp \| grep 8000`); or move `KONG_HTTP_PORT` in `docker/.env`. Studio's 54323 is fixed in `docker-compose.yml` |
+| every API call or database connect through `localhost` takes ~200 ms (2 s for psycopg) | Windows tries `::1` first; a stack bound to `127.0.0.1` only makes it time out first | Kong and the pooler bind `[::1]` too since 2026-11-09; recreate them (`docker compose up -d kong supavisor`) |
 | volumes fail after a Docker Desktop restart on Windows | stale WSL bind-mount paths | restart Docker Desktop, `docker compose up -d`; persistent state is on named volumes |
 
 `POSTGRES_PORT` is not just a host mapping: it is also the port Postgres listens on inside the
@@ -39,10 +40,12 @@ network and the port every service connects to. Changing it is fine, but it chan
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| tables or views missing after a fresh start | the `db` image was not rebuilt after `docker/volumes/db/init/` changed | `docker compose build db`, then Reset |
+| tables or views missing after a fresh start | the `db` image was not rebuilt after `supabase/migrations/` changed | `docker compose build db`, then Reset |
 | a migration applied but the API does not see it | PostgREST caches the schema | `docker exec dftdb-db psql -U supabase_admin -d postgres -c "NOTIFY pgrst, 'reload schema'"` |
 | `must be owner of …` when running DDL or a seed | you ran it as `postgres`, which is not a superuser; `supabase_admin` owns the custom schemas | run it with `-U supabase_admin` |
-| lookup tables empty | `30-load-lookup-tables.sql` did not load the CSVs | `python scripts/admin/refresh_lookups.py` |
+| lookup tables empty or stale | the CSVs were not reloaded (`zz-refresh-lookups.sql` runs only on a fresh init) | `python scripts/admin/refresh_lookups.py`; it exits 1 if any table reports `ERROR` |
+| `permission denied for function …` on a function in `shared`, `trees`, `sensor`, … | functions in the base schemas are closed to anon and authenticated since 2026-11-09, except the row-level security helpers | call the `public` RPC meant for clients; a new view or policy that needs a function grants it in its migration |
+| `insert or update on table "trees" violates foreign key constraint "trees_variant_fkey"` | the row's `location_id`, `scenario_id` or `variant_type_id` disagrees with its variant | leave them out (they are filled from `variant_id`) or fix the value |
 | `generate_schema_docs.py --check` exits 1 | the schema changed without regenerating the docs | `python scripts/utils/generate_schema_docs.py`, commit both files |
 
 Expected after init: schemas `shared`, `trees`, `sensor`, `point_clouds`, `environments`,
@@ -61,7 +64,6 @@ docker exec dftdb-db psql -U postgres -d _supabase -c "\dn"
 | 401 from `/rest/v1/` | no `apikey` header, or a key signed with a different `JWT_SECRET` | send `-H "apikey: $ANON_KEY"` using the `ANON_KEY` from the `.env` the stack runs with |
 | 401 everywhere after changing `JWT_SECRET` | the API keys are JWTs signed with the old secret | regenerate both with `python scripts/utils/generate_jwt.py`, then `docker compose up -d --force-recreate` (a `restart` keeps the old env) |
 | a custom schema not reachable over REST | not in `PGRST_DB_SCHEMAS` | add it in `docker/.env`, `docker compose up -d --force-recreate rest` |
-| `/realtime/v1/` fails | Realtime is not used; its Kong upstream `realtime-dev.supabase-realtime` does not resolve on dev | none needed |
 
 From inside the network: `docker exec dftdb-kong wget -qO- http://rest:3000/` (Kong has
 `wget`, not `curl`; Studio has neither).

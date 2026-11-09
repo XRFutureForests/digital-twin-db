@@ -167,7 +167,8 @@ def insert_qsm(conn, tree_id, df, args):
                 int(r["branch_position"]) if "branch_position" in df.columns else None,
                 part_type_id,
                 _optional_float(r, "raw_radius"),
-                bool(r["is_virtual"]) if "is_virtual" in df.columns else False,
+                (str(r["is_virtual"]).strip().lower() in ("true", "1")
+                 if "is_virtual" in df.columns and pd.notna(r["is_virtual"]) else False),
             )
         )
 

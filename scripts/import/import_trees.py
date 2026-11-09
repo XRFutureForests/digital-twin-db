@@ -6,15 +6,20 @@ Imports tree data from any CSV file that follows the standard template format
 (see data/templates/trees_import_template.csv).
 
 Usage:
-    python import_trees.py <csv_file> [--dry-run] [--append]
+    python import_trees.py <csv_file> --variant <variant_name> [--dry-run] [--append]
 
-A location that already has trees is refused unless --append says the rows are
+Every tree belongs to one forest state (variant). --variant names it; it is
+looked up within each row's location and must exist already (the baseline
+seeds in scripts/seed/ create the measured one). The tree's scenario and
+variant type follow from the variant.
+
+A variant that already has trees is refused unless --append says the rows are
 new trees: trees have no natural key, so a repeated import would duplicate them.
 
 Examples:
-    python import_trees.py ../../data/imports/mathisle_trees_import.csv
-    python import_trees.py ../../data/imports/ecosense_trees_import.csv
-    python import_trees.py /path/to/new_site_import.csv --dry-run
+    python import_trees.py ../../data/imports/mathisle_trees_import.csv --variant baseline_2025
+    python import_trees.py ../../data/imports/ecosense_trees_import.csv --variant baseline_2025
+    python import_trees.py /path/to/new_site_import.csv --variant baseline_2025 --dry-run
 """
 
 import argparse
@@ -76,10 +81,8 @@ REQUIRED_COLUMNS = ["LocationID", "Latitude", "Longitude"]
 
 # Columns accepted beyond the template but never inserted directly:
 #   Easting/Northing  -> combined into position_original for provenance
-#   ScenarioName      -> reported and FK-checked only. Scenarios are
-#                        location-scoped (Location -> Scenario -> Variant) and
-#                        are assigned afterwards by scripts/seed/*_baseline_variant.sql,
-#                        so import_trees always writes scenario_id = NULL.
+#   ScenarioName      -> reported and FK-checked only. The scenario follows
+#                        from --variant (Location -> Scenario -> Variant).
 EXTRA_COLUMNS = ["Easting_32632", "Northing_32632", "ScenarioName"]
 
 CREATED_BY = "import_trees"
@@ -111,9 +114,7 @@ def validate_csv(df, csv_path):
     if "Latitude" in df.columns and "Longitude" in df.columns:
         missing_coords = (df["Latitude"].isna() | df["Longitude"].isna()).sum()
         if missing_coords > 0:
-            warnings.append(
-                f"{missing_coords} rows with missing coordinates will be skipped"
-            )
+            errors.append(f"{missing_coords} rows have missing Latitude or Longitude")
 
     # Validate coordinate ranges
     if "Latitude" in df.columns:
@@ -248,7 +249,7 @@ def clean(val):
     return val
 
 
-def import_trees(df, dry_run=False, append=False):
+def import_trees(df, variant_name, dry_run=False, append=False):
     """Import tree data from a validated DataFrame."""
     conn = get_db_connection()
     cur = conn.cursor()
@@ -282,29 +283,47 @@ def import_trees(df, dry_run=False, append=False):
         num = row.get("PlotID")  # CSV 'PlotID' == plot number within the location
         if pd.isna(num) or pd.isna(row.get("_LocationID")):
             return None
-        return plot_number_map.get((int(row["_LocationID"]), int(num)))
+        pid = plot_number_map.get((int(row["_LocationID"]), int(num)))
+        if pid is None:
+            # Plot numbers repeat across sites; a number that exists elsewhere
+            # must not quietly become a tree without a plot here.
+            raise SystemExit(
+                f"PlotID {int(num)} does not exist at LocationID={int(row['_LocationID'])}"
+            )
+        return pid
 
     df["_PlotID"] = df.apply(resolve_plot, axis=1)
 
+    # The forest state the trees belong to, per location.
+    location_ids = [int(x) for x in df["_LocationID"].dropna().unique()]
+    cur.execute(
+        "SELECT location_id, variant_id FROM shared.variants "
+        "WHERE variant_name = %s AND location_id = ANY(%s)",
+        (variant_name, location_ids),
+    )
+    variant_map = dict(cur.fetchall())
+    missing = sorted(set(location_ids) - set(variant_map))
+    if missing:
+        conn.close()
+        raise SystemExit(
+            f"No variant '{variant_name}' at LocationID {missing}. Create it first "
+            "(scripts/seed/<site>_baseline_variant.sql shows how)."
+        )
+
     # Trees have no natural key, so a second run of the same CSV would insert
     # every tree again. Refuse unless the caller says the rows are new.
-    location_ids = df["_LocationID"].dropna().unique()
     occupied = []
-    for loc_id in location_ids:
-        cur.execute(
-            "SELECT count(*) FROM trees.trees WHERE location_id = %s", (int(loc_id),)
-        )
+    for loc_id, variant_id in variant_map.items():
+        cur.execute("SELECT count(*) FROM trees.trees WHERE variant_id = %s", (variant_id,))
         existing = cur.fetchone()[0]
         if existing > 0:
-            print(
-                f"  Note: {existing} trees already exist for LocationID={int(loc_id)}"
-            )
-            occupied.append(int(loc_id))
+            print(f"  Note: {existing} trees already exist in variant {variant_id} (LocationID={loc_id})")
+            occupied.append(loc_id)
     if occupied and not append and not dry_run:
         conn.close()
         raise SystemExit(
-            f"Locations {occupied} already have trees; re-importing would duplicate "
-            "them. Pass --append if these rows are new trees."
+            f"Variant '{variant_name}' already has trees at locations {occupied}; "
+            "re-importing would duplicate them. Pass --append if these rows are new trees."
         )
 
     # Build datasource_type_id_map (new schema); fall back to None if table missing
@@ -326,14 +345,9 @@ def import_trees(df, dry_run=False, append=False):
     )
 
     tree_values = []
-    skipped = 0
     for _, row in df.iterrows():
         lat = row.get("Latitude")
         lon = row.get("Longitude")
-        if pd.isna(lat) or pd.isna(lon):
-            skipped += 1
-            continue
-
         position_wkt = f"POINT({lon} {lat})"
         position_original = (
             build_position_original(row) if has_position_original else None
@@ -362,20 +376,15 @@ def import_trees(df, dry_run=False, append=False):
             if pd.notna(ds_name) and str(ds_name).lower() == "field":
                 height_source = "measured"
 
-        # ScenarioID is NOT set at tree-import time. Scenarios are location-scoped
-        # (Location -> Scenario -> Variant) and are created by the growth-variant
-        # seed scripts, which then assign each baseline tree to a variant and
-        # resync trees.ScenarioID from that variant.
-        scenario_id = None
-
         tree_values.append(
             (
                 int(row["_LocationID"]),
                 int(row["_PlotID"]) if pd.notna(row.get("_PlotID")) else None,
                 int(row["TreeNumber"]) if pd.notna(row.get("TreeNumber")) else None,
                 int(row["CampaignID"]) if pd.notna(row.get("CampaignID")) else None,
-                scenario_id,
-                int(row["VariantTypeID"]) if pd.notna(row.get("VariantTypeID")) else 1,
+                variant_map[int(row["_LocationID"])],
+                # Left out, the type is filled from the variant; given, it must match it.
+                int(row["VariantTypeID"]) if pd.notna(row.get("VariantTypeID")) else None,
                 int(row["SpeciesID"]) if pd.notna(row.get("SpeciesID")) else None,
                 int(row["TreeStatusID"]) if pd.notna(row.get("TreeStatusID")) else None,
                 (
@@ -428,9 +437,6 @@ def import_trees(df, dry_run=False, append=False):
             )
         )
 
-    if skipped > 0:
-        print(f"  Skipped {skipped} rows with missing coordinates")
-
     print(f"  Prepared {len(tree_values)} trees for import")
 
     if dry_run:
@@ -445,7 +451,7 @@ def import_trees(df, dry_run=False, append=False):
     # Insert trees
     insert_query = """
         INSERT INTO trees.Trees (
-            location_id, plot_id, tree_number, campaign_id, scenario_id, variant_type_id, species_id,
+            location_id, plot_id, tree_number, campaign_id, variant_id, variant_type_id, species_id,
             tree_status_id, branching_pattern_id, bark_characteristic_id,
             measurement_date, data_source_type_id,
             height_m, height_source, crown_width_m, crown_base_height_m,
@@ -551,6 +557,12 @@ def main():
     )
     parser.add_argument("csv_file", help="Path to the CSV file to import")
     parser.add_argument(
+        "--variant",
+        required=True,
+        help="Name of the forest state (variant) the trees belong to, e.g. baseline_2025; "
+        "it must exist at every location in the CSV",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true", help="Validate only, do not insert data"
     )
     parser.add_argument(
@@ -632,7 +644,7 @@ def main():
         print("\nImporting trees...")
 
     with track("insert_rows"):
-        import_trees(df, dry_run=args.dry_run, append=args.append)
+        import_trees(df, args.variant, dry_run=args.dry_run, append=args.append)
 
     # Final verification
     if not args.dry_run:

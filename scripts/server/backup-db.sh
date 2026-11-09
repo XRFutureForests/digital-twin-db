@@ -32,6 +32,8 @@
 #   scripts/server/backup-db.sh            # once, by hand
 #   systemctl status dt-db-backup          # what the timer last did
 set -euo pipefail
+# The dump holds auth.users password hashes and datasets that are not public.
+umask 077
 
 BACKUP_DIR="${BACKUP_DIR:-/media/data/dftdb/backups}"
 CONTAINER="${DB_CONTAINER:-dftdb-db}"

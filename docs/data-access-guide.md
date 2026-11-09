@@ -54,8 +54,8 @@ port 54323 (the tunnel is the access control).
 
 ```bash
 conda activate digital-twin
-python scripts/import/import_trees.py data/imports/your_trees.csv --dry-run  # validate first
-python scripts/import/import_trees.py data/imports/your_trees.csv             # then import
+python scripts/import/import_trees.py data/imports/your_trees.csv --variant baseline_2025 --dry-run  # validate first
+python scripts/import/import_trees.py data/imports/your_trees.csv --variant baseline_2025            # then import
 ```
 
 These scripts run with operator credentials from `docker/.env`, not with a user account:
@@ -67,7 +67,7 @@ Available scripts:
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/import/import_trees.py` | Bulk upsert tree inventory CSV |
+| `scripts/import/import_trees.py` | Insert a tree inventory CSV into one forest state (`--variant`, which must exist at each row's site) |
 | `scripts/import/ingest_sensor_data.py` | Sync sensors + readings from any provider (see [aquarius-connector](https://gitlab.uni-freiburg.de/xr-future-forests-lab/aquarius-connector) for Aquarius) |
 | `scripts/import/link_sensors_to_trees.py` | Link Ecosense sensors to their inventory trees through the field-surveyed Aquarius name map (`trees.sensor_ref`) |
 | [silva-connector](../../silva-connector) (separate repo, R) | Run SILVA and write `trees.simulation_runs` + `trees.growth_simulations` + the variant chain, over libpq |
@@ -89,7 +89,7 @@ curl -X POST "https://dt.unr.uni-freiburg.de/db/rest/v1/trees" \
   -H "apikey: <ANON_KEY>" \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"location_id": 1, "species_id": 1, "variant_type_id": 1, "height_m": 20.0, ...}'
+  -d '{"variant_id": 1, "species_id": 1, "height_m": 20.0, "position": "SRID=4326;POINT(7.877 48.268)", ...}'
 ```
 
 The `access_token` is a short-lived JWT (1 hour, `JWT_EXPIRY`). Refresh it:
@@ -293,7 +293,7 @@ an anonymous caller from outside sees, so restricted datasets never appear there
 | `authenticated` + `role: admin` (**Administrator**) | Lab administrators | Everything above, plus granting `curator` and `admin` |
 | `service_role` | The lab administrator, import scripts, connectors | Full access, bypasses RLS; the only caller of the five connector RPCs (`bulk_insert_readings`, `bulk_upsert_sensors`, `set_location_attributes`, `upsert_environment`, `refresh_soil_aggregates`); never share externally |
 
-Field-data tables are the ones where a bad edit or delete actually costs something (cited measurements, growth-sim inputs): `trees`, `stems`, `point_clouds`, `environments`, `images`, `phenology_observations`, `deadwood`, `ground_vegetation`, `qsms`, `tree_graph_edges`, `roots`, `crown_foliage_profiles`, `simulation_runs`. `sensor_readings` is insert-only for every account: nobody but `service_role` can update or delete a reading. Lookup tables (`variant_types`, `sensor_types`, morphology lookups, …) are not writable by any account. The full table-by-table rules are in [api-spec.md §2.2](api-spec.md#22-authorization-role-tiers-via-rls); the policies live in `supabase/migrations/` and call the `shared.is_contributor()` / `is_curator()` / `is_admin()` helpers.
+Field-data tables are the ones where a bad edit or delete actually costs something (cited measurements, growth-sim inputs): `trees`, `stems`, `point_clouds`, `environments`, `images`, `phenology_observations`, `deadwood`, `ground_vegetation`, `qsms`, `tree_graph_edges`, `roots`, `crown_foliage_profiles`, `simulation_runs`. `sensor_readings` is insert-only for every account: nobody but `service_role` can update or delete a reading. Rows that hang off a tree, sensor or QSM (stems, readings, roots, crown profiles, phenology, QSMs, cylinders, graph edges) can be added only where the parent's dataset is writable for the caller, the same rule as for trees and sensors themselves. Lookup tables (`variant_types`, `sensor_types`, morphology lookups, …) are not writable by any account. The full table-by-table rules are in [api-spec.md §2.2](api-spec.md#22-authorization-role-tiers-via-rls); the policies live in `supabase/migrations/` and call the `shared.is_contributor()` / `is_curator()` / `is_admin()` helpers.
 
 **Never share `SERVICE_ROLE_KEY` with external collaborators.** Give them an account (a curator creates it in the portal) for write access instead.
 
@@ -321,16 +321,18 @@ Minimum required fields when inserting into `trees`:
 
 | Field | Type | Example |
 |-------|------|---------|
-| `location_id` | integer | `1` (ecosense) or `2` (mathisle) |
-| `variant_type_id` | integer | `1` (original) |
+| `variant_id` | integer | the forest state the tree belongs to, e.g. a site's `baseline_2025` |
 | `position` | geometry | `"SRID=4326;POINT(7.877 48.268)"` (EWKT over REST; `ST_GeomFromText('POINT(7.877 48.268)', 4326)` in SQL) |
+
+`location_id`, `scenario_id` and `variant_type_id` are filled from the variant when left out;
+when given, they must match it, or the row is refused (`trees_variant_fkey`). Deleting a
+variant deletes its trees.
 
 Important for Unreal Engine:
 
 | Field | Notes |
 |-------|-------|
 | `species_id` | Links to species for asset selection |
-| `scenario_id` | Required for scenario/variant switching in UE |
 | `height_m` | Used for PCG tree scaling |
 | `age_years` | Used for Time Machine projection |
 
@@ -350,7 +352,7 @@ UPDATE trees.trees SET height_m = 22.5 WHERE tree_id = 1234;
 UPDATE trees.stems SET dbh_cm = 31.2 WHERE stem_id = 5678;
 ```
 
-**Automatic audit logging:** AFTER UPDATE triggers on `trees.trees`, `trees.stems`, `trees.phenology_observations`, `environments.environments`, and `point_clouds.point_clouds` log changes to the fields below into `shared.audit_log`. The log records the field name, old value, new value, timestamp, and the GoTrue user ID of whoever made the change. No manual action is required. `forest_floor.deadwood` and `forest_floor.ground_vegetation` are not audited (site/plot-level surveys, not per-tree records). Set `app.change_reason` with `SET LOCAL` before an UPDATE to record why a value changed.
+**Automatic audit logging:** AFTER UPDATE triggers on `trees.trees`, `trees.stems`, `trees.phenology_observations`, `environments.environments`, and `point_clouds.point_clouds` log changes to the fields below into `shared.audit_log`. The log records the field name, old value, new value, timestamp, and who made the change: the account's user ID when the change came with a token, otherwise the API role (`service_role`) or the database role a script connected as. No manual action is required. `forest_floor.deadwood` and `forest_floor.ground_vegetation` are not audited (site/plot-level surveys, not per-tree records). Set `app.change_reason` with `SET LOCAL` before an UPDATE to record why a value changed. Curators read the whole log; other accounts see only their own changes.
 
 Audited fields (as recorded in `audit_log.field_name`):
 
@@ -376,7 +378,8 @@ IF OLD.your_field IS DISTINCT FROM NEW.your_field THEN
 END IF;
 ```
 
-**Querying audit history:**
+**Querying audit history** (as a curator, or in `psql` as `supabase_admin`; the functions are
+not callable through the API since 2026-11-09):
 
 ```sql
 -- All changes to a specific tree variant; the first argument is the table name
@@ -387,9 +390,7 @@ SELECT * FROM shared.get_audit_history('trees', 1234);
 SELECT * FROM shared.recent_changes ORDER BY timestamp DESC LIMIT 50;
 ```
 
-**Reverting a change:**
-
-```sql
--- Revert a specific audit entry (creates a compensating log entry)
-SELECT shared.revert_field_change(<audit_log_id>, 'Corrected data entry error');
-```
+**Correcting a change:** write the old value back with an `UPDATE`, with
+`SET LOCAL app.change_reason = '...'` in the same transaction. The trigger logs the correction
+like any other change. (`shared.revert_field_change()` was removed on 2026-11-09: it logged a
+revert without changing the value.)

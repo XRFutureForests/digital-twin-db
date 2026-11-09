@@ -14,7 +14,7 @@ This directory contains CSV files for all database lookup/reference tables. Thes
    ./reset.sh
    ```
 
-3. The init script `30-load-lookup-tables.sql` loads all CSVs into their respective tables
+3. At the end of the fresh init, `docker/volumes/db/refresh-lookups.sql` loads all CSVs into their respective tables
 
 ### Option 2: Refresh Without Rebuild (for running databases)
 

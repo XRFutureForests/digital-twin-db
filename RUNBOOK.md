@@ -62,16 +62,24 @@ keys resolve:
 
 ```mermaid
 flowchart LR
-    T["1 · import_trees.py<br/>tree measurements"] --> S["2 · ingest_sensor_data.py<br/>sensors, then readings"] --> L["3 · link_sensors_to_trees.py<br/>match serial prefix to sensor_ref"]
+    V["0 · baseline seed<br/>scenario + measured variant"] --> T["1 · import_trees.py<br/>tree measurements"] --> S["2 · ingest_sensor_data.py<br/>sensors, then readings"] --> L["3 · link_sensors_to_trees.py<br/>match serial prefix to sensor_ref"]
 ```
 
 ### Trees
 
+Every tree belongs to one forest state (variant), so the variant exists before its trees. The
+baseline seeds create each site's `natural_growth` scenario with its measured `baseline_2025`:
+
 ```bash
-python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv    # 1,495 trees
-python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv    # 730 trees
-python scripts/import/import_trees.py <csv> --dry-run                           # validate only
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_baseline_variant.sql
+docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/mathisle_baseline_variant.sql
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv --variant baseline_2025   # 1,495 trees
+python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv --variant baseline_2025   # 730 trees
+python scripts/import/import_trees.py <csv> --variant baseline_2025 --dry-run                         # validate only
 ```
+
+The tree's scenario and variant type follow from the variant. A missing coordinate, or a plot
+number that does not exist at the row's site, stops the import.
 
 Preparing your own CSV — column mapping, coordinate transform, unit conversion, species
 lookup, with worked Python and R examples:
@@ -126,8 +134,9 @@ Table reference: [data/README.md](data/README.md). All scripts:
 
 Scenarios are location-scoped and created per site by the seed scripts, not loaded from a
 global CSV. Copy the pattern in `scripts/seed/ecosense_baseline_variant.sql`: it creates the
-scenario and assigns baseline trees to `baseline_2025`. Growth variants on top are written by
-`silva-connector`, chained via `parent_variant_id`.
+scenario and its `baseline_2025` variant, which `import_trees.py --variant baseline_2025` then
+fills. Growth variants on top are written by `silva-connector`, chained via
+`parent_variant_id`. Deleting a variant deletes its trees.
 
 `variant_types` (original, simulated_growth, repeat_measurement, …) load from
 `data/lookups/variant_types.csv` on init.
@@ -192,11 +201,10 @@ integration are in the knowledge hub, `05-PRESENTATION-TIER/data-fetcher-guide`.
 Jobs are queued through a Postgres RPC on `/rest/v1/`, not an Edge Function. See
 [docs/requesting-a-job.md](docs/requesting-a-job.md).
 
-**This repo ships no custom Edge Functions and is not expected to.** The Deno runtime has no
-conda, no R, no Blender and no PDAL, so it cannot execute the work this project runs; and Kong
-routes `/functions/v1/` with only the `cors` plugin while `/rest/v1/` gets `key-auth` and
-`acl`, so every function would hand-roll authentication that PostgREST provides for free.
-`docker/volumes/functions/` holds only the platform's own `main/` router and `hello/` example.
+**This repo ships no Edge Functions and the stack no longer runs the Edge Runtime** (removed
+2026-11-09, XRFF-661, together with the unused Realtime service). The Deno runtime has no
+conda, no R, no Blender and no PDAL, so it could not execute the work this project runs, and
+PostgREST already provides the authentication a function would have to hand-roll.
 
 ---
 
@@ -204,8 +212,8 @@ routes `/functions/v1/` with only the `cors` plugin while `/rest/v1/` gets `key-
 
 ### Applying a schema change
 
-1. Add the migration under `supabase/migrations/` and mirror it into the next numbered file
-   under `docker/volumes/db/init/` (workflow: [AGENTS.md](AGENTS.md#schema-migrations)).
+1. Add the migration under `supabase/migrations/` (workflow: [AGENTS.md](AGENTS.md#schema-migrations)).
+   It is the one chain: the image builds a fresh database from it, so there is nothing to mirror.
 2. Apply it to the running dev database as `supabase_admin`:
 
    ```bash
@@ -220,7 +228,7 @@ routes `/functions/v1/` with only the `cors` plugin while `/rest/v1/` gets `key-
    python scripts/utils/generate_schema_docs.py --check   # exit 1 if either is stale
    ```
 
-**The `db` image bakes `docker/volumes/db/init/`.** A bare `up -d` reuses the old baked SQL;
+**The `db` image bakes `supabase/migrations/`.** A bare `up -d` reuses the old baked SQL;
 after any schema change, rebuild the image before the next fresh init:
 
 ```bash
@@ -239,13 +247,14 @@ docker compose build db
 docker compose up -d
 cd ..
 
-# 2. trees
-python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv
-python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv
-
-# 3. seeds, all as supabase_admin (it owns the custom schemas)
+# 2. seeds and trees, all SQL as supabase_admin (it owns the custom schemas);
+#    the baseline variants first: every tree belongs to one
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_baseline_variant.sql
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/mathisle_baseline_variant.sql
+python scripts/import/import_trees.py data/imports/ecosense_trees_import.csv --variant baseline_2025
+python scripts/import/import_trees.py data/imports/mathisle_trees_import.csv --variant baseline_2025
+
+# 3. further seeds
 # required after every ecosense import: import_trees.py writes stem_number = 1 only
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/ecosense_zwisel_stem.sql
 # 396 ecosense TLS canopy heights -> yield-table heights; before the derived-value fills
@@ -431,7 +440,7 @@ Secrets — change before any use:
 | `JWT_SECRET` | `openssl rand -base64 32` | JWT signing secret |
 | `ANON_KEY`, `SERVICE_ROLE_KEY` | `python scripts/utils/generate_jwt.py` | Supabase role JWTs |
 | `DASHBOARD_PASSWORD` | `openssl rand -base64 32` | Studio login (via Kong) |
-| `SECRET_KEY_BASE` | `openssl rand -base64 48` | Realtime / Supavisor session key (≥ 64 chars) |
+| `SECRET_KEY_BASE` | `openssl rand -base64 48` | Supavisor session key (≥ 64 chars) |
 | `VAULT_ENC_KEY` | `openssl rand -hex 16` | Supavisor vault key (32 hex) |
 | `PG_META_CRYPTO_KEY` | `openssl rand -base64 32` | pg-meta |
 | `LOGFLARE_PUBLIC_ACCESS_TOKEN`, `LOGFLARE_PRIVATE_ACCESS_TOKEN` | two different random strings ≥ 20 chars | Logflare |
@@ -474,15 +483,14 @@ must read needs `GRANT SELECT ... TO anon`, which `dashboard_reader` inherits.
 ### Service start order (from `docker-compose.yml`)
 
 ```
-vector → db → analytics → { studio, kong, auth, rest, realtime, meta, functions, supavisor }
+vector → db → analytics → { studio, kong, auth, rest, meta, supavisor }
 imgproxy ─┐
 rest ─────┴→ storage (also needs db)
 mail (no dependencies)
 ```
 
 If studio or kong will not start, check `analytics` first. Compose service names differ from
-container names in two places: `functions` is `dftdb-edge-functions`, `supavisor` is
-`dftdb-pooler`.
+container names in one place: `supavisor` is `dftdb-pooler`.
 
 ### Ports (dev)
 
@@ -495,7 +503,7 @@ container names in two places: `functions` is `dftdb-edge-functions`, `supavisor
 | Mail (inbucket, dev only — forwards nothing) | 2500 / 9000 / 1100 | 2500 / 9000 / 1100 |
 | Analytics (Logflare) | 4000 | 4000 |
 
-Realtime is not used. Its Kong route (`/realtime/v1/`) points at
-`realtime-dev.supabase-realtime`, which does not resolve on dev.
-
-On the server Kong is on **8001** and Postgres on **5433**; the public surface is 443 only.
+Kong and the pooler listen on the loopback addresses only (127.0.0.1 and ::1), on dev and on the
+server: the server's nginx reaches Kong over the Docker network, the dashboard reaches the pooler
+the same way, and anyone else would bypass nginx's network header. On the server Kong is on
+**8001** and Postgres on **5433**; the public surface is 443 only.

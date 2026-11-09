@@ -161,7 +161,7 @@ Portal.topbar("/jobs/");
   function loadSession() {
     try {
       var raw = sessionStorage.getItem(TOKEN_KEY);
-      if (raw) session = JSON.parse(raw);
+      session = raw ? JSON.parse(raw) : null;
     } catch (err) { session = null; }
   }
   function saveSession(s) {
@@ -172,12 +172,6 @@ Portal.topbar("/jobs/");
     } catch (err) { /* private mode; the session just will not survive a reload */ }
     // Keep the shared top bar's "signed in as" in step with this page.
     if (window.Portal) Portal.refreshWho();
-  }
-
-  function headers(auth) {
-    var h = { "apikey": cfg.anonKey, "Content-Type": "application/json" };
-    if (auth && session) h["Authorization"] = "Bearer " + session.access_token;
-    return h;
   }
 
   function show(id, on) { document.getElementById(id).hidden = !on; }
@@ -208,22 +202,15 @@ Portal.topbar("/jobs/");
     return "HTTP " + res.status + " " + res.statusText;
   }
 
+  // Portal.api refreshes the access token before it expires (JWT_EXPIRY, an
+  // hour); a copy without that left this page polling with a dead token.
   async function api(path, opts) {
-    opts = opts || {};
-    var res = await fetch(API + path, {
-      method: opts.method || "GET",
-      headers: headers(opts.auth !== false),
-      body: opts.body ? JSON.stringify(opts.body) : undefined
-    });
-    var body = null;
-    var text = await res.text();
-    if (text) { try { body = JSON.parse(text); } catch (err) { body = { message: text }; } }
-    if (!res.ok) {
-      var err = new Error(errorText(body, res));
-      err.status = res.status;
-      throw err;
+    try {
+      return await Portal.api(path, opts);
+    } finally {
+      loadSession();
+      if (!session) renderSession();
     }
-    return body;
   }
 
   /* ---------- auth ---------- */
