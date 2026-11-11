@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Only curators may change a campaign's owner team** (XRFF-670)
+
+Security:
+- Migration `20261111110000_campaign_owner_change_curator_only`: a BEFORE UPDATE trigger on
+  `shared.campaigns` refuses a change of `owner_team_id` by an API account that is not a
+  curator. Before, a contributor could claim an unowned campaign for their team, or set their
+  team's campaign back to no owner, which opened it to every contributor. Seed scripts,
+  connectors and the service role are unaffected.
+- `scripts/seed/xrfflab_team.sql`: the team `XRFFLab` owns every campaign that has no owner,
+  so only its members and curators write into the lab's datasets during the test phase.
+
 **Security, integrity and lean-up from the 2026-11-09 audit** (XRFF-661)
 
 Security:
