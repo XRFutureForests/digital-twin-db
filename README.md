@@ -54,6 +54,11 @@ time X" in one flat query. It also means **every query against trees must filter
 because a measured tree sits beside its projections. Point clouds and environments attach to
 a scenario rather than to a single variant.
 
+What other campaigns saw of a tree, such as a stem detected in a laser scan, is stored as an
+**observation** matched to that tree (`trees.observations`, `trees.entity_matches`), not as a
+second tree row, so a variant counts every physical tree once:
+[docs/variant-scenario-model.md](docs/variant-scenario-model.md#observations-and-re-identification).
+
 Model, query patterns and examples: [docs/variant-scenario-model.md](docs/variant-scenario-model.md).
 
 ### Provenance: a measurement and a model output are never confused
@@ -74,7 +79,7 @@ Details: [docs/derived-value-provenance.md](docs/derived-value-provenance.md),
 | Schema | Holds |
 |--------|-------|
 | `shared` | locations, plots, sampling_designs, inclusion_rules and strata, scenarios, management_regimes, climate_pathways, variants, variant_types, species, campaigns, soil_types, climate_zones, management_events, disturbance_events, processes and process_parameters, attribute_provenance, processing_jobs, audit_log, account_events |
-| `trees` | trees (persistent `tree_entity_id`), stems, phenology_observations, growth_simulations + simulation_runs, qsms + qsm_cylinders, tree_part_types + tree_graph_edges, roots, crown_foliage_profiles, tree_status and classification tables |
+| `trees` | trees (persistent `tree_entity_id`), stems, observations + entity_matches (re-identification across campaigns), phenology_observations, growth_simulations + simulation_runs, qsms + qsm_cylinders, tree_part_types + tree_graph_edges, roots, crown_foliage_profiles, tree_status and classification tables |
 | `point_clouds` | point_clouds (file paths, processing status and lineage), scanner_types, scanners |
 | `sensor` | sensors, sensor_types, units, sensor_readings, sensor_tree_links |
 | `environments` | environments: temperature, humidity, soil moisture, nutrients, from sensors, manual entry or models |

@@ -15,6 +15,7 @@ The digital twin DB stores multiple **forest states** in a strict three-level hi
 | **Variant** | A snapshot in that regime's timeline (baseline → growth → intervention) | `baseline_2025`, `silva_2035` |
 | **VariantType** | How the data was produced | `original`, `simulated_growth`, `model_output` |
 | **Tree row** | One tree's state at one time step | Tree #42 at height 22.5m in year 2035 |
+| **Observation** | One tree as one campaign measured or detected it; evidence, not a forest state | a field record, a stem detected in a laser scan |
 
 ### Three-level hierarchy
 
@@ -47,6 +48,51 @@ The scenario **name follows one grammar** — `<pathway>` (a climate bucket, reg
 One physical tree (identified by `tree_entity_id`) can appear in many rows in `trees.trees` — one per variant. All trees at the same time step share the same `variant_id`. This is what enables UE "time travel": query by `variant_id` to load the complete forest at one point in time.
 
 **Variants vs. data corrections:** A new Variant is for a distinct forest state. If you find a typo or missed measurement in an existing record, fix it with a plain UPDATE — not a new variant. The DB has AFTER UPDATE audit triggers that log the change automatically. See [data-access-guide.md](data-access-guide.md#correcting-data--field-updates-vs-new-variants).
+
+---
+
+## Observations and re-identification
+
+A variant holds each physical tree at most once: `trees.trees` is unique on
+`(variant_id, tree_entity_id)` since 2026-11-04 (XRFF-465). What each campaign saw of a tree is
+kept beside the variants, in two tables:
+
+| Table | One row per | Holds |
+|---|---|---|
+| `trees.observations` | tree as one campaign measured or detected it | `campaign_id`, `observed_on`; a field tree points at its tree row (`tree_id`); a detection from a point cloud carries its own `position`, `dbh_cm`, `height_m`, `position_uncertainty_m`, `point_cloud_id` and `instance_id` |
+| `trees.entity_matches` | decision about one observation | the `tree_entity_id` it belongs to, `decision` (`matched`, `new`, `ambiguous`), `method`, `score`, `reference_campaign_id`, `decided_by`, `decided_at`; a revision supersedes the earlier decision, which is kept, so exactly one is current per observation |
+
+How observations relate to variants:
+
+- **A field inventory fills a measured variant.** Each of its tree rows also gets an observation,
+  decided `new` (method `first_campaign`, or `single_campaign` where it is the site's only one).
+- **A detection matched to a field tree stays an observation of that tree.** It is not copied
+  into the field variant, so `plot_summaries` and `stand_summaries` count every tree once.
+- **A detection with no counterpart** (`new`) becomes a tree row in a separate variant of type
+  `processed` with `data_source_type` `lidar`, never in the field variant. No such variant exists
+  yet.
+- **An ambiguous detection** waits for review and belongs to no variant.
+- **A repeat measurement** would be a variant of type `repeat_measurement` (reserved, unused),
+  whose trees keep their `tree_entity_id` through the matches. When a laser scan qualifies is
+  proposed, not decided: knowledge hub, `03-DATA-TIER/3dtrees-db-adjustment-plan`.
+
+On dev the two inventories hold 2,225 observations, all `new`; the ECOSENSE leaf-on TLS scan
+holds 1,163, of which 1,057 are `matched` and 106 `ambiguous`, so it adds no tree rows.
+
+```
+# Every current decision about one physical tree, across campaigns
+GET /rest/v1/current_entity_matches?tree_entity_id=eq.<uuid>
+
+# Detections of one campaign still waiting for review
+GET /rest/v1/current_entity_matches?campaign_id=eq.<id>&decision=eq.ambiguous
+
+# Detections of one campaign that are in no variant, with their own measurements
+GET /rest/v1/observations?campaign_id=eq.<id>&tree_id=is.null
+```
+
+Growth projections have a similar split: `trees.simulation_runs` and `trees.growth_simulations`
+keep every run's raw trajectory side by side, and promotion writes the projected variants
+(`silva_2030`, …) that clients read. See [growth-simulation-schema.md](growth-simulation-schema.md).
 
 ---
 
