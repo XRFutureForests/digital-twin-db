@@ -114,9 +114,10 @@ def fetch_outputs(cur, run):
     * `trees.growth_simulations` rows carry `simulation_run_id`, so they are attributed
       exactly.
     * `shared.Variants` do not. The chain is recovered by walking
-      `parent_variant_id` down from the base variant, which is correct as long
-      as one promoted chain descends from a given baseline. Two promoted runs
-      from the same baseline would be indistinguishable here -- recorded as a
+      `parent_variant_id` down from the base variant within the run's scenario
+      (every scenario's chain starts at the same measured baseline). That is
+      correct as long as one promoted run exists per scenario; two promoted runs
+      of the same scenario would be indistinguishable here -- recorded as a
       known limitation rather than papered over.
     """
     cur.execute(
@@ -134,12 +135,14 @@ def fetch_outputs(cur, run):
             UNION ALL
             SELECT v.variant_id, v.variant_name, v.simulation_year, v.variant_type_id
             FROM shared.variants v JOIN chain c ON v.parent_variant_id = c.variant_id
+            -- every scenario's chain hangs off the same measured baseline: stay in the run's own
+            WHERE v.scenario_id = %s
         )
         SELECT variant_id, variant_name, simulation_year FROM chain
         WHERE variant_id <> %s AND variant_type_id = 4
         ORDER BY simulation_year
         """,
-        (run["base_variant_id"], run["base_variant_id"]),
+        (run["base_variant_id"], run["scenario_id"], run["base_variant_id"]),
     )
     variants = [
         {"variant_id": v, "variant_name": n, "simulation_year": y}
@@ -307,10 +310,10 @@ def build_crate(run, outputs, api_base):
                 "name": f"Projected forest state '{variant['variant_name']}' "
                 f"({variant['simulation_year']})",
                 "description": (
-                    "Attributed by walking parent_variant_id from the base variant: "
-                    "shared.Variants carries no simulation_run_id, so this link is derived, not "
-                    "recorded. It is unambiguous only while one promoted chain "
-                    "descends from a given baseline."
+                    "Attributed by walking parent_variant_id from the base variant within "
+                    "the run's scenario: shared.Variants carries no simulation_run_id, so this "
+                    "link is derived, not recorded. It is unambiguous only while one promoted "
+                    "run exists per scenario."
                 ),
             }
         )

@@ -76,10 +76,11 @@ The last two are stated as limitations inside the crate itself rather than
 smoothed over:
 
 * **Variants carry no `simulation_run_id`.** The output chain is recovered by walking
-  `parent_variant_id` down from the base variant and keeping the
-  `simulated_growth` ones. That is unambiguous only while a single promoted chain
-  descends from a given baseline; two promoted runs from the same baseline would
-  be indistinguishable. Adding `simulation_run_id` to `shared.variants` would close this.
+  `parent_variant_id` down from the base variant, staying inside the run's scenario
+  (every scenario's chain starts at the same measured baseline), and keeping the
+  `simulated_growth` ones. That is unambiguous only while one promoted run exists
+  per scenario; two promoted runs of the same scenario would be indistinguishable.
+  Adding `simulation_run_id` to `shared.variants` would close this.
 * **`created_at` is not the run's end.** The connector writes the
   `simulation_runs` row *before* the trajectory, because `growth_simulations.simulation_run_id`
   is an FK onto it. So the timestamp follows the simulation and precedes every
