@@ -2,7 +2,6 @@
 
 Self-hosted Supabase PostgreSQL database for digital forest twin research. 7 custom schemas (shared, point_clouds, trees, sensor, environments, imagery, forest_floor), PostGIS spatial extensions, REST API via PostgREST/Kong, auth via GoTrue. University of Freiburg XR Future Forests Lab (funded by Eva Mayr-Stihl Stiftung).
 
-
 ## Documentation Map
 
 | Need | Read |
@@ -18,15 +17,14 @@ approach was chosen, write it in the knowledge hub and link to it.
 
 ## Critical Rules
 
+Workspace rules (decision rights, commits, Linear, tool preferences) are in the workspace `AGENTS.md` one level above the repos and apply here too. The basics: change only what the task needs, verify each step, commit your own work with an explicit pathspec, never commit secrets.
+
 | Category | Rule | When to Apply |
 |----------|------|---------------|
-| Confirmation | Commit and push your own work with an explicit pathspec; anything outward-facing waits for the owner (Decision rights, workspace `AGENTS.md`) | Always |
-| Scope | Modify only what the request requires — no adjacent cleanup | Always |
 | Exit codes | An ingestion or connector script must exit non-zero if any record failed to write — an unattended run's exit code is the only signal the job runner has | Always |
 | Secrets | Never commit `.env` or credentials; use `docker/.env` (gitignored) | Before any git operation |
 | Schema changes | Add a new timestamped file under `supabase/migrations/`; never edit the snapshot or anything in `supabase/migrations/archive/` | Before schema edits |
 | Docker | Run `docker compose up -d` from `docker/` (there is no compose file at the repo root) | Before all local dev |
-| Task tracking | Check Linear for existing issues before creating new ones | Always |
 | Language | Keep code and documentation in English | For all written artifacts |
 
 ## Project Structure
@@ -153,4 +151,4 @@ and server overrides — is [RUNBOOK.md §9](RUNBOOK.md#9-reference).
 - [ ] Commands match current Docker Compose setup
 - [ ] RUNBOOK §9 environment variable list matches `docker/.env.example`
 
-**Last Updated:** 2026-11-09
+**Last Updated:** 2026-11-17
