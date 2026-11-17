@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Predicted microhabitats for the baseline trees** (XRFF-693)
+
+Added:
+- `scripts/import/predict_microhabitats.py`: one ridge logistic regression per microhabitat
+  type on genus × living status × DBH, fitted to the open data of Paillet et al. (2019, PLoS
+  ONE, CC BY 4.0), recalibrated per type to the rates measured on the three marteloscopes,
+  and drawn per tree with a fixed seed. Writes `trees.microhabitats` rows with provenance
+  `predicted`, the probability and the process `Tree Microhabitat Prediction` 1.0.
+  Beech, fir, spruce, oak and pine above 17.5 cm DBH only. ECOSENSE: 247, Mathisle: 63.
+
 **Tree-related microhabitats, and three marteloscopes with them** (XRFF-692)
 
 Added:

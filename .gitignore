@@ -63,3 +63,4 @@ tests/manual/results/
 # Pathfinder field GeoPackages: fetched from Zenodo by scripts/import/import_pathfinder.py fetch
 /data/input/pathfinder/*/
 /data/input/marteloscopes/*/
+/data/input/paillet2019/*.csv

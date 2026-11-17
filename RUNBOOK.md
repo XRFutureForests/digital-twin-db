@@ -279,6 +279,10 @@ docker exec -i dftdb-db psql -U supabase_admin -d postgres < data/tmp/pathfinder
 python scripts/import/import_marteloscopes.py fetch
 python scripts/import/import_marteloscopes.py sql
 docker exec -i dftdb-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < data/tmp/marteloscopes_import.sql
+# predicted microhabitats for the baseline trees (XRFF-693), after the marteloscopes, which
+# recalibrate the model; `validate` prints predicted vs measured per marteloscope
+python scripts/import/predict_microhabitats.py fetch
+python scripts/import/predict_microhabitats.py apply --location ecosense mathisle
 
 # 4. derived values, in this order (each takes --dry-run). Heights are fitted per species to
 #    the measured trees; a changed height clears crown, volume, age and biomass for the rest.
