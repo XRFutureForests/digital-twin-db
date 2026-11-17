@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261117160000_species_to_taxa`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261117170000_biodiversity_site_checklists`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -10,17 +10,18 @@ same name in `public` (listed at the end); write and read through those.
 
 | Schema | Tables | Holds |
 |---|---:|---|
-| [`shared`](#shared) | 36 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
+| [`shared`](#shared) | 36 | Sites, scenarios and forest states, taxa, campaigns, events, processes, jobs, audit |
 | [`trees`](#trees) | 34 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
 | [`sensor`](#sensor) | 5 | Sensors, their time series, units, sensor-tree links |
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
 | [`point_clouds`](#point_clouds) | 3 | Point clouds and scanners |
 | [`imagery`](#imagery) | 1 | Images |
 | [`forest_floor`](#forest_floor) | 3 | Plot-level dead wood and ground vegetation surveys |
+| [`biodiversity`](#biodiversity) | 1 | Site checklists of recorded taxa (GBIF, Natura 2000) |
 
 ## shared
 
-Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit
+Sites, scenarios and forest states, taxa, campaigns, events, processes, jobs, audit
 
 [`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`strata`](#sharedstrata) · [`taxa`](#sharedtaxa) · [`team_members`](#sharedteam_members) · [`teams`](#sharedteams) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
 
@@ -1618,6 +1619,42 @@ Regeneration tallies: live and dead counts per species and size class on a surve
 
 Constraints: `CHECK ((dead_count >= 0))`; `CHECK ((live_count >= 0))`; `CHECK ((mean_height_m >= (0)::numeric))`; `CHECK (((size_class)::text = ANY ((ARRAY['seedling'::character varying, 'sapling'::character varying])::text[])))`; `CHECK (((source_attributes IS NULL) OR (jsonb_typeof(source_attributes) = 'object'::text)))`; `CHECK (((source_regeneration_id IS NULL) OR (campaign_id IS NOT NULL)))`; `CHECK ((survey_area_m2 > (0)::numeric))`; primary key (regeneration_id).
 
+## biodiversity
+
+Site checklists of recorded taxa (GBIF, Natura 2000)
+
+[`site_checklists`](#biodiversitysite_checklists)
+
+### biodiversity.site_checklists
+
+Taxa recorded at or near a site, aggregated from an external source (GBIF occurrences within radius_m, or a Natura 2000 standard data form). Raw records stay at the source; source_query and process_id say how to rebuild and cite the list.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `site_checklist_id` | integer |  | serial |  |  |
+| `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
+| `radius_m` | integer |  |  |  | Search radius around the location's center_point in metres. For natura2000 rows: distance to the Natura 2000 site the list comes from. |
+| `source` | character varying(20) |  |  |  |  |
+| `source_taxon_key` | bigint | yes |  |  | Taxon key in the source: the GBIF backbone usageKey for gbif rows. |
+| `taxon_id` | integer | yes |  | `shared.taxa.taxon_id` (set null) | shared.taxa row of the taxon where one exists (matched on GBIF key, then scientific name); NULL otherwise. |
+| `scientific_name` | text |  |  |  |  |
+| `taxon_rank` | character varying(20) | yes |  |  |  |
+| `kingdom` | character varying(60) | yes |  |  |  |
+| `phylum` | character varying(60) | yes |  |  |  |
+| `class_name` | character varying(60) | yes |  |  | Class (GBIF backbone), e.g. Aves, Insecta, Magnoliopsida. |
+| `order_name` | character varying(60) | yes |  |  |  |
+| `family` | character varying(60) | yes |  |  |  |
+| `genus` | character varying(60) | yes |  |  |  |
+| `record_count` | integer | yes |  |  | Number of source records behind the entry (gbif: occurrences that passed the query's filters). |
+| `first_year` | smallint | yes |  |  |  |
+| `last_year` | smallint | yes |  |  |  |
+| `licences` | text[] | yes |  |  | Distinct licences of the underlying records (CC0-1.0, CC-BY-4.0, CC-BY-NC-4.0). A list that mixes in CC-BY-NC is not free for commercial reuse. |
+| `process_id` | integer |  |  | `shared.processes.process_id` |  |
+| `source_query` | text | yes |  |  | The query that produced the list (e.g. the GBIF occurrence search URL with its filters), as run on fetched_at. |
+| `fetched_at` | date |  | `CURRENT_DATE` |  |  |
+
+Constraints: `CHECK (((first_year IS NULL) OR (last_year IS NULL) OR (first_year <= last_year)))`; `CHECK ((radius_m > 0))`; `CHECK ((record_count >= 0))`; `CHECK (((source)::text = ANY ((ARRAY['gbif'::character varying, 'natura2000'::character varying])::text[])))`; primary key (site_checklist_id); unique (location_id, radius_m, source, scientific_name).
+
 ## Views
 
 ### Views in the domain schemas
@@ -1687,6 +1724,7 @@ portal's API page.
 | `sensors` | Public API view for sensors table |
 | `shoot_elongation_types` | Public API view for shoot elongation types lookup table |
 | `simulation_runs` | One row per growth simulation run: identity, configuration and the size of the trajectory it produced. Backed by trees.simulation_runs; counts aggregated from trees.growth_simulations. |
+| `site_checklists` | Public API view: taxa recorded at or near each site, per source and radius (biodiversity.site_checklists). |
 | `species` | Public API view for tree species reference table |
 | `stand_summaries` | Per-hectare stand values of every variant for each sampling design of its site, all species (by_species false) and per species: estimate, standard error, relative standard error %, margin of error and sampling error % at 95 %, confidence interval, units, area and total. Census designs have no sampling error. Filter on variant_id; other confidence levels via /rpc/estimate_stand. |
 | `stems` | Public API view for tree stems table |

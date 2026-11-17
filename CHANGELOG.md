@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Biodiversity schema: site checklists** (XRFF-696)
+
+Added:
+- Migration `20261117170000_biodiversity_site_checklists`: schema `biodiversity` with
+  `site_checklists` (taxa recorded around a location per source and radius: GBIF key and
+  taxonomy, record count, first and last year, licences, the query and process behind it), the
+  service-role write RPC `public.replace_site_checklist` and the view `public.site_checklists`.
+  Filled by open-data-connector's `open-data checklist`.
+
 **`shared.species` becomes `shared.taxa`** (XRFF-690)
 
 Changed:
