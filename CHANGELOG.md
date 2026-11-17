@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Soil map units per site** (XRFF-695)
+
+Added:
+- Migration `20261117180000_soil_map_units`: `shared.soil_map_units` (one row per source and
+  unit: legend, sheet, field and available water capacity, sorption capacity as ranges, humus
+  form, soil reaction under forest, rooting depth), `shared.locations.soil_map_unit_id`, the
+  service-role RPC `public.set_soil_map_unit` (raises on an unknown key) and the view
+  `public.location_soil`. Filled from LGRB BK50 by open-data-connector's `open-data soil-unit`:
+  ECOSENSE unit b132, Mathisle unit a23.
+
 **Biodiversity schema: site checklists** (XRFF-696)
 
 Added:

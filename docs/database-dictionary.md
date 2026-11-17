@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261117170000_biodiversity_site_checklists`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261117180000_soil_map_units`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -10,7 +10,7 @@ same name in `public` (listed at the end); write and read through those.
 
 | Schema | Tables | Holds |
 |---|---:|---|
-| [`shared`](#shared) | 36 | Sites, scenarios and forest states, taxa, campaigns, events, processes, jobs, audit |
+| [`shared`](#shared) | 37 | Sites, scenarios and forest states, taxa, campaigns, events, processes, jobs, audit |
 | [`trees`](#trees) | 34 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
 | [`sensor`](#sensor) | 5 | Sensors, their time series, units, sensor-tree links |
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
@@ -23,7 +23,7 @@ same name in `public` (listed at the end); write and read through those.
 
 Sites, scenarios and forest states, taxa, campaigns, events, processes, jobs, audit
 
-[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`strata`](#sharedstrata) · [`taxa`](#sharedtaxa) · [`team_members`](#sharedteam_members) · [`teams`](#sharedteams) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
+[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_map_units`](#sharedsoil_map_units) · [`soil_types`](#sharedsoil_types) · [`strata`](#sharedstrata) · [`taxa`](#sharedtaxa) · [`team_members`](#sharedteam_members) · [`teams`](#sharedteams) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
 
 ### shared.account_events
 
@@ -269,6 +269,7 @@ Forest plot locations with spatial boundaries and environmental context
 | `soil_moistness` | smallint | yes |  |  | SILVA soil moisture class, 1-9 (1 = very dry, 5 = fresh, 9 = very wet). Not derivable from soil_type_id: shared.soil_types holds USDA soil orders (Alfisol, Spodosol, ...), which describe pedogenesis rather than water supply. Requires a site survey value. |
 | `soil_nutrient_supply` | smallint | yes |  |  | SILVA soil nutrient supply class, 1-5 (1 = very low, 5 = very high). Like soil_moistness, independent of the USDA order in soil_type_id and requires a site survey value. |
 | `crs_epsg` | integer | yes |  |  | Declared internal projected CRS of the site as an EPSG code (e.g. 32632 = WGS 84 / UTM zone 32N). The one frame in which per-site planimetric work (engine placement, terrain, distances) is done; every input in another frame is transformed on ingestion and its source frame retained on the record (trees.trees.source_crs / position_original). Geometry columns stay EPSG:4326. Seeded from data/lookups/locations.csv. |
+| `soil_map_unit_id` | integer | yes |  | `shared.soil_map_units.soil_map_unit_id` (set null) | Soil map unit at the location's center_point (shared.soil_map_units), set by open-data-connector `open-data soil-unit`. |
 
 Constraints: `CHECK (((aspect)::text = ANY (ARRAY[('N'::character varying)::text, ('NE'::character varying)::text, ('E'::character varying)::text, ('SE'::character varying)::text, ('S'::character varying)::text, ('SW'::character varying)::text, ('W'::character varying)::text, ('NW'::character varying)::text])))`; `CHECK (((crs_epsg IS NULL) OR ((crs_epsg >= 1024) AND (crs_epsg <= 32767))))`; `CHECK (((slope_deg >= (0)::numeric) AND (slope_deg <= (90)::numeric)))`; `CHECK (((soil_moistness IS NULL) OR ((soil_moistness >= 1) AND (soil_moistness <= 9))))`; `CHECK (((soil_nutrient_supply IS NULL) OR ((soil_nutrient_supply >= 1) AND (soil_nutrient_supply <= 5))))`; primary key (location_id); unique (location_name).
 
@@ -511,6 +512,39 @@ One scenario per (location, management regime, climate pathway). scenario_code =
 | `scenario_code` | integer | yes | generated: `((management_regime_id * 10) + climate_pathway_id)` |  | management_regime_id * 10 + climate_pathway_id, generated. The sort key Unreal uses: tens digit = regime, units digit = pathway. natural_growth = 10, crop_tree_thinning_ssp585 = 23, a bare ssp370 climate bucket = 2. |
 
 Constraints: primary key (scenario_id); unique (location_id, management_regime_id, climate_pathway_id); unique (location_id, scenario_name); unique (scenario_id, location_id).
+
+### shared.soil_map_units
+
+Soil map units with their described properties, one row per source x unit; shared.locations.soil_map_unit_id points here. lgrb_bk50: BK50 Baden-Wuerttemberg (LGRB), dl-de/by-2-0, attribution "Datenquelle: Regierungspraesidium Freiburg - LGRB, https://www.lgrb-bw.de". Ranges, because a map unit is a mix of soils.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `soil_map_unit_id` | integer |  | serial |  |  |
+| `source` | character varying(20) |  |  |  |  |
+| `unit_code` | character varying(20) |  |  |  | Map unit code in the source (BK50 Kartiereinheit, e.g. b132). |
+| `legend_text` | text |  |  |  | Legend text of the unit, as in the source (German). |
+| `sheet_url` | text | yes |  |  | Unit description sheet the values were read from. |
+| `sheet_date` | date | yes |  |  | Date printed on the sheet. |
+| `soil_types` | text | yes |  |  |  |
+| `parent_material` | text | yes |  |  |  |
+| `rooting_depth` | text | yes |  |  | Gruendigkeit: soil depth and rootability, as in the source. |
+| `forest_humus_form` | text | yes |  |  | Waldhumusform (forest humus form), as in the source. |
+| `soil_reaction_forest` | text | yes |  |  | Bodenreaktion under forest (soil acidity class), as in the source. |
+| `field_capacity_text` | text | yes |  |  |  |
+| `field_capacity_min_mm` | numeric(6,1) | yes |  |  | Feldkapazitaet (field capacity) to 10 dm, lower bound in mm. |
+| `field_capacity_max_mm` | numeric(6,1) | yes |  |  |  |
+| `available_water_text` | text | yes |  |  |  |
+| `available_water_min_mm` | numeric(6,1) | yes |  |  | Nutzbare Feldkapazitaet (plant-available water capacity) to 10 dm, lower bound in mm. |
+| `available_water_max_mm` | numeric(6,1) | yes |  |  | Nutzbare Feldkapazitaet to 10 dm, upper bound in mm. |
+| `air_capacity_text` | text | yes |  |  |  |
+| `permeability_text` | text | yes |  |  |  |
+| `sorption_capacity_text` | text | yes |  |  |  |
+| `sorption_capacity_min` | numeric(7,1) | yes |  |  | Sorptionskapazitaet (potential cation exchange capacity) to 10 dm, lower bound in mol/z per m2. |
+| `sorption_capacity_max` | numeric(7,1) | yes |  |  |  |
+| `process_id` | integer |  |  | `shared.processes.process_id` |  |
+| `fetched_at` | date |  | `CURRENT_DATE` |  |  |
+
+Constraints: `CHECK (((available_water_min_mm IS NULL) OR (available_water_max_mm IS NULL) OR (available_water_min_mm <= available_water_max_mm)))`; `CHECK (((field_capacity_min_mm IS NULL) OR (field_capacity_max_mm IS NULL) OR (field_capacity_min_mm <= field_capacity_max_mm)))`; `CHECK (((sorption_capacity_min IS NULL) OR (sorption_capacity_max IS NULL) OR (sorption_capacity_min <= sorption_capacity_max)))`; `CHECK (((source)::text = 'lgrb_bk50'::text))`; primary key (soil_map_unit_id); unique (source, unit_code).
 
 ### shared.soil_types
 
@@ -1702,6 +1736,7 @@ portal's API page.
 | `images` | Public API view for imagery table |
 | `inclusion_rules` | Inclusion rules per sampling design: fixed radius or angle count by DBH range. |
 | `job_status` | Every job the caller is allowed to see -- their own, or all of them for a curator. Omits claimed_by and next_attempt_at, which are the runner's bookkeeping rather than the submitter's answer. An anon caller matches no policy and so reads an empty list. |
+| `location_soil` | Public API view: the soil map unit of each location with its described properties (shared.soil_map_units). |
 | `locations` | Public API view for locations reference table |
 | `management_events` | Public API view for forest management events |
 | `management_regimes` | Management axis of scenarios: id + name + description + the silvaR thinning preset (silva_rules). Regime 0 holds no trees. |
