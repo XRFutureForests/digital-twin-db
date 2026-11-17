@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261111150000_sensor_units_read_access`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261117150000_tree_microhabitats`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -11,7 +11,7 @@ same name in `public` (listed at the end); write and read through those.
 | Schema | Tables | Holds |
 |---|---:|---|
 | [`shared`](#shared) | 36 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
-| [`trees`](#trees) | 31 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
+| [`trees`](#trees) | 34 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
 | [`sensor`](#sensor) | 5 | Sensors, their time series, units, sensor-tree links |
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
 | [`point_clouds`](#point_clouds) | 3 | Point clouds and scanners |
@@ -630,7 +630,7 @@ Constraints: `CHECK (((simulation_year >= 1900) AND (simulation_year <= 2300)))`
 
 Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups
 
-[`axis_structures`](#treesaxis_structures) · [`bark_characteristics`](#treesbark_characteristics) · [`branch_elongation_habits`](#treesbranch_elongation_habits) · [`branching_patterns`](#treesbranching_patterns) · [`crown_architectures`](#treescrown_architectures) · [`crown_classes`](#treescrown_classes) · [`crown_foliage_profiles`](#treescrown_foliage_profiles) · [`crown_shapes`](#treescrown_shapes) · [`damage_agents`](#treesdamage_agents) · [`data_source_types`](#treesdata_source_types) · [`entity_matches`](#treesentity_matches) · [`geometric_crown_solids`](#treesgeometric_crown_solids) · [`growth_forms`](#treesgrowth_forms) · [`growth_orientations`](#treesgrowth_orientations) · [`growth_simulations`](#treesgrowth_simulations) · [`observations`](#treesobservations) · [`phanerophyte_height_classes`](#treesphanerophyte_height_classes) · [`phenology_observations`](#treesphenology_observations) · [`qsm_cylinders`](#treesqsm_cylinders) · [`qsms`](#treesqsms) · [`root_system_types`](#treesroot_system_types) · [`roots`](#treesroots) · [`shoot_elongation_types`](#treesshoot_elongation_types) · [`simulation_runs`](#treessimulation_runs) · [`stems`](#treesstems) · [`straightness_types`](#treesstraightness_types) · [`taper_types`](#treestaper_types) · [`tree_graph_edges`](#treestree_graph_edges) · [`tree_part_types`](#treestree_part_types) · [`tree_status`](#treestree_status) · [`trees`](#treestrees)
+[`axis_structures`](#treesaxis_structures) · [`bark_characteristics`](#treesbark_characteristics) · [`branch_elongation_habits`](#treesbranch_elongation_habits) · [`branching_patterns`](#treesbranching_patterns) · [`crown_architectures`](#treescrown_architectures) · [`crown_classes`](#treescrown_classes) · [`crown_foliage_profiles`](#treescrown_foliage_profiles) · [`crown_shapes`](#treescrown_shapes) · [`damage_agents`](#treesdamage_agents) · [`data_source_types`](#treesdata_source_types) · [`entity_matches`](#treesentity_matches) · [`geometric_crown_solids`](#treesgeometric_crown_solids) · [`growth_forms`](#treesgrowth_forms) · [`growth_orientations`](#treesgrowth_orientations) · [`growth_simulations`](#treesgrowth_simulations) · [`microhabitat_source_codes`](#treesmicrohabitat_source_codes) · [`microhabitat_types`](#treesmicrohabitat_types) · [`microhabitats`](#treesmicrohabitats) · [`observations`](#treesobservations) · [`phanerophyte_height_classes`](#treesphanerophyte_height_classes) · [`phenology_observations`](#treesphenology_observations) · [`qsm_cylinders`](#treesqsm_cylinders) · [`qsms`](#treesqsms) · [`root_system_types`](#treesroot_system_types) · [`roots`](#treesroots) · [`shoot_elongation_types`](#treesshoot_elongation_types) · [`simulation_runs`](#treessimulation_runs) · [`stems`](#treesstems) · [`straightness_types`](#treesstraightness_types) · [`taper_types`](#treestaper_types) · [`tree_graph_edges`](#treestree_graph_edges) · [`tree_part_types`](#treestree_part_types) · [`tree_status`](#treestree_status) · [`trees`](#treestrees)
 
 ### trees.axis_structures
 
@@ -859,6 +859,69 @@ Per-tree forest growth projections from SILVA, FVS, iLand, or manual estimation.
 | `created_by` | character varying(200) | yes |  |  |  |
 
 Constraints: `CHECK (((basal_area_m2 IS NULL) OR (basal_area_m2 >= (0)::numeric)))`; `CHECK (((biomass_kg IS NULL) OR (biomass_kg >= (0)::numeric)))`; `CHECK (((carbon_content_kg IS NULL) OR (carbon_content_kg >= (0)::numeric)))`; `CHECK (((crown_base_height_m IS NULL) OR (crown_base_height_m >= (0)::numeric)))`; `CHECK (((crown_base_height_m IS NULL) OR (height_m IS NULL) OR (crown_base_height_m <= height_m)))`; `CHECK (((crown_width_m IS NULL) OR (crown_width_m >= (0)::numeric)))`; `CHECK (((dbh_cm IS NULL) OR (dbh_cm > (0)::numeric)))`; `CHECK (((health_score IS NULL) OR ((health_score >= (0)::numeric) AND (health_score <= (1)::numeric))))`; `CHECK (((height_m IS NULL) OR (height_m > (0)::numeric)))`; `CHECK (((projection_year >= 1900) AND (projection_year <= 2300)))`; `CHECK (((simulator_name)::text = ANY (ARRAY[('SILVA'::character varying)::text, ('FVS'::character varying)::text, ('iLand'::character varying)::text, ('manual'::character varying)::text, ('other'::character varying)::text])))`; `CHECK (((stand_basal_area_m2ha IS NULL) OR (stand_basal_area_m2ha >= (0)::numeric)))`; `CHECK (((stand_biomass_tha IS NULL) OR (stand_biomass_tha >= (0)::numeric)))`; `CHECK (((stand_stem_count_ha IS NULL) OR (stand_stem_count_ha >= 0)))`; `CHECK (((stand_volume_m3ha IS NULL) OR (stand_volume_m3ha >= (0)::numeric)))`; `CHECK (((volume_m3 IS NULL) OR (volume_m3 >= (0)::numeric)))`; primary key (growth_simulation_id).
+
+### trees.microhabitat_source_codes
+
+Microhabitat codes of other recording schemes and the field-guide type each maps to. scheme integrateplus_2016: Kraus et al. (2016), Catalogue of tree microhabitats - Reference field list, Integrate+ Technical Paper, EFI; the codes of the Integrate+ marteloscopes and of GBIF dataset 10.15468/ocof3v. Loaded from data/lookups/microhabitat_source_codes.csv.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `source_code_id` | integer |  | serial |  |  |
+| `code` | character varying(10) |  |  |  | Code as recorded in the source (e.g. CV14). Natural key of the lookup. |
+| `scheme` | character varying(40) |  |  |  |  |
+| `category` | character varying(60) | yes |  |  | Top level of the source scheme (Integrate+ 2016: Cavities, Injuries and wounds, Bark, Deadwood, Deformation / growth form, Epiphytes, Nests, Other). |
+| `code_group` | character varying(80) | yes |  |  |  |
+| `label` | text |  |  |  |  |
+| `type_number` | smallint | yes |  | `trees.microhabitat_types.type_number` | Field-guide type the code maps to; NULL when match = none. |
+| `match` | character varying(12) |  |  |  | same: same concept, the code's threshold at or above the guide's; approximate: same concept with a lower threshold or a broader or narrower definition (see match_note); none: no type in the guide. |
+| `match_note` | text | yes |  |  |  |
+
+Constraints: `CHECK (((match)::text = ANY ((ARRAY['same'::character varying, 'approximate'::character varying, 'none'::character varying])::text[])))`; `CHECK ((((match)::text = 'none'::text) = (type_number IS NULL)))`; primary key (source_code_id); unique (code).
+
+### trees.microhabitat_types
+
+Tree-related microhabitat types after Bütler, Lachat, Krumm, Kraus & Larrieu (2024), Field Guide to Tree-related Microhabitats, 2nd ed., WSL Birmensdorf, which extends the typology of Larrieu et al. 2018 (Ecol. Indic. 84:194-207) to 52 types in 17 groups and 7 forms. Loaded from data/lookups/microhabitat_types.csv.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `microhabitat_type_id` | integer |  | serial |  |  |
+| `type_number` | smallint |  |  |  | Type number in the field guide (1-52). Natural key of the lookup. |
+| `type_name` | character varying(100) |  |  |  |  |
+| `form` | character varying(60) |  |  |  | One of the 7 forms: Cavities; Tree injuries and exposed wood; Crown deadwood; Excrescences; Fungal fruiting bodies and slime moulds; Epiphytic and epixylic structures; Exudates. |
+| `type_group` | character varying(80) |  |  |  | One of the 17 groups within the form (e.g. Rot-holes, Concavities, Exposed sapwood). |
+| `minimum_size` | text | yes |  |  | Minimum size for the microhabitat to be recorded, as stated in the field guide; "experts' threshold" where the guide marks it so. |
+| `frequency_natural` | character varying(40) | yes |  |  | Frequency in natural forest as given in the guide (rare, relatively rare, relatively common, common, or a range), from a European database. |
+| `frequency_managed` | character varying(40) | yes |  |  | Frequency in managed forest, same scale as frequency_natural. |
+| `replacement_rate` | character varying(40) | yes |  |  | How fast the microhabitat forms again in a stand (very slow to rapid), as given in the guide. |
+| `is_difficult_to_monitor` | boolean |  | `false` |  | True where the guide marks the type DM: hard to monitor routinely because of size, location or sporadic occurrence. |
+| `description` | text | yes |  |  |  |
+
+Constraints: `CHECK (((type_number >= 1) AND (type_number <= 99)))`; primary key (microhabitat_type_id); unique (type_name); unique (type_number).
+
+### trees.microhabitats
+
+Tree-related microhabitats, one row per tree x microhabitat. Measured and reference rows carry a campaign; predicted rows carry the process (model) and a probability and are never observations.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `microhabitat_id` | integer |  | serial |  |  |
+| `tree_id` | integer |  |  | `trees.trees.tree_id` (cascade) | The tree record (one tree in one variant) the microhabitat was found on. |
+| `microhabitat_type_id` | integer | yes |  | `trees.microhabitat_types.microhabitat_type_id` | Field-guide type; for rows imported with a source code, the type the code maps to (NULL when the code has no type). |
+| `source_code_id` | integer | yes |  | `trees.microhabitat_source_codes.source_code_id` | Code as recorded by the source scheme, kept so an import stays lossless; NULL for rows recorded directly against a type. |
+| `count` | integer |  | `1` |  | Number of microhabitats of this kind on the tree, as recorded. |
+| `height_m` | numeric(5,2) | yes |  |  | Height on the stem in metres, where recorded. |
+| `provenance` | character varying(12) |  |  |  | measured: own survey; reference: imported from a published dataset (see the campaign's citation and licence); predicted: generated by a model (process_id, probability). Views that count biodiversity filter predicted rows out. |
+| `probability` | numeric(5,4) | yes |  |  | Model probability of the microhabitat, for predicted rows. |
+| `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) |  |
+| `process_id` | integer | yes |  | `shared.processes.process_id` (set null) |  |
+| `observation_date` | date | yes |  |  |  |
+| `source_attributes` | jsonb | yes |  |  | Source fields kept as delivered (e.g. GBIF occurrence key, raw code and value). |
+| `created_at` | timestamp with time zone | yes | `now()` |  |  |
+| `updated_at` | timestamp with time zone | yes | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+| `updated_by` | character varying(200) | yes |  |  |  |
+
+Constraints: `CHECK ((count >= 1))`; `CHECK ((height_m >= (0)::numeric))`; `CHECK (((microhabitat_type_id IS NOT NULL) OR (source_code_id IS NOT NULL)))`; `CHECK (((probability >= (0)::numeric) AND (probability <= (1)::numeric)))`; `CHECK (((provenance)::text = ANY ((ARRAY['measured'::character varying, 'reference'::character varying, 'predicted'::character varying])::text[])))`; `CHECK ((((provenance)::text <> 'predicted'::text) OR ((process_id IS NOT NULL) AND (probability IS NOT NULL))))`; primary key (microhabitat_id); unique (tree_id, provenance, source_code_id).
 
 ### trees.observations
 
@@ -1623,6 +1686,7 @@ portal's API page.
 | `teams` | Teams that own datasets. Readable by everyone; curators create and change them. |
 | `tree_expansion_factors` | Trees per hectare each tree stands for (shared.expansion_factor_ha on the main stem's DBH), with the plot's design, stratum and sampling weight. Filter on variant_id. NULL where the plot has no area or design. |
 | `tree_graph_edges` | Public API view for QSM topology edge overrides (observed/synthetic/derived) |
+| `tree_microhabitats` | Public API view: tree-related microhabitats per tree with type, form, group, source code and provenance. Filter provenance <> 'predicted' for anything that counts biodiversity. |
 | `tree_part_types` | Public API view for tree part types (CityGML feature classes) lookup table |
 | `trees` | Public API view for trees table |
 | `ue_climate` | environments.environments merged across variant_name: one row per location, scenario, variant type and period, with each measurement column taken from whichever dataset supplied it. This is the read a scene makes -- ue_environments returns one row per dataset, which since XRFF-395 means two half-empty rows per window where a scenario picker wants one full one. `variant_names` and `process_names` carry the provenance the merge folds away; `conflicting_columns` is empty unless two datasets supplied the same measurement for the same window, in which case the value shown is an arbitrary one of them. Despite the name it also returns the scenario-less rows -- soil chemistry (both years NULL) and the measured soil aggregate -- because the grouping is by period, not by topic. GET /rest/v1/ue_climate?location_id=eq.1&scenario_name=eq.ssp370&order=start_year |

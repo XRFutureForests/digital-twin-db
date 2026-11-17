@@ -274,6 +274,11 @@ docker exec -i dftdb-db psql -U supabase_admin -d postgres < scripts/seed/root_a
 python scripts/import/import_pathfinder.py fetch
 python scripts/import/import_pathfinder.py sql
 docker exec -i dftdb-db psql -U supabase_admin -d postgres < data/tmp/pathfinder_import.sql
+# Integrate+ marteloscopes from GBIF (Klosterwald, Rosskopf, Mooswald): trees with their
+# tree-related microhabitats (XRFF-692); same shape, needs the microhabitat lookups loaded
+python scripts/import/import_marteloscopes.py fetch
+python scripts/import/import_marteloscopes.py sql
+docker exec -i dftdb-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < data/tmp/marteloscopes_import.sql
 
 # 4. derived values, in this order (each takes --dry-run). Heights are fitted per species to
 #    the measured trees; a changed height clears crown, volume, age and biomass for the rest.

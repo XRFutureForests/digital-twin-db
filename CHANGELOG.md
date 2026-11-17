@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Tree-related microhabitats, and three marteloscopes with them** (XRFF-692)
+
+Added:
+- Migration `20261117150000_tree_microhabitats`: `trees.microhabitat_types` (the 52 types of
+  the WSL field guide, Bütler et al. 2024, after Larrieu et al. 2018: form, group, minimum size,
+  frequency in natural and managed forest, replacement rate), `trees.microhabitat_source_codes`
+  (the Integrate+ 2016 codes of Kraus et al., each mapped to a type as same, approximate or
+  none) and `trees.microhabitats` (one row per tree and microhabitat, with a required
+  provenance: measured, reference or predicted). Public view `public.tree_microhabitats`.
+- `data/lookups/microhabitat_types.csv`, `microhabitat_source_codes.csv`; eight species in
+  `species.csv` (sessile and red oak, hornbeam, black alder, hazel, European white elm,
+  black cherry, princess tree).
+- `scripts/import/import_marteloscopes.py`: the Integrate+ marteloscopes Klosterwald,
+  Rosskopf and Mooswald from GBIF (doi 10.15468/ocof3v, CC BY 4.0) as locations with 1,336
+  trees and 851 microhabitats. Tree positions are local metres placed on the plot centroid,
+  which GBIF gives to ±500 m.
+
 **Only curators may change a campaign's owner team** (XRFF-670)
 
 Security:

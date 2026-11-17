@@ -1,0 +1,65 @@
+code,scheme,category,code_group,label,type_number,match,match_note
+CV11,integrateplus_2016,Cavities,Woodpecker cavities,"Woodpecker cavity, entrance ø about 4 cm",1,approximate,Guide type 1 is ø < 4 cm
+CV12,integrateplus_2016,Cavities,Woodpecker cavities,"Woodpecker cavity, entrance ø 5–6 cm",2,same,
+CV13,integrateplus_2016,Cavities,Woodpecker cavities,"Woodpecker cavity, entrance ø > 10 cm",3,same,
+CV14,integrateplus_2016,Cavities,Woodpecker cavities,"Woodpecker feeding hole, ø ≥ 10 cm, conical",13,same,
+CV15,integrateplus_2016,Cavities,Woodpecker cavities,Woodpecker flute / cavity string,4,same,
+CV21,integrateplus_2016,Cavities,Trunk and mould cavities,"Mould cavity with ground contact, ø ≥ 10 cm",5,same,
+CV22,integrateplus_2016,Cavities,Trunk and mould cavities,"Mould cavity with ground contact, ø ≥ 30 cm",5,same,
+CV23,integrateplus_2016,Cavities,Trunk and mould cavities,"Mould cavity without ground contact, ø ≥ 10 cm",6,same,
+CV24,integrateplus_2016,Cavities,Trunk and mould cavities,"Mould cavity without ground contact, ø ≥ 30 cm",6,same,
+CV25,integrateplus_2016,Cavities,Trunk and mould cavities,"Semi-open trunk cavity, ø ≥ 30 cm",7,same,
+CV26,integrateplus_2016,Cavities,Trunk and mould cavities,"Large trunk cavity with open top, ø ≥ 30 cm, with or without ground contact",8,approximate,The guide splits open-top rot-holes by ground contact (type 8 with; type 9 without); the code does not say which
+CV31,integrateplus_2016,Cavities,Branch holes,"Rot-hole from branch breakage at the trunk, ø ≥ 5 cm",6,approximate,The guide has no branch-hole type; closest is the trunk rot-hole (type 6; ø > 10 cm)
+CV32,integrateplus_2016,Cavities,Branch holes,"Rot-hole from branch breakage at the trunk, ø ≥ 10 cm",6,approximate,The guide has no branch-hole type; closest is the trunk rot-hole (type 6)
+CV33,integrateplus_2016,Cavities,Branch holes,"Hollow branch, ø ≥ 10 cm",10,same,
+CV41,integrateplus_2016,Cavities,Dendrotelms and water-filled holes,"Dendrotelm at the trunk base, ø ≥ 3 cm",12,approximate,Guide type 12 requires an opening ø > 15 cm
+CV42,integrateplus_2016,Cavities,Dendrotelms and water-filled holes,"Dendrotelm at the trunk base, ø ≥ 15 cm",12,same,
+CV43,integrateplus_2016,Cavities,Dendrotelms and water-filled holes,"Dendrotelm in the crown, ø ≥ 5 cm",12,approximate,Guide type 12 requires an opening ø > 15 cm
+CV44,integrateplus_2016,Cavities,Dendrotelms and water-filled holes,"Dendrotelm in the crown, ø ≥ 15 cm",12,same,
+CV51,integrateplus_2016,Cavities,Insect galleries and bore holes,Insect gallery with single small bore holes,11,approximate,Guide type 11 requires a bore hole ø > 2 cm or small bore holes over > 300 cm²
+CV52,integrateplus_2016,Cavities,Insect galleries and bore holes,"Large bore hole, ø ≥ 2 cm",11,same,
+IN11,integrateplus_2016,Injuries and wounds,Bark loss / exposed sapwood,"Bark loss 25–600 cm², decay stage < 3",16,approximate,Guide type 16 requires > 300 cm²
+IN12,integrateplus_2016,Injuries and wounds,Bark loss / exposed sapwood,"Bark loss > 600 cm², decay stage < 3",16,same,
+IN13,integrateplus_2016,Injuries and wounds,Bark loss / exposed sapwood,"Bark loss 25–600 cm², decay stage 3",16,approximate,Guide type 16 requires > 300 cm²
+IN14,integrateplus_2016,Injuries and wounds,Bark loss / exposed sapwood,"Bark loss > 600 cm², decay stage 3",16,same,
+IN21,integrateplus_2016,Injuries and wounds,Exposed heartwood / trunk and crown breakage,"Broken trunk, ø ≥ 20 cm at the broken end",20,same,
+IN22,integrateplus_2016,Injuries and wounds,Exposed heartwood / trunk and crown breakage,"Broken tree crown / fork, exposed wood ≥ 300 cm²",21,same,
+IN23,integrateplus_2016,Injuries and wounds,Exposed heartwood / trunk and crown breakage,"Broken limb, ø ≥ 20 cm at the broken end",21,approximate,Guide type 21 is defined by an exposed surface > 300 cm²; a remaining stub > 50 cm is type 28
+IN24,integrateplus_2016,Injuries and wounds,Exposed heartwood / trunk and crown breakage,"Splintered stem, ø ≥ 20 cm at the broken end",20,approximate,The guide has no separate splintered-stem type
+IN31,integrateplus_2016,Injuries and wounds,Cracks and scars,"Crack, length ≥ 30 cm, width > 1 cm, depth > 10 cm",22,same,
+IN32,integrateplus_2016,Injuries and wounds,Cracks and scars,"Crack, length ≥ 100 cm, width > 1 cm, depth > 10 cm",22,same,
+IN33,integrateplus_2016,Injuries and wounds,Cracks and scars,Lightning scar,23,same,
+IN34,integrateplus_2016,Injuries and wounds,Cracks and scars,"Fire scar, ≥ 600 cm²",17,same,
+BA11,integrateplus_2016,Bark,Bark pockets,"Bark shelter, width > 1 cm, depth > 10 cm, height > 10 cm",18,same,
+BA12,integrateplus_2016,Bark,Bark pockets,"Bark pocket, width > 1 cm, depth > 10 cm, height > 10 cm",19,same,
+BA21,integrateplus_2016,Bark,Bark structure,Coarse bark,,none,Not a type in the guide
+DE11,integrateplus_2016,Deadwood,Dead branches and limbs / crown deadwood,"Dead branch ø 10–20 cm, length ≥ 50 cm, sun exposed",26,same,
+DE12,integrateplus_2016,Deadwood,Dead branches and limbs / crown deadwood,"Dead branch ø > 20 cm, length ≥ 50 cm, sun exposed",26,same,
+DE13,integrateplus_2016,Deadwood,Dead branches and limbs / crown deadwood,"Dead branch ø 10–20 cm, length ≥ 50 cm, not sun exposed",26,same,
+DE14,integrateplus_2016,Deadwood,Dead branches and limbs / crown deadwood,"Dead branch ø > 20 cm, length ≥ 50 cm, not sun exposed",26,same,
+DE15,integrateplus_2016,Deadwood,Dead branches and limbs / crown deadwood,"Dead top, ø ≥ 10 cm",27,same,
+GR11,integrateplus_2016,Deformation / growth form,Root buttress cavities,"Root buttress cavity, ø ≥ 5 cm",15,approximate,Guide type 15 requires an opening and depth > 10 cm
+GR12,integrateplus_2016,Deformation / growth form,Root buttress cavities,"Root buttress cavity, ø ≥ 10 cm",15,same,
+GR13,integrateplus_2016,Deformation / growth form,Root buttress cavities,"Trunk cleavage, length ≥ 30 cm",,none,"Cleft formed by growth, no wound; no matching type in the guide (closest: bark-lined trunk concavity, type 14)"
+GR21,integrateplus_2016,Deformation / growth form,Witches broom,"Witches broom, ø > 50 cm",29,same,
+GR22,integrateplus_2016,Deformation / growth form,Witches broom,Water sprout,30,same,
+GR31,integrateplus_2016,Deformation / growth form,Cankers and burrs,"Cancerous growth, ø > 20 cm",32,approximate,The code includes bark damage at the surface; guide type 32 (burr) has intact bark and no rotten wood
+GR32,integrateplus_2016,Deformation / growth form,Cankers and burrs,"Decayed canker, ø > 20 cm",33,same,
+EP11,integrateplus_2016,Epiphytes,Fruiting bodies fungi,"Annual polypores, ø > 5 cm",35,same,
+EP12,integrateplus_2016,Epiphytes,Fruiting bodies fungi,"Perennial polypores, ø > 10 cm",34,same,
+EP13,integrateplus_2016,Epiphytes,Fruiting bodies fungi,"Pulpy agaric, ø > 5 cm",36,same,
+EP14,integrateplus_2016,Epiphytes,Fruiting bodies fungi,"Large ascomycetes, ø > 5 cm",38,same,
+EP21,integrateplus_2016,Epiphytes,Myxomycetes,"Myxomycetes, ø > 5 cm",39,same,
+EP31,integrateplus_2016,Epiphytes,Epiphytic crypto- and phanerogams,"Epiphytic bryophytes, coverage > 25 %",40,same,
+EP32,integrateplus_2016,Epiphytes,Epiphytic crypto- and phanerogams,"Epiphytic foliose and fruticose lichens, coverage > 25 %",41,same,
+EP33,integrateplus_2016,Epiphytes,Epiphytic crypto- and phanerogams,"Lianas, coverage > 25 %",42,same,
+EP34,integrateplus_2016,Epiphytes,Epiphytic crypto- and phanerogams,"Epiphytic ferns, > 5 fronds",43,same,
+EP35,integrateplus_2016,Epiphytes,Epiphytic crypto- and phanerogams,Mistletoe,44,same,
+NE11,integrateplus_2016,Nests,Nests,"Large vertebrate nest, ø > 80 cm",45,same,
+NE12,integrateplus_2016,Nests,Nests,"Small vertebrate nest, ø > 10 cm",45,same,
+NE21,integrateplus_2016,Nests,Nests,Invertebrate nest,46,same,
+OT11,integrateplus_2016,Other,Sap and resin run,"Sap flow, > 50 cm",51,same,
+OT12,integrateplus_2016,Other,Sap and resin run,"Resin flow and pockets, > 50 cm",52,same,
+OT21,integrateplus_2016,Other,Microsoil,Crown microsoil,49,same,
+OT22,integrateplus_2016,Other,Microsoil,Bark microsoil,47,same,
