@@ -112,7 +112,7 @@ def main() -> None:
     sql = """
         SELECT t.tree_id, sp.scientific_name, t.height_m
         FROM trees.trees t
-        JOIN shared.species sp USING (species_id)
+        JOIN shared.taxa sp USING (taxon_id)
         JOIN shared.variants v USING (variant_id)
         JOIN shared.locations l ON l.location_id = t.location_id
         WHERE v.variant_type_id = (SELECT variant_type_id FROM shared.variant_types

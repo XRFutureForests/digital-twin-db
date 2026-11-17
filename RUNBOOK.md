@@ -174,7 +174,7 @@ docker exec -it dftdb-db psql -U supabase_admin    # DDL, seeds, dumps (owns the
 ```sql
 \dn                          -- list schemas
 \dt trees.*                  -- list tables in a schema
-SELECT * FROM shared.species LIMIT 5;
+SELECT * FROM shared.taxa LIMIT 5;
 ```
 
 For a file: `MSYS_NO_PATHCONV=1 docker exec -i dftdb-db psql -U supabase_admin -d postgres < file.sql`.

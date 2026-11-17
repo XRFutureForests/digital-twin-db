@@ -112,7 +112,7 @@ SELECT
     'species_default',
     'seed_root_and_foliage_defaults'
 FROM trees.Trees t
-JOIN shared.Species sp ON sp.species_id = t.species_id
+JOIN shared.taxa sp ON sp.taxon_id = t.taxon_id
 JOIN temp_species_root_defaults d ON d.scientific_name = sp.scientific_name
 JOIN trees.root_system_types rst ON rst.root_system_type_name = d.root_system_type_name
 WHERE NOT EXISTS (
@@ -135,7 +135,7 @@ SELECT
     'species_literature_default',
     'seed_root_and_foliage_defaults'
 FROM trees.Trees t
-JOIN shared.Species sp ON sp.species_id = t.species_id
+JOIN shared.taxa sp ON sp.taxon_id = t.taxon_id
 JOIN temp_species_root_defaults d ON d.scientific_name = sp.scientific_name
 WHERE NOT EXISTS (
     SELECT 1 FROM trees.crown_foliage_profiles p

@@ -7,7 +7,7 @@ This directory contains CSV data files for the Forest Digital Twin Database.
 ```
 data/
 ├── lookups/                    # Lookup table CSVs (source of truth)
-│   ├── species.csv             # Tree species definitions (13 species)
+│   ├── taxa.csv                # Taxa: tree species and other organisms (GBIF taxonomy)
 │   ├── locations.csv           # Research site locations (5 locations)
 │   ├── sensor_types.csv        # Sensor type definitions (14 types)
 │   ├── soil_types.csv          # USDA soil classification
@@ -48,7 +48,7 @@ These CSV files are the **source of truth** for database reference data. They ar
 
 | File | Database Table | Purpose |
 |------|----------------|---------|
-| `species.csv` | `shared.Species` | Tree species (name, growth, IsDeciduous) |
+| `taxa.csv` | `shared.taxa` | Taxa (name, GBIF taxonomy, tree traits) |
 | `locations.csv` | `shared.Locations` | Research site locations with PostGIS geometry |
 | `sensor_types.csv` | `sensor.SensorTypes` | Sensor type definitions with units and ranges |
 | `soil_types.csv` | `shared.SoilTypes` | USDA soil classification |

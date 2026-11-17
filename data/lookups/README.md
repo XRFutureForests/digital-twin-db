@@ -52,7 +52,7 @@ SELECT * FROM shared.refresh_lookup('sensor_types');
 
 | File | Target Table | Description |
 |------|--------------|-------------|
-| `species.csv` | `shared.Species` | Tree species with growth characteristics |
+| `taxa.csv` | `shared.taxa` | Taxa (tree species and other organisms): GBIF key, rank and higher taxonomy, tree traits |
 | `soil_types.csv` | `shared.SoilTypes` | USDA soil classification |
 | `climate_zones.csv` | `shared.ClimateZones` | Köppen climate zones |
 | `variant_types.csv` | `shared.VariantTypes` | Data variant classifications |
@@ -91,7 +91,7 @@ SELECT * FROM shared.refresh_lookup('sensor_types');
 
 ## Adding New Species
 
-Edit `species.csv` and add a new row:
+Edit `taxa.csv` and add a new row:
 
 ```csv
 Common Oak,Quercus petraea,35,180,500,slow,moderate
@@ -167,7 +167,7 @@ Before rebuilding the database, you can validate your CSV files:
 
 ```bash
 # Check for duplicate species
-awk -F',' 'NR>1 {print $2}' species.csv | sort | uniq -d
+awk -F',' 'NR>1 {print $2}' taxa.csv | sort | uniq -d
 
 # Check for duplicate locations
 awk -F',' 'NR>1 {print $1}' locations.csv | sort | uniq -d

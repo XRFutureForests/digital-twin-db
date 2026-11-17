@@ -42,7 +42,7 @@ Your prepared CSV must have these 23 columns. The import creates one record in `
 |--------|------|-------------|
 | `PlotID` | Integer | Foreign key to `shared.Plots` (sub-plot within location) |
 | `TreeNumber` | Integer | Local tree identifier within the plot/location (e.g., tree 62 in plot 4) |
-| `SpeciesID` | Integer | Foreign key to `shared.Species` (NULL = unknown) |
+| `SpeciesID` | Integer | Foreign key to `shared.taxa` (`taxon_id`) (NULL = unknown) |
 | `DBH_cm` | Decimal | Diameter at breast height in centimeters |
 | `Height_m` | Decimal | Tree height in meters |
 | `MeasurementDate` | Date | Date of field measurement (YYYY-MM-DD) |
@@ -427,7 +427,7 @@ See [scripts/README.md](../../scripts/README.md) for detailed import script docu
 If your data contains species, locations, or sensor types not in the lookup tables:
 
 1. Edit the appropriate CSV in `data/lookups/`:
-   - `species.csv` - Tree species
+   - `taxa.csv` - Taxa (tree species and others)
    - `locations.csv` - Research locations
    - `sensor_types.csv` - Sensor types
    - `soil_types.csv` - USDA soil types
@@ -442,7 +442,7 @@ If your data contains species, locations, or sensor types not in the lookup tabl
 3. Query for new IDs:
 
    ```sql
-   SELECT SpeciesID, CommonName FROM shared.Species;
+   SELECT taxon_id, common_name FROM shared.taxa;
    SELECT LocationID, LocationName FROM shared.Locations;
 
 SELECT PlotID, PlotName, PlotNumber, LocationID FROM shared.Plots;

@@ -71,7 +71,7 @@ def fetch(conn, where: str, params: tuple) -> list:
         f"""
         SELECT t.tree_id, s.scientific_name, s.leaf_type, st.dbh_cm, t.height_m
         FROM trees.trees t
-        JOIN shared.species s ON t.species_id = s.species_id
+        JOIN shared.taxa s ON t.taxon_id = s.taxon_id
         JOIN trees.stems st ON st.tree_id = t.tree_id AND st.stem_number = 1
         WHERE {BASELINE} AND st.dbh_cm > 0 AND ({where})
         """,

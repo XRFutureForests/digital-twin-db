@@ -163,7 +163,7 @@ silvaR works in ForestElementsR's `tum_wwk_short`, which has nine classes:
 | 4 | *Larix decidua* | 9 | *Alnus glutinosa* |
 | 5 | *Fagus sylvatica* | | |
 
-The mapping is from `shared.species.scientific_name`, in
+The mapping is from `shared.taxa.scientific_name`, in
 `silva-connector/R/species.R`. It is deliberately **not** the legacy SILVA 4.5
 coding (`4 = Douglasie, 5 = Laerche, 11 = Buche`) that the old `silva_input`
 view emitted: the two collide on 4, 5 and 6, so mixing them silently turns

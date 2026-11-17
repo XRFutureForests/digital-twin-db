@@ -221,7 +221,7 @@ SELECT t.tree_id, l.location_name, split_part(sp.scientific_name, ' ', 1) AS gen
   JOIN shared.locations l ON l.location_id = t.location_id
   JOIN shared.variants v ON v.variant_id = t.variant_id
   JOIN shared.variant_types vt ON vt.variant_type_id = v.variant_type_id AND vt.variant_type_name = 'original'
-  LEFT JOIN shared.species sp ON sp.species_id = t.species_id
+  LEFT JOIN shared.taxa sp ON sp.taxon_id = t.taxon_id
   LEFT JOIN trees.tree_status ts ON ts.tree_status_id = t.tree_status_id
   LEFT JOIN trees.stems s ON s.tree_id = t.tree_id AND s.stem_number = 1
  WHERE l.location_name = ANY(%s)

@@ -25,7 +25,7 @@ underneath it.
 | `class` | `gml::CodeType [0..1]` | — | **Gap**, see §2 |
 | `function` | `gml::CodeType [0..*]` | — | **Gap**, see §2 |
 | `usage` | `gml::CodeType [0..*]` | — | **Gap**, see §2 |
-| `species` | `gml::CodeType [0..1]` | `species_id` → `shared.species` | Richer — normalised, GBIF-linked |
+| `species` | `gml::CodeType [0..1]` | `taxon_id` → `shared.taxa` | Richer — normalised, GBIF-linked |
 | `height` | `gml::LengthType [0..1]` | `height_m` | Direct |
 | `trunkDiameter` | `gml::LengthType [0..1]` | `trees.stems.dbh_cm` (per stem) | Richer — CityGML has one trunk diameter per tree; multi-stem aggregation rule resolved in §7 |
 | `crownDiameter` | `gml::LengthType [0..1]` | `crown_width_m` | Direct |
@@ -47,7 +47,7 @@ columns plays which role, and where the honest answer is "we don't have an equiv
 
 | CityGML attribute | Intent (per CityGML 2.0 base spec) | Closest existing column | Fit |
 |---|---|---|---|
-| `class` | Broad category of the vegetation object (e.g. "deciduous tree", "conifer") | *none* — `species_id` is far more specific than `class` is meant to be | No good fit; leave unmapped rather than force it onto species |
+| `class` | Broad category of the vegetation object (e.g. "deciduous tree", "conifer") | *none* — `taxon_id` is far more specific than `class` is meant to be | No good fit; leave unmapped rather than force it onto species |
 | `function` | Purpose the object serves (e.g. "shade", "screening", "windbreak") | *none* | **True gap** — we don't record intended function anywhere |
 | `usage` | Current actual use, may differ from `function` | *none* | **True gap** |
 
@@ -121,7 +121,7 @@ one of its six values; no rows yet):
 **What unblocks this today, with no new data collection:** root system type correlates
 strongly with species and is documented in standard silvics references (root morphology is a
 routine part of species silvics descriptions) — so `trees.root_system_types` can be populated
-per-`species_id` as a documented default (`source = 'species_default'`) now, geometry columns
+per-`taxon_id` as a documented default (`source = 'species_default'`) now, geometry columns
 left null until we have anything to measure. This is what turns Root from "no path" into
 "classifiable now, geometrized later," which is the scope this section commits to.
 

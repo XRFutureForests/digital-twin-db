@@ -128,7 +128,7 @@ JOIN LATERAL (
            ST_Distance(t.position_original,
                        ST_SetSRID(ST_MakePoint(r.stem_x, r.stem_y), 32632)) AS dist_m
     FROM trees.trees t
-    JOIN shared.species s ON s.species_id = t.species_id
+    JOIN shared.taxa s ON s.taxon_id = t.taxon_id
     WHERE t.location_id = %(location_id)s
       AND t.variant_id = %(variant_id)s
       AND s.scientific_name = r.scientific_name

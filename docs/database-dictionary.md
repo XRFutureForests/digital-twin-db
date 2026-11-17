@@ -1,7 +1,7 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261117150000_tree_microhabitats`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261117160000_species_to_taxa`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
@@ -22,7 +22,7 @@ same name in `public` (listed at the end); write and read through those.
 
 Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit
 
-[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`species`](#sharedspecies) · [`strata`](#sharedstrata) · [`team_members`](#sharedteam_members) · [`teams`](#sharedteams) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
+[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`strata`](#sharedstrata) · [`taxa`](#sharedtaxa) · [`team_members`](#sharedteam_members) · [`teams`](#sharedteams) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
 
 ### shared.account_events
 
@@ -523,29 +523,6 @@ USDA soil classification reference table
 
 Constraints: `CHECK (((soil_type_name)::text = ANY (ARRAY[('Alfisol'::character varying)::text, ('Andisol'::character varying)::text, ('Aridisol'::character varying)::text, ('Entisol'::character varying)::text, ('Gelisol'::character varying)::text, ('Histosol'::character varying)::text, ('Inceptisol'::character varying)::text, ('Mollisol'::character varying)::text, ('Oxisol'::character varying)::text, ('Spodosol'::character varying)::text, ('Ultisol'::character varying)::text, ('Vertisol'::character varying)::text])))`; primary key (soil_type_id); unique (soil_type_name).
 
-### shared.species
-
-Tree species reference with growth characteristics
-
-| Column | Type | Null | Default | References | Description |
-|---|---|---|---|---|---|
-| `species_id` | integer |  | serial |  |  |
-| `common_name` | character varying(200) | yes |  |  |  |
-| `scientific_name` | character varying(200) |  |  |  |  |
-| `max_height_m` | numeric(6,2) | yes |  |  | Maximum typical height in meters |
-| `max_dbh_cm` | numeric(6,2) | yes |  |  | Maximum typical diameter at breast height in centimeters |
-| `typical_lifespan_years` | integer | yes |  |  | Typical lifespan in years |
-| `growth_rate` | character varying(20) | yes |  |  | Relative growth rate (very_slow, slow, moderate, fast, very_fast) |
-| `shade_tolerance` | character varying(20) | yes |  |  | Shade tolerance level (very_low, low, moderate, high, very_high) |
-| `is_deciduous` | boolean | yes |  |  | Whether species is deciduous (true) or evergreen (false), NULL if unknown |
-| `gbif_key` | integer | yes |  |  |  |
-| `gbif_accepted_name` | character varying(200) | yes |  |  |  |
-| `created_at` | timestamp with time zone | yes | `now()` |  |  |
-| `updated_at` | timestamp with time zone | yes |  |  |  |
-| `leaf_type` | character varying(20) | yes |  |  | Leaf habit: needleleaf (conifers, larch included) or broadleaf. Independent of is_deciduous. Matches the Copernicus Dominant Leaf Type classes. |
-
-Constraints: `CHECK (((growth_rate)::text = ANY (ARRAY[('very_slow'::character varying)::text, ('slow'::character varying)::text, ('moderate'::character varying)::text, ('fast'::character varying)::text, ('very_fast'::character varying)::text])))`; `CHECK (((leaf_type)::text = ANY ((ARRAY['needleleaf'::character varying, 'broadleaf'::character varying])::text[])))`; `CHECK (((shade_tolerance)::text = ANY (ARRAY[('very_low'::character varying)::text, ('low'::character varying)::text, ('moderate'::character varying)::text, ('high'::character varying)::text, ('very_high'::character varying)::text])))`; primary key (species_id); unique (scientific_name).
-
 ### shared.strata
 
 Strata of a stratified sampling design, with their area. A plot's stratum must belong to the plot's design.
@@ -563,6 +540,36 @@ Strata of a stratified sampling design, with their area. A plot's stratum must b
 | `updated_by` | character varying(200) | yes |  |  |  |
 
 Constraints: `CHECK ((area_ha > (0)::numeric))`; primary key (stratum_id); unique (sampling_design_id, stratum_name); unique (stratum_id, sampling_design_id).
+
+### shared.taxa
+
+Taxa: tree species and any other organism the twin records (species, genus, family or morphospecies), linked to the GBIF backbone. The tree trait columns (max height, max DBH, lifespan, growth rate, shade tolerance, deciduousness, leaf type) apply to trees and are NULL otherwise. Loaded from data/lookups/taxa.csv.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `taxon_id` | integer |  | serial |  |  |
+| `common_name` | character varying(200) | yes |  |  |  |
+| `scientific_name` | character varying(200) |  |  |  |  |
+| `max_height_m` | numeric(6,2) | yes |  |  | Maximum typical height in meters |
+| `max_dbh_cm` | numeric(6,2) | yes |  |  | Maximum typical diameter at breast height in centimeters |
+| `typical_lifespan_years` | integer | yes |  |  | Typical lifespan in years |
+| `growth_rate` | character varying(20) | yes |  |  | Relative growth rate (very_slow, slow, moderate, fast, very_fast) |
+| `shade_tolerance` | character varying(20) | yes |  |  | Shade tolerance level (very_low, low, moderate, high, very_high) |
+| `is_deciduous` | boolean | yes |  |  | Whether species is deciduous (true) or evergreen (false), NULL if unknown |
+| `gbif_key` | integer | yes |  |  |  |
+| `gbif_accepted_name` | character varying(200) | yes |  |  |  |
+| `created_at` | timestamp with time zone | yes | `now()` |  |  |
+| `updated_at` | timestamp with time zone | yes |  |  |  |
+| `leaf_type` | character varying(20) | yes |  |  | Leaf habit: needleleaf (conifers, larch included) or broadleaf. Independent of is_deciduous. Matches the Copernicus Dominant Leaf Type classes. |
+| `taxon_rank` | character varying(20) | yes |  |  | Rank of the taxon as in the GBIF backbone (species, genus, family, ...). |
+| `kingdom` | character varying(60) | yes |  |  | Kingdom (GBIF backbone). |
+| `phylum` | character varying(60) | yes |  |  | Phylum (GBIF backbone). |
+| `class_name` | character varying(60) | yes |  |  | Class (GBIF backbone); named class_name because class is an SQL keyword in many clients. |
+| `order_name` | character varying(60) | yes |  |  | Order (GBIF backbone); named order_name because order is an SQL keyword. |
+| `family` | character varying(60) | yes |  |  | Family (GBIF backbone). |
+| `genus` | character varying(60) | yes |  |  | Genus (GBIF backbone). |
+
+Constraints: `CHECK (((growth_rate)::text = ANY (ARRAY[('very_slow'::character varying)::text, ('slow'::character varying)::text, ('moderate'::character varying)::text, ('fast'::character varying)::text, ('very_fast'::character varying)::text])))`; `CHECK (((leaf_type)::text = ANY ((ARRAY['needleleaf'::character varying, 'broadleaf'::character varying])::text[])))`; `CHECK (((shade_tolerance)::text = ANY (ARRAY[('very_low'::character varying)::text, ('low'::character varying)::text, ('moderate'::character varying)::text, ('high'::character varying)::text, ('very_high'::character varying)::text])))`; primary key (taxon_id); unique (scientific_name).
 
 ### shared.team_members
 
@@ -836,7 +843,7 @@ Per-tree forest growth projections from SILVA, FVS, iLand, or manual estimation.
 | `location_id` | integer | yes |  | `shared.locations.location_id` (cascade) |  |
 | `plot_id` | integer | yes |  | `shared.plots.plot_id` (set null) |  |
 | `scenario_id` | integer | yes |  | `shared.scenarios.scenario_id` (set null) |  |
-| `species_id` | integer | yes |  | `shared.species.species_id` (set null) |  |
+| `taxon_id` | integer | yes |  | `shared.taxa.taxon_id` (set null) |  |
 | `simulator_name` | character varying(100) |  |  |  |  |
 | `simulator_version` | character varying(50) | yes |  |  |  |
 | `projection_year` | integer |  |  |  | Calendar year this projection describes. |
@@ -939,7 +946,7 @@ One tree as detected or measured by one campaign: the input of re-identification
 | `observed_on` | date | yes |  |  |  |
 | `position` | geometry(Point,4326) | yes |  |  | Stem position as observed, WGS84. NULL when the observation is a tree row, which holds the position. |
 | `position_uncertainty_m` | numeric(6,3) | yes |  |  | Planimetric position uncertainty in metres, as the source states it. |
-| `species_id` | integer | yes |  | `shared.species.species_id` (set null) |  |
+| `taxon_id` | integer | yes |  | `shared.taxa.taxon_id` (set null) |  |
 | `dbh_cm` | numeric(6,2) | yes |  |  | DBH as observed, centimetres. NULL when the observation is a tree row. |
 | `height_m` | numeric(6,2) | yes |  |  | Height as observed, metres. NULL when the observation is a tree row. |
 | `source_attributes` | jsonb | yes |  |  | Source fields without a column of their own, as a JSON object keyed by the source's names. |
@@ -1209,7 +1216,7 @@ Tree measurement and simulation records with spatial positions
 | `scenario_id` | integer |  |  |  |  |
 | `variant_type_id` | integer |  |  | `shared.variant_types.variant_type_id` |  |
 | `process_id` | integer | yes |  | `shared.processes.process_id` (set null) |  |
-| `species_id` | integer | yes |  | `shared.species.species_id` (set null) |  |
+| `taxon_id` | integer | yes |  | `shared.taxa.taxon_id` (set null) |  |
 | `tree_status_id` | integer | yes |  | `trees.tree_status.tree_status_id` |  |
 | `branching_pattern_id` | integer | yes |  | `trees.branching_patterns.branching_pattern_id` |  |
 | `bark_characteristic_id` | integer | yes |  | `trees.bark_characteristics.bark_characteristic_id` |  |
@@ -1541,7 +1548,7 @@ Dead wood inventory including standing dead, fallen logs, stumps, and branches
 | `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
 | `plot_id` | integer | yes |  | `shared.plots.plot_id` (set null) |  |
 | `tree_id` | integer | yes |  | `trees.trees.tree_id` (set null) | Optional link to known dead tree record |
-| `species_id` | integer | yes |  | `shared.species.species_id` (set null) |  |
+| `taxon_id` | integer | yes |  | `shared.taxa.taxon_id` (set null) |  |
 | `wood_type` | character varying(50) |  |  |  | Type of dead wood: standing, fallen, stump, or branch |
 | `length_m` | numeric(6,2) | yes |  |  |  |
 | `diameter_cm` | numeric(6,2) | yes |  |  | Diameter in centimetres: at the base (thick end) for lying pieces and stumps, at breast height for standing dead trees. |
@@ -1570,7 +1577,7 @@ Ground vegetation survey records by plot and layer
 | `ground_vegetation_id` | integer |  | serial |  |  |
 | `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
 | `plot_id` | integer | yes |  | `shared.plots.plot_id` (set null) |  |
-| `species_name` | character varying(200) | yes |  |  |  |
+| `species_name` | character varying(200) | yes |  |  | Name as recorded. taxon_id holds the resolved taxon. |
 | `cover_percent` | numeric(5,2) | yes |  |  | Estimated cover percentage (0-100) |
 | `height_cm` | numeric(6,2) | yes |  |  |  |
 | `layer` | character varying(50) | yes |  |  | Vegetation layer: herb, shrub, moss, litter, fern, grass |
@@ -1579,6 +1586,7 @@ Ground vegetation survey records by plot and layer
 | `created_at` | timestamp with time zone | yes | `now()` |  |  |
 | `created_by` | character varying(200) | yes |  |  |  |
 | `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) | Data collection campaign (dataset) this record belongs to; decides who may read it (access levels). |
+| `taxon_id` | integer | yes |  | `shared.taxa.taxon_id` (set null) | Taxon of the record, resolved from species_name on insert; NULL when the name is not in shared.taxa. |
 
 Constraints: `CHECK (((cover_percent >= (0)::numeric) AND (cover_percent <= (100)::numeric)))`; `CHECK ((height_cm >= (0)::numeric))`; `CHECK (((layer)::text = ANY (ARRAY[('herb'::character varying)::text, ('shrub'::character varying)::text, ('moss'::character varying)::text, ('litter'::character varying)::text, ('fern'::character varying)::text, ('grass'::character varying)::text])))`; primary key (ground_vegetation_id).
 
@@ -1592,7 +1600,7 @@ Regeneration tallies: live and dead counts per species and size class on a surve
 | `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
 | `plot_id` | integer | yes |  | `shared.plots.plot_id` (set null) | The plot the tally was made in. The survey area is survey_area_m2, else the plot's area_m2 (or the nearest enclosing plot's). |
 | `campaign_id` | integer | yes |  | `shared.campaigns.campaign_id` (set null) |  |
-| `species_id` | integer | yes |  | `shared.species.species_id` (set null) |  |
+| `taxon_id` | integer | yes |  | `shared.taxa.taxon_id` (set null) |  |
 | `size_class` | character varying(20) |  |  |  | seedling \| sapling, as the protocol defines them (e.g. Pathfinder: seedlings on 12 x 12 m, saplings on 0.01 ha). |
 | `live_count` | integer |  | `0` |  | Live individuals counted. |
 | `dead_count` | integer |  | `0` |  | Dead individuals counted. |

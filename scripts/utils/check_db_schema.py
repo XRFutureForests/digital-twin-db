@@ -11,12 +11,12 @@ cur = conn.cursor()
 
 # Check Species columns
 cur.execute(
-    "SELECT column_name FROM information_schema.columns WHERE table_schema='shared' AND table_name='species'"
+    "SELECT column_name FROM information_schema.columns WHERE table_schema='shared' AND table_name='taxa'"
 )
 print("Species columns:", [r[0] for r in cur.fetchall()])
 
 # Sample data
-cur.execute("SELECT * FROM shared.Species LIMIT 3")
+cur.execute("SELECT * FROM shared.taxa LIMIT 3")
 cols = [desc[0] for desc in cur.description]
 print("Species query columns:", cols)
 for row in cur.fetchall():

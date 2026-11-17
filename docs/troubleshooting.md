@@ -50,7 +50,7 @@ network and the port every service connects to. Changing it is fine, but it chan
 
 Expected after init: schemas `shared`, `trees`, `sensor`, `point_clouds`, `environments`,
 `imagery`, `forest_floor`; databases `postgres` and `_supabase` (with schemas `_analytics`,
-`_supavisor`); `SELECT count(*) FROM shared.species` returns 14.
+`_supavisor`); `SELECT count(*) FROM shared.taxa` returns one row per taxon in `data/lookups/taxa.csv`.
 
 ```bash
 docker exec dftdb-db psql -U postgres -c "\dn"

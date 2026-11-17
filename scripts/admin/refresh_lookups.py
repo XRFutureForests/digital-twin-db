@@ -21,7 +21,7 @@ CONTAINER_NAME = "dftdb-db"
 # -- three keys the SQL supported were missing here, so --all silently skipped
 # them (XRFF-496). Nothing checks this automatically.
 AVAILABLE_TABLES = {
-    "species": ("species.csv", "Tree species definitions"),
+    "taxa": ("taxa.csv", "Taxa: tree species and other organisms, with GBIF taxonomy"),
     "locations": ("locations.csv", "Research plot locations"),
     "sensor_types": ("sensor_types.csv", "Sensor type definitions"),
     "tree_status": ("tree_status.csv", "Tree health status values"),
@@ -85,7 +85,7 @@ def show_help() -> None:
     print("  " + ", ".join(AVAILABLE_TABLES.keys()))
     print()
     print("Examples:")
-    print("  python refresh_lookups.py species      Refresh species from species.csv")
+    print("  python refresh_lookups.py taxa         Refresh taxa from taxa.csv")
     print(
         "  python refresh_lookups.py locations    Refresh locations from locations.csv"
     )

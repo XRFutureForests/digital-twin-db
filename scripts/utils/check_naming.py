@@ -261,7 +261,7 @@ def main():
             # that is little more than id + label + description. Columns that
             # merely end in _name -- attribute_provenance.column_name,
             # process_parameters.parameter_name -- name a thing being described
-            # rather than the row. shared.species (13 columns) is an entity whose
+            # rather than the row. shared.taxa is an entity whose
             # scientific_name is a natural key, not a lookup label.
             if (
                 c.endswith("_name")

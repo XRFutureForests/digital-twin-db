@@ -36,7 +36,7 @@ def cur():
         "SELECT v.variant_id, v.location_id FROM shared.variants v ORDER BY v.variant_id LIMIT 1"
     )
     variant_id, location_id = cursor.fetchone()
-    cursor.execute("SELECT min(species_id), max(species_id) FROM shared.species")
+    cursor.execute("SELECT min(taxon_id), max(taxon_id) FROM shared.taxa")
     species = cursor.fetchone()
     yield cursor, variant_id, location_id, species
     connection.rollback()
@@ -69,7 +69,7 @@ def plot(cursor, location_id, name, design_id, stratum_id=None, area_m2=None):
 def trees(cursor, variant_id, location_id, plot_id, n, species_id, dbh=30):
     for _ in range(n):
         cursor.execute(
-            "INSERT INTO trees.trees (location_id, variant_type_id, variant_id, plot_id, species_id, position, "
+            "INSERT INTO trees.trees (location_id, variant_type_id, variant_id, plot_id, taxon_id, position, "
             "volume_m3, biomass_kg, carbon_content_kg) "
             "VALUES (%s, 1, %s, %s, %s, ST_SetSRID(ST_MakePoint(8, 48), 4326), 1.0, 500, 250) RETURNING tree_id",
             (location_id, variant_id, plot_id, species_id),

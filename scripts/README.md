@@ -142,7 +142,7 @@ python scripts/admin/refresh_lookups.py --list
 Validate species names against the GBIF taxonomic backbone to ensure standardization:
 
 ```bash
-# Validate all species in data/lookups/species.csv
+# Validate all species in data/lookups/taxa.csv
 python scripts/admin/validate_species_gbif.py
 
 # Show detailed GBIF API responses

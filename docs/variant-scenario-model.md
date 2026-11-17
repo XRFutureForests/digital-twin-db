@@ -134,7 +134,7 @@ trees.trees                   ← one row per tree per time step
   scenario_id    FK → shared.scenarios    ← copy of the variant's scenario, set by the writers (no trigger)
   variant_type_id FK → shared.variant_types ← copy of the variant's type (NOT NULL)
   plot_id        FK → shared.plots        ← sub-plot within the site
-  height_m, position, position_original, species_id, age_years, ...
+  height_m, position, position_original, taxon_id, age_years, ...
 ```
 
 `tree_id` is the row PK (auto-increment, changes each time a tree is inserted). `tree_entity_id` is the stable physical-tree UUID — use it to track one tree across all variants/time steps. `variant_id` is the group selector used by UE to load a complete forest state.

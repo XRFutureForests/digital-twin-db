@@ -2,7 +2,7 @@
 """
 Validate species names against GBIF taxonomic backbone.
 
-This script checks species definitions in data/lookups/species.csv
+This script checks species definitions in data/lookups/taxa.csv
 against the GBIF Species API to ensure scientific names are standardized
 and identify potential issues (synonyms, typos, unknown species).
 
@@ -30,7 +30,7 @@ except ImportError:
     sys.exit(1)
 
 # Configuration
-SPECIES_CSV = Path(__file__).parent.parent.parent / "data" / "lookups" / "species.csv"
+SPECIES_CSV = Path(__file__).parent.parent.parent / "data" / "lookups" / "taxa.csv"
 OUTPUT_DIR = Path(__file__).parent.parent.parent / "data" / "lookups"
 
 
@@ -308,7 +308,7 @@ def main():
         output_path = generate_fix_csv(results)
         print()
         print(f"{Colors.GREEN}Generated corrections file: {output_path}{Colors.RESET}")
-        print("Review this file and update species.csv as needed.")
+        print("Review this file and update taxa.csv as needed.")
 
     # Return exit code based on issues
     issues = sum(1 for r in results if r["status"] != "valid")

@@ -15,7 +15,7 @@ started and what it writes: [silva-coupling.md](silva-coupling.md).
 | Table | One row per | Key columns |
 |---|---|---|
 | `trees.simulation_runs` | simulator run | `simulation_run_id` (UUID PK), `location_id`, `scenario_id`, `base_variant_id` → `shared.variants`, `base_year`, `horizon_years`, `simulator_name`, `simulator_version`, `process_id`, `seed`, `is_mortality_enabled`, `is_promoted`, `run_params` (JSONB object) |
-| `trees.growth_simulations` | tree × projected year of one run | `simulation_run_id` → `trees.simulation_runs`, `tree_entity_id`, `base_tree_id` → `trees.trees`, `location_id`, `plot_id`, `scenario_id`, `species_id`, `projection_year`, `time_delta_yrs`, per-tree dimensions, `is_mortality`, stand aggregates |
+| `trees.growth_simulations` | tree × projected year of one run | `simulation_run_id` → `trees.simulation_runs`, `tree_entity_id`, `base_tree_id` → `trees.trees`, `location_id`, `plot_id`, `scenario_id`, `taxon_id`, `projection_year`, `time_delta_yrs`, per-tree dimensions, `is_mortality`, stand aggregates |
 
 - `tree_entity_id` is the physical tree's UUID, the same one `trees.trees` uses across variants.
   It joins projections to measured rows; it has no foreign key.

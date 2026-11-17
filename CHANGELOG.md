@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**`shared.species` becomes `shared.taxa`** (XRFF-690)
+
+Changed:
+- Migration `20261117160000_species_to_taxa`: `shared.species` → `shared.taxa`, and
+  `species_id` → `taxon_id` in the table and the foreign keys of `trees.trees`,
+  `trees.observations`, `trees.growth_simulations`, `forest_floor.deadwood` and
+  `forest_floor.regeneration` (constraints, indexes, sequence and policies renamed with them).
+  New columns `taxon_rank`, `kingdom`, `phylum`, `class_name`, `order_name`, `family`, `genus`
+  from the GBIF backbone. `forest_floor.ground_vegetation` gains `taxon_id`, resolved from
+  `species_name` on insert. The public API views keep their column names (`species_id`,
+  `species_name`), so API clients and Unreal see no change.
+- `data/lookups/species.csv` → `taxa.csv`, with `LeafType` (so new taxa get one; it was only in
+  the snapshot) and the seven taxonomy columns; lookup key `species` → `taxa`.
+- Scripts, seeds, tests and docs follow; so do silva-connector and digital-twin-dashboard,
+  which read the base tables.
+
+Fixed:
+- Three wrong GBIF keys: *Betula pendula* (pointed to *Reynoutria*), *Fraxinus excelsior*
+  (*Reichardia*) and *Tilia cordata* (a genus of monkeys). Now 5331916, 3172358 and 3152047.
+
 **Predicted microhabitats for the baseline trees** (XRFF-693)
 
 Added:

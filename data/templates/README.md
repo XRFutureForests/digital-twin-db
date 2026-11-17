@@ -20,7 +20,7 @@ This directory contains CSV templates for importing data into the Forest Digital
 
 Lookup/reference data is managed in CSV files at [../lookups/](../lookups/):
 
-- `species.csv` - Tree species with SpeciesID values
+- `taxa.csv` - Taxa; `SpeciesID` in an import file is a `taxon_id`
 - `locations.csv` - Research locations with LocationID values
 - `sensor_types.csv` - Sensor types with SensorTypeID values
 
@@ -40,7 +40,7 @@ See [../lookups/README.md](../lookups/README.md) for adding new lookup values.
 | `LocationID` | ✓ | Integer | FK to `shared.Locations` |
 | `PlotID` | | Integer | FK to `shared.Plots` (sub-plot within location) |
 | `CampaignID` | | Integer | FK to `shared.Campaigns` (data collection campaign) |
-| `SpeciesID` | recommended | Integer | FK to `shared.Species` (NULL = unknown) |
+| `SpeciesID` | recommended | Integer | FK to `shared.taxa` (`taxon_id`) (NULL = unknown) |
 | `VariantTypeID` | | Integer | FK to `shared.VariantTypes` (1=original, 2=processed, 3=manual, 8=repeat_measurement) |
 | `DataSourceType` | | Text | How data was collected: `lidar`, `field`, `photogrammetry`, `estimated`, `simulated` |
 | `Latitude` | ✓ | Decimal | WGS84 latitude |
@@ -77,7 +77,7 @@ See [../lookups/README.md](../lookups/README.md) for adding new lookup values.
 | 11 | Wild Service Tree | WST |
 | 12 | Birch | XBI, BI |
 
-> Query current species: `SELECT SpeciesID, CommonName FROM shared.Species;`
+> Query current species: `SELECT taxon_id, common_name FROM shared.taxa;`
 
 ### Location Lookup
 

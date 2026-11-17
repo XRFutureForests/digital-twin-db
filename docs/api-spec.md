@@ -203,7 +203,7 @@ over REST.
 | `/rest/v1/images` | `imagery.images` | I contributor; U/D curator |
 | `/rest/v1/sensor_readings` | `sensor.sensor_readings` | I contributor only |
 | `/rest/v1/sensors` | `sensor.sensors` | I/U/D contributor |
-| `/rest/v1/species` | `shared.species` | I/U/D contributor |
+| `/rest/v1/species` | `shared.taxa` | I/U/D contributor |
 | `/rest/v1/plots` | `shared.plots` | I/U/D contributor |
 | `/rest/v1/sampling_designs` | `shared.sampling_designs` | I/U/D contributor |
 | `/rest/v1/inclusion_rules` | `shared.inclusion_rules` | I/U/D contributor |

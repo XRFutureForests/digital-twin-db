@@ -1,0 +1,26 @@
+CommonName,ScientificName,MaxHeight_m,MaxDBH_cm,TypicalLifespan_years,GrowthRate,ShadeTolerance,IsDeciduous,GBIFKey,GBIFAcceptedName,LeafType,TaxonRank,Kingdom,Phylum,Class,Order,Family,Genus
+European Beech,Fagus sylvatica,40,150,300,moderate,high,true,2882316,Fagus sylvatica,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Fagales,Fagaceae,Fagus
+European Oak,Quercus robur,35,200,500,slow,moderate,true,2878688,Quercus robur,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Fagales,Fagaceae,Quercus
+Norway Spruce,Picea abies,50,150,200,fast,high,false,5284884,Picea abies,needleleaf,species,Plantae,Tracheophyta,Pinopsida,Pinales,Pinaceae,Picea
+Silver Fir,Abies alba,50,200,500,moderate,very_high,false,2685484,Abies alba,needleleaf,species,Plantae,Tracheophyta,Pinopsida,Pinales,Pinaceae,Abies
+Scots Pine,Pinus sylvestris,35,100,300,moderate,low,false,5285637,Pinus sylvestris,needleleaf,species,Plantae,Tracheophyta,Pinopsida,Pinales,Pinaceae,Pinus
+Douglas Fir,Pseudotsuga menziesii,60,180,500,fast,moderate,false,2685796,Pseudotsuga menziesii,needleleaf,species,Plantae,Tracheophyta,Pinopsida,Pinales,Pinaceae,Pseudotsuga
+European Larch,Larix decidua,40,100,300,fast,low,true,2686212,Larix decidua,needleleaf,species,Plantae,Tracheophyta,Pinopsida,Pinales,Pinaceae,Larix
+Norway Maple,Acer platanoides,25,100,200,moderate,moderate,true,3189846,Acer platanoides,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Sapindales,Sapindaceae,Acer
+Sycamore Maple,Acer pseudoplatanus,35,120,400,moderate,moderate,true,3189870,Acer pseudoplatanus,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Sapindales,Sapindaceae,Acer
+Wild Cherry,Prunus avium,25,80,100,fast,low,true,3020791,Prunus avium,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Rosales,Rosaceae,Prunus
+Wild Service Tree,Torminalis glaberrima,25,60,200,slow,moderate,true,3012567,Torminalis glaberrima,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Rosales,Rosaceae,Torminalis
+Silver Birch,Betula pendula,25,60,80,fast,low,true,5331916,Betula pendula,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Fagales,Betulaceae,Betula
+Common Ash,Fraxinus excelsior,35,150,250,fast,low,true,3172358,Fraxinus excelsior,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Lamiales,Oleaceae,Fraxinus
+Small-leaved Linden,Tilia cordata,30,120,500,moderate,high,true,3152047,Tilia cordata,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Malvales,Malvaceae,Tilia
+Lawson Cypress,Chamaecyparis lawsoniana,,,,,,false,2683866,Chamaecyparis lawsoniana,needleleaf,species,Plantae,Tracheophyta,Pinopsida,Pinales,Cupressaceae,Chamaecyparis
+Holly,Ilex aquifolium,,,,,,false,5414222,Ilex aquifolium,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Aquifoliales,Aquifoliaceae,Ilex
+Wych Elm,Ulmus glabra,,,,,,true,5361866,Ulmus glabra,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Rosales,Ulmaceae,Ulmus
+Sessile Oak,Quercus petraea,,,,,,true,2880130,Quercus petraea,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Fagales,Fagaceae,Quercus
+Northern Red Oak,Quercus rubra,,,,,,true,2880539,Quercus rubra,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Fagales,Fagaceae,Quercus
+European Hornbeam,Carpinus betulus,,,,,,true,2875818,Carpinus betulus,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Fagales,Betulaceae,Carpinus
+Black Alder,Alnus glutinosa,,,,,,true,2876213,Alnus glutinosa,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Fagales,Betulaceae,Alnus
+Common Hazel,Corylus avellana,,,,,,true,2875979,Corylus avellana,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Fagales,Betulaceae,Corylus
+European White Elm,Ulmus laevis,,,,,,true,7303616,Ulmus laevis,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Rosales,Ulmaceae,Ulmus
+Black Cherry,Prunus serotina,,,,,,true,3021850,Prunus serotina,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Rosales,Rosaceae,Prunus
+Princess Tree,Paulownia tomentosa,,,,,,true,3170823,Paulownia tomentosa,broadleaf,species,Plantae,Tracheophyta,Magnoliopsida,Lamiales,Paulowniaceae,Paulownia

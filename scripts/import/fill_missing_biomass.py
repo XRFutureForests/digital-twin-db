@@ -215,7 +215,7 @@ def main() -> None:
     sql = """
         SELECT t.tree_id, sp.scientific_name, st.dbh_cm, t.height_m
         FROM trees.trees t
-        JOIN shared.species sp USING (species_id)
+        JOIN shared.taxa sp USING (taxon_id)
         JOIN trees.stems st ON st.tree_id = t.tree_id AND st.stem_number = 1
         JOIN shared.locations l ON l.location_id = t.location_id
         WHERE st.dbh_cm IS NOT NULL AND t.height_m IS NOT NULL
@@ -242,7 +242,7 @@ def main() -> None:
     gsql = """
         SELECT g.growth_simulation_id, sp.scientific_name, g.dbh_cm, g.height_m
         FROM trees.growth_simulations g
-        JOIN shared.species sp ON sp.species_id = g.species_id
+        JOIN shared.taxa sp ON sp.taxon_id = g.taxon_id
         LEFT JOIN shared.locations l ON l.location_id = g.location_id
         WHERE g.dbh_cm IS NOT NULL AND g.height_m IS NOT NULL
     """

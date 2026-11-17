@@ -175,7 +175,7 @@ def validate_foreign_keys(df, conn):
     if "SpeciesID" in df.columns:
         species_ids = df["SpeciesID"].dropna().unique()
         if len(species_ids) > 0:
-            cur.execute("SELECT species_id FROM shared.Species")
+            cur.execute("SELECT taxon_id FROM shared.taxa")
             valid_species = {row[0] for row in cur.fetchall()}
             invalid_sp = [
                 int(sid) for sid in species_ids if int(sid) not in valid_species
@@ -451,7 +451,7 @@ def import_trees(df, variant_name, dry_run=False, append=False):
     # Insert trees
     insert_query = """
         INSERT INTO trees.Trees (
-            location_id, plot_id, tree_number, campaign_id, variant_id, variant_type_id, species_id,
+            location_id, plot_id, tree_number, campaign_id, variant_id, variant_type_id, taxon_id,
             tree_status_id, branching_pattern_id, bark_characteristic_id,
             measurement_date, data_source_type_id,
             height_m, height_source, crown_width_m, crown_base_height_m,

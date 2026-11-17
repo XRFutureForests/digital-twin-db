@@ -90,7 +90,7 @@ erDiagram
     shared_variant_types ||--o{ trees_trees : "variant_type_id"
     shared_scenarios o|--o{ trees_trees : "scenario_id"
     shared_plots o|--o{ trees_trees : "plot_id"
-    shared_species o|--o{ trees_trees : "species_id"
+    shared_taxa o|--o{ trees_trees : "taxon_id"
     trees_trees o|--o{ trees_trees : "parent_tree_id"
     trees_trees ||--o{ trees_stems : "tree_id"
     trees_trees ||--o{ trees_qsms : "tree_id"
@@ -109,7 +109,7 @@ erDiagram
     trees_trees o|--o{ trees_growth_simulations : "base_tree_id"
     shared_scenarios o|--o{ trees_growth_simulations : "scenario_id"
     shared_plots o|--o{ trees_growth_simulations : "plot_id"
-    shared_species o|--o{ trees_growth_simulations : "species_id"
+    shared_taxa o|--o{ trees_growth_simulations : "taxon_id"
 
     shared_scenarios {
         int scenario_id PK
@@ -136,7 +136,7 @@ erDiagram
         uuid tree_entity_id
         int variant_id FK
         int location_id FK
-        int species_id FK
+        int taxon_id FK
         numeric height_m
         geometry position
     }
@@ -180,14 +180,18 @@ A **variant** (`shared.variants`) is one complete forest state within a scenario
 
 **`shared.variant_types`** values: `original`, `processed`, `manual`, `simulated_growth`, `user_input`, `sensor_derived`, `model_output`, `repeat_measurement`.
 
-### 3.3 `shared.species`
+### 3.3 `shared.taxa`
+
+Renamed from `shared.species` on 2026-11-17 (XRFF-690): a row may be a species, genus, family or
+morphospecies. Foreign keys are `taxon_id`; the public API views still expose it as `species_id`.
 
 | Column | Note |
 |--------|------|
-| `leaf_type` | `needleleaf` / `broadleaf`, independent of `is_deciduous` (larch: deciduous and needleleaf). Set by migration `20261008120000`, not by the CSV |
+| `leaf_type` | `needleleaf` / `broadleaf`, independent of `is_deciduous` (larch: deciduous and needleleaf). Trees only; loaded from the CSV |
 | `gbif_key`, `gbif_accepted_name` | GBIF taxon validation (`scripts/admin/`) |
+| `taxon_rank`, `kingdom`, `phylum`, `class_name`, `order_name`, `family`, `genus` | GBIF backbone |
 
-**Lookup data source:** `data/lookups/species.csv`
+**Lookup data source:** `data/lookups/taxa.csv`
 
 ### 3.4 `shared.campaigns`
 

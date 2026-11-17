@@ -367,7 +367,7 @@ Audited fields (as recorded in `audit_log.field_name`):
 The point-cloud and phenology entries log again since migration `20261030120000`; before it,
 the trigger matched pre-rename table names and recorded nothing for those two tables.
 
-Changes to other fields (e.g., `species_id`, `measurement_date`) are not audited. To add a field, change the matching `WHEN '<table>' THEN` block of `shared.audit_update_trigger()` in a new migration (see `AGENTS.md` §"Schema Migrations"), following the existing pattern:
+Changes to other fields (e.g., `taxon_id`, `measurement_date`) are not audited. To add a field, change the matching `WHEN '<table>' THEN` block of `shared.audit_update_trigger()` in a new migration (see `AGENTS.md` §"Schema Migrations"), following the existing pattern:
 ```sql
 IF OLD.your_field IS DISTINCT FROM NEW.your_field THEN
     PERFORM shared.create_audit_log(

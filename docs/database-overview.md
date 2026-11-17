@@ -252,7 +252,7 @@ FROM trees.trees t
 JOIN shared.variants  v  ON v.variant_id   = t.variant_id
 JOIN shared.scenarios sc ON sc.scenario_id = v.scenario_id
 JOIN shared.locations l  ON l.location_id  = v.location_id
-LEFT JOIN shared.species sp ON sp.species_id = t.species_id
+LEFT JOIN shared.taxa sp ON sp.taxon_id = t.taxon_id
 LEFT JOIN trees.stems    s  ON s.tree_id = t.tree_id AND s.stem_number = 1
 WHERE l.location_name  = 'ecosense'
   AND sc.scenario_name = 'natural_growth'
