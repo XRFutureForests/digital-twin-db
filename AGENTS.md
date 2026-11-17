@@ -20,7 +20,7 @@ approach was chosen, write it in the knowledge hub and link to it.
 
 | Category | Rule | When to Apply |
 |----------|------|---------------|
-| Confirmation | Never commit or push without explicit user confirmation | Always |
+| Confirmation | Commit and push your own work with an explicit pathspec; anything outward-facing waits for the owner (Decision rights, workspace `AGENTS.md`) | Always |
 | Scope | Modify only what the request requires — no adjacent cleanup | Always |
 | Exit codes | An ingestion or connector script must exit non-zero if any record failed to write — an unattended run's exit code is the only signal the job runner has | Always |
 | Secrets | Never commit `.env` or credentials; use `docker/.env` (gitignored) | Before any git operation |
