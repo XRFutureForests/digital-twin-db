@@ -5,8 +5,8 @@ Fill missing tree heights from height-diameter curves fitted to this database.
 For every species with at least MIN_TREES measured trees (height_source
 'measured' or 'measured_tls', baseline variant, stem-1 DBH), a Naslund curve
 H = 1.3 + D^2 / (a + b*D)^2 (D in cm) is fitted with pylometree, pooled over all
-sites. Species with fewer measured trees get the curve pooled over their leaf
-type (broadleaf / needleleaf). The fit is redone on every run, so new
+sites except the marteloscope plots (EXCLUDED_FROM_FIT). Species with fewer
+measured trees get the curve pooled over their leaf type (broadleaf / needleleaf). The fit is redone on every run, so new
 measurements improve it.
 
 Why Naslund and not Chapman-Richards: the measured conifers have few small
@@ -58,6 +58,9 @@ SPECIES_SOURCE = "allometric_fitted_species"
 LEAF_TYPE_SOURCE = "allometric_fitted_leaf_type"
 REFILLED = ("allometric_pylometree", SPECIES_SOURCE, LEAF_TYPE_SOURCE)
 MEASURED = ("measured", "measured_tls")
+# Marteloscope plots stay out of the fit (owner 2026-11-18): adding them shifted silver fir
+# 2.7-3.5 m and raised the held-out RMSE of the other sites' measured trees (3.82 -> 3.98 m).
+EXCLUDED_FROM_FIT = ("klosterwald", "mooswald", "rosskopf")
 
 BASELINE = """
     t.variant_type_id = (SELECT variant_type_id FROM shared.variant_types
@@ -116,7 +119,12 @@ def main():
     args = parser.parse_args()
 
     conn = get_db_connection()
-    training = fetch(conn, "t.height_source IN %s AND t.height_m > 1.3", (MEASURED,))
+    training = fetch(
+        conn,
+        "t.height_source IN %s AND t.height_m > 1.3 AND t.location_id NOT IN "
+        "(SELECT location_id FROM shared.locations WHERE location_name IN %s)",
+        (MEASURED, EXCLUDED_FROM_FIT),
+    )
     targets = fetch(conn, "t.height_m IS NULL OR t.height_source IN %s", (REFILLED,))
     print(f"Measured trees for fitting: {len(training)}; trees to fill: {len(targets)}")
 
