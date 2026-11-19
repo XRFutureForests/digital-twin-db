@@ -5,3 +5,8 @@
 # has no effect on GitHub/GitLab's server-side merge.
 AGENTS.md merge=ours
 CLAUDE.md merge=ours
+
+# Dateien, die in Linux-Container eingebunden werden, brauchen LF.
+# Elixir bricht bei einem CR hart ab (docker/volumes/pooler/pooler.exs:
+# "unexpected token: carriage return"), deshalb hier erzwungen.
+docker/volumes/** text eol=lf
