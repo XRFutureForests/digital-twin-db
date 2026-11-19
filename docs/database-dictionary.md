@@ -1,29 +1,30 @@
 # Data Dictionary
 
 > **Generated** by `scripts/utils/generate_schema_docs.py` from the database, as of migration
-> `20261105100000_orthophoto_catalog_and_tree_views`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
+> `20261119130000_management_audit_and_display_names`. Do not edit by hand: change the schema (and its `COMMENT ON`s) with a
 > migration, then regenerate. The descriptions are the comments stored in the database.
 > How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).
 
-Every table of the eight domain schemas. The REST API exposes most of them as a view of the
+Every table of the nine domain schemas. The REST API exposes most of them as a view of the
 same name in `public` (listed at the end); write and read through those.
 
 | Schema | Tables | Holds |
 |---|---:|---|
-| [`shared`](#shared) | 37 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
-| [`trees`](#trees) | 31 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
+| [`shared`](#shared) | 38 | Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit |
+| [`trees`](#trees) | 32 | Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups |
 | [`sensor`](#sensor) | 5 | Sensors, their time series, units, sensor-tree links |
 | [`environments`](#environments) | 1 | Climate and soil per location, scenario and period |
 | [`point_clouds`](#point_clouds) | 3 | Point clouds and scanners |
 | [`imagery`](#imagery) | 4 | Images |
 | [`forest_floor`](#forest_floor) | 3 | Plot-level dead wood and ground vegetation surveys |
 | [`management`](#management) | 7 | Planning areas, planning variants (forks), drawn features, thinning marks, fork locks |
+| [`field`](#field) | 1 | Field surveys uploaded from QField, merged into trees by a trigger |
 
 ## shared
 
 Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit
 
-[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_events_trees`](#sharedmanagement_events_trees) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`species`](#sharedspecies) · [`strata`](#sharedstrata) · [`team_members`](#sharedteam_members) · [`teams`](#sharedteams) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
+[`account_events`](#sharedaccount_events) · [`attribute_provenance`](#sharedattribute_provenance) · [`audit_log`](#sharedaudit_log) · [`audit_log_environments`](#sharedaudit_log_environments) · [`audit_log_management`](#sharedaudit_log_management) · [`audit_log_phenology_observations`](#sharedaudit_log_phenology_observations) · [`audit_log_point_clouds`](#sharedaudit_log_point_clouds) · [`audit_log_stems`](#sharedaudit_log_stems) · [`audit_log_trees`](#sharedaudit_log_trees) · [`campaigns`](#sharedcampaigns) · [`climate_pathways`](#sharedclimate_pathways) · [`climate_zones`](#sharedclimate_zones) · [`disturbance_events`](#shareddisturbance_events) · [`disturbance_events_trees`](#shareddisturbance_events_trees) · [`inclusion_rules`](#sharedinclusion_rules) · [`locations`](#sharedlocations) · [`lookup_registry`](#sharedlookup_registry) · [`management_events`](#sharedmanagement_events) · [`management_events_trees`](#sharedmanagement_events_trees) · [`management_regimes`](#sharedmanagement_regimes) · [`plots`](#sharedplots) · [`process_metrics`](#sharedprocess_metrics) · [`process_parameters`](#sharedprocess_parameters) · [`process_parameters_environments`](#sharedprocess_parameters_environments) · [`process_parameters_point_clouds`](#sharedprocess_parameters_point_clouds) · [`process_parameters_stems`](#sharedprocess_parameters_stems) · [`process_parameters_trees`](#sharedprocess_parameters_trees) · [`processes`](#sharedprocesses) · [`processing_jobs`](#sharedprocessing_jobs) · [`sampling_designs`](#sharedsampling_designs) · [`scenarios`](#sharedscenarios) · [`soil_types`](#sharedsoil_types) · [`species`](#sharedspecies) · [`strata`](#sharedstrata) · [`team_members`](#sharedteam_members) · [`teams`](#sharedteams) · [`variant_types`](#sharedvariant_types) · [`variants`](#sharedvariants)
 
 ### shared.account_events
 
@@ -88,6 +89,20 @@ Links audit log entries to environment records
 | `environment_id` | integer |  |  | `environments.environments.environment_id` (cascade) |  |
 
 Constraints: primary key (audit_log_id, environment_id).
+
+### shared.audit_log_management
+
+Links shared.audit_log rows written by shared.audit_row_trigger() to the planning row they describe. record_key holds the primary key column(s) named in the trigger arguments, joined by "/".
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `audit_log_id` | bigint |  |  | `shared.audit_log.audit_log_id` (cascade) |  |
+| `table_name` | text |  |  |  |  |
+| `record_key` | text |  |  |  |  |
+| `fork_id` | integer | yes |  |  |  |
+| `area_id` | integer | yes |  |  |  |
+
+Constraints: primary key (audit_log_id).
 
 ### shared.audit_log_phenology_observations
 
@@ -645,7 +660,7 @@ Constraints: `CHECK (((simulation_year >= 1900) AND (simulation_year <= 2300)))`
 
 Trees per forest state, stems, observations, SILVA output, tree structure, morphology lookups
 
-[`axis_structures`](#treesaxis_structures) · [`bark_characteristics`](#treesbark_characteristics) · [`branch_elongation_habits`](#treesbranch_elongation_habits) · [`branching_patterns`](#treesbranching_patterns) · [`crown_architectures`](#treescrown_architectures) · [`crown_classes`](#treescrown_classes) · [`crown_foliage_profiles`](#treescrown_foliage_profiles) · [`crown_shapes`](#treescrown_shapes) · [`damage_agents`](#treesdamage_agents) · [`data_source_types`](#treesdata_source_types) · [`entity_matches`](#treesentity_matches) · [`geometric_crown_solids`](#treesgeometric_crown_solids) · [`growth_forms`](#treesgrowth_forms) · [`growth_orientations`](#treesgrowth_orientations) · [`growth_simulations`](#treesgrowth_simulations) · [`observations`](#treesobservations) · [`phanerophyte_height_classes`](#treesphanerophyte_height_classes) · [`phenology_observations`](#treesphenology_observations) · [`qsm_cylinders`](#treesqsm_cylinders) · [`qsms`](#treesqsms) · [`root_system_types`](#treesroot_system_types) · [`roots`](#treesroots) · [`shoot_elongation_types`](#treesshoot_elongation_types) · [`simulation_runs`](#treessimulation_runs) · [`stems`](#treesstems) · [`straightness_types`](#treesstraightness_types) · [`taper_types`](#treestaper_types) · [`tree_graph_edges`](#treestree_graph_edges) · [`tree_part_types`](#treestree_part_types) · [`tree_status`](#treestree_status) · [`trees`](#treestrees)
+[`axis_structures`](#treesaxis_structures) · [`bark_characteristics`](#treesbark_characteristics) · [`branch_elongation_habits`](#treesbranch_elongation_habits) · [`branching_patterns`](#treesbranching_patterns) · [`crown_architectures`](#treescrown_architectures) · [`crown_classes`](#treescrown_classes) · [`crown_foliage_profiles`](#treescrown_foliage_profiles) · [`crown_shapes`](#treescrown_shapes) · [`damage_agents`](#treesdamage_agents) · [`data_source_types`](#treesdata_source_types) · [`entity_matches`](#treesentity_matches) · [`geometric_crown_solids`](#treesgeometric_crown_solids) · [`growth_forms`](#treesgrowth_forms) · [`growth_orientations`](#treesgrowth_orientations) · [`growth_simulations`](#treesgrowth_simulations) · [`observations`](#treesobservations) · [`phanerophyte_height_classes`](#treesphanerophyte_height_classes) · [`phenology_observations`](#treesphenology_observations) · [`qsm_cylinders`](#treesqsm_cylinders) · [`qsms`](#treesqsms) · [`root_system_types`](#treesroot_system_types) · [`roots`](#treesroots) · [`shoot_elongation_types`](#treesshoot_elongation_types) · [`simulation_runs`](#treessimulation_runs) · [`stems`](#treesstems) · [`straightness_types`](#treesstraightness_types) · [`taper_types`](#treestaper_types) · [`tree_changes`](#treestree_changes) · [`tree_graph_edges`](#treestree_graph_edges) · [`tree_part_types`](#treestree_part_types) · [`tree_status`](#treestree_status) · [`trees`](#treestrees)
 
 ### trees.axis_structures
 
@@ -1104,6 +1119,34 @@ Stem taper form classifications
 | `typical_taper_ratio_max` | numeric(4,3) | yes |  |  |  |
 
 Constraints: `CHECK (((typical_taper_ratio_max >= (0)::numeric) AND (typical_taper_ratio_max <= (1)::numeric)))`; `CHECK (((typical_taper_ratio_min >= (0)::numeric) AND (typical_taper_ratio_min <= (1)::numeric)))`; `CHECK ((typical_taper_ratio_min <= typical_taper_ratio_max))`; primary key (taper_type_id); unique (taper_type_name).
+
+### trees.tree_changes
+
+Changes to a tree between two inventories (harvest, corrections), one row per tree and attribute. Measured rows stay untouched; trees.v_trees_current lays the changes in force (active, conflict) over the newest measurement.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `change_id` | bigint |  | serial |  |  |
+| `tree_entity_id` | uuid |  |  |  |  |
+| `location_id` | integer |  |  | `shared.locations.location_id` (cascade) |  |
+| `base_tree_id` | integer | yes |  | `trees.trees.tree_id` (set null) |  |
+| `attribute` | text |  |  |  |  |
+| `old_value` | jsonb | yes |  |  | The value the author saw. Written only if the tree still showed it (optimistic check). |
+| `new_value` | jsonb |  |  |  |  |
+| `kind` | text |  |  |  |  |
+| `source` | text |  | `'app'::text` |  |  |
+| `event_date` | date |  |  |  |  |
+| `fork_id` | integer | yes |  | `management.forks.fork_id` (set null) |  |
+| `management_event_id` | integer | yes |  | `shared.management_events.management_event_id` (set null) |  |
+| `state` | text |  | `'active'::text` |  |  |
+| `state_note` | text | yes |  |  |  |
+| `survey_uuid` | uuid | yes |  |  |  |
+| `created_at` | timestamp with time zone |  | `now()` |  |  |
+| `created_by` | character varying(200) | yes |  |  |  |
+| `resolved_at` | timestamp with time zone | yes |  |  |  |
+| `resolved_by` | character varying(200) | yes |  |  |  |
+
+Constraints: `CHECK ((attribute = ANY (ARRAY['species_id'::text, 'dbh_cm'::text, 'height_m'::text, 'tree_status_id'::text, 'quality_rvr'::text, 'position'::text])))`; `CHECK ((kind = ANY (ARRAY['correction'::text, 'harvest'::text])))`; `CHECK (((kind <> 'harvest'::text) OR (attribute = 'tree_status_id'::text)))`; `CHECK ((new_value <> 'null'::jsonb))`; `CHECK ((source = ANY (ARRAY['app'::text, 'qfield'::text])))`; `CHECK ((state = ANY (ARRAY['active'::text, 'conflict'::text, 'confirmed'::text, 'superseded'::text, 'replaced'::text, 'rejected'::text])))`; primary key (change_id).
 
 ### trees.tree_graph_edges
 
@@ -1749,6 +1792,46 @@ Crop trees and removal marks per fork. A mark never changes the tree; it takes e
 
 Constraints: `CHECK ((role = ANY (ARRAY['z'::text, 'removal'::text])))`; primary key (fork_id, tree_entity_id).
 
+## field
+
+Field surveys uploaded from QField, merged into trees by a trigger
+
+[`tree_surveys`](#fieldtree_surveys)
+
+### field.tree_surveys
+
+Tree surveys from QField, insert-only. A trigger merges each row three-way (seen base_*, current DB state, surveyed value) and records the outcome in state/message/result_tree_id.
+
+| Column | Type | Null | Default | References | Description |
+|---|---|---|---|---|---|
+| `survey_uuid` | uuid |  | `gen_random_uuid()` |  |  |
+| `mode` | text |  | `'erhebung'::text` |  |  |
+| `tree_entity_id` | uuid | yes |  |  |  |
+| `campaign_id` | integer | yes |  |  |  |
+| `base_tree_id` | integer | yes |  |  |  |
+| `base_species_id` | integer | yes |  |  |  |
+| `base_dbh_cm` | numeric(6,2) | yes |  |  |  |
+| `base_height_m` | numeric(6,2) | yes |  |  |  |
+| `base_tree_status_id` | integer | yes |  |  |  |
+| `base_quality_rvr` | character(1) | yes |  |  |  |
+| `base_position` | geometry(Point,4326) | yes |  |  |  |
+| `species_id` | integer | yes |  |  |  |
+| `dbh_cm` | numeric(6,2) | yes |  |  |  |
+| `height_m` | numeric(6,2) | yes |  |  |  |
+| `tree_status_id` | integer | yes |  |  |  |
+| `quality_rvr` | character(1) | yes |  |  |  |
+| `position` | geometry(Point,4326) | yes |  |  |  |
+| `field_notes` | text | yes |  |  |  |
+| `surveyed_at` | timestamp with time zone |  | `now()` |  |  |
+| `surveyed_by` | character varying(200) | yes |  |  |  |
+| `device` | text | yes |  |  |  |
+| `state` | text | yes |  |  |  |
+| `message` | text | yes |  |  |  |
+| `result_tree_id` | integer | yes |  |  |  |
+| `processed_at` | timestamp with time zone | yes |  |  |  |
+
+Constraints: primary key (survey_uuid).
+
 ## Views
 
 ### Views in the domain schemas
@@ -1757,6 +1840,7 @@ Constraints: `CHECK ((role = ANY (ARRAY['z'::text, 'removal'::text])))`; primary
 |---|---|
 | `environments.active_environments` | Currently active environment variants with location and scenario context |
 | `environments.location_environment_summary` | Summary statistics of environmental conditions by location |
+| `field.v_trees_current` | Trees for QField, harvested ones included and marked (is_harvested). The attribute columns are the base_* values of a survey. |
 | `imagery.v_deadwood` | Dead wood polygons of active analyses, with their orthophoto. |
 | `imagery.v_ortho_analyses` | Active analyses per orthophoto, newest first. |
 | `imagery.v_orthophotos` | Active orthophotos for the map, newest first, with the site name and the bbox as four numbers. |
@@ -1770,9 +1854,11 @@ Constraints: `CHECK ((role = ANY (ARRAY['z'::text, 'removal'::text])))`; primary
 | `shared.user_activity_summary` | Summary of user activity and change patterns |
 | `shared.v_locations_overview` | Sites with soil, climate and counts. tree_count counts trees (tree_entity_id), not their versions; a row without an entity counts as one tree. |
 | `trees.trees_with_metrics` | Trees with computed metrics (basal area, crown volume, stem count) |
+| `trees.v_tree_change_conflicts` | Review list: changes contested by a field survey, and surveys that contradict a newer measurement. |
+| `trees.v_trees_current` | Current state of every tree, harvested ones included: the newest measured row, with the changes in force from trees.tree_changes laid over it per attribute. tree_id is the measured row the changes rest on. |
 | `trees.v_trees_full` | Every tree row of every variant with species, status, site and main stem. |
 | `trees.v_trees_geojson` | Every tree row of every variant, position as GeoJSON, for export. |
-| `trees.v_trees_latest` | Current state: the newest measured row of each tree across all variants, without harvested trees. Simulated, model and XR-edited rows do not count as measured. |
+| `trees.v_trees_latest` | Current state without harvested trees: trees.v_trees_current minus harvested. Simulated, model and XR-edited rows do not count as measured; changes in trees.tree_changes do. |
 
 ### Public API views
 
@@ -1798,6 +1884,7 @@ portal's API page.
 | `disturbance_events` | Public API view for natural disturbance events |
 | `entity_matches` | Every re-identification decision, superseded ones included. Writable by contributors; revise by inserting a decision that supersedes the current one. |
 | `environments` | Public API view for environments table |
+| `field_trees` |  |
 | `fork_locks` | Current fork locks (management.v_fork_locks). Read-only; lock through the fork_lock_* functions. |
 | `geometric_crown_solids` | Public API view for geometric crown solids lookup table |
 | `ground_vegetation` | Public API view for ground vegetation surveys |
@@ -1844,9 +1931,12 @@ portal's API page.
 | `thinning_open` | Open marks with tree positions (management.v_thinning_open). Read-only. |
 | `thinning_runs` | Thinning run parameters per fork (management.thinning_runs). |
 | `thinning_trees` | Crop-tree and removal marks per fork (management.thinning_trees). |
+| `tree_change_conflicts` |  |
+| `tree_changes` |  |
 | `tree_expansion_factors` | Trees per hectare each tree stands for (shared.expansion_factor_ha on the main stem's DBH), with the plot's design, stratum and sampling weight. Filter on variant_id. NULL where the plot has no area or design. |
 | `tree_graph_edges` | Public API view for QSM topology edge overrides (observed/synthetic/derived) |
 | `tree_part_types` | Public API view for tree part types (CityGML feature classes) lookup table |
+| `tree_surveys` |  |
 | `trees` | Public API view for trees table |
 | `ue_climate` | environments.environments merged across variant_name: one row per location, scenario, variant type and period, with each measurement column taken from whichever dataset supplied it. This is the read a scene makes -- ue_environments returns one row per dataset, which since XRFF-395 means two half-empty rows per window where a scenario picker wants one full one. `variant_names` and `process_names` carry the provenance the merge folds away; `conflicting_columns` is empty unless two datasets supplied the same measurement for the same window, in which case the value shown is an arbitrary one of them. Despite the name it also returns the scenario-less rows -- soil chemistry (both years NULL) and the measured soil aggregate -- because the grouping is by period, not by topic. GET /rest/v1/ue_climate?location_id=eq.1&scenario_name=eq.ssp370&order=start_year |
 | `ue_environments` | environments.environments with its location, scenario, variant type and process joined to text, for Unreal. Every column is a scalar and the period is exposed as integer years as well as timestamps. A NULL scenario_name means the row is not a projection (an observed climatology or a permanent site property), not that a pathway is missing -- variant_name says which dataset it is. GET /rest/v1/ue_environments?location_id=eq.1&scenario_name=eq.ssp370&order=start_year |

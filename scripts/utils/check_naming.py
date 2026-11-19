@@ -32,6 +32,7 @@ DOMAIN_SCHEMAS = (
     "imagery",
     "forest_floor",
     "management",
+    "field",
 )
 
 # Deviations that predate the convention being written down, each with the issue
@@ -47,6 +48,9 @@ KNOWN = {
     #   recent_changes.record_id          COALESCE over five different PKs
     "public.ue_scenarios.baseline_variant_id": "carve-out: computed",
     "shared.recent_changes.record_id": "carve-out: computed",
+    # The device generates survey_uuid before upload, so a repeated upload of
+    # the same survey hits the primary key instead of creating a second row.
+    "field.tree_surveys": "carve-out: client-generated key",
 }
 
 # FK edges where the local column deliberately qualifies the parent's PK name --
@@ -62,6 +66,7 @@ ROLE_QUALIFIED_FKS = {
     "shared.scenarios.climate_pathway_id",
     "shared.scenarios.management_regime_id",
     "trees.growth_simulations.base_tree_id",
+    "trees.tree_changes.base_tree_id",
     "trees.simulation_runs.base_variant_id",
     "management.forks.base_variant_id",
         }

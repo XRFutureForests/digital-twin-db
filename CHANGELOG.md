@@ -6,6 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Tree changes between inventories, field surveys from QField**
+
+- `trees.tree_changes` records harvests and corrections made between two inventories, one row per
+  tree and attribute, each with the `base_tree_id` it was made against. Measured rows stay untouched.
+- `trees.v_trees_current` lays the changes in force over the newest measurement and flags
+  `is_harvested`, `has_open_conflict` and `changed_attributes`; `trees.v_trees_latest` is its
+  non-harvested part.
+- `trees.record_corrections()` writes corrections and refuses one when the tree changed since it was
+  read (SQLSTATE 40001). `management.apply_fork()` harvests the trees of a saved planning variant.
+- A new measured row supersedes corrections per attribute it measured; a harvested tree that turns up
+  again becomes a conflict. Open conflicts are listed in `trees.v_tree_change_conflicts` and resolved
+  by curators with `trees.resolve_change_conflict()`.
+- New schema `field`: `field.tree_surveys` takes QField surveys insert-only. Each carries the values
+  the device saw; a trigger merges it three-way against the current state. Field DBH and height always
+  win; species, status, quality or position collisions become conflicts.
+- Published as `public.field_trees`, `public.tree_surveys`, `public.tree_changes` and
+  `public.tree_change_conflicts`. Writing needs `contributor`, resolving needs `curator`.
+
+**Audit of the planning schema, display names**
+
+- Inserts, updates and deletes on the `management` tables go to `shared.audit_log` with the reason
+  the client set in `app.change_reason`, linked to the planning row through
+  `shared.audit_log_management`.
+- `shared.user_display_name()` turns a `created_by` user id into a display name.
+
 **Drone orthophotos, dead wood polygons, tree quality**
 
 - `imagery.orthophotos` is a catalog of drone flights: the rasters stay behind TiTiler and the

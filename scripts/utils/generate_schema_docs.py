@@ -4,7 +4,7 @@
     python scripts/utils/generate_schema_docs.py            # writes both files
     python scripts/utils/generate_schema_docs.py --check    # exit 1 if either is stale
 
-Writes `docs/database-dictionary.md` (every table of the eight domain schemas:
+Writes `docs/database-dictionary.md` (every table of the nine domain schemas:
 columns, types, nullability, defaults, references, constraints and the
 COMMENTs stored in the database) and `docs/database-erd.dbml`.
 
@@ -30,7 +30,7 @@ DICT_PATH = REPO_ROOT / "docs" / "database-dictionary.md"
 DBML_PATH = REPO_ROOT / "docs" / "database-erd.dbml"
 
 # Keep in sync with the CREATE SCHEMA statements in docker/volumes/db/init/.
-SCHEMAS = ["shared", "trees", "sensor", "environments", "point_clouds", "imagery", "forest_floor", "management"]
+SCHEMAS = ["shared", "trees", "sensor", "environments", "point_clouds", "imagery", "forest_floor", "management", "field"]
 
 SCHEMA_NOTES = {
     "shared": "Sites, scenarios and forest states, species, campaigns, events, processes, jobs, audit",
@@ -41,6 +41,7 @@ SCHEMA_NOTES = {
     "imagery": "Images",
     "forest_floor": "Plot-level dead wood and ground vegetation surveys",
     "management": "Planning areas, planning variants (forks), drawn features, thinning marks, fork locks",
+    "field": "Field surveys uploaded from QField, merged into trees by a trigger",
 }
 
 
@@ -143,7 +144,7 @@ def render_dictionary(data, migration):
         "> migration, then regenerate. The descriptions are the comments stored in the database.",
         "> How the schemas fit together, conventions and design notes: [database-schema.md](database-schema.md).",
         "",
-        "Every table of the eight domain schemas. The REST API exposes most of them as a view of the",
+        "Every table of the nine domain schemas. The REST API exposes most of them as a view of the",
         "same name in `public` (listed at the end); write and read through those.",
         "",
         "| Schema | Tables | Holds |",
@@ -216,7 +217,7 @@ def render_dbml(data, migration):
         "",
         "Project digital_forest_twin {",
         "  database_type: 'PostgreSQL'",
-        "  Note: 'Forest digital twin: eight domain schemas, PostgreSQL 15 + PostGIS. Data dictionary: docs/database-dictionary.md'",
+        "  Note: 'Forest digital twin: nine domain schemas, PostgreSQL 15 + PostGIS. Data dictionary: docs/database-dictionary.md'",
         "}",
         "",
     ]
