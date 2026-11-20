@@ -223,6 +223,6 @@ never run; request those where a runner for them exists.
 Locally, drain the queue by hand:
 
 ```bash
-conda activate digital-twin
+conda activate digital-twin-db
 python scripts/runner/runner.py drain
 ```

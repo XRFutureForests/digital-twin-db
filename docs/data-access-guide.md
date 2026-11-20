@@ -53,7 +53,7 @@ port 54323 (the tunnel is the access control).
 ### Option B — Python import scripts (batch uploads)
 
 ```bash
-conda activate digital-twin
+conda activate digital-twin-db
 python scripts/import/import_trees.py data/imports/your_trees.csv --variant baseline_2025 --dry-run  # validate first
 python scripts/import/import_trees.py data/imports/your_trees.csv --variant baseline_2025            # then import
 ```

@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Conda env named after the repo**
+
+Changed:
+- `environment.yml` creates the env `digital-twin-db` (was `digital-twin`) and resolves from
+  conda-forge only (`nodefaults`). Rename an existing env with
+  `conda rename -n digital-twin digital-twin-db`. `r-dotenv` leaves the env: conda-forge does
+  not carry it and no R code here loads it.
+
 **Soil map units per site** (XRFF-695)
 
 Added:
