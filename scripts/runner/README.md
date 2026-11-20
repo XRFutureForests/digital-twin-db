@@ -9,7 +9,7 @@ them and exits — nothing to supervise, nothing to survive a reboot, and
 `Linger=no` on the deployment host stops mattering.
 
 ```bash
-conda activate digital-twin
+conda activate digital-twin-db
 
 python scripts/runner/runner.py list     # what this host may claim
 python scripts/runner/runner.py drain    # claim and run
@@ -136,7 +136,7 @@ the number that decides whether a queued job feels like a button press.
    wrong, just avoidable.
 
 Also note the interpreter: on that host it is `envs/runner/bin/python`, a
-minimal env of python + psycopg2 + python-dotenv — **not** `envs/digital-twin`,
+minimal env of python + psycopg2 + python-dotenv — **not** `envs/digital-twin-db`,
 which pulls `r-base`, `jupyter` and `devtools` that the runner never uses onto a
 28 GB root disk.
 
@@ -155,6 +155,6 @@ commands; nothing in the runner assumes a POSIX host except the paths in
 ## Draining by hand
 
 ```bash
-conda activate digital-twin
+conda activate digital-twin-db
 python scripts/runner/runner.py drain
 ```

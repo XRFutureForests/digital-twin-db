@@ -77,12 +77,12 @@ tests/
 
 ## Running Tests
 
-**Test framework:** pytest (Python 3.12, conda env `digital-twin`)
+**Test framework:** pytest (Python 3.12, conda env `digital-twin-db`)
 
 **Activate environment first:**
 
 ```bash
-conda activate digital-twin
+conda activate digital-twin-db
 ```
 
 **Run all automated tests:**

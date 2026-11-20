@@ -46,7 +46,7 @@ reference: [docs/docker/README.md](docs/docker/README.md).
 
 ```bash
 conda env create -f environment.yml     # from the repo root
-conda activate digital-twin
+conda activate digital-twin-db
 ```
 
 `environment.yml` pulls `pylometree` from the University of Freiburg GitLab, which needs

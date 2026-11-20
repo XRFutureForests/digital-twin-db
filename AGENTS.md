@@ -119,7 +119,7 @@ documented dependency for an undocumented one.
 | Connection pooler | Supavisor 2.7.4 (5432 session, 6543 transaction; user `postgres.<POOLER_TENANT_ID>`) |
 | Python | 3.12 — supabase-py>=2.26, psycopg2>=2.9.9, SQLAlchemy>=2.0 |
 | R | 4.3 — DBI, RPostgres |
-| Infrastructure | Docker Compose (conda env: `digital-twin`) |
+| Infrastructure | Docker Compose (conda env: `digital-twin-db`) |
 
 ## Development Commands
 

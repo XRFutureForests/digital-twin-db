@@ -39,7 +39,7 @@ here described a CSV round-trip that was never implemented and was removed
 
    ```bash
    conda env create -f environment.yml
-   conda activate digital-twin
+   conda activate digital-twin-db
    ```
 
 2. **Database running** - Start Docker containers:

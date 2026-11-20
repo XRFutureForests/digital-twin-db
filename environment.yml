@@ -1,7 +1,7 @@
-name: digital-twin
+name: digital-twin-db
 channels:
   - conda-forge
-  - defaults
+  - nodefaults
 dependencies:
   # Python dependencies
   - python=3.12
@@ -20,7 +20,6 @@ dependencies:
   - r-readr
   - r-dplyr
   - r-jsonlite
-  - r-dotenv
   - r-r6
   - r-devtools
   - r-httr
